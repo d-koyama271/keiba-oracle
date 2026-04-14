@@ -1,0 +1,20 @@
+target_races:
+  - 札幌
+  - 函館
+  - 福島
+  - 新潟
+  - 東京
+  - 中山
+  - 中京
+  - 京都
+  - 阪神
+  - 小倉
+odds_reference_minutes_before_start: 60
+race_budget: 3000
+ev_threshold: 1.05
+kelly_fraction: 0.5
+publish_mode: github_pages
+llm_provider: manual
+llm_model: manual-chat
+data_dir: data
+public_dir: public

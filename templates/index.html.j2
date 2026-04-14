@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>keiba-oracle</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Yu Gothic", "Hiragino Sans", sans-serif;
+      background: linear-gradient(180deg, #f7f3eb 0%, #ebdfcd 100%);
+      color: #1f2520;
+    }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+    .panel {
+      background: rgba(255, 253, 248, 0.96);
+      border: 1px solid #d4cabd;
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 12px 30px rgba(50, 89, 77, 0.06);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      text-align: left;
+      padding: 12px 8px;
+      border-bottom: 1px solid #d4cabd;
+    }
+    th {
+      color: #6f766c;
+    }
+    a {
+      color: #32594d;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="panel">
+      <h1>中央競馬 11R 一覧</h1>
+      <table>
+        <thead>
+          <tr>
+            <th>日付</th>
+            <th>開催場</th>
+            <th>レース名</th>
+            <th>状態</th>
+            <th>ページ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for race in races %}
+          <tr>
+            <td>{{ race.date }}</td>
+            <td>{{ race.track }}</td>
+            <td>{{ race.race_name }}</td>
+            <td>{{ race.status }}</td>
+            <td><a href="{{ race.href }}">開く</a></td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5">公開済みレースはまだありません。</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </main>
+</body>
+</html>

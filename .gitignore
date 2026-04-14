@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtualenv
+.venv/
+venv/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Logs / cache
+*.log
+logs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Runtime artifacts
+data/races/
+inbox/
+outbox/
+archive/
+tmp/
+
+# Local-only config
+config/app.local.yaml
+config/*.local.yaml

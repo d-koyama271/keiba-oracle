@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ race.race_name }} | keiba-oracle</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f1ea;
+      --panel: #fffdf8;
+      --ink: #1f2520;
+      --line: #d5ccbe;
+      --accent: #32594d;
+      --muted: #6f766c;
+    }
+    body {
+      margin: 0;
+      font-family: "Yu Gothic", "Hiragino Sans", sans-serif;
+      background: linear-gradient(180deg, #f8f5ef 0%, #efe6d8 100%);
+      color: var(--ink);
+    }
+    main {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 10px 30px rgba(50, 89, 77, 0.06);
+    }
+    h1, h2 { margin-top: 0; }
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      font-size: 14px;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #dde9e4;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .small {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    a { color: var(--accent); }
+    ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="panel">
+      <div class="status">{{ status }}</div>
+      <h1>{{ race.track }} {{ race.race_number }}R {{ race.race_name }}</h1>
+      <h2>レース基本情報</h2>
+      <div class="meta">
+        <div><strong>日付</strong><br>{{ race.date }}</div>
+        <div><strong>発走</strong><br>{{ race.start_time or "-" }}</div>
+        <div><strong>距離</strong><br>{{ race.surface or "-" }} {{ race.distance or "-" }}m</div>
+        <div><strong>馬場</strong><br>{{ race.going or "-" }}</div>
+        <div><strong>オッズ取得</strong><br>{{ race.odds_captured_at or "-" }}</div>
+        <div><strong>参照基準</strong><br>発走 {{ race.odds_reference_minutes_before_start }} 分前</div>
+      </div>
+      <p class="small"><a href="../../index.html">一覧へ戻る</a> / <a href="{{ race.source_url }}">netkeiba</a></p>
+    </div>
+
+    <div class="panel">
+      <h2>予想</h2>
+      {% if prediction %}
+      <table>
+        <thead>
+          <tr>
+            <th>馬番</th>
+            <th>馬名</th>
+            <th>騎手</th>
+            <th>単勝オッズ</th>
+            <th>人気</th>
+            <th>1着確率</th>
+            <th>理由</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for horse in horse_rows %}
+          <tr>
+            <td>{{ horse.horse_number }}</td>
+            <td>{{ horse.horse_name }}</td>
+            <td>{{ horse.jockey or "-" }}</td>
+            <td>{{ horse.win_odds if horse.win_odds is not none else "-" }}</td>
+            <td>{{ horse.popularity if horse.popularity is not none else "-" }}</td>
+            <td>
+              {% if horse.prediction %}
+                {{ "%.1f"|format(horse.prediction.win_probability * 100) }}%
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>{{ horse.prediction.reason if horse.prediction else "-" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% if prediction.optional_summary %}
+      <p><strong>総括:</strong> {{ prediction.optional_summary }}</p>
+      {% endif %}
+      {% else %}
+      <p>prediction はまだ生成されていません。</p>
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <h2>購入想定</h2>
+      {% if simulation_pre and simulation_pre.selections %}
+      <table>
+        <thead>
+          <tr>
+            <th>馬番</th>
+            <th>暗黙確率</th>
+            <th>予想確率</th>
+            <th>EV</th>
+            <th>Kelly</th>
+            <th>配分</th>
+            <th>購入額</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in simulation_pre.selections %}
+          <tr>
+            <td>{{ item.horse_number }}</td>
+            <td>{{ "%.3f"|format(item.implied_probability) }}</td>
+            <td>{{ "%.3f"|format(item.predicted_probability) }}</td>
+            <td>{{ "%.3f"|format(item.expected_value) }}</td>
+            <td>{{ "%.4f"|format(item.kelly_weight_raw) }}</td>
+            <td>{{ "%.2f"|format(item.allocation_ratio * 100) }}%</td>
+            <td>{{ item.stake }}円</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p>購入条件を満たすシミュレーション候補はありません。</p>
+      {% endif %}
+    </div>
+
+    {% if result %}
+    <div class="panel">
+      <h2>実結果</h2>
+      <p><strong>着順:</strong> {{ result.finish_order | join(" - ") }}</p>
+      <table>
+        <thead>
+          <tr>
+            <th>馬番</th>
+            <th>着順</th>
+            <th>単勝払戻</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in result_rows %}
+          <tr>
+            <td>{{ item.horse_number }}</td>
+            <td>{{ item.finish_position }}</td>
+            <td>{{ item.payout_per_100 if item.payout_per_100 is not none else "-" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    {% if simulation_post %}
+    <div class="panel">
+      <h2>購入結果</h2>
+      <p>
+        <strong>投資:</strong> {{ simulation_post.total_stake }}円 /
+        <strong>回収:</strong> {{ simulation_post.total_return }}円 /
+        <strong>損益:</strong> {{ simulation_post.profit }}円 /
+        <strong>ROI:</strong> {{ "%.2f"|format(simulation_post.roi * 100) }}%
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>馬番</th>
+            <th>購入額</th>
+            <th>的中</th>
+            <th>払戻</th>
+            <th>回収額</th>
+            <th>損益</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in simulation_post.selections %}
+          <tr>
+            <td>{{ item.horse_number }}</td>
+            <td>{{ item.stake }}円</td>
+            <td>{{ "yes" if item.hit else "no" }}</td>
+            <td>{{ item.payout if item.payout else "-" }}</td>
+            <td>{{ item.return_amount }}円</td>
+            <td>{{ item.profit }}円</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    {% if feedback %}
+    <div class="panel">
+      <h2>フィードバック要約</h2>
+      <ul>
+        <li><strong>確率誤差:</strong> {{ feedback.probability_error_summary }}</li>
+        <li><strong>順位誤差:</strong> {{ feedback.ranking_error_summary }}</li>
+        <li><strong>収支:</strong> {{ feedback.profit_summary }}</li>
+        <li><strong>補正メモ:</strong> {{ feedback.calibration_notes }}</li>
+        <li><strong>次回調整:</strong> {{ feedback.next_prediction_adjustment_summary }}</li>
+      </ul>
+    </div>
+    {% endif %}
+  </main>
+</body>
+</html>
