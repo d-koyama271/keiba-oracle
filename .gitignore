@@ -32,6 +32,8 @@ inbox/
 outbox/
 archive/
 tmp/
+logs/
+*.log
 
 # Local-only config
 config/app.local.yaml
