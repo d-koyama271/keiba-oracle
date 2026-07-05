@@ -222,4 +222,4 @@ feedback:
 
 ## GitHub Pages
 
-この実装では `public/` を静的サイト出力先にしています。GitHub Pages 側で `public/` を公開対象にするか、CI から `public/` を配布してください。
+この実装では `public/` を静的サイト出力先にしています。GitHub Actions の `Deploy Pages` workflow が `public/` を Pages artifact としてアップロードし、GitHub Pages へ配布します。Actions 側ではビルド処理を行いません。
