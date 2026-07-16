@@ -55,6 +55,24 @@ def today_jst() -> str:
     return now_jst().date().isoformat()
 
 
+def parse_jst_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=JST)
+    return parsed.astimezone(JST)
+
+
+def race_start_datetime(race_date: str | None, start_time: str | None) -> datetime | None:
+    if not race_date or not start_time:
+        return None
+    return parse_jst_datetime(f"{race_date}T{start_time}")
+
+
 def parse_target_date(value: str | None) -> str:
     if not value:
         return today_jst()
@@ -71,6 +89,7 @@ def load_config(config_path: str | Path | None = None) -> dict[str, Any]:
         "race_budget",
         "ev_threshold",
         "kelly_fraction",
+        "stake_unit",
         "publish_mode",
         "llm_provider",
         "llm_model",

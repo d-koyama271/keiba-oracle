@@ -173,6 +173,14 @@ def parse_track_from_holding(holding_text: str) -> str:
     return match.group(0) if match else normalize_space(holding_text)
 
 
+def history_race_id(row_node: Any) -> str | None:
+    for link in row_node.find_all("a", href=True):
+        match = re.search(r"/race/(\d{12})/?(?:$|[?#])", link["href"])
+        if match:
+            return match.group(1)
+    return None
+
+
 def summarize_record(runs: list[dict[str, Any]]) -> str:
     if not runs:
         return "該当なし"
@@ -293,12 +301,16 @@ def parse_race_overview(html: str, race_id: str, target_date: str, odds_referenc
         "surface": surface,
         "going": going_match.group(1) if going_match else None,
         "source_url": SHUTUBA_URL.format(race_id=race_id),
-        "odds_captured_at": now_jst_iso(),
+        "odds_captured_at": None,
         "odds_reference_minutes_before_start": odds_reference_minutes,
     }
 
 
-def parse_horse_history(session: requests.Session, horse_url: str) -> tuple[list[dict[str, Any]], str | None]:
+def parse_horse_history(
+    session: requests.Session,
+    horse_url: str,
+    current_race_id: str,
+) -> tuple[list[dict[str, Any]], str | None]:
     horse_id_match = re.search(r"/horse/(?:result/)?(\d+)", horse_url)
     if not horse_id_match:
         return [], None
@@ -320,32 +332,36 @@ def parse_horse_history(session: requests.Session, horse_url: str) -> tuple[list
     if table is None:
         return [], None
 
-    runs: list[dict[str, Any]] = []
-    previous_jockey: str | None = None
+    candidates: list[tuple[dict[str, Any], str | None]] = []
     for row in rows_from_table(table):
-        if len(runs) >= 5:
-            break
-
-        if previous_jockey is None:
-            previous_jockey = row.get("騎手")
+        if history_race_id(row["_row"]) == current_race_id:
+            continue
 
         finish_position = parse_finish_position(row.get("着順"))
         distance, surface = parse_distance_surface(row.get("距離", ""))
-        runs.append(
-            {
-                "date": normalize_space(row.get("日付")).replace("/", "-"),
-                "track": parse_track_from_holding(row.get("開催", "")),
-                "distance": distance,
-                "surface": surface,
-                "going": row.get("馬場"),
-                "finish_position": finish_position,
-                "margin": parse_float(row.get("着差")),
-                "passing_order": row.get("通過"),
-                "last3f": parse_float(row.get("上り")),
-                "weight_carried": parse_float(row.get("斤量")),
-                "class_name": row.get("レース名"),
-            }
+        candidates.append(
+            (
+                {
+                    "date": normalize_space(row.get("日付")).replace("/", "-"),
+                    "track": parse_track_from_holding(row.get("開催", "")),
+                    "distance": distance,
+                    "surface": surface,
+                    "going": row.get("馬場"),
+                    "finish_position": finish_position,
+                    "margin": parse_float(row.get("着差")),
+                    "passing_order": row.get("通過"),
+                    "last3f": parse_float(row.get("上り")),
+                    "weight_carried": parse_float(row.get("斤量")),
+                    "class_name": row.get("レース名"),
+                },
+                row.get("騎手"),
+            )
         )
+
+    candidates.sort(key=lambda item: item[0].get("date") or "", reverse=True)
+    selected = candidates[:5]
+    runs = [run for run, _ in selected]
+    previous_jockey = selected[0][1] if selected else None
     return runs, previous_jockey
 
 
@@ -353,6 +369,7 @@ def parse_horses(
     session: requests.Session,
     html: str,
     current_race: dict[str, Any],
+    current_race_id: str,
     odds_map: dict[int, dict[str, Any]],
     existing_horses: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
@@ -388,7 +405,7 @@ def parse_horses(
         last_run_jockey = None
         if horse_url:
             try:
-                past_runs, last_run_jockey = parse_horse_history(session, horse_url)
+                past_runs, last_run_jockey = parse_horse_history(session, horse_url, current_race_id)
             except Exception:  # noqa: BLE001
                 past_runs, last_run_jockey = [], None
         build_horse_summaries(horse, current_race, past_runs, last_run_jockey)
@@ -487,9 +504,15 @@ def collect_races(
                 int(config["odds_reference_minutes_before_start"]),
             )
             odds_map, odds_captured_at = fetch_win_odds(session, race_id)
-            if odds_captured_at:
-                race["odds_captured_at"] = odds_captured_at
-            horses = parse_horses(session, entry_html, race, odds_map, (existing or {}).get("horses"))
+            race["odds_captured_at"] = odds_captured_at or now_jst_iso()
+            horses = parse_horses(
+                session,
+                entry_html,
+                race,
+                race_id,
+                odds_map,
+                (existing or {}).get("horses"),
+            )
 
             payload = ensure_race_payload(existing, race_id)
             payload["race"] = race

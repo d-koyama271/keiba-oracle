@@ -5,6 +5,7 @@ from pathlib import Path
 
 from collect import collect_races
 from feedback import build_feedback_chat_input
+from simulate import simulate_paths
 from utils import (
     atomic_write_json,
     load_config,
@@ -25,10 +26,8 @@ def export_feedback_chat_input(paths: list[Path], config: dict, job_name: str) -
 
     for path in paths:
         payload = load_race_json(path)
-        if not payload or not payload.get("result"):
+        if not payload or not payload.get("result") or not (payload.get("simulation") or {}).get("post"):
             continue
-        payload["feedback"] = None
-        payload["simulation"]["post"] = None
         set_race_status(payload, post_status="awaiting_feedback")
         save_race_json(path, payload)
 
@@ -48,7 +47,8 @@ def main() -> None:
     config = load_config()
     target_date = parse_target_date(args.date)
     paths = collect_races(config, "post_collect", target_date, "post")
-    export_feedback_chat_input(paths, config, "post_collect")
+    simulated_paths = simulate_paths(paths, config, "post", "post_collect")
+    export_feedback_chat_input(simulated_paths, config, "post_collect")
 
 
 if __name__ == "__main__":

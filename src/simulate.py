@@ -29,6 +29,11 @@ def build_pre_simulation(payload: dict[str, Any], config: dict[str, Any]) -> dic
     budget = int(config["race_budget"])
     ev_threshold = float(config["ev_threshold"])
     kelly_fraction = float(config["kelly_fraction"])
+    stake_unit = int(config["stake_unit"])
+    if budget <= 0:
+        raise ValueError("race_budget must be positive")
+    if stake_unit <= 0:
+        raise ValueError("stake_unit must be positive")
 
     selections = []
     for item in prediction.get("horses", []):
@@ -40,11 +45,10 @@ def build_pre_simulation(payload: dict[str, Any], config: dict[str, Any]) -> dic
             continue
         implied_probability = 1.0 / odds
         expected_value = predicted_probability * odds
-        edge = expected_value - 1.0
         b = odds - 1.0
         full_kelly = max(0.0, ((b * predicted_probability) - (1.0 - predicted_probability)) / b)
         kelly_weight_raw = full_kelly * kelly_fraction
-        if expected_value < ev_threshold or kelly_weight_raw <= 0:
+        if expected_value + 1e-12 < ev_threshold or full_kelly <= 0 or kelly_weight_raw <= 0:
             continue
         selections.append(
             {
@@ -53,48 +57,30 @@ def build_pre_simulation(payload: dict[str, Any], config: dict[str, Any]) -> dic
                 "predicted_probability": round_ratio(predicted_probability),
                 "expected_value": round_ratio(expected_value),
                 "kelly_weight_raw": round_ratio(kelly_weight_raw),
-                "_fractional_budget": budget * kelly_weight_raw,
-                "_edge": edge,
+                "_raw_stake": budget * kelly_weight_raw,
             }
         )
 
     selections.sort(key=lambda item: (-item["expected_value"], item["horse_number"]))
-    if len(selections) < 2:
-        selections = []
-
     if selections:
-        total_weight = sum(item["kelly_weight_raw"] for item in selections)
-        if total_weight <= 0:
-            selections = []
-        else:
-            budget_units = budget // 100
-            base_units = []
-            remainders = []
-            for item in selections:
-                allocation_ratio = item["kelly_weight_raw"] / total_weight
-                raw_units = budget * allocation_ratio / 100.0
-                units = math.floor(raw_units)
-                item["allocation_ratio"] = round_ratio(allocation_ratio)
-                base_units.append(units)
-                remainders.append(raw_units - units)
-
-            used_units = sum(base_units)
-            remaining_units = max(0, budget_units - used_units)
-            for index in sorted(range(len(selections)), key=lambda idx: remainders[idx], reverse=True):
-                if remaining_units <= 0:
-                    break
-                base_units[index] += 1
-                remaining_units -= 1
-
-            for item, units in zip(selections, base_units):
-                item["stake"] = int(units * 100)
-                item.pop("_fractional_budget", None)
-                item.pop("_edge", None)
+        total_raw_stake = sum(item["_raw_stake"] for item in selections)
+        scale = (budget / total_raw_stake) if total_raw_stake > budget else 1.0
+        rounded_selections = []
+        for item in selections:
+            adjusted_stake = item.pop("_raw_stake") * scale
+            stake = math.floor((adjusted_stake / stake_unit) + 1e-12) * stake_unit
+            if stake < stake_unit:
+                continue
+            item["allocation_ratio"] = round_ratio(stake / budget)
+            item["stake"] = int(stake)
+            rounded_selections.append(item)
+        selections = rounded_selections
 
     return {
         "budget": budget,
         "ev_threshold": ev_threshold,
         "kelly_fraction": kelly_fraction,
+        "stake_unit": stake_unit,
         "selections": selections,
     }
 

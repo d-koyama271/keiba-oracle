@@ -13,6 +13,7 @@ odds_reference_minutes_before_start: 60
 race_budget: 3000
 ev_threshold: 1.05
 kelly_fraction: 0.5
+stake_unit: 100
 publish_mode: github_pages
 llm_provider: manual
 llm_model: manual-chat

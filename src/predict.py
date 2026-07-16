@@ -86,6 +86,8 @@ def normalize_prediction_response(response: dict[str, Any], horses: list[dict[st
         reason = str(item.get("reason", "")).strip()
         if horse_number is None or probability is None:
             raise ValueError("invalid horse prediction item")
+        if probability < 0:
+            raise ValueError("prediction probability must not be negative")
         number_to_item[horse_number] = {
             "horse_number": horse_number,
             "win_probability": max(0.0, min(probability, 1.0)),
@@ -105,6 +107,14 @@ def normalize_prediction_response(response: dict[str, Any], horses: list[dict[st
         item = number_to_item[number]
         item["win_probability"] = round(item["win_probability"] / total_probability, 6)
         normalized_horses.append(item)
+
+    rounded_total = round(sum(item["win_probability"] for item in normalized_horses), 6)
+    rounding_diff = round(1.0 - rounded_total, 6)
+    if normalized_horses and rounding_diff:
+        target = normalized_horses[-1]
+        if rounding_diff < 0 and target["win_probability"] + rounding_diff < 0:
+            target = max(normalized_horses, key=lambda item: item["win_probability"])
+        target["win_probability"] = round(target["win_probability"] + rounding_diff, 6)
 
     return {
         "horses": normalized_horses,

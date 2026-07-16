@@ -78,10 +78,11 @@ $env:OPENAI_API_KEY="your_api_key"
 主な設定値:
 
 - `target_races`: 収集対象の開催場名
-- `odds_reference_minutes_before_start`: オッズ基準分数
-- `race_budget`: 1 レース予算
+- `odds_reference_minutes_before_start`: 引数なしのレース前収集で使う取得目標分数
+- `race_budget`: 1 レースの投資上限
 - `ev_threshold`: 購入候補の EV 閾値
 - `kelly_fraction`: fractional Kelly の倍率
+- `stake_unit`: 購入金額の単位
 - `publish_mode`: `github_pages` を想定
 - `llm_provider`: 既定は `manual`、実接続時は `openai`
 - `llm_model`: 使用モデル名
@@ -102,7 +103,7 @@ python src/run_pre.py --date 2026-04-14
 python src/run_post.py --date 2026-04-14
 ```
 
-`--date` を省略すると当日の日付を使います。
+`run_pre.py` / `run_post.py` では、`--date` を省略すると当日の日付を使います。
 
 ## 生成物
 
@@ -145,11 +146,25 @@ python src/run_post.py --date 2026-04-14
 4. `render.py` で同じページを更新
 5. `publish.py` で `public/` を更新
 
+## 購入シミュレーション
+
+`simulation.pre` / `simulation.post` は、`config/app.yaml` の共通設定を使う正式な基準シミュレーションです。候補ごとの購入額は `race_budget * fractional Kelly` を基準とし、合計が予算を超える場合だけ比例縮小したうえで `stake_unit` 単位に切り捨てます。余った予算を使い切るための追加配分は行いません。
+
+レースページの「購入シミュレーション」では、閲覧者が予算・最低EV・Kelly係数を変えてブラウザ内で再計算できます。初期値はそのレースの `simulation.pre` を使用します。入力値と計算結果はrace JSON、`simulation.post`、feedback、localStorage、Cookieへ保存されず、正式な基準結果にも影響しません。
+
 ## Manual モード
 
 manual モードでは LLM API は呼ばず、チャットへ貼る入力 JSON を `outbox/` に出し、返却 JSON を `inbox/` へ置いて downstream を進めます。
 
 レース前:
+
+```bash
+python src/run_pre_collect.py
+```
+
+引数なしでは次回対象レースを選び、発走時刻から `odds_reference_minutes_before_start` を引いた取得目標時刻を判定します。目標時刻より前なら収集や chat input 出力を行わず、再実行時刻を表示して終了します。
+
+過去レース検証・再収集では日付を明示します。取得できるのはnetkeibaが返す単一スナップショットであり、発走後の時刻でもフロー検証に使用しますが、厳密なT-60履歴オッズではありません。
 
 ```bash
 python src/run_pre_collect.py --date 2026-04-12
@@ -168,10 +183,10 @@ python src/run_post_collect.py --date 2026-04-12
 python src/watcher.py
 ```
 
-1. `run_post_collect.py` が `result` を race JSON に反映します。
-2. feedback 用の chat input JSON を `outbox/chat_input/feedback/` に出力します。
+1. `run_post_collect.py` が `result` を反映し、既存の決定的な計算で `simulation.post` を確定します。
+2. `simulation.post` を含む feedback 用 chat input JSON を `outbox/chat_input/feedback/` に出力します。
 3. 外部チャットから返ってきた feedback JSON を `inbox/feedback/` に置きます。
-4. `watcher.py` が `feedback` を反映し、必要なら `simulation.post -> render -> publish` を実行します。
+4. `watcher.py` が `feedback` を反映し、同じ計算で `simulation.post` を再確認して `render -> publish` を実行します。
 
 inbox へ置く response JSON の想定:
 

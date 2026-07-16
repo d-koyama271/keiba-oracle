@@ -74,6 +74,56 @@
       margin: 0;
       padding-left: 18px;
     }
+    .simulator-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      align-items: end;
+      margin: 18px 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f8f4ec;
+    }
+    .simulator-field {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .simulator-field input {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+    }
+    .simulator-form button {
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 18px;
+      background: var(--accent);
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .simulator-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      margin: 12px 0;
+    }
+    .simulator-error {
+      color: #9b352b;
+      font-weight: 700;
+    }
+    .table-scroll { overflow-x: auto; }
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body>
@@ -87,9 +137,10 @@
         <div><strong>発走</strong><br>{{ race.start_time or "-" }}</div>
         <div><strong>距離</strong><br>{{ race.surface or "-" }} {{ race.distance or "-" }}m</div>
         <div><strong>馬場</strong><br>{{ race.going or "-" }}</div>
-        <div><strong>オッズ取得</strong><br>{{ race.odds_captured_at or "-" }}</div>
-        <div><strong>参照基準</strong><br>発走 {{ race.odds_reference_minutes_before_start }} 分前</div>
+        <div><strong>オッズ記録時刻</strong><br>{{ race.odds_captured_at or "-" }}</div>
+        <div><strong>発走時点との差</strong><br>{{ odds_timing_label }}</div>
       </div>
+      {% if odds_recorded_after_start %}<p class="small">※ 発走後に記録されたオッズスナップショットです。厳密な発走前オッズではありません。</p>{% endif %}
       <p class="small"><a href="../../index.html">一覧へ戻る</a> / <a href="{{ race.source_url }}">netkeiba</a></p>
     </div>
 
@@ -137,7 +188,15 @@
     </div>
 
     <div class="panel">
-      <h2>購入想定</h2>
+      <h2>基準設定による購入想定</h2>
+      {% if simulation_pre %}
+      <p class="small">
+        予算上限 {{ simulation_pre.budget }}円 /
+        最低EV {{ simulation_pre.ev_threshold }} /
+        Kelly係数 {{ simulation_pre.kelly_fraction }} /
+        購入単位 {{ custom_simulation_data.stake_unit }}円
+      </p>
+      {% endif %}
       {% if simulation_pre and simulation_pre.selections %}
       <table>
         <thead>
@@ -170,6 +229,188 @@
       {% endif %}
     </div>
 
+    {% if simulation_pre and custom_simulation_data.horses %}
+    <div class="panel" id="custom-simulator">
+      <h2>購入シミュレーション</h2>
+      <p class="small">入力内容と計算結果はこの画面内だけで使用し、正式な購入想定・収支・feedbackには反映しません。</p>
+      <form class="simulator-form" id="custom-simulator-form">
+        <label class="simulator-field">
+          予算（円）
+          <input name="budget" type="number" min="{{ custom_simulation_data.stake_unit }}" step="1" value="{{ simulation_pre.budget }}" required>
+        </label>
+        <label class="simulator-field">
+          最低EV
+          <input name="ev_threshold" type="number" min="1" step="0.01" value="{{ simulation_pre.ev_threshold }}" required>
+        </label>
+        <label class="simulator-field">
+          Kelly係数
+          <input name="kelly_fraction" type="number" min="0" max="1" step="0.05" value="{{ simulation_pre.kelly_fraction }}" required>
+        </label>
+        <button type="submit">再計算</button>
+      </form>
+      <p class="small">最低EV 1.05は、期待払戻が投資額の1.05倍以上であることを示します。購入単位は{{ custom_simulation_data.stake_unit }}円です。</p>
+      <p class="simulator-error" id="custom-simulator-error" role="alert" hidden></p>
+      <div id="custom-simulator-result" aria-live="polite">
+        <p id="custom-simulator-empty" hidden><strong>購入なし</strong></p>
+        <div class="simulator-summary" id="custom-simulator-summary" hidden>
+          <span>計算予算: <strong id="custom-simulator-budget">0円</strong></span>
+          <span>合計購入額: <strong id="custom-simulator-total">0円</strong></span>
+          <span>未使用予算: <strong id="custom-simulator-unused">0円</strong></span>
+        </div>
+        <div class="table-scroll" id="custom-simulator-table" hidden>
+          <table>
+            <thead>
+              <tr>
+                <th>馬番</th>
+                <th>予測勝率</th>
+                <th>単勝オッズ</th>
+                <th>EV</th>
+                <th>Kelly値</th>
+                <th>購入金額</th>
+              </tr>
+            </thead>
+            <tbody id="custom-simulator-rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <script type="application/json" id="custom-simulator-data">{{ custom_simulation_data | tojson }}</script>
+    <script>
+      function calculateCustomSimulation(horses, budget, evThreshold, kellyFraction, stakeUnit) {
+        const candidates = [];
+        for (const horse of horses) {
+          const horseNumber = Number(horse.horse_number);
+          const predictedProbability = Number(horse.win_probability);
+          const odds = Number(horse.win_odds);
+          if (!Number.isFinite(predictedProbability) || predictedProbability < 0 || !Number.isFinite(odds) || odds <= 1) {
+            continue;
+          }
+          const impliedProbability = 1 / odds;
+          const expectedValue = predictedProbability * odds;
+          const b = odds - 1;
+          const fullKelly = Math.max(0, ((b * predictedProbability) - (1 - predictedProbability)) / b);
+          const fractionalKelly = fullKelly * kellyFraction;
+          if (expectedValue + 1e-12 < evThreshold || fullKelly <= 0 || fractionalKelly <= 0) {
+            continue;
+          }
+          candidates.push({
+            horse_number: horseNumber,
+            implied_probability: impliedProbability,
+            predicted_probability: predictedProbability,
+            expected_value: expectedValue,
+            kelly_weight_raw: fractionalKelly,
+            raw_stake: budget * fractionalKelly,
+          });
+        }
+
+        candidates.sort((left, right) =>
+          (right.expected_value - left.expected_value) || (left.horse_number - right.horse_number)
+        );
+        const totalRawStake = candidates.reduce((total, item) => total + item.raw_stake, 0);
+        const scale = totalRawStake > budget ? budget / totalRawStake : 1;
+        const selections = [];
+        for (const candidate of candidates) {
+          const stake = Math.floor(((candidate.raw_stake * scale) / stakeUnit) + 1e-12) * stakeUnit;
+          if (stake < stakeUnit) {
+            continue;
+          }
+          selections.push({
+            horse_number: candidate.horse_number,
+            implied_probability: candidate.implied_probability,
+            predicted_probability: candidate.predicted_probability,
+            expected_value: candidate.expected_value,
+            kelly_weight_raw: candidate.kelly_weight_raw,
+            allocation_ratio: stake / budget,
+            stake,
+          });
+        }
+        const totalStake = selections.reduce((total, item) => total + item.stake, 0);
+        return {
+          budget,
+          selections,
+          total_stake: totalStake,
+          unused_budget: budget - totalStake,
+        };
+      }
+
+      (() => {
+        const root = document.getElementById("custom-simulator");
+        if (!root) {
+          return;
+        }
+        const data = JSON.parse(document.getElementById("custom-simulator-data").textContent);
+        const form = document.getElementById("custom-simulator-form");
+        const error = document.getElementById("custom-simulator-error");
+        const empty = document.getElementById("custom-simulator-empty");
+        const summary = document.getElementById("custom-simulator-summary");
+        const table = document.getElementById("custom-simulator-table");
+        const rows = document.getElementById("custom-simulator-rows");
+        const budgetOutput = document.getElementById("custom-simulator-budget");
+        const totalOutput = document.getElementById("custom-simulator-total");
+        const unusedOutput = document.getElementById("custom-simulator-unused");
+        const yen = new Intl.NumberFormat("ja-JP");
+
+        const addCell = (row, value) => {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          row.appendChild(cell);
+        };
+
+        const recalculate = () => {
+          const enteredBudget = Number(form.elements.budget.value);
+          const evThreshold = Number(form.elements.ev_threshold.value);
+          const kellyFraction = Number(form.elements.kelly_fraction.value);
+          const stakeUnit = Number(data.stake_unit);
+          let message = "";
+          if (!Number.isInteger(enteredBudget) || enteredBudget <= 0) {
+            message = "予算は正の整数で入力してください。";
+          } else if (!Number.isFinite(evThreshold) || evThreshold < 1) {
+            message = "最低EVは1.0以上で入力してください。";
+          } else if (!Number.isFinite(kellyFraction) || kellyFraction < 0 || kellyFraction > 1) {
+            message = "Kelly係数は0以上1以下で入力してください。";
+          }
+          const budget = Math.floor(enteredBudget / stakeUnit) * stakeUnit;
+          if (!message && budget < stakeUnit) {
+            message = `予算は購入単位の${stakeUnit}円以上にしてください。`;
+          }
+          error.textContent = message;
+          error.hidden = !message;
+          if (message) {
+            empty.hidden = true;
+            summary.hidden = true;
+            table.hidden = true;
+            return;
+          }
+
+          const result = calculateCustomSimulation(data.horses, budget, evThreshold, kellyFraction, stakeUnit);
+          budgetOutput.textContent = `${yen.format(result.budget)}円`;
+          totalOutput.textContent = `${yen.format(result.total_stake)}円`;
+          unusedOutput.textContent = `${yen.format(result.unused_budget)}円`;
+          summary.hidden = false;
+          empty.hidden = result.selections.length > 0;
+          table.hidden = result.selections.length === 0;
+          rows.replaceChildren();
+          for (const item of result.selections) {
+            const row = document.createElement("tr");
+            addCell(row, String(item.horse_number));
+            addCell(row, `${(item.predicted_probability * 100).toFixed(2)}%`);
+            addCell(row, item.implied_probability ? (1 / item.implied_probability).toFixed(1) : "-");
+            addCell(row, item.expected_value.toFixed(3));
+            addCell(row, item.kelly_weight_raw.toFixed(4));
+            addCell(row, `${yen.format(item.stake)}円`);
+            rows.appendChild(row);
+          }
+        };
+
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          recalculate();
+        });
+        recalculate();
+      })();
+    </script>
+    {% endif %}
+
     {% if result %}
     <div class="panel">
       <h2>実結果</h2>
@@ -198,6 +439,14 @@
     {% if simulation_post %}
     <div class="panel">
       <h2>購入結果</h2>
+      {% if simulation_post.total_stake == 0 or (simulation_pre and not simulation_pre.selections) %}
+      <p><strong>購入なし</strong></p>
+      <p>
+        <strong>投資:</strong> {{ simulation_post.total_stake }}円 /
+        <strong>回収:</strong> {{ simulation_post.total_return }}円 /
+        <strong>損益:</strong> {{ simulation_post.profit }}円
+      </p>
+      {% else %}
       <p>
         <strong>投資:</strong> {{ simulation_post.total_stake }}円 /
         <strong>回収:</strong> {{ simulation_post.total_return }}円 /
@@ -228,6 +477,7 @@
           {% endfor %}
         </tbody>
       </table>
+      {% endif %}
     </div>
     {% endif %}
 

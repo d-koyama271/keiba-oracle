@@ -13,12 +13,29 @@ from utils import (
     load_config,
     load_race_json,
     log_job,
+    parse_jst_datetime,
     parse_target_date,
     race_html_path,
+    race_start_datetime,
     repo_root,
     stage_dir,
     track_name_from_race_id,
 )
+
+
+def build_odds_timing(race: dict[str, Any]) -> tuple[str, bool]:
+    start = race_start_datetime(race.get("date"), race.get("start_time"))
+    captured = parse_jst_datetime(race.get("odds_captured_at"))
+    if start is None or captured is None:
+        return "-", False
+
+    seconds_from_start = (captured - start).total_seconds()
+    minutes = int((abs(seconds_from_start) / 60.0) + 0.5)
+    if minutes == 0:
+        return "発走時点", seconds_from_start > 0
+    if seconds_from_start < 0:
+        return f"発走{minutes}分前", False
+    return f"発走{minutes}分後", True
 
 
 def build_environment(root: Path | None = None) -> Environment:
@@ -30,10 +47,12 @@ def build_environment(root: Path | None = None) -> Environment:
 
 
 def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
+    race = payload.get("race", {})
     prediction = payload.get("prediction")
     simulation = payload.get("simulation") or {}
     result = payload.get("result")
     feedback = payload.get("feedback")
+    odds_timing_label, odds_recorded_after_start = build_odds_timing(race)
 
     prediction_lookup = {item["horse_number"]: item for item in (prediction or {}).get("horses", [])}
     result_lookup = {item["horse_number"]: item["finish_position"] for item in (result or {}).get("horses", [])}
@@ -60,17 +79,35 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         if horse["horse_number"] in result_lookup
     ]
 
+    simulation_pre = simulation.get("pre")
+    custom_simulation_horses = [
+        {
+            "horse_number": horse["horse_number"],
+            "win_probability": float(horse["prediction"]["win_probability"]),
+            "win_odds": float(horse["win_odds"]),
+        }
+        for horse in horse_rows
+        if horse.get("prediction") and horse.get("win_odds") is not None
+    ]
+    custom_simulation_data = {
+        "stake_unit": int((simulation_pre or {}).get("stake_unit") or 100),
+        "horses": custom_simulation_horses,
+    }
+
     status = "result_published" if result else "prediction_only"
     return {
-        "race": payload.get("race", {}),
+        "race": race,
         "prediction": prediction,
-        "simulation_pre": simulation.get("pre"),
+        "simulation_pre": simulation_pre,
         "simulation_post": simulation.get("post"),
         "result": result,
         "feedback": feedback,
         "horse_rows": horse_rows,
         "result_rows": result_rows,
         "status": status,
+        "odds_timing_label": odds_timing_label,
+        "odds_recorded_after_start": odds_recorded_after_start,
+        "custom_simulation_data": custom_simulation_data,
     }
 
 
