@@ -7,7 +7,6 @@ from typing import Any
 
 from llm_client import LLMClient
 from utils import (
-    latest_feedback_summaries,
     list_race_files,
     load_config,
     load_race_json,
@@ -125,17 +124,12 @@ def normalize_prediction_response(response: dict[str, Any], horses: list[dict[st
 
 def build_prediction_prompt(config: dict[str, Any], payload: dict[str, Any], root: Path | None = None) -> str:
     root = root or repo_root()
-    recent_feedback = latest_feedback_summaries(config, payload["race"].get("date"), 3, root)
     template = read_text(root / "config" / "prompt_prediction.txt")
     context = {
         "race": payload["race"],
         "horses": payload["horses"],
     }
     prompt = template.replace(
-        "{{RECENT_FEEDBACK}}",
-        json.dumps(recent_feedback, ensure_ascii=False, indent=2),
-    )
-    prompt = prompt.replace(
         "{{RACE_CONTEXT}}",
         json.dumps(context, ensure_ascii=False, indent=2),
     )
@@ -155,12 +149,6 @@ def build_prediction_chat_input(
         },
         "race": payload["race"],
         "horses": payload["horses"],
-        "recent_feedback_summaries": latest_feedback_summaries(
-            config,
-            payload["race"].get("date"),
-            3,
-            root,
-        ),
     }
 
 

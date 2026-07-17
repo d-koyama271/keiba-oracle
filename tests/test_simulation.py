@@ -15,7 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from feedback import build_feedback_chat_input, build_feedback_stats  # noqa: E402
+from evaluation import build_evaluation  # noqa: E402
 from render import build_environment, build_race_context  # noqa: E402
 from simulate import (  # noqa: E402
     calculate_dutching_post,
@@ -63,7 +63,7 @@ def make_payload(rows: list[tuple[int, float, float]]) -> dict:
     return {
         "meta": {
             "race_id": "test-race",
-            "schema_version": 3,
+            "schema_version": 4,
             "created_at": "2026-01-01T00:00:00+09:00",
             "updated_at": "2026-01-01T00:00:00+09:00",
         },
@@ -100,7 +100,7 @@ def make_payload(rows: list[tuple[int, float, float]]) -> dict:
             "dutching": {"pre": None, "post": None},
         },
         "result": None,
-        "feedback": None,
+        "evaluation": None,
     }
 
 
@@ -389,21 +389,6 @@ class PostAndStructureTests(unittest.TestCase):
         self.assertIsNotNone(loaded["simulation"]["value"]["post"])
         self.assertIsNotNone(loaded["simulation"]["dutching"]["post"])
 
-    def test_feedback_input_and_stats_keep_methods_separate(self) -> None:
-        payload = make_payload(DUTCHING_ROWS)
-        payload["simulation"] = calculate_pre_simulation(payload, make_config(budget=1000))
-        payload["result"] = make_result(1, 400, [1, 2, 3, 4, 5])
-        payload["simulation"]["value"]["post"] = calculate_value_post(payload)
-        payload["simulation"]["dutching"]["post"] = calculate_dutching_post(payload)
-
-        chat_input = build_feedback_chat_input(payload)
-        stats = build_feedback_stats(payload)
-        self.assertEqual(set(chat_input["simulation"]), {"value", "dutching"})
-        self.assertEqual(set(stats["simulation_results"]), {"value", "dutching"})
-        self.assertNotIn("pre", chat_input["simulation"])
-        self.assertNotIn("post", chat_input["simulation"])
-
-
 class HtmlAndJavaScriptTests(unittest.TestCase):
     def full_payload(self) -> dict:
         payload = make_payload(DUTCHING_ROWS)
@@ -411,6 +396,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         payload["result"] = make_result(1, 400, [1, 2, 3, 4, 5])
         payload["simulation"]["value"]["post"] = calculate_value_post(payload)
         payload["simulation"]["dutching"]["post"] = calculate_dutching_post(payload)
+        payload["evaluation"] = build_evaluation(payload)
         return payload
 
     def test_html_contains_both_methods_and_minimal_public_data(self) -> None:
@@ -424,8 +410,10 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
             "カスタム購入シミュレーション",
             "期待値重視方式の購入結果",
             "ダッチング方式の購入結果",
+            "予測評価",
         ):
             self.assertIn(text, rendered)
+        self.assertNotIn("フィードバック要約", rendered)
         match = re.search(
             r'<script type="application/json" id="custom-simulator-data">(.*?)</script>',
             rendered,

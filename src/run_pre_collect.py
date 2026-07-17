@@ -144,8 +144,8 @@ def export_prediction_chat_input(paths: list[Path], config: dict, job_name: str)
             "dutching": {"pre": None, "post": None},
         }
         payload["result"] = None
-        payload["feedback"] = None
-        payload.setdefault("meta", {})["post_status"] = None
+        payload["evaluation"] = None
+        payload.setdefault("meta", {})["post_status"] = "awaiting_result"
         set_race_status(payload, pre_status="awaiting_prediction")
         save_race_json(path, payload)
 

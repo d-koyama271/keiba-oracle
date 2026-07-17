@@ -6,7 +6,7 @@
 
 - 1 レース 1 JSON
 - `prediction` と `simulation` を分離
-- LLM は `predict.py` と `feedback.py` だけで利用
+- LLM は `predict.py` の予想だけで利用
 - 記事本文はテンプレート埋め込み
 - 出力サイトは静的 HTML
 
@@ -16,7 +16,6 @@
 config/
   app.yaml
   prompt_prediction.txt
-  prompt_feedback.txt
 src/
   run_pre.py
   run_post.py
@@ -25,7 +24,7 @@ src/
   collect.py
   predict.py
   simulate.py
-  feedback.py
+  evaluation.py
   render.py
   publish.py
   response_importer.py
@@ -36,11 +35,9 @@ data/
   races/
 inbox/
   prediction/
-  feedback/
 outbox/
   chat_input/
     prediction/
-    feedback/
 templates/
   race.html.j2
   index.html.j2
@@ -131,11 +128,11 @@ python src/run_post.py --date 2026-04-14
     }
   },
   "result": null,
-  "feedback": null
+  "evaluation": null
 }
 ```
 
-`schema_version` は `3` です。`race` には取得時点の `weather` と正規化した `class_grade` を保存します。各馬の `past_runs` は対象レース自身を除外した直近5走で、走破タイム、ペース、馬体重、当時の人気・オッズなどの詳細を含みます。
+`schema_version` は `4` です。`race` には取得時点の `weather` と正規化した `class_grade` を保存します。各馬の `past_runs` は対象レース自身を除外した直近5走で、走破タイム、ペース、馬体重、当時の人気・オッズなどの詳細を含みます。
 
 馬成績のAJAXレスポンスに含まれる全JRA履歴はJSONへ保存せず、競馬場・surface・距離±200m・馬場・天候・クラス・騎手別の `career_summaries` に集計します。季節・枠番・馬番別集計や全履歴配列は生成しません。
 
@@ -153,7 +150,7 @@ python src/run_post.py --date 2026-04-14
 
 1. `collect.py` で結果と払戻を取得
 2. `simulate.py` で両方式の `post` を確定
-3. `feedback.py` で補正要約を生成
+3. `evaluation.py` で予測評価指標を生成
 4. `render.py` で同じページを更新
 5. `publish.py` で `public/` を更新
 
@@ -164,7 +161,22 @@ python src/run_post.py --date 2026-04-14
 - `value`: 予測勝率と単勝オッズから EV と fractional Kelly を計算します。理論購入額が予算を超える場合だけ比例縮小し、余った予算の強制配分は行いません。
 - `dutching`: 予測勝率上位を1頭から設定上限まで評価し、逆オッズ配分を購入単位へ丸めます。カバー確率、グループ期待値、的中時最低利益を満たす候補からグループ期待値が最大の頭数を採用します。
 
-レースページのカスタムシミュレーターでは、両方式の条件をブラウザ内で変更できます。ダッチングは自動選択に加え、確認用の固定頭数も選べます。入力値と計算結果はrace JSON、正式な収支、feedback、localStorage、Cookieへ保存されません。HTMLへ埋め込む計算データは馬番、予測勝率、単勝オッズ、購入単位だけです。
+レースページのカスタムシミュレーターでは、両方式の条件をブラウザ内で変更できます。ダッチングは自動選択に加え、確認用の固定頭数も選べます。入力値と計算結果はrace JSON、正式な収支、localStorage、Cookieへ保存されません。HTMLへ埋め込む計算データは馬番、予測勝率、単勝オッズ、購入単位だけです。
+
+## 予測評価
+
+結果取得後、各race JSONの `evaluation` に次を保存します。
+
+- 勝ち馬の予測確率と予測順位。順位は勝率降順、同率は馬番昇順です。
+- `log_loss`: `-log(max(勝ち馬確率, 1e-12))`
+- `brier_score`: 全出走馬の二乗誤差の平均
+- `top1_hit` / `top3_hit` / `top5_hit`
+- 単勝オッズの逆数を全馬で正規化した市場ベースライン。差分はモデル指標から市場指標を引きます。
+- `simulation.value.post` と `simulation.dutching.post` の収支要約
+
+有効な単勝オッズが全馬分そろわない場合、`market_baseline.available` は `false` です。発走後に記録されたオッズを使用した比較には `odds_recorded_after_start: true` と注記を保存します。購入なしの評価用ROIは `null` です。
+
+状態はレース前入力生成後が `pre_status: awaiting_prediction`、予想公開後が `pre_status: published` です。`post_status` は結果待ちの `awaiting_result` から、結果・両post・evaluation・HTML公開完了後に `published` となります。
 
 ## Manual モード
 
@@ -194,13 +206,11 @@ python src/watcher.py
 
 ```bash
 python src/run_post_collect.py --date 2026-04-12
-python src/watcher.py
 ```
 
 1. `run_post_collect.py` が `result` を反映し、既存の決定的な計算で両方式の `post` を確定します。
-2. `simulation.value` と `simulation.dutching` を含む feedback 用 chat input JSON を `outbox/chat_input/feedback/` に出力します。
-3. 外部チャットから返ってきた feedback JSON を `inbox/feedback/` に置きます。
-4. `watcher.py` が `feedback` を反映し、同じ計算で両方式の `post` を再確認して `render -> publish` を実行します。
+2. `evaluation` を決定的に生成します。
+3. 結果HTMLを生成し、`public/` を更新します。レース後のLLM処理や追加の `watcher.py` 実行は不要です。
 
 inbox へ置く response JSON の想定:
 
@@ -224,29 +234,13 @@ prediction:
 }
 ```
 
-feedback:
-
-```json
-{
-  "meta": {
-    "race_id": "202606030611"
-  },
-  "feedback": {
-    "probability_error_summary": "短い要約",
-    "ranking_error_summary": "短い要約",
-    "profit_summary": "短い要約",
-    "calibration_notes": "短い要約",
-    "next_prediction_adjustment_summary": "短い要約"
-  }
-}
-```
-
 ## 補足
 
 - `collect.py` は `netkeiba` の HTML 構造に依存します。取得に失敗したレースはスキップし、ログへ出します。
 - `predict.py` の LLM 応答が不正 JSON の場合は再試行します。
 - `prediction` がない場合は両方式の `pre` を作りません。
 - `result` がない場合は両方式の `post` を作りません。
+- `prediction`、`result`、両方式の `post` がそろわない場合は `evaluation` を作りません。
 - `render.py` はいったんステージング領域へ出力し、`publish.py` が成功したときだけ `public/` を差し替えます。
 
 ## テスト

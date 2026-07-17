@@ -297,7 +297,7 @@
     {% if simulation_value_pre and simulation_dutching_pre and custom_simulation_data.horses %}
     <div class="panel" id="custom-simulator">
       <h2>カスタム購入シミュレーション</h2>
-      <p class="small">入力内容と計算結果はこの画面内だけで使用し、正式な購入想定・収支・feedbackには反映しません。</p>
+      <p class="small">入力内容と計算結果はこの画面内だけで使用し、正式な購入想定・収支には反映しません。</p>
       <form class="simulator-form" id="custom-simulator-form">
         <label class="simulator-field">方式
           <select name="method">
@@ -759,6 +759,34 @@
     </div>
     {% endif %}
 
+    {% if evaluation %}
+    <div class="panel">
+      <h2>予測評価</h2>
+      <div class="stats">
+        <div><strong>勝ち馬の予測順位</strong><br>{{ evaluation.winner.predicted_rank }}位</div>
+        <div><strong>勝ち馬の予測確率</strong><br>{{ "%.2f"|format(evaluation.winner.predicted_probability * 100) }}%</div>
+        <div><strong>Top1</strong><br>{{ "的中" if evaluation.metrics.top1_hit else "不的中" }}</div>
+        <div><strong>Top3</strong><br>{{ "的中" if evaluation.metrics.top3_hit else "不的中" }}</div>
+        <div><strong>Top5</strong><br>{{ "的中" if evaluation.metrics.top5_hit else "不的中" }}</div>
+        <div><strong>Log Loss</strong><br>{{ "%.6f"|format(evaluation.metrics.log_loss) }}</div>
+        <div><strong>Brier Score</strong><br>{{ "%.6f"|format(evaluation.metrics.brier_score) }}</div>
+      </div>
+      {% if evaluation.market_baseline.available %}
+      <h3>市場ベースライン比較</h3>
+      <p>市場の勝ち馬確率 {{ "%.2f"|format(evaluation.market_baseline.winner_probability * 100) }}% / 順位 {{ evaluation.market_baseline.winner_rank }}位</p>
+      <p>Log Loss差 {{ "%+.6f"|format(evaluation.market_baseline.model_log_loss_difference) }} / Brier Score差 {{ "%+.6f"|format(evaluation.market_baseline.model_brier_difference) }}</p>
+      {% if evaluation.market_baseline.odds_recorded_after_start %}
+      <p class="notice">市場比較には発走後に記録されたオッズを使用しているため、正式な発走前性能比較ではありません。</p>
+      {% endif %}
+      {% else %}
+      <p>市場ベースライン: 利用可能な単勝オッズが不足しています。</p>
+      {% endif %}
+      <h3>シミュレーション収支</h3>
+      <p><strong>期待値重視:</strong> 投資 {{ evaluation.simulation_results.value.total_stake }}円 / 回収 {{ evaluation.simulation_results.value.total_return }}円 / 損益 {{ evaluation.simulation_results.value.profit }}円{% if evaluation.simulation_results.value.roi is not none %} / ROI {{ "%.2f"|format(evaluation.simulation_results.value.roi * 100) }}%{% endif %}</p>
+      <p><strong>ダッチング:</strong> 投資 {{ evaluation.simulation_results.dutching.total_stake }}円 / 回収 {{ evaluation.simulation_results.dutching.total_return }}円 / 損益 {{ evaluation.simulation_results.dutching.profit }}円{% if evaluation.simulation_results.dutching.roi is not none %} / ROI {{ "%.2f"|format(evaluation.simulation_results.dutching.roi * 100) }}%{% endif %}</p>
+    </div>
+    {% endif %}
+
     {% if simulation_value_post %}
     <div class="panel">
       <h2>期待値重視方式の購入結果</h2>
@@ -785,18 +813,6 @@
     </div>
     {% endif %}
 
-    {% if feedback %}
-    <div class="panel">
-      <h2>フィードバック要約</h2>
-      <ul>
-        <li><strong>確率誤差:</strong> {{ feedback.probability_error_summary }}</li>
-        <li><strong>順位誤差:</strong> {{ feedback.ranking_error_summary }}</li>
-        <li><strong>収支:</strong> {{ feedback.profit_summary }}</li>
-        <li><strong>補正メモ:</strong> {{ feedback.calibration_notes }}</li>
-        <li><strong>次回調整:</strong> {{ feedback.next_prediction_adjustment_summary }}</li>
-      </ul>
-    </div>
-    {% endif %}
   </main>
 </body>
 </html>

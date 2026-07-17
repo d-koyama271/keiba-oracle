@@ -6,7 +6,7 @@ from pathlib import Path
 
 from publish import publish_site
 from render import render_site
-from response_importer import import_feedback_response, import_prediction_response
+from response_importer import import_prediction_response
 from simulate import simulate_file
 from utils import (
     ensure_dir,
@@ -47,18 +47,6 @@ def finalize_pre(race_path: Path, config: dict, logger_name: str) -> None:
     log_job(logger, logger_name, None, f"manual pre published -> {public_path}")
 
 
-def finalize_post(race_path: Path, config: dict, logger_name: str) -> None:
-    logger = setup_logger(logger_name, config)
-    simulate_file(race_path, config, "post", logger_name)
-    payload = load_race_json(race_path)
-    if payload:
-        set_race_status(payload, post_status="published")
-        save_race_json(race_path, payload)
-    render_site(config, logger_name, None)
-    public_path = publish_site(config)
-    log_job(logger, logger_name, None, f"manual post published -> {public_path}")
-
-
 def process_once(config: dict, logger_name: str) -> int:
     logger = setup_logger(logger_name, config)
     processed_count = 0
@@ -72,16 +60,6 @@ def process_once(config: dict, logger_name: str) -> int:
                 processed_count += 1
         except Exception as exc:  # noqa: BLE001
             log_job(logger, logger_name, None, f"prediction processing failed: {path} -> {exc}")
-
-    for path in inbox_files("feedback"):
-        try:
-            race_path = import_feedback_response(path, config, logger_name)
-            if race_path:
-                finalize_post(race_path, config, logger_name)
-                archive_processed(path)
-                processed_count += 1
-        except Exception as exc:  # noqa: BLE001
-            log_job(logger, logger_name, None, f"feedback processing failed: {path} -> {exc}")
 
     log_job(logger, logger_name, None, f"watch cycle complete: processed={processed_count}")
     return processed_count

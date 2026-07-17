@@ -11,8 +11,8 @@ from typing import Any
 import yaml
 
 JST = timezone(timedelta(hours=9), name="Asia/Tokyo")
-SCHEMA_VERSION = 3
-REQUIRED_TOP_LEVEL_KEYS = ("meta", "race", "horses", "prediction", "simulation", "result", "feedback")
+SCHEMA_VERSION = 4
+REQUIRED_TOP_LEVEL_KEYS = ("meta", "race", "horses", "prediction", "simulation", "result", "evaluation")
 TRACK_CODE_TO_NAME = {
     "01": "札幌",
     "02": "函館",
@@ -171,7 +171,7 @@ def default_race_payload(race_id: str) -> dict[str, Any]:
             "created_at": timestamp,
             "updated_at": timestamp,
             "pre_status": None,
-            "post_status": None,
+            "post_status": "awaiting_result",
         },
         "race": {},
         "horses": [],
@@ -181,15 +181,15 @@ def default_race_payload(race_id: str) -> dict[str, Any]:
             "dutching": {"pre": None, "post": None},
         },
         "result": None,
-        "feedback": None,
+        "evaluation": None,
     }
 
 
 def ensure_race_payload(payload: dict[str, Any] | None, race_id: str | None = None) -> dict[str, Any]:
     base = default_race_payload(race_id or "")
     payload = payload or {}
-    merged = dict(base)
-    merged.update(payload)
+    source_schema_version = payload.get("meta", {}).get("schema_version", 0)
+    merged = {key: payload.get(key, base[key]) for key in REQUIRED_TOP_LEVEL_KEYS}
     merged["meta"] = dict(base["meta"])
     merged["meta"].update(payload.get("meta", {}))
     if race_id:
@@ -197,6 +197,8 @@ def ensure_race_payload(payload: dict[str, Any] | None, race_id: str | None = No
     merged["meta"]["schema_version"] = SCHEMA_VERSION
     if not merged["meta"].get("created_at"):
         merged["meta"]["created_at"] = now_jst_iso()
+    if source_schema_version < SCHEMA_VERSION and merged.get("evaluation") is None:
+        merged["meta"]["post_status"] = "awaiting_result"
     merged["meta"]["updated_at"] = now_jst_iso()
     simulation = merged.get("simulation") if isinstance(merged.get("simulation"), dict) else {}
     value = simulation.get("value") if isinstance(simulation.get("value"), dict) else {}
@@ -314,29 +316,6 @@ def parse_finish_position(value: Any) -> int | None:
     if any(flag in text for flag in ("中止", "除外", "取消", "失格")):
         return None
     return parse_int(text)
-
-
-def latest_feedback_summaries(
-    config: dict[str, Any],
-    before_date: str | None = None,
-    limit: int = 3,
-    root: Path | None = None,
-) -> list[str]:
-    summaries: list[str] = []
-    for path in reversed(list_race_files(config, None, root)):
-        payload = load_race_json(path)
-        if not payload:
-            continue
-        race_date = payload.get("race", {}).get("date")
-        if before_date and race_date and race_date >= before_date:
-            continue
-        feedback = payload.get("feedback") or {}
-        summary = feedback.get("next_prediction_adjustment_summary")
-        if summary:
-            summaries.append(summary)
-        if len(summaries) >= limit:
-            break
-    return summaries
 
 
 def setup_logger(job_name: str, config: dict[str, Any], root: Path | None = None) -> logging.Logger:

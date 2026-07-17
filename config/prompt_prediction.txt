@@ -30,8 +30,5 @@ JSON schema:
   "optional_summary": "任意の短い総括"
 }
 
-直近フィードバック:
-{{RECENT_FEEDBACK}}
-
 レース情報:
 {{RACE_CONTEXT}}

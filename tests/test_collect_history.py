@@ -307,6 +307,7 @@ class CareerSummaryTests(unittest.TestCase):
             )
 
         serialized = json.dumps(chat_input, ensure_ascii=False)
+        self.assertEqual(set(chat_input), {"meta", "race", "horses"})
         self.assertIn("career_summaries", serialized)
         self.assertIn("class_grade", serialized)
         for forbidden in (

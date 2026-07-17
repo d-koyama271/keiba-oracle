@@ -51,7 +51,7 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
     prediction = payload.get("prediction")
     simulation = payload.get("simulation") or {}
     result = payload.get("result")
-    feedback = payload.get("feedback")
+    evaluation = payload.get("evaluation")
     odds_timing_label, odds_recorded_after_start = build_odds_timing(race)
 
     prediction_lookup = {item["horse_number"]: item for item in (prediction or {}).get("horses", [])}
@@ -97,7 +97,7 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         "horses": custom_simulation_horses,
     }
 
-    status = "result_published" if result else "prediction_only"
+    status = "result_published" if result and evaluation else "prediction_only"
     return {
         "race": race,
         "prediction": prediction,
@@ -106,7 +106,7 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         "simulation_dutching_pre": dutching_pre,
         "simulation_dutching_post": dutching_simulation.get("post"),
         "result": result,
-        "feedback": feedback,
+        "evaluation": evaluation,
         "horse_rows": horse_rows,
         "result_rows": result_rows,
         "status": status,

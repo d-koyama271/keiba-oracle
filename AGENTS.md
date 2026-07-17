@@ -6,7 +6,7 @@
 - Do not introduce a database.
 - Keep the project file-based with one-race-per-JSON.
 - Separate prediction from simulation.
-- Use LLM only for prediction and feedback summarization.
+- Use LLM only for prediction.
 - Keep article generation template-based, not free-form LLM writing.
 
 ## Technical defaults
@@ -22,7 +22,7 @@ Each race file must keep this top-level structure:
 - prediction
 - simulation
 - result
-- feedback
+- evaluation
 
 Do not add extra top-level sections unless explicitly requested.
 

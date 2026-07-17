@@ -4,14 +4,14 @@ import argparse
 from pathlib import Path
 
 from collect import collect_races
-from feedback import build_feedback_chat_input
+from evaluation import evaluate_paths
+from publish import publish_site
+from render import render_site
 from simulate import simulate_paths
 from utils import (
-    atomic_write_json,
     load_config,
     load_race_json,
     log_job,
-    outbox_chat_input_dir,
     parse_target_date,
     save_race_json,
     set_race_status,
@@ -19,27 +19,34 @@ from utils import (
 )
 
 
-def export_feedback_chat_input(paths: list[Path], config: dict, job_name: str) -> list[Path]:
-    logger = setup_logger(job_name, config)
-    output_dir = outbox_chat_input_dir("feedback")
-    exported: list[Path] = []
+def publish_post_results(
+    paths: list[Path],
+    config: dict,
+    job_name: str,
+    root: Path | None = None,
+) -> list[Path]:
+    logger = setup_logger(job_name, config, root)
+    evaluated_paths = evaluate_paths(paths, config, job_name, root)
+    if not evaluated_paths:
+        log_job(logger, job_name, None, "post publish skipped: evaluation missing")
+        return []
 
-    for path in paths:
+    render_site(config, job_name, None, root)
+    public_path = publish_site(config, root)
+    for path in evaluated_paths:
         payload = load_race_json(path)
-        simulation = (payload or {}).get("simulation") or {}
-        value_post = (simulation.get("value") or {}).get("post")
-        dutching_post = (simulation.get("dutching") or {}).get("post")
-        if not payload or not payload.get("result") or value_post is None or dutching_post is None:
+        if not payload:
             continue
-        set_race_status(payload, post_status="awaiting_feedback")
+        set_race_status(payload, post_status="published")
         save_race_json(path, payload)
+    log_job(logger, job_name, None, f"post published -> {public_path}")
+    return evaluated_paths
 
-        chat_input = build_feedback_chat_input(payload)
-        output_path = output_dir / f"{path.stem}.json"
-        atomic_write_json(output_path, chat_input)
-        exported.append(output_path)
-        log_job(logger, job_name, payload["meta"].get("race_id"), f"feedback chat_input exported -> {output_path}")
-    return exported
+
+def run_post_flow(config: dict, target_date: str, job_name: str) -> list[Path]:
+    paths = collect_races(config, job_name, target_date, "post")
+    simulated_paths = simulate_paths(paths, config, "post", job_name)
+    return publish_post_results(simulated_paths, config, job_name)
 
 
 def main() -> None:
@@ -49,9 +56,7 @@ def main() -> None:
 
     config = load_config()
     target_date = parse_target_date(args.date)
-    paths = collect_races(config, "post_collect", target_date, "post")
-    simulated_paths = simulate_paths(paths, config, "post", "post_collect")
-    export_feedback_chat_input(simulated_paths, config, "post_collect")
+    run_post_flow(config, target_date, "post_collect")
 
 
 if __name__ == "__main__":
