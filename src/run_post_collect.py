@@ -26,7 +26,10 @@ def export_feedback_chat_input(paths: list[Path], config: dict, job_name: str) -
 
     for path in paths:
         payload = load_race_json(path)
-        if not payload or not payload.get("result") or not (payload.get("simulation") or {}).get("post"):
+        simulation = (payload or {}).get("simulation") or {}
+        value_post = (simulation.get("value") or {}).get("post")
+        dutching_post = (simulation.get("dutching") or {}).get("post")
+        if not payload or not payload.get("result") or value_post is None or dutching_post is None:
             continue
         set_race_status(payload, post_status="awaiting_feedback")
         save_race_json(path, payload)

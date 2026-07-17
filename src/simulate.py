@@ -15,95 +15,276 @@ from utils import (
     setup_logger,
 )
 
+EPSILON = 1e-12
+
 
 def round_ratio(value: float) -> float:
     return round(value, 6)
 
 
-def build_pre_simulation(payload: dict[str, Any], config: dict[str, Any]) -> dict[str, Any] | None:
-    prediction = payload.get("prediction")
-    if not prediction:
-        return None
-
-    horse_lookup = {horse["horse_number"]: horse for horse in payload.get("horses", [])}
-    budget = int(config["race_budget"])
-    ev_threshold = float(config["ev_threshold"])
-    kelly_fraction = float(config["kelly_fraction"])
-    stake_unit = int(config["stake_unit"])
+def simulation_settings(config: dict[str, Any]) -> tuple[int, int, dict[str, Any], dict[str, Any]]:
+    simulation = config["simulation"]
+    budget = int(simulation["budget"])
+    stake_unit = int(simulation["stake_unit"])
     if budget <= 0:
-        raise ValueError("race_budget must be positive")
+        raise ValueError("simulation.budget must be positive")
     if stake_unit <= 0:
-        raise ValueError("stake_unit must be positive")
+        raise ValueError("simulation.stake_unit must be positive")
+    return budget, stake_unit, simulation["value"], simulation["dutching"]
 
-    selections = []
+
+def prediction_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    prediction = payload.get("prediction") or {}
+    horse_lookup = {horse["horse_number"]: horse for horse in payload.get("horses", [])}
+    rows = []
     for item in prediction.get("horses", []):
-        horse_number = item["horse_number"]
+        horse_number = int(item["horse_number"])
         horse = horse_lookup.get(horse_number)
         odds = horse.get("win_odds") if horse else None
-        predicted_probability = float(item["win_probability"])
-        if not odds or odds <= 1:
+        probability = float(item["win_probability"])
+        if probability < 0 or odds is None or float(odds) <= 1:
             continue
-        implied_probability = 1.0 / odds
-        expected_value = predicted_probability * odds
-        b = odds - 1.0
-        full_kelly = max(0.0, ((b * predicted_probability) - (1.0 - predicted_probability)) / b)
-        kelly_weight_raw = full_kelly * kelly_fraction
-        if expected_value + 1e-12 < ev_threshold or full_kelly <= 0 or kelly_weight_raw <= 0:
-            continue
-        selections.append(
+        rows.append(
             {
                 "horse_number": horse_number,
-                "implied_probability": round_ratio(implied_probability),
-                "predicted_probability": round_ratio(predicted_probability),
+                "predicted_probability": probability,
+                "win_odds": float(odds),
+            }
+        )
+    return rows
+
+
+def calculate_value_pre(payload: dict[str, Any], config: dict[str, Any]) -> dict[str, Any] | None:
+    if not payload.get("prediction"):
+        return None
+
+    budget, stake_unit, settings, _ = simulation_settings(config)
+    ev_threshold = float(settings["ev_threshold"])
+    kelly_fraction = float(settings["kelly_fraction"])
+    candidates = []
+
+    for row in prediction_rows(payload):
+        probability = row["predicted_probability"]
+        odds = row["win_odds"]
+        expected_value = probability * odds
+        b = odds - 1.0
+        full_kelly = max(0.0, ((b * probability) - (1.0 - probability)) / b)
+        fractional_kelly = full_kelly * kelly_fraction
+        if expected_value + EPSILON < ev_threshold or full_kelly <= 0 or fractional_kelly <= 0:
+            continue
+        candidates.append(
+            {
+                "horse_number": row["horse_number"],
+                "predicted_probability": round_ratio(probability),
+                "win_odds": odds,
                 "expected_value": round_ratio(expected_value),
-                "kelly_weight_raw": round_ratio(kelly_weight_raw),
-                "_raw_stake": budget * kelly_weight_raw,
+                "full_kelly": round_ratio(full_kelly),
+                "fractional_kelly": round_ratio(fractional_kelly),
+                "_raw_stake": budget * fractional_kelly,
             }
         )
 
-    selections.sort(key=lambda item: (-item["expected_value"], item["horse_number"]))
-    if selections:
-        total_raw_stake = sum(item["_raw_stake"] for item in selections)
-        scale = (budget / total_raw_stake) if total_raw_stake > budget else 1.0
-        rounded_selections = []
-        for item in selections:
-            adjusted_stake = item.pop("_raw_stake") * scale
-            stake = math.floor((adjusted_stake / stake_unit) + 1e-12) * stake_unit
-            if stake < stake_unit:
-                continue
-            item["allocation_ratio"] = round_ratio(stake / budget)
-            item["stake"] = int(stake)
-            rounded_selections.append(item)
-        selections = rounded_selections
+    candidates.sort(key=lambda item: (-item["expected_value"], item["horse_number"]))
+    total_raw_stake = sum(item["_raw_stake"] for item in candidates)
+    scale = budget / total_raw_stake if total_raw_stake > budget else 1.0
+    selections = []
+    for item in candidates:
+        adjusted_stake = item.pop("_raw_stake") * scale
+        stake = math.floor((adjusted_stake / stake_unit) + EPSILON) * stake_unit
+        if stake < stake_unit:
+            continue
+        item["stake"] = int(stake)
+        selections.append(item)
 
+    total_stake = sum(item["stake"] for item in selections)
     return {
         "budget": budget,
-        "ev_threshold": ev_threshold,
-        "kelly_fraction": kelly_fraction,
         "stake_unit": stake_unit,
+        "settings": {
+            "ev_threshold": ev_threshold,
+            "kelly_fraction": kelly_fraction,
+        },
+        "total_stake": total_stake,
+        "unused_budget": budget - total_stake,
         "selections": selections,
     }
 
 
-def build_post_simulation(payload: dict[str, Any]) -> dict[str, Any] | None:
-    pre = (payload.get("simulation") or {}).get("pre")
-    result = payload.get("result")
-    if not pre or not result:
+def allocate_dutching_stakes(
+    rows: list[dict[str, Any]],
+    budget: int,
+    stake_unit: int,
+) -> list[dict[str, Any]]:
+    budget_units = budget // stake_unit
+    if budget_units < len(rows):
+        return []
+
+    units = {row["horse_number"]: 1 for row in rows}
+    for _ in range(budget_units - len(rows)):
+        target = min(
+            rows,
+            key=lambda row: (
+                round_ratio(units[row["horse_number"]] * stake_unit * row["win_odds"]),
+                row["horse_number"],
+            ),
+        )
+        units[target["horse_number"]] += 1
+
+    total_stake = budget_units * stake_unit
+    selections = []
+    for row in rows:
+        stake = units[row["horse_number"]] * stake_unit
+        estimated_payout = stake * row["win_odds"]
+        selections.append(
+            {
+                "horse_number": row["horse_number"],
+                "predicted_probability": round_ratio(row["predicted_probability"]),
+                "win_odds": row["win_odds"],
+                "stake": stake,
+                "estimated_payout": round_ratio(estimated_payout),
+                "estimated_profit": round_ratio(estimated_payout - total_stake),
+            }
+        )
+    return selections
+
+
+def evaluate_dutching_count(
+    rows: list[dict[str, Any]],
+    budget: int,
+    stake_unit: int,
+    settings: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    selections = allocate_dutching_stakes(rows, budget, stake_unit)
+    coverage_probability = round_ratio(sum(row["predicted_probability"] for row in rows))
+    total_stake = sum(item["stake"] for item in selections)
+    expected_return = round_ratio(
+        sum(item["predicted_probability"] * item["estimated_payout"] for item in selections)
+    )
+    group_expected_value = round_ratio(expected_return / total_stake) if total_stake else 0.0
+    minimum_payout = min((item["estimated_payout"] for item in selections), default=0.0)
+    minimum_profit = round_ratio(minimum_payout - total_stake) if total_stake else 0.0
+
+    rejection_reasons = []
+    if coverage_probability + EPSILON < float(settings["min_coverage_probability"]):
+        rejection_reasons.append("coverage_probability_below_threshold")
+    if group_expected_value + EPSILON < float(settings["min_group_expected_value"]):
+        rejection_reasons.append("group_expected_value_below_threshold")
+    if not selections:
+        rejection_reasons.append("insufficient_budget_units")
+    if bool(settings["require_profit_if_hit"]) and minimum_profit <= 0:
+        rejection_reasons.append("minimum_profit_not_positive")
+
+    evaluation = {
+        "selection_count": len(rows),
+        "horse_numbers": [row["horse_number"] for row in rows],
+        "coverage_probability": coverage_probability,
+        "expected_return": expected_return,
+        "group_expected_value": group_expected_value,
+        "minimum_payout": round_ratio(minimum_payout),
+        "minimum_profit": minimum_profit,
+        "eligible": not rejection_reasons,
+        "rejection_reasons": rejection_reasons,
+    }
+    return evaluation, selections
+
+
+def select_best_dutching(
+    evaluations: list[tuple[dict[str, Any], list[dict[str, Any]]]],
+) -> tuple[dict[str, Any], list[dict[str, Any]]] | None:
+    eligible = [item for item in evaluations if item[0]["eligible"]]
+    if not eligible:
+        return None
+    return max(
+        eligible,
+        key=lambda item: (
+            item[0]["group_expected_value"],
+            item[0]["coverage_probability"],
+            -item[0]["selection_count"],
+        ),
+    )
+
+
+def calculate_dutching_pre(payload: dict[str, Any], config: dict[str, Any]) -> dict[str, Any] | None:
+    if not payload.get("prediction"):
         return None
 
-    payout_lookup = {item["horse_number"]: item["payout_per_100"] for item in result.get("payouts", {}).get("win", [])}
-    finish_lookup = {item["horse_number"]: item["finish_position"] for item in result.get("horses", [])}
+    budget, stake_unit, _, settings = simulation_settings(config)
+    max_selection_count = int(settings["max_selection_count"])
+    if max_selection_count <= 0:
+        raise ValueError("simulation.dutching.max_selection_count must be positive")
 
+    rows = sorted(
+        prediction_rows(payload),
+        key=lambda item: (-item["predicted_probability"], item["horse_number"]),
+    )
+    evaluations = [
+        evaluate_dutching_count(rows[:count], budget, stake_unit, settings)
+        for count in range(1, min(max_selection_count, len(rows)) + 1)
+    ]
+    selected = select_best_dutching(evaluations)
+
+    result = {
+        "budget": budget,
+        "stake_unit": stake_unit,
+        "settings": {
+            "max_selection_count": max_selection_count,
+            "min_coverage_probability": float(settings["min_coverage_probability"]),
+            "min_group_expected_value": float(settings["min_group_expected_value"]),
+            "require_profit_if_hit": bool(settings["require_profit_if_hit"]),
+        },
+        "selected_count": 0,
+        "coverage_probability": 0.0,
+        "expected_return": 0.0,
+        "group_expected_value": 0.0,
+        "minimum_payout": 0.0,
+        "minimum_profit": 0.0,
+        "total_stake": 0,
+        "unused_budget": budget,
+        "evaluated_counts": [evaluation for evaluation, _ in evaluations],
+        "selections": [],
+    }
+    if selected is None:
+        return result
+
+    evaluation, selections = selected
+    result.update(
+        {
+            "selected_count": evaluation["selection_count"],
+            "coverage_probability": evaluation["coverage_probability"],
+            "expected_return": evaluation["expected_return"],
+            "group_expected_value": evaluation["group_expected_value"],
+            "minimum_payout": evaluation["minimum_payout"],
+            "minimum_profit": evaluation["minimum_profit"],
+            "total_stake": sum(item["stake"] for item in selections),
+            "unused_budget": budget - sum(item["stake"] for item in selections),
+            "selections": selections,
+        }
+    )
+    return result
+
+
+def calculate_post(pre: dict[str, Any] | None, result: dict[str, Any] | None) -> dict[str, Any] | None:
+    if pre is None or result is None:
+        return None
+
+    payout_lookup = {
+        int(item["horse_number"]): int(item["payout_per_100"])
+        for item in result.get("payouts", {}).get("win", [])
+    }
+    winner_numbers = {
+        int(item["horse_number"])
+        for item in result.get("horses", [])
+        if item.get("finish_position") == 1
+    }
     selections = []
     total_stake = 0
     total_return = 0
     for item in pre.get("selections", []):
-        horse_number = item["horse_number"]
+        horse_number = int(item["horse_number"])
         stake = int(item["stake"])
-        payout = int(payout_lookup.get(horse_number, 0))
-        hit = finish_lookup.get(horse_number) == 1
-        return_amount = int((stake // 100) * payout) if hit else 0
-        profit = return_amount - stake
+        hit = horse_number in winner_numbers
+        payout = payout_lookup.get(horse_number, 0)
+        return_amount = (stake * payout // 100) if hit else 0
         total_stake += stake
         total_return += return_amount
         selections.append(
@@ -111,20 +292,38 @@ def build_post_simulation(payload: dict[str, Any]) -> dict[str, Any] | None:
                 "horse_number": horse_number,
                 "stake": stake,
                 "hit": hit,
-                "payout": payout if payout else 0,
-                "return_amount": return_amount,
-                "profit": profit,
+                "return": return_amount,
             }
         )
 
     profit = total_return - total_stake
-    roi = round_ratio((profit / total_stake) if total_stake else 0.0)
     return {
         "total_stake": total_stake,
         "total_return": total_return,
         "profit": profit,
-        "roi": roi,
+        "roi": round_ratio(profit / total_stake) if total_stake else 0.0,
         "selections": selections,
+    }
+
+
+def calculate_value_post(payload: dict[str, Any]) -> dict[str, Any] | None:
+    value = ((payload.get("simulation") or {}).get("value") or {})
+    return calculate_post(value.get("pre"), payload.get("result"))
+
+
+def calculate_dutching_post(payload: dict[str, Any]) -> dict[str, Any] | None:
+    dutching = ((payload.get("simulation") or {}).get("dutching") or {})
+    return calculate_post(dutching.get("pre"), payload.get("result"))
+
+
+def calculate_pre_simulation(payload: dict[str, Any], config: dict[str, Any]) -> dict[str, Any] | None:
+    value_pre = calculate_value_pre(payload, config)
+    dutching_pre = calculate_dutching_pre(payload, config)
+    if value_pre is None or dutching_pre is None:
+        return None
+    return {
+        "value": {"pre": value_pre, "post": None},
+        "dutching": {"pre": dutching_pre, "post": None},
     }
 
 
@@ -134,23 +333,26 @@ def simulate_file(path: Path, config: dict[str, Any], mode: str, job_name: str, 
     if not payload:
         return False
     race_id = payload["meta"].get("race_id")
+
     if mode == "pre":
-        simulation_pre = build_pre_simulation(payload, config)
-        if simulation_pre is None:
-            log_job(logger, job_name, race_id, "simulation.pre skipped: prediction missing")
+        simulation = calculate_pre_simulation(payload, config)
+        if simulation is None:
+            log_job(logger, job_name, race_id, "simulation pre skipped: prediction missing")
             return False
-        payload["simulation"]["pre"] = simulation_pre
+        payload["simulation"] = simulation
         save_race_json(path, payload)
-        log_job(logger, job_name, race_id, "simulation.pre updated")
+        log_job(logger, job_name, race_id, "simulation value/dutching pre updated")
         return True
 
-    simulation_post = build_post_simulation(payload)
-    if simulation_post is None:
-        log_job(logger, job_name, race_id, "simulation.post skipped: result missing")
+    value_post = calculate_value_post(payload)
+    dutching_post = calculate_dutching_post(payload)
+    if value_post is None or dutching_post is None:
+        log_job(logger, job_name, race_id, "simulation post skipped: pre/result missing")
         return False
-    payload["simulation"]["post"] = simulation_post
+    payload["simulation"]["value"]["post"] = value_post
+    payload["simulation"]["dutching"]["post"] = dutching_post
     save_race_json(path, payload)
-    log_job(logger, job_name, race_id, "simulation.post updated")
+    log_job(logger, job_name, race_id, "simulation value/dutching post updated")
     return True
 
 

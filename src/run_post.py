@@ -21,13 +21,13 @@ def main() -> None:
     logger = setup_logger("post", config)
 
     paths = collect_races(config, "post", target_date, "post")
+    simulated_paths = simulate_paths(paths, config, "post", "post")
     if config["llm_provider"] == "manual":
-        export_feedback_chat_input(paths, config, "post")
+        export_feedback_chat_input(simulated_paths, config, "post")
         log_job(logger, "post", None, "manual mode prepared feedback chat_input")
         return
 
-    simulate_paths(paths, config, "post", "post")
-    feedback_paths(paths, config, "post")
+    feedback_paths(simulated_paths, config, "post")
     render_site(config, "post", None)
     public_path = publish_site(config)
     log_job(logger, "post", None, f"published site -> {public_path}")

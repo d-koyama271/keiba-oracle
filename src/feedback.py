@@ -46,10 +46,22 @@ def build_feedback_stats(payload: dict[str, Any]) -> dict[str, Any] | None:
         if horse_number in actual_rank_lookup:
             ranking_errors.append(abs(pred_rank_lookup[horse_number] - actual_rank_lookup[horse_number]))
 
-    post = simulation.get("post") or {}
     top_pick = predicted_horses[0]["horse_number"]
     brier = round(sum(squared_errors) / len(squared_errors), 6) if squared_errors else None
     mean_rank_error = round(sum(ranking_errors) / len(ranking_errors), 4) if ranking_errors else None
+
+    simulation_results = {}
+    for method in ("value", "dutching"):
+        method_simulation = simulation.get(method) or {}
+        pre = method_simulation.get("pre") or {}
+        post = method_simulation.get("post") or {}
+        simulation_results[method] = {
+            "selection_count": len(pre.get("selections", [])),
+            "total_stake": post.get("total_stake"),
+            "total_return": post.get("total_return"),
+            "profit": post.get("profit"),
+            "roi": post.get("roi"),
+        }
 
     return {
         "race": payload["race"],
@@ -59,21 +71,25 @@ def build_feedback_stats(payload: dict[str, Any]) -> dict[str, Any] | None:
         "actual_winner": actual_winner,
         "brier_score": brier,
         "mean_rank_error": mean_rank_error,
-        "profit": post.get("profit"),
-        "roi": post.get("roi"),
-        "selection_count": len((simulation.get("pre") or {}).get("selections", [])),
+        "simulation_results": simulation_results,
     }
 
 
 def fallback_feedback(stats: dict[str, Any]) -> dict[str, Any]:
     top_hit = "一致" if stats["top_pick"] == stats["actual_winner"] else "不一致"
-    roi = stats["roi"]
+    value = stats["simulation_results"]["value"]
+    dutching = stats["simulation_results"]["dutching"]
     return {
         "probability_error_summary": f"Brier {stats['brier_score']:.4f}、本命 {stats['top_pick']} と勝ち馬 {stats['actual_winner']} は {top_hit}",
         "ranking_error_summary": f"平均順位誤差 {stats['mean_rank_error']:.2f}、予想上位 {stats['predicted_top3']} / 実着順上位 {stats['actual_top3']}",
-        "profit_summary": f"損益 {stats['profit']} 円、ROI {(roi * 100):.2f}%" if roi is not None else "収支情報なし",
+        "profit_summary": (
+            f"期待値方式 損益 {value['profit']} 円 / ROI {(value['roi'] * 100):.2f}%、"
+            f"ダッチング方式 損益 {dutching['profit']} 円 / ROI {(dutching['roi'] * 100):.2f}%"
+            if value["roi"] is not None and dutching["roi"] is not None
+            else "収支情報なし"
+        ),
         "calibration_notes": "上位馬の確率を出し過ぎたかを本命と勝ち馬のズレで確認",
-        "next_prediction_adjustment_summary": "本命と勝ち馬がズレた条件差を次回の理由欄へ明示する",
+        "next_prediction_adjustment_summary": "両方式を区別し、単一レースの収支だけで確率や頭数設定を変更しない",
     }
 
 
@@ -81,7 +97,7 @@ def build_mock_feedback(stats: dict[str, Any]) -> dict[str, Any]:
     return {
         "probability_error_summary": f"mock: Brier {stats['brier_score']:.4f}",
         "ranking_error_summary": f"mock: predicted {stats['predicted_top3']} / actual {stats['actual_top3']}",
-        "profit_summary": f"mock: profit {stats['profit']} / roi {stats['roi']}",
+        "profit_summary": f"mock: simulations {stats['simulation_results']}",
         "calibration_notes": "mock: top pick bias should be checked next time",
         "next_prediction_adjustment_summary": "mock: compare pace and distance fit more explicitly",
     }

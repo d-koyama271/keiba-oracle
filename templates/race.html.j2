@@ -33,10 +33,10 @@
       margin-bottom: 18px;
       box-shadow: 0 10px 30px rgba(50, 89, 77, 0.06);
     }
-    h1, h2 { margin-top: 0; }
-    .meta {
+    h1, h2, h3 { margin-top: 0; }
+    .meta, .metric-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 10px;
       font-size: 14px;
     }
@@ -65,6 +65,7 @@
       color: var(--muted);
       font-weight: 700;
     }
+    .selected-row { background: #edf4f1; }
     .small {
       color: var(--muted);
       font-size: 13px;
@@ -92,7 +93,8 @@
       font-size: 13px;
       font-weight: 700;
     }
-    .simulator-field input {
+    .simulator-field input,
+    .simulator-field select {
       width: 100%;
       box-sizing: border-box;
       border: 1px solid var(--line);
@@ -102,6 +104,16 @@
       color: var(--ink);
       font: inherit;
     }
+    .simulator-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .simulator-checkbox input { width: auto; }
     .simulator-form button {
       border: 0;
       border-radius: 8px;
@@ -147,162 +159,253 @@
     <div class="panel">
       <h2>予想</h2>
       {% if prediction %}
-      <table>
-        <thead>
-          <tr>
-            <th>馬番</th>
-            <th>馬名</th>
-            <th>騎手</th>
-            <th>単勝オッズ</th>
-            <th>人気</th>
-            <th>1着確率</th>
-            <th>理由</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for horse in horse_rows %}
-          <tr>
-            <td>{{ horse.horse_number }}</td>
-            <td>{{ horse.horse_name }}</td>
-            <td>{{ horse.jockey or "-" }}</td>
-            <td>{{ horse.win_odds if horse.win_odds is not none else "-" }}</td>
-            <td>{{ horse.popularity if horse.popularity is not none else "-" }}</td>
-            <td>
-              {% if horse.prediction %}
-                {{ "%.1f"|format(horse.prediction.win_probability * 100) }}%
-              {% else %}
-                -
-              {% endif %}
-            </td>
-            <td>{{ horse.prediction.reason if horse.prediction else "-" }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% if prediction.optional_summary %}
-      <p><strong>総括:</strong> {{ prediction.optional_summary }}</p>
-      {% endif %}
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>馬番</th>
+              <th>馬名</th>
+              <th>騎手</th>
+              <th>単勝オッズ</th>
+              <th>人気</th>
+              <th>1着確率</th>
+              <th>理由</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for horse in horse_rows %}
+            <tr>
+              <td>{{ horse.horse_number }}</td>
+              <td>{{ horse.horse_name }}</td>
+              <td>{{ horse.jockey or "-" }}</td>
+              <td>{{ horse.win_odds if horse.win_odds is not none else "-" }}</td>
+              <td>{{ horse.popularity if horse.popularity is not none else "-" }}</td>
+              <td>{% if horse.prediction %}{{ "%.1f"|format(horse.prediction.win_probability * 100) }}%{% else %}-{% endif %}</td>
+              <td>{{ horse.prediction.reason if horse.prediction else "-" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if prediction.optional_summary %}<p><strong>総括:</strong> {{ prediction.optional_summary }}</p>{% endif %}
       {% else %}
       <p>prediction はまだ生成されていません。</p>
       {% endif %}
     </div>
 
     <div class="panel">
-      <h2>基準設定による購入想定</h2>
-      {% if simulation_pre %}
-      <p class="small">
-        予算上限 {{ simulation_pre.budget }}円 /
-        最低EV {{ simulation_pre.ev_threshold }} /
-        Kelly係数 {{ simulation_pre.kelly_fraction }} /
-        購入単位 {{ custom_simulation_data.stake_unit }}円
-      </p>
-      {% endif %}
-      {% if simulation_pre and simulation_pre.selections %}
-      <table>
-        <thead>
-          <tr>
-            <th>馬番</th>
-            <th>暗黙確率</th>
-            <th>予想確率</th>
-            <th>EV</th>
-            <th>Kelly</th>
-            <th>配分</th>
-            <th>購入額</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for item in simulation_pre.selections %}
-          <tr>
-            <td>{{ item.horse_number }}</td>
-            <td>{{ "%.3f"|format(item.implied_probability) }}</td>
-            <td>{{ "%.3f"|format(item.predicted_probability) }}</td>
-            <td>{{ "%.3f"|format(item.expected_value) }}</td>
-            <td>{{ "%.4f"|format(item.kelly_weight_raw) }}</td>
-            <td>{{ "%.2f"|format(item.allocation_ratio * 100) }}%</td>
-            <td>{{ item.stake }}円</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <h2>期待値重視方式</h2>
+      {% if simulation_value_pre %}
+      <div class="metric-grid">
+        <div><strong>予算上限</strong><br>{{ simulation_value_pre.budget }}円</div>
+        <div><strong>最低EV</strong><br>{{ simulation_value_pre.settings.ev_threshold }}</div>
+        <div><strong>Kelly係数</strong><br>{{ simulation_value_pre.settings.kelly_fraction }}</div>
+        <div><strong>購入単位</strong><br>{{ simulation_value_pre.stake_unit }}円</div>
+        <div><strong>合計購入額</strong><br>{{ simulation_value_pre.total_stake }}円</div>
+        <div><strong>未使用予算</strong><br>{{ simulation_value_pre.unused_budget }}円</div>
+      </div>
+      {% if simulation_value_pre.selections %}
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>馬番</th><th>予測勝率</th><th>単勝オッズ</th><th>EV</th><th>Full Kelly</th><th>Fractional Kelly</th><th>購入額</th></tr></thead>
+          <tbody>
+            {% for item in simulation_value_pre.selections %}
+            <tr>
+              <td>{{ item.horse_number }}</td>
+              <td>{{ "%.2f"|format(item.predicted_probability * 100) }}%</td>
+              <td>{{ item.win_odds }}</td>
+              <td>{{ "%.3f"|format(item.expected_value) }}</td>
+              <td>{{ "%.4f"|format(item.full_kelly) }}</td>
+              <td>{{ "%.4f"|format(item.fractional_kelly) }}</td>
+              <td>{{ item.stake }}円</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
       {% else %}
-      <p>購入条件を満たすシミュレーション候補はありません。</p>
+      <p><strong>購入なし</strong></p>
+      {% endif %}
+      {% else %}
+      <p>予想取込後に生成されます。</p>
       {% endif %}
     </div>
 
-    {% if simulation_pre and custom_simulation_data.horses %}
+    <div class="panel">
+      <h2>上位予測ダッチング方式</h2>
+      {% if simulation_dutching_pre %}
+      <div class="metric-grid">
+        <div><strong>予算</strong><br>{{ simulation_dutching_pre.budget }}円</div>
+        <div><strong>購入単位</strong><br>{{ simulation_dutching_pre.stake_unit }}円</div>
+        <div><strong>自動選択頭数</strong><br>{{ simulation_dutching_pre.selected_count }}頭</div>
+        <div><strong>カバー確率</strong><br>{{ "%.2f"|format(simulation_dutching_pre.coverage_probability * 100) }}%</div>
+        <div><strong>グループ期待値</strong><br>{{ "%.3f"|format(simulation_dutching_pre.group_expected_value) }}</div>
+        <div><strong>期待払戻額</strong><br>{{ "%.0f"|format(simulation_dutching_pre.expected_return) }}円</div>
+        <div><strong>最低払戻額</strong><br>{{ "%.0f"|format(simulation_dutching_pre.minimum_payout) }}円</div>
+        <div><strong>最低利益</strong><br>{{ "%.0f"|format(simulation_dutching_pre.minimum_profit) }}円</div>
+        <div><strong>合計購入額</strong><br>{{ simulation_dutching_pre.total_stake }}円</div>
+        <div><strong>未使用予算</strong><br>{{ simulation_dutching_pre.unused_budget }}円</div>
+      </div>
+      {% if simulation_dutching_pre.selections %}
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>馬番</th><th>予測勝率</th><th>単勝オッズ</th><th>購入額</th><th>的中時払戻額</th><th>的中時利益</th></tr></thead>
+          <tbody>
+            {% for item in simulation_dutching_pre.selections %}
+            <tr>
+              <td>{{ item.horse_number }}</td>
+              <td>{{ "%.2f"|format(item.predicted_probability * 100) }}%</td>
+              <td>{{ item.win_odds }}</td>
+              <td>{{ item.stake }}円</td>
+              <td>{{ "%.0f"|format(item.estimated_payout) }}円</td>
+              <td>{{ "%.0f"|format(item.estimated_profit) }}円</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p><strong>購入なし</strong></p>
+      {% endif %}
+      <h3>頭数別比較</h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>頭数</th><th>対象馬番</th><th>カバー確率</th><th>グループ期待値</th><th>最低払戻額</th><th>最低利益</th><th>判定</th><th>除外理由</th></tr></thead>
+          <tbody>
+            {% for item in simulation_dutching_pre.evaluated_counts %}
+            <tr{% if simulation_dutching_pre.selections and item.selection_count == simulation_dutching_pre.selected_count %} class="selected-row"{% endif %}>
+              <td>{{ item.selection_count }}</td>
+              <td>{{ item.horse_numbers | join(", ") }}</td>
+              <td>{{ "%.2f"|format(item.coverage_probability * 100) }}%</td>
+              <td>{{ "%.3f"|format(item.group_expected_value) }}</td>
+              <td>{{ "%.0f"|format(item.minimum_payout) }}円</td>
+              <td>{{ "%.0f"|format(item.minimum_profit) }}円</td>
+              <td>
+                {% if simulation_dutching_pre.selections and item.selection_count == simulation_dutching_pre.selected_count %}採用{% elif item.eligible %}適格{% else %}除外{% endif %}
+              </td>
+              <td>{{ item.rejection_reasons | join(", ") if item.rejection_reasons else "-" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p>予想取込後に生成されます。</p>
+      {% endif %}
+    </div>
+
+    {% if simulation_value_pre and simulation_dutching_pre and custom_simulation_data.horses %}
     <div class="panel" id="custom-simulator">
-      <h2>購入シミュレーション</h2>
+      <h2>カスタム購入シミュレーション</h2>
       <p class="small">入力内容と計算結果はこの画面内だけで使用し、正式な購入想定・収支・feedbackには反映しません。</p>
       <form class="simulator-form" id="custom-simulator-form">
-        <label class="simulator-field">
-          予算（円）
-          <input name="budget" type="number" min="{{ custom_simulation_data.stake_unit }}" step="1" value="{{ simulation_pre.budget }}" required>
+        <label class="simulator-field">方式
+          <select name="method">
+            <option value="value">期待値重視</option>
+            <option value="dutching">上位予測ダッチング</option>
+          </select>
         </label>
-        <label class="simulator-field">
-          最低EV
-          <input name="ev_threshold" type="number" min="1" step="0.01" value="{{ simulation_pre.ev_threshold }}" required>
+        <label class="simulator-field">予算（円）
+          <input name="budget" type="number" min="{{ custom_simulation_data.stake_unit }}" step="1" value="{{ simulation_value_pre.budget }}" required>
         </label>
-        <label class="simulator-field">
-          Kelly係数
-          <input name="kelly_fraction" type="number" min="0" max="1" step="0.05" value="{{ simulation_pre.kelly_fraction }}" required>
+        <label class="simulator-field value-field">最低EV
+          <input name="ev_threshold" type="number" min="1" step="0.01" value="{{ simulation_value_pre.settings.ev_threshold }}">
+        </label>
+        <label class="simulator-field value-field">Kelly係数
+          <input name="kelly_fraction" type="number" min="0" max="1" step="0.05" value="{{ simulation_value_pre.settings.kelly_fraction }}">
+        </label>
+        <label class="simulator-field dutching-field" hidden>最大対象頭数
+          <input name="max_selection_count" type="number" min="1" max="{{ custom_simulation_data.horses | length }}" step="1" value="{{ simulation_dutching_pre.settings.max_selection_count }}">
+        </label>
+        <label class="simulator-field dutching-field" hidden>最低カバー確率
+          <input name="min_coverage_probability" type="number" min="0" max="1" step="0.01" value="{{ simulation_dutching_pre.settings.min_coverage_probability }}">
+        </label>
+        <label class="simulator-field dutching-field" hidden>最低グループ期待値
+          <input name="min_group_expected_value" type="number" min="0" step="0.01" value="{{ simulation_dutching_pre.settings.min_group_expected_value }}">
+        </label>
+        <label class="simulator-field dutching-field" hidden>頭数
+          <select name="fixed_selection_count">
+            <option value="0">自動</option>
+            {% for count in range(1, (custom_simulation_data.horses | length) + 1) %}<option value="{{ count }}">{{ count }}頭</option>{% endfor %}
+          </select>
+        </label>
+        <label class="simulator-checkbox dutching-field" hidden>
+          <input name="require_profit_if_hit" type="checkbox"{% if simulation_dutching_pre.settings.require_profit_if_hit %} checked{% endif %}>
+          的中時利益を必須にする
         </label>
         <button type="submit">再計算</button>
       </form>
-      <p class="small">最低EV 1.05は、期待払戻が投資額の1.05倍以上であることを示します。購入単位は{{ custom_simulation_data.stake_unit }}円です。</p>
+      <p class="small">購入単位は{{ custom_simulation_data.stake_unit }}円です。頭数の手動指定は画面内の確認にだけ使用します。</p>
       <p class="simulator-error" id="custom-simulator-error" role="alert" hidden></p>
       <div id="custom-simulator-result" aria-live="polite">
         <p id="custom-simulator-empty" hidden><strong>購入なし</strong></p>
         <div class="simulator-summary" id="custom-simulator-summary" hidden>
+          <span>方式: <strong id="custom-simulator-method">-</strong></span>
           <span>計算予算: <strong id="custom-simulator-budget">0円</strong></span>
           <span>合計購入額: <strong id="custom-simulator-total">0円</strong></span>
           <span>未使用予算: <strong id="custom-simulator-unused">0円</strong></span>
         </div>
-        <div class="table-scroll" id="custom-simulator-table" hidden>
-          <table>
-            <thead>
-              <tr>
-                <th>馬番</th>
-                <th>予測勝率</th>
-                <th>単勝オッズ</th>
-                <th>EV</th>
-                <th>Kelly値</th>
-                <th>購入金額</th>
-              </tr>
-            </thead>
-            <tbody id="custom-simulator-rows"></tbody>
-          </table>
+        <div class="metric-grid" id="custom-dutching-metrics" hidden>
+          <div><strong>選択頭数</strong><br><span id="custom-dutching-count">0頭</span></div>
+          <div><strong>カバー確率</strong><br><span id="custom-dutching-coverage">0%</span></div>
+          <div><strong>グループ期待値</strong><br><span id="custom-dutching-ev">0</span></div>
+          <div><strong>期待払戻額</strong><br><span id="custom-dutching-return">0円</span></div>
+          <div><strong>最低払戻額</strong><br><span id="custom-dutching-min-payout">0円</span></div>
+          <div><strong>最低利益</strong><br><span id="custom-dutching-min-profit">0円</span></div>
+        </div>
+        <div class="table-scroll" id="custom-value-table" hidden>
+          <table><thead><tr><th>馬番</th><th>予測勝率</th><th>単勝オッズ</th><th>EV</th><th>Full Kelly</th><th>Fractional Kelly</th><th>購入額</th></tr></thead><tbody id="custom-value-rows"></tbody></table>
+        </div>
+        <div class="table-scroll" id="custom-dutching-table" hidden>
+          <table><thead><tr><th>馬番</th><th>予測勝率</th><th>単勝オッズ</th><th>購入額</th><th>的中時払戻額</th><th>的中時利益</th></tr></thead><tbody id="custom-dutching-rows"></tbody></table>
+        </div>
+        <div id="custom-dutching-evaluations" hidden>
+          <h3>頭数別比較</h3>
+          <div class="table-scroll"><table><thead><tr><th>頭数</th><th>対象馬番</th><th>カバー確率</th><th>グループ期待値</th><th>最低払戻額</th><th>最低利益</th><th>判定</th><th>除外理由</th></tr></thead><tbody id="custom-dutching-evaluation-rows"></tbody></table></div>
         </div>
       </div>
     </div>
     <script type="application/json" id="custom-simulator-data">{{ custom_simulation_data | tojson }}</script>
     <script>
-      function calculateCustomSimulation(horses, budget, evThreshold, kellyFraction, stakeUnit) {
+      const SIMULATION_EPSILON = 1e-12;
+
+      function roundSimulationValue(value) {
+        return Math.round(value * 1000000) / 1000000;
+      }
+
+      function simulationRows(horses) {
+        return horses
+          .map((horse) => ({
+            horse_number: Number(horse.horse_number),
+            predicted_probability: Number(horse.win_probability),
+            win_odds: Number(horse.win_odds),
+          }))
+          .filter((horse) =>
+            Number.isFinite(horse.predicted_probability) && horse.predicted_probability >= 0 &&
+            Number.isFinite(horse.win_odds) && horse.win_odds > 1
+          );
+      }
+
+      function calculateValueSimulation(horses, budget, stakeUnit, settings) {
         const candidates = [];
-        for (const horse of horses) {
-          const horseNumber = Number(horse.horse_number);
-          const predictedProbability = Number(horse.win_probability);
-          const odds = Number(horse.win_odds);
-          if (!Number.isFinite(predictedProbability) || predictedProbability < 0 || !Number.isFinite(odds) || odds <= 1) {
-            continue;
-          }
-          const impliedProbability = 1 / odds;
-          const expectedValue = predictedProbability * odds;
-          const b = odds - 1;
-          const fullKelly = Math.max(0, ((b * predictedProbability) - (1 - predictedProbability)) / b);
-          const fractionalKelly = fullKelly * kellyFraction;
-          if (expectedValue + 1e-12 < evThreshold || fullKelly <= 0 || fractionalKelly <= 0) {
+        for (const row of simulationRows(horses)) {
+          const expectedValue = row.predicted_probability * row.win_odds;
+          const b = row.win_odds - 1;
+          const fullKelly = Math.max(0, ((b * row.predicted_probability) - (1 - row.predicted_probability)) / b);
+          const fractionalKelly = fullKelly * settings.kelly_fraction;
+          if (expectedValue + SIMULATION_EPSILON < settings.ev_threshold || fullKelly <= 0 || fractionalKelly <= 0) {
             continue;
           }
           candidates.push({
-            horse_number: horseNumber,
-            implied_probability: impliedProbability,
-            predicted_probability: predictedProbability,
-            expected_value: expectedValue,
-            kelly_weight_raw: fractionalKelly,
+            horse_number: row.horse_number,
+            predicted_probability: roundSimulationValue(row.predicted_probability),
+            win_odds: row.win_odds,
+            expected_value: roundSimulationValue(expectedValue),
+            full_kelly: roundSimulationValue(fullKelly),
+            fractional_kelly: roundSimulationValue(fractionalKelly),
             raw_stake: budget * fractionalKelly,
           });
         }
-
         candidates.sort((left, right) =>
           (right.expected_value - left.expected_value) || (left.horse_number - right.horse_number)
         );
@@ -310,27 +413,155 @@
         const scale = totalRawStake > budget ? budget / totalRawStake : 1;
         const selections = [];
         for (const candidate of candidates) {
-          const stake = Math.floor(((candidate.raw_stake * scale) / stakeUnit) + 1e-12) * stakeUnit;
+          const stake = Math.floor(((candidate.raw_stake * scale) / stakeUnit) + SIMULATION_EPSILON) * stakeUnit;
           if (stake < stakeUnit) {
             continue;
           }
-          selections.push({
-            horse_number: candidate.horse_number,
-            implied_probability: candidate.implied_probability,
-            predicted_probability: candidate.predicted_probability,
-            expected_value: candidate.expected_value,
-            kelly_weight_raw: candidate.kelly_weight_raw,
-            allocation_ratio: stake / budget,
-            stake,
-          });
+          const { raw_stake: ignored, ...selection } = candidate;
+          selection.stake = stake;
+          selections.push(selection);
         }
         const totalStake = selections.reduce((total, item) => total + item.stake, 0);
         return {
           budget,
-          selections,
+          stake_unit: stakeUnit,
+          settings: {
+            ev_threshold: settings.ev_threshold,
+            kelly_fraction: settings.kelly_fraction,
+          },
           total_stake: totalStake,
           unused_budget: budget - totalStake,
+          selections,
         };
+      }
+
+      function allocateDutchingStakes(rows, budget, stakeUnit) {
+        const budgetUnits = Math.floor(budget / stakeUnit);
+        if (budgetUnits < rows.length) {
+          return [];
+        }
+        const units = new Map(rows.map((row) => [row.horse_number, 1]));
+        for (let remaining = budgetUnits - rows.length; remaining > 0; remaining -= 1) {
+          let target = rows[0];
+          for (const row of rows.slice(1)) {
+            const payout = roundSimulationValue(units.get(row.horse_number) * stakeUnit * row.win_odds);
+            const targetPayout = roundSimulationValue(units.get(target.horse_number) * stakeUnit * target.win_odds);
+            if (payout < targetPayout || (payout === targetPayout && row.horse_number < target.horse_number)) {
+              target = row;
+            }
+          }
+          units.set(target.horse_number, units.get(target.horse_number) + 1);
+        }
+        const totalStake = budgetUnits * stakeUnit;
+        return rows.map((row) => {
+          const stake = units.get(row.horse_number) * stakeUnit;
+          const estimatedPayout = stake * row.win_odds;
+          return {
+            horse_number: row.horse_number,
+            predicted_probability: roundSimulationValue(row.predicted_probability),
+            win_odds: row.win_odds,
+            stake,
+            estimated_payout: roundSimulationValue(estimatedPayout),
+            estimated_profit: roundSimulationValue(estimatedPayout - totalStake),
+          };
+        });
+      }
+
+      function evaluateDutchingCount(rows, budget, stakeUnit, settings) {
+        const selections = allocateDutchingStakes(rows, budget, stakeUnit);
+        const coverageProbability = roundSimulationValue(rows.reduce((total, row) => total + row.predicted_probability, 0));
+        const totalStake = selections.reduce((total, item) => total + item.stake, 0);
+        const expectedReturn = roundSimulationValue(
+          selections.reduce((total, item) => total + (item.predicted_probability * item.estimated_payout), 0)
+        );
+        const groupExpectedValue = totalStake ? roundSimulationValue(expectedReturn / totalStake) : 0;
+        const minimumPayout = selections.length ? Math.min(...selections.map((item) => item.estimated_payout)) : 0;
+        const minimumProfit = totalStake ? roundSimulationValue(minimumPayout - totalStake) : 0;
+        const rejectionReasons = [];
+        if (coverageProbability + SIMULATION_EPSILON < settings.min_coverage_probability) {
+          rejectionReasons.push("coverage_probability_below_threshold");
+        }
+        if (groupExpectedValue + SIMULATION_EPSILON < settings.min_group_expected_value) {
+          rejectionReasons.push("group_expected_value_below_threshold");
+        }
+        if (!selections.length) {
+          rejectionReasons.push("insufficient_budget_units");
+        }
+        if (settings.require_profit_if_hit && minimumProfit <= 0) {
+          rejectionReasons.push("minimum_profit_not_positive");
+        }
+        return {
+          evaluation: {
+            selection_count: rows.length,
+            horse_numbers: rows.map((row) => row.horse_number),
+            coverage_probability: coverageProbability,
+            expected_return: expectedReturn,
+            group_expected_value: groupExpectedValue,
+            minimum_payout: roundSimulationValue(minimumPayout),
+            minimum_profit: minimumProfit,
+            eligible: rejectionReasons.length === 0,
+            rejection_reasons: rejectionReasons,
+          },
+          selections,
+        };
+      }
+
+      function selectBestDutching(evaluations) {
+        const eligible = evaluations.filter((item) => item.evaluation.eligible);
+        eligible.sort((left, right) =>
+          (right.evaluation.group_expected_value - left.evaluation.group_expected_value) ||
+          (right.evaluation.coverage_probability - left.evaluation.coverage_probability) ||
+          (left.evaluation.selection_count - right.evaluation.selection_count)
+        );
+        return eligible[0] || null;
+      }
+
+      function calculateDutchingSimulation(horses, budget, stakeUnit, settings, fixedSelectionCount = 0) {
+        const rows = simulationRows(horses).sort((left, right) =>
+          (right.predicted_probability - left.predicted_probability) || (left.horse_number - right.horse_number)
+        );
+        const evaluations = [];
+        const evaluationLimit = Math.min(settings.max_selection_count, rows.length);
+        for (let count = 1; count <= evaluationLimit; count += 1) {
+          evaluations.push(evaluateDutchingCount(rows.slice(0, count), budget, stakeUnit, settings));
+        }
+        const selected = fixedSelectionCount > 0
+          ? evaluations.find((item) => item.evaluation.selection_count === fixedSelectionCount) || null
+          : selectBestDutching(evaluations);
+        const result = {
+          budget,
+          stake_unit: stakeUnit,
+          settings: {
+            max_selection_count: settings.max_selection_count,
+            min_coverage_probability: settings.min_coverage_probability,
+            min_group_expected_value: settings.min_group_expected_value,
+            require_profit_if_hit: settings.require_profit_if_hit,
+          },
+          selected_count: 0,
+          coverage_probability: 0,
+          expected_return: 0,
+          group_expected_value: 0,
+          minimum_payout: 0,
+          minimum_profit: 0,
+          total_stake: 0,
+          unused_budget: budget,
+          evaluated_counts: evaluations.map((item) => item.evaluation),
+          selections: [],
+        };
+        if (!selected || !selected.selections.length) {
+          return result;
+        }
+        const evaluation = selected.evaluation;
+        result.selected_count = evaluation.selection_count;
+        result.coverage_probability = evaluation.coverage_probability;
+        result.expected_return = evaluation.expected_return;
+        result.group_expected_value = evaluation.group_expected_value;
+        result.minimum_payout = evaluation.minimum_payout;
+        result.minimum_profit = evaluation.minimum_profit;
+        result.total_stake = selected.selections.reduce((total, item) => total + item.stake, 0);
+        result.unused_budget = budget - result.total_stake;
+        result.selections = selected.selections;
+        return result;
       }
 
       (() => {
@@ -343,11 +574,13 @@
         const error = document.getElementById("custom-simulator-error");
         const empty = document.getElementById("custom-simulator-empty");
         const summary = document.getElementById("custom-simulator-summary");
-        const table = document.getElementById("custom-simulator-table");
-        const rows = document.getElementById("custom-simulator-rows");
-        const budgetOutput = document.getElementById("custom-simulator-budget");
-        const totalOutput = document.getElementById("custom-simulator-total");
-        const unusedOutput = document.getElementById("custom-simulator-unused");
+        const valueTable = document.getElementById("custom-value-table");
+        const dutchingTable = document.getElementById("custom-dutching-table");
+        const dutchingMetrics = document.getElementById("custom-dutching-metrics");
+        const dutchingEvaluations = document.getElementById("custom-dutching-evaluations");
+        const valueRows = document.getElementById("custom-value-rows");
+        const dutchingRows = document.getElementById("custom-dutching-rows");
+        const evaluationRows = document.getElementById("custom-dutching-evaluation-rows");
         const yen = new Intl.NumberFormat("ja-JP");
 
         const addCell = (row, value) => {
@@ -356,52 +589,150 @@
           row.appendChild(cell);
         };
 
-        const recalculate = () => {
+        const setMethodFields = () => {
+          const dutching = form.elements.method.value === "dutching";
+          root.querySelectorAll(".value-field").forEach((field) => { field.hidden = dutching; });
+          root.querySelectorAll(".dutching-field").forEach((field) => { field.hidden = !dutching; });
+        };
+
+        const validate = () => {
           const enteredBudget = Number(form.elements.budget.value);
-          const evThreshold = Number(form.elements.ev_threshold.value);
-          const kellyFraction = Number(form.elements.kelly_fraction.value);
           const stakeUnit = Number(data.stake_unit);
-          let message = "";
           if (!Number.isInteger(enteredBudget) || enteredBudget <= 0) {
-            message = "予算は正の整数で入力してください。";
-          } else if (!Number.isFinite(evThreshold) || evThreshold < 1) {
-            message = "最低EVは1.0以上で入力してください。";
-          } else if (!Number.isFinite(kellyFraction) || kellyFraction < 0 || kellyFraction > 1) {
-            message = "Kelly係数は0以上1以下で入力してください。";
+            return "予算は正の整数で入力してください。";
           }
-          const budget = Math.floor(enteredBudget / stakeUnit) * stakeUnit;
-          if (!message && budget < stakeUnit) {
-            message = `予算は購入単位の${stakeUnit}円以上にしてください。`;
+          if (Math.floor(enteredBudget / stakeUnit) * stakeUnit < stakeUnit) {
+            return `予算は購入単位の${stakeUnit}円以上にしてください。`;
           }
+          if (form.elements.method.value === "value") {
+            const evThreshold = Number(form.elements.ev_threshold.value);
+            const kellyFraction = Number(form.elements.kelly_fraction.value);
+            if (!Number.isFinite(evThreshold) || evThreshold < 1) {
+              return "最低EVは1.0以上で入力してください。";
+            }
+            if (!Number.isFinite(kellyFraction) || kellyFraction < 0 || kellyFraction > 1) {
+              return "Kelly係数は0以上1以下で入力してください。";
+            }
+          } else {
+            const maxCount = Number(form.elements.max_selection_count.value);
+            const coverage = Number(form.elements.min_coverage_probability.value);
+            const groupEv = Number(form.elements.min_group_expected_value.value);
+            const fixedCount = Number(form.elements.fixed_selection_count.value);
+            if (!Number.isInteger(maxCount) || maxCount < 1 || maxCount > data.horses.length) {
+              return "最大対象頭数を出走頭数以内の正の整数で入力してください。";
+            }
+            if (!Number.isFinite(coverage) || coverage < 0 || coverage > 1) {
+              return "最低カバー確率は0以上1以下で入力してください。";
+            }
+            if (!Number.isFinite(groupEv) || groupEv < 0) {
+              return "最低グループ期待値は0以上で入力してください。";
+            }
+            if (fixedCount > maxCount) {
+              return "手動指定頭数は最大対象頭数以下にしてください。";
+            }
+          }
+          return "";
+        };
+
+        const renderValue = (result) => {
+          valueRows.replaceChildren();
+          for (const item of result.selections) {
+            const row = document.createElement("tr");
+            addCell(row, String(item.horse_number));
+            addCell(row, `${(item.predicted_probability * 100).toFixed(2)}%`);
+            addCell(row, item.win_odds.toFixed(1));
+            addCell(row, item.expected_value.toFixed(3));
+            addCell(row, item.full_kelly.toFixed(4));
+            addCell(row, item.fractional_kelly.toFixed(4));
+            addCell(row, `${yen.format(item.stake)}円`);
+            valueRows.appendChild(row);
+          }
+        };
+
+        const renderDutching = (result) => {
+          document.getElementById("custom-dutching-count").textContent = `${result.selected_count}頭`;
+          document.getElementById("custom-dutching-coverage").textContent = `${(result.coverage_probability * 100).toFixed(2)}%`;
+          document.getElementById("custom-dutching-ev").textContent = result.group_expected_value.toFixed(3);
+          document.getElementById("custom-dutching-return").textContent = `${yen.format(result.expected_return)}円`;
+          document.getElementById("custom-dutching-min-payout").textContent = `${yen.format(result.minimum_payout)}円`;
+          document.getElementById("custom-dutching-min-profit").textContent = `${yen.format(result.minimum_profit)}円`;
+          dutchingRows.replaceChildren();
+          for (const item of result.selections) {
+            const row = document.createElement("tr");
+            addCell(row, String(item.horse_number));
+            addCell(row, `${(item.predicted_probability * 100).toFixed(2)}%`);
+            addCell(row, item.win_odds.toFixed(1));
+            addCell(row, `${yen.format(item.stake)}円`);
+            addCell(row, `${yen.format(item.estimated_payout)}円`);
+            addCell(row, `${yen.format(item.estimated_profit)}円`);
+            dutchingRows.appendChild(row);
+          }
+          evaluationRows.replaceChildren();
+          for (const item of result.evaluated_counts) {
+            const row = document.createElement("tr");
+            if (result.selections.length && item.selection_count === result.selected_count) {
+              row.className = "selected-row";
+            }
+            addCell(row, String(item.selection_count));
+            addCell(row, item.horse_numbers.join(", "));
+            addCell(row, `${(item.coverage_probability * 100).toFixed(2)}%`);
+            addCell(row, item.group_expected_value.toFixed(3));
+            addCell(row, `${yen.format(item.minimum_payout)}円`);
+            addCell(row, `${yen.format(item.minimum_profit)}円`);
+            addCell(row, item.eligible ? "適格" : "除外");
+            addCell(row, item.rejection_reasons.length ? item.rejection_reasons.join(", ") : "-");
+            evaluationRows.appendChild(row);
+          }
+        };
+
+        const recalculate = () => {
+          setMethodFields();
+          const message = validate();
           error.textContent = message;
           error.hidden = !message;
           if (message) {
             empty.hidden = true;
             summary.hidden = true;
-            table.hidden = true;
+            valueTable.hidden = true;
+            dutchingTable.hidden = true;
+            dutchingMetrics.hidden = true;
+            dutchingEvaluations.hidden = true;
             return;
           }
 
-          const result = calculateCustomSimulation(data.horses, budget, evThreshold, kellyFraction, stakeUnit);
-          budgetOutput.textContent = `${yen.format(result.budget)}円`;
-          totalOutput.textContent = `${yen.format(result.total_stake)}円`;
-          unusedOutput.textContent = `${yen.format(result.unused_budget)}円`;
+          const method = form.elements.method.value;
+          const stakeUnit = Number(data.stake_unit);
+          const budget = Math.floor(Number(form.elements.budget.value) / stakeUnit) * stakeUnit;
+          let result;
+          if (method === "value") {
+            result = calculateValueSimulation(data.horses, budget, stakeUnit, {
+              ev_threshold: Number(form.elements.ev_threshold.value),
+              kelly_fraction: Number(form.elements.kelly_fraction.value),
+            });
+            renderValue(result);
+          } else {
+            result = calculateDutchingSimulation(data.horses, budget, stakeUnit, {
+              max_selection_count: Number(form.elements.max_selection_count.value),
+              min_coverage_probability: Number(form.elements.min_coverage_probability.value),
+              min_group_expected_value: Number(form.elements.min_group_expected_value.value),
+              require_profit_if_hit: form.elements.require_profit_if_hit.checked,
+            }, Number(form.elements.fixed_selection_count.value));
+            renderDutching(result);
+          }
+
+          document.getElementById("custom-simulator-method").textContent = method === "value" ? "期待値重視" : "上位予測ダッチング";
+          document.getElementById("custom-simulator-budget").textContent = `${yen.format(result.budget)}円`;
+          document.getElementById("custom-simulator-total").textContent = `${yen.format(result.total_stake)}円`;
+          document.getElementById("custom-simulator-unused").textContent = `${yen.format(result.unused_budget)}円`;
           summary.hidden = false;
           empty.hidden = result.selections.length > 0;
-          table.hidden = result.selections.length === 0;
-          rows.replaceChildren();
-          for (const item of result.selections) {
-            const row = document.createElement("tr");
-            addCell(row, String(item.horse_number));
-            addCell(row, `${(item.predicted_probability * 100).toFixed(2)}%`);
-            addCell(row, item.implied_probability ? (1 / item.implied_probability).toFixed(1) : "-");
-            addCell(row, item.expected_value.toFixed(3));
-            addCell(row, item.kelly_weight_raw.toFixed(4));
-            addCell(row, `${yen.format(item.stake)}円`);
-            rows.appendChild(row);
-          }
+          valueTable.hidden = method !== "value" || result.selections.length === 0;
+          dutchingTable.hidden = method !== "dutching" || result.selections.length === 0;
+          dutchingMetrics.hidden = method !== "dutching";
+          dutchingEvaluations.hidden = method !== "dutching";
         };
 
+        form.elements.method.addEventListener("change", recalculate);
         form.addEventListener("submit", (event) => {
           event.preventDefault();
           recalculate();
@@ -415,68 +746,41 @@
     <div class="panel">
       <h2>実結果</h2>
       <p><strong>着順:</strong> {{ result.finish_order | join(" - ") }}</p>
-      <table>
-        <thead>
-          <tr>
-            <th>馬番</th>
-            <th>着順</th>
-            <th>単勝払戻</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for item in result_rows %}
-          <tr>
-            <td>{{ item.horse_number }}</td>
-            <td>{{ item.finish_position }}</td>
-            <td>{{ item.payout_per_100 if item.payout_per_100 is not none else "-" }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>馬番</th><th>着順</th><th>単勝払戻</th></tr></thead>
+          <tbody>
+            {% for item in result_rows %}
+            <tr><td>{{ item.horse_number }}</td><td>{{ item.finish_position }}</td><td>{{ item.payout_per_100 if item.payout_per_100 is not none else "-" }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
     {% endif %}
 
-    {% if simulation_post %}
+    {% if simulation_value_post %}
     <div class="panel">
-      <h2>購入結果</h2>
-      {% if simulation_post.total_stake == 0 or (simulation_pre and not simulation_pre.selections) %}
+      <h2>期待値重視方式の購入結果</h2>
+      {% if simulation_value_post.total_stake == 0 %}
       <p><strong>購入なし</strong></p>
-      <p>
-        <strong>投資:</strong> {{ simulation_post.total_stake }}円 /
-        <strong>回収:</strong> {{ simulation_post.total_return }}円 /
-        <strong>損益:</strong> {{ simulation_post.profit }}円
-      </p>
+      <p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
       {% else %}
-      <p>
-        <strong>投資:</strong> {{ simulation_post.total_stake }}円 /
-        <strong>回収:</strong> {{ simulation_post.total_return }}円 /
-        <strong>損益:</strong> {{ simulation_post.profit }}円 /
-        <strong>ROI:</strong> {{ "%.2f"|format(simulation_post.roi * 100) }}%
-      </p>
-      <table>
-        <thead>
-          <tr>
-            <th>馬番</th>
-            <th>購入額</th>
-            <th>的中</th>
-            <th>払戻</th>
-            <th>回収額</th>
-            <th>損益</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for item in simulation_post.selections %}
-          <tr>
-            <td>{{ item.horse_number }}</td>
-            <td>{{ item.stake }}円</td>
-            <td>{{ "yes" if item.hit else "no" }}</td>
-            <td>{{ item.payout if item.payout else "-" }}</td>
-            <td>{{ item.return_amount }}円</td>
-            <td>{{ item.profit }}円</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <p><strong>投資:</strong> {{ simulation_value_post.total_stake }}円 / <strong>回収:</strong> {{ simulation_value_post.total_return }}円 / <strong>損益:</strong> {{ simulation_value_post.profit }}円 / <strong>ROI:</strong> {{ "%.2f"|format(simulation_value_post.roi * 100) }}%</p>
+      <table><thead><tr><th>馬番</th><th>購入額</th><th>的中</th><th>回収額</th></tr></thead><tbody>{% for item in simulation_value_post.selections %}<tr><td>{{ item.horse_number }}</td><td>{{ item.stake }}円</td><td>{{ "yes" if item.hit else "no" }}</td><td>{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if simulation_dutching_post %}
+    <div class="panel">
+      <h2>ダッチング方式の購入結果</h2>
+      {% if simulation_dutching_post.total_stake == 0 %}
+      <p><strong>購入なし</strong></p>
+      <p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
+      {% else %}
+      <p><strong>投資:</strong> {{ simulation_dutching_post.total_stake }}円 / <strong>回収:</strong> {{ simulation_dutching_post.total_return }}円 / <strong>損益:</strong> {{ simulation_dutching_post.profit }}円 / <strong>ROI:</strong> {{ "%.2f"|format(simulation_dutching_post.roi * 100) }}%</p>
+      <table><thead><tr><th>馬番</th><th>購入額</th><th>的中</th><th>回収額</th></tr></thead><tbody>{% for item in simulation_dutching_post.selections %}<tr><td>{{ item.horse_number }}</td><td>{{ item.stake }}円</td><td>{{ "yes" if item.hit else "no" }}</td><td>{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
       {% endif %}
     </div>
     {% endif %}

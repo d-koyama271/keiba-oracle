@@ -10,10 +10,17 @@ target_races:
   - 阪神
   - 小倉
 odds_reference_minutes_before_start: 60
-race_budget: 3000
-ev_threshold: 1.05
-kelly_fraction: 0.5
-stake_unit: 100
+simulation:
+  budget: 3000
+  stake_unit: 100
+  value:
+    ev_threshold: 1.05
+    kelly_fraction: 0.5
+  dutching:
+    max_selection_count: 5
+    min_coverage_probability: 0.40
+    min_group_expected_value: 0.00
+    require_profit_if_hit: true
 publish_mode: github_pages
 llm_provider: manual
 llm_model: manual-chat

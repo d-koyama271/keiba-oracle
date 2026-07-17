@@ -11,7 +11,7 @@ from typing import Any
 import yaml
 
 JST = timezone(timedelta(hours=9), name="Asia/Tokyo")
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 REQUIRED_TOP_LEVEL_KEYS = ("meta", "race", "horses", "prediction", "simulation", "result", "feedback")
 TRACK_CODE_TO_NAME = {
     "01": "札幌",
@@ -86,10 +86,7 @@ def load_config(config_path: str | Path | None = None) -> dict[str, Any]:
     required = {
         "target_races",
         "odds_reference_minutes_before_start",
-        "race_budget",
-        "ev_threshold",
-        "kelly_fraction",
-        "stake_unit",
+        "simulation",
         "publish_mode",
         "llm_provider",
         "llm_model",
@@ -99,6 +96,26 @@ def load_config(config_path: str | Path | None = None) -> dict[str, Any]:
     missing = sorted(required - set(config))
     if missing:
         raise ValueError(f"Missing config keys: {', '.join(missing)}")
+
+    simulation = config.get("simulation") or {}
+    value = simulation.get("value") or {}
+    dutching = simulation.get("dutching") or {}
+    simulation_required = {"budget", "stake_unit", "value", "dutching"}
+    value_required = {"ev_threshold", "kelly_fraction"}
+    dutching_required = {
+        "max_selection_count",
+        "min_coverage_probability",
+        "min_group_expected_value",
+        "require_profit_if_hit",
+    }
+    missing_simulation = sorted(simulation_required - set(simulation))
+    missing_value = sorted(value_required - set(value))
+    missing_dutching = sorted(dutching_required - set(dutching))
+    if missing_simulation or missing_value or missing_dutching:
+        missing_paths = [f"simulation.{key}" for key in missing_simulation]
+        missing_paths += [f"simulation.value.{key}" for key in missing_value]
+        missing_paths += [f"simulation.dutching.{key}" for key in missing_dutching]
+        raise ValueError(f"Missing config keys: {', '.join(missing_paths)}")
     return config
 
 
@@ -160,8 +177,8 @@ def default_race_payload(race_id: str) -> dict[str, Any]:
         "horses": [],
         "prediction": None,
         "simulation": {
-            "pre": None,
-            "post": None,
+            "value": {"pre": None, "post": None},
+            "dutching": {"pre": None, "post": None},
         },
         "result": None,
         "feedback": None,
@@ -181,13 +198,13 @@ def ensure_race_payload(payload: dict[str, Any] | None, race_id: str | None = No
     if not merged["meta"].get("created_at"):
         merged["meta"]["created_at"] = now_jst_iso()
     merged["meta"]["updated_at"] = now_jst_iso()
-    if not isinstance(merged.get("simulation"), dict):
-        merged["simulation"] = {"pre": None, "post": None}
-    else:
-        merged["simulation"] = {
-            "pre": merged["simulation"].get("pre"),
-            "post": merged["simulation"].get("post"),
-        }
+    simulation = merged.get("simulation") if isinstance(merged.get("simulation"), dict) else {}
+    value = simulation.get("value") if isinstance(simulation.get("value"), dict) else {}
+    dutching = simulation.get("dutching") if isinstance(simulation.get("dutching"), dict) else {}
+    merged["simulation"] = {
+        "value": {"pre": value.get("pre"), "post": value.get("post")},
+        "dutching": {"pre": dutching.get("pre"), "post": dutching.get("post")},
+    }
     for key in REQUIRED_TOP_LEVEL_KEYS:
         merged.setdefault(key, base.get(key))
     return merged

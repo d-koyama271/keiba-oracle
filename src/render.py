@@ -79,7 +79,10 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         if horse["horse_number"] in result_lookup
     ]
 
-    simulation_pre = simulation.get("pre")
+    value_simulation = simulation.get("value") or {}
+    dutching_simulation = simulation.get("dutching") or {}
+    value_pre = value_simulation.get("pre")
+    dutching_pre = dutching_simulation.get("pre")
     custom_simulation_horses = [
         {
             "horse_number": horse["horse_number"],
@@ -90,7 +93,7 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         if horse.get("prediction") and horse.get("win_odds") is not None
     ]
     custom_simulation_data = {
-        "stake_unit": int((simulation_pre or {}).get("stake_unit") or 100),
+        "stake_unit": int((value_pre or dutching_pre or {}).get("stake_unit") or 100),
         "horses": custom_simulation_horses,
     }
 
@@ -98,8 +101,10 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "race": race,
         "prediction": prediction,
-        "simulation_pre": simulation_pre,
-        "simulation_post": simulation.get("post"),
+        "simulation_value_pre": value_pre,
+        "simulation_value_post": value_simulation.get("post"),
+        "simulation_dutching_pre": dutching_pre,
+        "simulation_dutching_post": dutching_simulation.get("post"),
         "result": result,
         "feedback": feedback,
         "horse_rows": horse_rows,

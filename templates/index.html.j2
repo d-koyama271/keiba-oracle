@@ -56,7 +56,7 @@
           </tr>
         </thead>
         <tbody>
-          {% for race in races %}
+{% for race in races %}
           <tr>
             <td>{{ race.date }}</td>
             <td>{{ race.track }}</td>
@@ -64,11 +64,11 @@
             <td>{{ race.status }}</td>
             <td><a href="{{ race.href }}">開く</a></td>
           </tr>
-          {% else %}
+{% else %}
           <tr>
             <td colspan="5">公開済みレースはまだありません。</td>
           </tr>
-          {% endfor %}
+{% endfor %}
         </tbody>
       </table>
     </div>
