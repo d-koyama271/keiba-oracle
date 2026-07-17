@@ -35,6 +35,8 @@ RACE_LIST_SUB_URL = "https://race.netkeiba.com/top/race_list_sub.html?kaisai_dat
 SHUTUBA_URL = "https://race.netkeiba.com/race/shutuba.html?race_id={race_id}"
 RESULT_URL = "https://race.netkeiba.com/race/result.html?race_id={race_id}"
 HORSE_HISTORY_HEADERS = {"日付", "開催", "距離", "着順"}
+DISTANCE_BAND_METERS = 200
+JRA_TRACK_CODES = {f"{code:02d}" for code in range(1, 11)}
 REQUEST_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
@@ -175,18 +177,229 @@ def parse_track_from_holding(holding_text: str) -> str:
 
 def history_race_id(row_node: Any) -> str | None:
     for link in row_node.find_all("a", href=True):
-        match = re.search(r"/race/(\d{12})/?(?:$|[?#])", link["href"])
+        match = re.search(r"/race/([0-9A-Za-z]+)/?(?:$|[?#])", link["href"])
         if match:
             return match.group(1)
     return None
 
 
-def summarize_record(runs: list[dict[str, Any]]) -> str:
-    if not runs:
-        return "該当なし"
-    wins = sum(1 for run in runs if run.get("finish_position") == 1)
-    places = sum(1 for run in runs if (run.get("finish_position") or 99) <= 3)
-    return f"{len(runs)}戦{wins}勝{places}連対"
+def normalize_weather(value: Any) -> str | None:
+    text = normalize_space(value)
+    if not text:
+        return None
+    if "雪" in text:
+        return "snow"
+    if "雨" in text:
+        return "rain"
+    if "曇" in text:
+        return "cloudy"
+    if "晴" in text:
+        return "sunny"
+    return None
+
+
+def normalize_going(value: Any) -> str | None:
+    text = normalize_space(value)
+    if not text:
+        return None
+    if "不良" in text:
+        return "不良"
+    if "稍重" in text or text == "稍":
+        return "稍重"
+    if "重" in text:
+        return "重"
+    if "良" in text:
+        return "良"
+    return text
+
+
+def normalize_class_grade(value: Any, soup: BeautifulSoup | None = None) -> str:
+    if soup:
+        icon_grades = {
+            "Icon_GradeType1": "G1",
+            "Icon_GradeType2": "G2",
+            "Icon_GradeType3": "G3",
+            "Icon_GradeType4": "Listed",
+            "Icon_GradeType5": "Open",
+        }
+        for class_name, grade in icon_grades.items():
+            if soup.select_one(f".RaceName .{class_name}"):
+                return grade
+
+    text = normalize_space(value).upper()
+    text = (
+        text.replace("Ｇ", "G")
+        .replace("１", "1")
+        .replace("２", "2")
+        .replace("３", "3")
+        .replace("Ⅰ", "I")
+        .replace("Ⅱ", "II")
+        .replace("Ⅲ", "III")
+    )
+    if re.search(r"(?:G|JPN)\s*(?:1|I)(?!I)", text):
+        return "G1"
+    if re.search(r"(?:G|JPN)\s*(?:2|II)(?!I)", text):
+        return "G2"
+    if re.search(r"(?:G|JPN)\s*(?:3|III)", text):
+        return "G3"
+    if "リステッド" in text or "LISTED" in text or re.search(r"\(L\)", text):
+        return "Listed"
+    if "オープン" in text or re.search(r"\(OP\)", text):
+        return "Open"
+    if "3勝クラス" in text or "1600万下" in text:
+        return "3-win"
+    if "2勝クラス" in text or "1000万下" in text:
+        return "2-win"
+    if "1勝クラス" in text or "500万下" in text:
+        return "1-win"
+    if "未勝利" in text:
+        return "Maiden"
+    if "新馬" in text:
+        return "Newcomer"
+    return "Other"
+
+
+def parse_race_time(value: Any) -> tuple[str | None, float | None]:
+    text = normalize_space(value)
+    match = re.fullmatch(r"(\d+):([0-5]\d(?:\.\d{1,2})?)", text)
+    if not match:
+        return None, None
+    seconds = int(match.group(1)) * 60 + float(match.group(2))
+    return text, round(seconds, 2)
+
+
+def parse_body_weight(value: Any) -> tuple[int | None, int | None]:
+    text = normalize_space(value)
+    match = re.fullmatch(r"(\d+)(?:\(([+-]?\d+)\))?", text)
+    if not match:
+        return None, None
+    body_weight = int(match.group(1))
+    change = int(match.group(2)) if match.group(2) is not None else None
+    return body_weight, change
+
+
+def parse_history_run(row: dict[str, Any]) -> dict[str, Any]:
+    distance, surface = parse_distance_surface(row.get("距離", ""))
+    race_time, race_time_seconds = parse_race_time(row.get("タイム"))
+    body_weight, body_weight_change = parse_body_weight(row.get("馬体重"))
+    class_name = normalize_space(row.get("レース名")) or None
+    return {
+        "race_id": history_race_id(row["_row"]),
+        "date": normalize_space(row.get("日付")).replace("/", "-"),
+        "track": parse_track_from_holding(row.get("開催", "")),
+        "race_number": parse_int(row.get("R")),
+        "weather": normalize_space(row.get("天気")) or None,
+        "distance": distance,
+        "surface": surface,
+        "going": normalize_going(row.get("馬場")),
+        "field_size": parse_int(row.get("頭数")),
+        "frame_number": parse_int(row.get("枠番")),
+        "horse_number": parse_int(row.get("馬番")),
+        "win_odds": parse_float(row.get("オッズ")),
+        "popularity": parse_int(row.get("人気")),
+        "finish_position": parse_finish_position(row.get("着順")),
+        "jockey": normalize_space(row.get("騎手")) or None,
+        "weight_carried": parse_float(row.get("斤量")),
+        "race_time": race_time,
+        "race_time_seconds": race_time_seconds,
+        "margin": parse_float(row.get("着差")),
+        "passing_order": normalize_space(row.get("通過")) or None,
+        "pace": normalize_space(row.get("ペース")) or None,
+        "last3f": parse_float(row.get("上り")),
+        "body_weight": body_weight,
+        "body_weight_change": body_weight_change,
+        "class_name": class_name,
+        "class_grade": normalize_class_grade(class_name),
+    }
+
+
+def is_jra_history(run: dict[str, Any]) -> bool:
+    race_id = run.get("race_id")
+    return bool(
+        isinstance(race_id, str)
+        and re.fullmatch(r"\d{12}", race_id)
+        and race_id[4:6] in JRA_TRACK_CODES
+    )
+
+
+def record_summary(runs: list[dict[str, Any]]) -> dict[str, Any]:
+    finishes = [run["finish_position"] for run in runs if isinstance(run.get("finish_position"), int)]
+    return {
+        "runs": len(runs),
+        "wins": sum(finish == 1 for finish in finishes),
+        "top3": sum(finish <= 3 for finish in finishes),
+        "average_finish_position": round(sum(finishes) / len(finishes), 4) if finishes else None,
+    }
+
+
+def build_career_summaries(
+    all_runs: list[dict[str, Any]],
+    current_race: dict[str, Any],
+    current_jockey: str | None,
+) -> dict[str, Any]:
+    jra_runs = [run for run in all_runs if is_jra_history(run)]
+    current_track = current_race.get("track")
+    current_surface = current_race.get("surface")
+    current_distance = parse_int(current_race.get("distance"))
+    current_going = normalize_going(current_race.get("going"))
+    current_weather = normalize_weather(current_race.get("weather"))
+    current_class = current_race.get("class_grade")
+
+    track_runs = [
+        run
+        for run in jra_runs
+        if run.get("track") == current_track and run.get("surface") == current_surface
+    ]
+    surface_runs = [run for run in jra_runs if run.get("surface") == current_surface]
+    distance_min = current_distance - DISTANCE_BAND_METERS if current_distance is not None else None
+    distance_max = current_distance + DISTANCE_BAND_METERS if current_distance is not None else None
+    distance_runs = [
+        run
+        for run in surface_runs
+        if distance_min is not None
+        and distance_max is not None
+        and run.get("distance") is not None
+        and distance_min <= run["distance"] <= distance_max
+    ]
+    going_runs = [
+        run
+        for run in surface_runs
+        if current_going is not None and normalize_going(run.get("going")) == current_going
+    ]
+    weather_runs = [
+        run
+        for run in surface_runs
+        if current_weather is not None and normalize_weather(run.get("weather")) == current_weather
+    ]
+    class_runs = [
+        run
+        for run in jra_runs
+        if current_class not in (None, "Other") and run.get("class_grade") == current_class
+    ]
+    jockey_runs = [
+        run
+        for run in jra_runs
+        if current_jockey and normalize_space(run.get("jockey")) == normalize_space(current_jockey)
+    ]
+
+    distance_record = {
+        "surface": current_surface,
+        "distance_min": distance_min,
+        "distance_max": distance_max,
+        **record_summary(distance_runs),
+    }
+    return {
+        "overall_record": record_summary(jra_runs),
+        "current_track_record": record_summary(track_runs),
+        "current_surface_record": record_summary(surface_runs),
+        "current_distance_band_record": distance_record,
+        "current_going_record": record_summary(going_runs),
+        "current_weather_record": record_summary(weather_runs) if weather_runs else None,
+        "current_class_record": (
+            record_summary(class_runs) if current_class not in (None, "Other") else None
+        ),
+        "current_jockey_combo_record": record_summary(jockey_runs),
+    }
 
 
 def running_style_summary(past_runs: list[dict[str, Any]]) -> str:
@@ -214,14 +427,14 @@ def build_horse_summaries(
     horse: dict[str, Any],
     current_race: dict[str, Any],
     past_runs: list[dict[str, Any]],
+    career_summaries: dict[str, Any],
     last_run_jockey: str | None,
 ) -> None:
     horse["past_runs"] = past_runs
+    horse["career_summaries"] = career_summaries
     last_run = past_runs[0] if past_runs else None
     current_distance = parse_int(current_race.get("distance"))
     current_surface = current_race.get("surface")
-    current_track = current_race.get("track")
-    current_going = current_race.get("going")
 
     if last_run:
         distance_delta = (current_distance or 0) - (last_run.get("distance") or 0)
@@ -253,13 +466,6 @@ def build_horse_summaries(
         horse["weight_change_from_last_run"] = None
         horse["jockey_change"] = "不明"
 
-    same_course = [run for run in past_runs if run.get("track") == current_track and run.get("surface") == current_surface]
-    same_distance = [run for run in past_runs if run.get("distance") == current_distance]
-    same_going = [run for run in past_runs if run.get("going") == current_going]
-
-    horse["same_course_record_summary"] = summarize_record(same_course)
-    horse["same_distance_record_summary"] = summarize_record(same_distance)
-    horse["going_record_summary"] = summarize_record(same_going)
     horse["running_style_summary"] = running_style_summary(past_runs)
 
     recent_finishes = [f"{run['finish_position']}着" for run in past_runs[:3] if run.get("finish_position")]
@@ -284,6 +490,7 @@ def parse_race_overview(html: str, race_id: str, target_date: str, odds_referenc
     start_time_match = re.search(r"(\d{1,2}:\d{2})", detail_text)
     distance_match = re.search(r"(芝|ダ|障)\s*([0-9]{3,4})m", detail_text)
     going_match = re.search(r"馬場[:：]\s*([^\s/]+)", detail_text)
+    weather_match = re.search(r"(?:天候|天気)[:：]\s*([^\s/]+)", detail_text)
 
     surface = None
     distance = None
@@ -299,7 +506,9 @@ def parse_race_overview(html: str, race_id: str, target_date: str, odds_referenc
         "start_time": start_time_match.group(1) if start_time_match else None,
         "distance": distance,
         "surface": surface,
-        "going": going_match.group(1) if going_match else None,
+        "going": normalize_going(going_match.group(1)) if going_match else None,
+        "weather": weather_match.group(1) if weather_match else None,
+        "class_grade": normalize_class_grade(f"{race_name} {detail_text}", soup),
         "source_url": SHUTUBA_URL.format(race_id=race_id),
         "odds_captured_at": None,
         "odds_reference_minutes_before_start": odds_reference_minutes,
@@ -310,10 +519,13 @@ def parse_horse_history(
     session: requests.Session,
     horse_url: str,
     current_race_id: str,
-) -> tuple[list[dict[str, Any]], str | None]:
+    current_race: dict[str, Any],
+    current_jockey: str | None,
+) -> tuple[list[dict[str, Any]], dict[str, Any], str | None]:
+    empty_summaries = build_career_summaries([], current_race, current_jockey)
     horse_id_match = re.search(r"/horse/(?:result/)?(\d+)", horse_url)
     if not horse_id_match:
-        return [], None
+        return [], empty_summaries, None
 
     response = session.get(
         "https://db.netkeiba.com/horse/ajax_horse_results.html",
@@ -330,39 +542,23 @@ def parse_horse_history(
     soup = BeautifulSoup(payload.get("data", ""), "html.parser")
     table = find_history_table(soup)
     if table is None:
-        return [], None
+        return [], empty_summaries, None
 
-    candidates: list[tuple[dict[str, Any], str | None]] = []
+    all_runs: list[dict[str, Any]] = []
     for row in rows_from_table(table):
-        if history_race_id(row["_row"]) == current_race_id:
+        run = parse_history_run(row)
+        if run["race_id"] == current_race_id:
             continue
+        all_runs.append(run)
 
-        finish_position = parse_finish_position(row.get("着順"))
-        distance, surface = parse_distance_surface(row.get("距離", ""))
-        candidates.append(
-            (
-                {
-                    "date": normalize_space(row.get("日付")).replace("/", "-"),
-                    "track": parse_track_from_holding(row.get("開催", "")),
-                    "distance": distance,
-                    "surface": surface,
-                    "going": row.get("馬場"),
-                    "finish_position": finish_position,
-                    "margin": parse_float(row.get("着差")),
-                    "passing_order": row.get("通過"),
-                    "last3f": parse_float(row.get("上り")),
-                    "weight_carried": parse_float(row.get("斤量")),
-                    "class_name": row.get("レース名"),
-                },
-                row.get("騎手"),
-            )
-        )
-
-    candidates.sort(key=lambda item: item[0].get("date") or "", reverse=True)
-    selected = candidates[:5]
-    runs = [run for run, _ in selected]
-    previous_jockey = selected[0][1] if selected else None
-    return runs, previous_jockey
+    all_runs.sort(key=lambda run: run.get("date") or "", reverse=True)
+    past_runs = all_runs[:5]
+    previous_jockey = past_runs[0].get("jockey") if past_runs else None
+    return (
+        past_runs,
+        build_career_summaries(all_runs, current_race, current_jockey),
+        previous_jockey,
+    )
 
 
 def parse_horses(
@@ -402,13 +598,20 @@ def parse_horses(
         }
 
         past_runs: list[dict[str, Any]] = []
+        career_summaries = build_career_summaries([], current_race, horse.get("jockey"))
         last_run_jockey = None
         if horse_url:
             try:
-                past_runs, last_run_jockey = parse_horse_history(session, horse_url, current_race_id)
+                past_runs, career_summaries, last_run_jockey = parse_horse_history(
+                    session,
+                    horse_url,
+                    current_race_id,
+                    current_race,
+                    horse.get("jockey"),
+                )
             except Exception:  # noqa: BLE001
                 past_runs, last_run_jockey = [], None
-        build_horse_summaries(horse, current_race, past_runs, last_run_jockey)
+        build_horse_summaries(horse, current_race, past_runs, career_summaries, last_run_jockey)
         horses.append(horse)
 
     horses.sort(key=lambda item: item["horse_number"])

@@ -135,6 +135,10 @@ python src/run_post.py --date 2026-04-14
 }
 ```
 
+`schema_version` は `3` です。`race` には取得時点の `weather` と正規化した `class_grade` を保存します。各馬の `past_runs` は対象レース自身を除外した直近5走で、走破タイム、ペース、馬体重、当時の人気・オッズなどの詳細を含みます。
+
+馬成績のAJAXレスポンスに含まれる全JRA履歴はJSONへ保存せず、競馬場・surface・距離±200m・馬場・天候・クラス・騎手別の `career_summaries` に集計します。季節・枠番・馬番別集計や全履歴配列は生成しません。
+
 ## ジョブの流れ
 
 `run_pre.py`

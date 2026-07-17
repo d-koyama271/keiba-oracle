@@ -63,7 +63,7 @@ def make_payload(rows: list[tuple[int, float, float]]) -> dict:
     return {
         "meta": {
             "race_id": "test-race",
-            "schema_version": 2,
+            "schema_version": 3,
             "created_at": "2026-01-01T00:00:00+09:00",
             "updated_at": "2026-01-01T00:00:00+09:00",
         },

@@ -46,9 +46,10 @@ def build_mock_prediction(payload: dict[str, Any]) -> dict[str, Any]:
         if recent_best is not None:
             score += max(0.0, 5.0 - min(float(recent_best), 5.0)) / 3.0
             reasons.append(f"近走最高{recent_best}着")
-        if horse.get("same_distance_record_summary") and horse["same_distance_record_summary"] != "該当なし":
+        distance_record = (horse.get("career_summaries") or {}).get("current_distance_band_record") or {}
+        if distance_record.get("runs", 0) > 0:
             score += 0.3
-            reasons.append("同距離実績")
+            reasons.append("近似距離実績")
 
         scored.append(
             (

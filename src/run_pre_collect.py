@@ -14,6 +14,7 @@ from collect import (
     discover_race_ids,
     fetch_html,
     find_entry_table,
+    normalize_class_grade,
     parse_race_overview,
 )
 from predict import build_prediction_chat_input
@@ -46,28 +47,7 @@ def start_time_minutes(value: str | None) -> int:
 
 
 def grade_rank(race_name: str | None, soup: BeautifulSoup | None = None) -> int:
-    if soup:
-        for grade_number, rank in ((1, 3), (2, 2), (3, 1)):
-            if soup.select_one(f".RaceName .Icon_GradeType{grade_number}"):
-                return rank
-
-    text = (race_name or "").upper()
-    text = (
-        text.replace("Ｇ", "G")
-        .replace("１", "1")
-        .replace("２", "2")
-        .replace("３", "3")
-        .replace("Ⅰ", "I")
-        .replace("Ⅱ", "II")
-        .replace("Ⅲ", "III")
-    )
-    if re.search(r"G\s*(1|I)(?!I)", text):
-        return 3
-    if re.search(r"G\s*(2|II)(?!I)", text):
-        return 2
-    if re.search(r"G\s*(3|III)", text):
-        return 1
-    return 0
+    return {"G1": 3, "G2": 2, "G3": 1}.get(normalize_class_grade(race_name, soup), 0)
 
 
 def select_default_races(config: dict) -> tuple[str, list[dict], str]:
