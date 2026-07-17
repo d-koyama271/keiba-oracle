@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>keiba-oracle</title>
+  <title>中央競馬 予想レース一覧 | keiba-oracle</title>
   <style>
     body {
       margin: 0;
@@ -27,6 +27,9 @@
       width: 100%;
       border-collapse: collapse;
     }
+    .table-scroll {
+      overflow-x: auto;
+    }
     th, td {
       text-align: left;
       padding: 12px 8px;
@@ -44,7 +47,8 @@
 <body>
   <main>
     <div class="panel">
-      <h1>中央競馬 11R 一覧</h1>
+      <h1>中央競馬 予想レース一覧</h1>
+      <div class="table-scroll">
       <table>
         <thead>
           <tr>
@@ -61,7 +65,7 @@
             <td>{{ race.date }}</td>
             <td>{{ race.track }}</td>
             <td>{{ race.race_name }}</td>
-            <td>{{ race.status }}</td>
+            <td>{{ race.status_label }}</td>
             <td><a href="{{ race.href }}">開く</a></td>
           </tr>
 {% else %}
@@ -71,6 +75,7 @@
 {% endfor %}
         </tbody>
       </table>
+      </div>
     </div>
   </main>
 </body>

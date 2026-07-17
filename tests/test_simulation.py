@@ -411,8 +411,25 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
             "期待値重視方式の購入結果",
             "ダッチング方式の購入結果",
             "予測評価",
+            "予想順位",
+            "レース結果",
         ):
             self.assertIn(text, rendered)
+        self.assertLess(
+            rendered.index("<h2>上位予測ダッチング方式</h2>"),
+            rendered.index("<h2>期待値重視方式</h2>"),
+        )
+        self.assertLess(
+            rendered.index("<h2>期待値重視方式</h2>"),
+            rendered.index("<h2>カスタム購入シミュレーション</h2>"),
+        )
+        self.assertIn('<option value="dutching" selected>上位予測ダッチング</option>', rendered)
+        self.assertIn('<label class="simulator-field value-field" hidden>最低EV', rendered)
+        self.assertIn('<label class="simulator-field dutching-field">最大対象頭数', rendered)
+        self.assertIn('<div class="status">結果生成</div>', rendered)
+        self.assertIn('<section class="result-section">', rendered)
+        self.assertIn('<div class="panel result-panel">', rendered)
+        self.assertNotIn("result_published", rendered)
         self.assertNotIn("フィードバック要約", rendered)
         match = re.search(
             r'<script type="application/json" id="custom-simulator-data">(.*?)</script>',
@@ -438,8 +455,12 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         payload["simulation"]["dutching"]["post"] = calculate_dutching_post(payload)
         rendered = build_environment(ROOT).get_template("race.html.j2").render(**build_race_context(payload))
 
-        value_section = rendered.split("<h2>期待値重視方式の購入結果</h2>", 1)[1].split('<div class="panel">', 1)[0]
-        dutching_section = rendered.split("<h2>ダッチング方式の購入結果</h2>", 1)[1].split('<div class="panel">', 1)[0]
+        value_section = rendered.split("<h2>期待値重視方式の購入結果</h2>", 1)[1].split(
+            '<div class="panel result-panel">', 1
+        )[0]
+        dutching_section = rendered.split("<h2>ダッチング方式の購入結果</h2>", 1)[1].split(
+            "</section>", 1
+        )[0]
         for section in (value_section, dutching_section):
             self.assertIn("購入なし", section)
             self.assertNotIn("ROI", section)

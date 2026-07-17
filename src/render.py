@@ -15,12 +15,23 @@ from utils import (
     log_job,
     parse_jst_datetime,
     parse_target_date,
+    public_dir,
     race_html_path,
     race_start_datetime,
     repo_root,
     stage_dir,
     track_name_from_race_id,
 )
+
+
+STATUS_LABELS = {
+    "prediction_only": "予想生成",
+    "result_published": "結果生成",
+}
+
+
+def status_label(status: str) -> str:
+    return STATUS_LABELS.get(status, "処理中")
 
 
 def build_odds_timing(race: dict[str, Any]) -> tuple[str, bool]:
@@ -54,7 +65,18 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
     evaluation = payload.get("evaluation")
     odds_timing_label, odds_recorded_after_start = build_odds_timing(race)
 
-    prediction_lookup = {item["horse_number"]: item for item in (prediction or {}).get("horses", [])}
+    prediction_horses = (prediction or {}).get("horses", [])
+    prediction_lookup = {item["horse_number"]: item for item in prediction_horses}
+    prediction_ranks = {
+        item["horse_number"]: rank
+        for rank, item in enumerate(
+            sorted(
+                prediction_horses,
+                key=lambda item: (-float(item["win_probability"]), item["horse_number"]),
+            ),
+            start=1,
+        )
+    }
     result_lookup = {item["horse_number"]: item["finish_position"] for item in (result or {}).get("horses", [])}
     payout_lookup = {item["horse_number"]: item["payout_per_100"] for item in (result or {}).get("payouts", {}).get("win", [])}
 
@@ -64,6 +86,7 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
             {
                 **horse,
                 "prediction": prediction_lookup.get(horse["horse_number"]),
+                "prediction_rank": prediction_ranks.get(horse["horse_number"]),
                 "finish_position": result_lookup.get(horse["horse_number"]),
                 "payout_per_100": payout_lookup.get(horse["horse_number"]),
             }
@@ -110,6 +133,7 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         "horse_rows": horse_rows,
         "result_rows": result_rows,
         "status": status,
+        "status_label": status_label(status),
         "odds_timing_label": odds_timing_label,
         "odds_recorded_after_start": odds_recorded_after_start,
         "custom_simulation_data": custom_simulation_data,
@@ -130,13 +154,23 @@ def render_site(
     output_dir = stage_dir(config, root)
     if output_dir.exists():
         shutil.rmtree(output_dir)
-    ensure_dir(output_dir / "races")
+    current_public_dir = public_dir(config, root)
+    if current_public_dir.exists():
+        shutil.copytree(current_public_dir, output_dir)
+    else:
+        ensure_dir(output_dir)
+
+    managed_races_dir = output_dir / "races"
+    if managed_races_dir.exists():
+        for managed_html in managed_races_dir.rglob("*.html"):
+            managed_html.unlink()
+    ensure_dir(managed_races_dir)
 
     race_files = list_race_files(config, race_date, root)
     index_rows = []
     for path in race_files:
         payload = load_race_json(path)
-        if not payload:
+        if not payload or not payload.get("prediction"):
             continue
         context = build_race_context(payload)
         race = payload["race"]
@@ -150,7 +184,7 @@ def render_site(
                 "date": race["date"],
                 "track": race["track"],
                 "race_name": race["race_name"],
-                "status": context["status"],
+                "status_label": context["status_label"],
                 "href": relative_path.as_posix(),
             }
         )
