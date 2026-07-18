@@ -78,7 +78,7 @@ $env:OPENAI_API_KEY="your_api_key"
 - `odds_reference_minutes_before_start`: 通常運用における推奨取得目標分数
 - `simulation.budget`: 両方式共通の 1 レース予算上限
 - `simulation.stake_unit`: 両方式共通の購入金額単位
-- `simulation.value.ev_threshold`: 期待値重視方式の最低 EV
+- `simulation.value.ev_threshold`: 期待値重視方式の最低 EV（既定値 1.0）
 - `simulation.value.kelly_fraction`: 期待値重視方式の fractional Kelly 係数
 - `simulation.dutching.*`: ダッチング方式の最大頭数、最低カバー確率、最低グループ期待値、的中時利益条件
 - `publish_mode`: `github_pages` を想定

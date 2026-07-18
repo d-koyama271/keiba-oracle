@@ -25,13 +25,77 @@ from utils import (
 
 
 STATUS_LABELS = {
-    "prediction_only": "予想生成",
-    "result_published": "結果生成",
+    "prediction_only": "予想公開",
+    "result_published": "結果公開",
 }
+SITE_BACKGROUND = "#f2f2f0"
+
+TOOLTIPS = {
+    "dutching_method": "AIの予測上位馬を複数選び、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。",
+    "coverage_probability": "選択した馬の1着確率を合計した値です。",
+    "group_expected_value": "選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。",
+    "minimum_ev": "1着確率と単勝オッズから計算した期待値について、購入対象とする最低ラインです。",
+    "kelly_fraction": "Kelly基準は、予測確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。",
+    "ev": "1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。",
+    "full_kelly": "予測確率とオッズからKelly基準で算出した、予算に対する購入割合です。Kelly係数を掛ける前の値で、係数1.0に相当します。",
+    "fractional_kelly": "Full KellyにKelly係数を掛けて抑制した購入割合です。係数0.5ならハーフケリーとなります。",
+    "minimum_payout": "選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。",
+    "minimum_profit": "選択した馬のうち、最も利益が低い馬が的中した場合の利益です。",
+    "expected_return": "各馬の予測確率を考慮した、平均的な払戻見込み額です。",
+}
+
+REJECTION_REASON_LABELS = {
+    "coverage_probability_below_threshold": "カバー確率が最低基準未満",
+    "group_expected_value_below_threshold": "グループ期待値が最低基準未満",
+    "minimum_profit_not_positive": "的中時の最低利益を確保できない",
+    "insufficient_budget_units": "予算が購入単位または選択頭数に対して不足",
+}
+UNKNOWN_REJECTION_REASON_LABEL = "条件を満たしていません"
 
 
 def status_label(status: str) -> str:
     return STATUS_LABELS.get(status, "処理中")
+
+
+def rejection_reason_text(reasons: list[str]) -> str:
+    if not reasons:
+        return "-"
+    return "、".join(
+        REJECTION_REASON_LABELS.get(reason, UNKNOWN_REJECTION_REASON_LABEL)
+        for reason in reasons
+    )
+
+
+def comparable_finish_position(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int) and value > 0:
+        return value
+    if isinstance(value, float) and value.is_integer() and value > 0:
+        return int(value)
+    return None
+
+
+def rank_comparison(prediction_rank: int | None, finish_position: Any) -> tuple[str, str]:
+    finish = comparable_finish_position(finish_position)
+    if prediction_rank is None or finish is None:
+        return "-", "comparison-neutral"
+    if finish < prediction_rank:
+        return f"{prediction_rank - finish}着上", "comparison-up"
+    if finish > prediction_rank:
+        return f"{finish - prediction_rank}着下", "comparison-down"
+    return "差なし", "comparison-neutral"
+
+
+def result_highlight_class(prediction_rank: int | None, finish_position: Any) -> str:
+    finish = comparable_finish_position(finish_position)
+    if prediction_rank == 1 and finish == 1:
+        return "prediction-hit"
+    if prediction_rank == 1:
+        return "prediction-top"
+    if finish == 1:
+        return "result-winner"
+    return ""
 
 
 def build_odds_timing(race: dict[str, Any]) -> tuple[str, bool]:
@@ -92,15 +156,30 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
             }
         )
 
-    result_rows = [
-        {
-            "horse_number": horse["horse_number"],
-            "finish_position": result_lookup.get(horse["horse_number"]),
-            "payout_per_100": payout_lookup.get(horse["horse_number"]),
-        }
-        for horse in sorted(payload.get("horses", []), key=lambda item: item["horse_number"])
-        if horse["horse_number"] in result_lookup
-    ]
+    result_rows = []
+    for horse in horse_rows:
+        if horse["horse_number"] not in result_lookup:
+            continue
+        finish_position = horse["finish_position"]
+        numeric_finish = comparable_finish_position(finish_position)
+        comparison_text, comparison_class = rank_comparison(
+            horse["prediction_rank"],
+            finish_position,
+        )
+        result_rows.append(
+            {
+                "horse_number": horse["horse_number"],
+                "horse_name": horse["horse_name"],
+                "prediction_rank": horse["prediction_rank"],
+                "win_probability": (horse["prediction"] or {}).get("win_probability"),
+                "finish_position": finish_position,
+                "finish_position_label": f"{numeric_finish}着" if numeric_finish is not None else (finish_position or "-"),
+                "comparison_text": comparison_text,
+                "comparison_class": comparison_class,
+                "row_class": result_highlight_class(horse["prediction_rank"], finish_position),
+                "payout_per_100": horse["payout_per_100"],
+            }
+        )
 
     value_simulation = simulation.get("value") or {}
     dutching_simulation = simulation.get("dutching") or {}
@@ -118,6 +197,10 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
     custom_simulation_data = {
         "stake_unit": int((value_pre or dutching_pre or {}).get("stake_unit") or 100),
         "horses": custom_simulation_horses,
+        "display": {
+            "rejection_reason_labels": REJECTION_REASON_LABELS,
+            "unknown_rejection_reason_label": UNKNOWN_REJECTION_REASON_LABEL,
+        },
     }
 
     status = "result_published" if result and evaluation else "prediction_only"
@@ -134,6 +217,9 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         "result_rows": result_rows,
         "status": status,
         "status_label": status_label(status),
+        "site_background": SITE_BACKGROUND,
+        "tooltips": TOOLTIPS,
+        "rejection_reason_text": rejection_reason_text,
         "odds_timing_label": odds_timing_label,
         "odds_recorded_after_start": odds_recorded_after_start,
         "custom_simulation_data": custom_simulation_data,
@@ -190,7 +276,7 @@ def render_site(
         )
 
     index_rows.sort(key=lambda item: (item["date"], item["track"]))
-    index_html = index_template.render(races=index_rows)
+    index_html = index_template.render(races=index_rows, site_background=SITE_BACKGROUND)
     (output_dir / "index.html").write_text(index_html, encoding="utf-8")
     return output_dir
 

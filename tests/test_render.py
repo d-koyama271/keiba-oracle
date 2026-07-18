@@ -10,7 +10,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from render import build_race_context, render_site, status_label  # noqa: E402
+from render import (  # noqa: E402
+    build_race_context,
+    rank_comparison,
+    rejection_reason_text,
+    result_highlight_class,
+    render_site,
+    status_label,
+)
 
 
 def make_payload(*, predicted: bool, track: str, date: str, name: str) -> dict:
@@ -57,9 +64,33 @@ def make_payload(*, predicted: bool, track: str, date: str, name: str) -> dict:
 
 class RenderTests(unittest.TestCase):
     def test_status_labels_do_not_expose_internal_values(self) -> None:
-        self.assertEqual(status_label("prediction_only"), "予想生成")
-        self.assertEqual(status_label("result_published"), "結果生成")
+        self.assertEqual(status_label("prediction_only"), "予想公開")
+        self.assertEqual(status_label("result_published"), "結果公開")
         self.assertEqual(status_label("unknown"), "処理中")
+
+    def test_rejection_reason_labels_do_not_expose_internal_values(self) -> None:
+        self.assertEqual(
+            rejection_reason_text(
+                [
+                    "coverage_probability_below_threshold",
+                    "minimum_profit_not_positive",
+                ]
+            ),
+            "カバー確率が最低基準未満、的中時の最低利益を確保できない",
+        )
+        self.assertEqual(rejection_reason_text(["unknown_reason"]), "条件を満たしていません")
+
+    def test_rank_comparison_uses_japanese_labels_and_ignores_non_numeric_finish(self) -> None:
+        self.assertEqual(rank_comparison(3, 1), ("2着上", "comparison-up"))
+        self.assertEqual(rank_comparison(2, 10), ("8着下", "comparison-down"))
+        self.assertEqual(rank_comparison(5, 5), ("差なし", "comparison-neutral"))
+        self.assertEqual(rank_comparison(2, "中止"), ("-", "comparison-neutral"))
+
+    def test_result_highlight_uses_explicit_priority(self) -> None:
+        self.assertEqual(result_highlight_class(1, 1), "prediction-hit")
+        self.assertEqual(result_highlight_class(1, 2), "prediction-top")
+        self.assertEqual(result_highlight_class(2, 1), "result-winner")
+        self.assertEqual(result_highlight_class(2, 2), "")
 
     def test_prediction_rank_ties_use_horse_number_without_reordering_rows(self) -> None:
         context = build_race_context(
@@ -112,14 +143,17 @@ class RenderTests(unittest.TestCase):
                 encoding="utf-8"
             )
             self.assertIn("中央競馬 予想レース一覧", index)
+            self.assertIn("background: #f2f2f0", index)
+            self.assertIn("background: #f2f2f0", race_html)
             self.assertIn("予想済み", index)
-            self.assertIn("予想生成", index)
+            self.assertIn("予想公開", index)
+            self.assertNotIn("予想生成", index)
             self.assertNotIn("未予想", index)
             self.assertNotIn("prediction_only", index)
             self.assertTrue((output / "assets" / "site.css").exists())
             self.assertFalse((output / stale.relative_to(public)).exists())
             self.assertFalse((output / "races" / "2026-01-02" / "tokyo_11r.html").exists())
-            self.assertIn('<div class="status">予想生成</div>', race_html)
+            self.assertIn('<div class="status">予想公開</div>', race_html)
             self.assertNotIn("prediction_only", race_html)
 
 

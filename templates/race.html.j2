@@ -1,3 +1,12 @@
+{% macro info_tooltip(term, key) -%}
+<span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="{{ term }}: {{ tooltips[key] }}" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">{{ tooltips[key] }}</span>
+</span>
+{%- endmacro %}
+{% macro explained_term(term, key) -%}
+<span class="term-with-tooltip"><span>{{ term }}</span>{{ info_tooltip(term, key) }}</span>
+{%- endmacro %}
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -21,7 +30,7 @@
     body {
       margin: 0;
       font-family: "Yu Gothic", "Hiragino Sans", sans-serif;
-      background: linear-gradient(180deg, #f8f5ef 0%, #efe6d8 100%);
+      background: {{ site_background }};
       color: var(--ink);
     }
     main {
@@ -97,6 +106,11 @@
       font-size: 13px;
       font-weight: 700;
     }
+    .simulator-field-label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
     .simulator-field input,
     .simulator-field select {
       width: 100%;
@@ -139,9 +153,72 @@
       font-weight: 700;
     }
     .table-scroll { overflow-x: auto; }
+    .term-with-tooltip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    .term-tooltip {
+      display: inline-flex;
+      align-items: center;
+    }
+    .term-tooltip .tooltip-trigger {
+      display: inline-grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      min-width: 18px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 13px;
+      line-height: 1;
+      cursor: help;
+    }
+    .term-tooltip .tooltip-trigger:hover,
+    .term-tooltip .tooltip-trigger:focus-visible {
+      color: var(--accent);
+      outline: 2px solid #9bb8ae;
+      outline-offset: 2px;
+    }
+    .tooltip-content {
+      position: fixed;
+      z-index: 100;
+      left: 50%;
+      bottom: 20px;
+      width: min(440px, calc(100vw - 32px));
+      box-sizing: border-box;
+      padding: 12px 14px;
+      border-radius: 9px;
+      background: #243b36;
+      color: #fff;
+      box-shadow: 0 12px 32px rgba(31, 37, 32, 0.24);
+      font-size: 13px;
+      font-weight: 400;
+      line-height: 1.6;
+      text-align: left;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 8px);
+      transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
+    }
+    .term-tooltip:hover .tooltip-content,
+    .tooltip-trigger:focus-visible + .tooltip-content,
+    .term-tooltip[data-open="true"] .tooltip-content {
+      visibility: visible;
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
     .result-section {
       margin-top: 40px;
-      padding: 24px 18px 2px;
+      padding: 24px 18px 20px;
       border-top: 5px solid var(--result-accent);
       border-radius: 14px;
       background: var(--result-bg);
@@ -159,6 +236,23 @@
     .result-panel h3 {
       color: var(--result-accent);
     }
+    .result-section .result-panel:last-child { margin-bottom: 0; }
+    .prediction-top { background: #e7f1ec; }
+    .result-winner { background: #e4eef3; }
+    .prediction-hit {
+      background: #fff1c9;
+      box-shadow: inset 4px 0 0 #d5a72e;
+    }
+    .comparison-up {
+      color: #2f6b63;
+      font-weight: 700;
+    }
+    .comparison-neutral { color: #5f6870; }
+    .comparison-down {
+      color: #8a5148;
+      font-weight: 700;
+    }
+    .result-table .comparison-cell { white-space: nowrap; }
     [hidden] { display: none !important; }
     @media (max-width: 640px) {
       main { padding: 20px 12px 40px; }
@@ -166,7 +260,11 @@
       th, td { padding: 8px 6px; }
       .result-section {
         margin-top: 28px;
-        padding: 18px 10px 1px;
+        padding: 18px 10px 12px;
+      }
+      .tooltip-content {
+        bottom: 12px;
+        width: calc(100vw - 24px);
       }
     }
   </style>
@@ -208,7 +306,7 @@
           </thead>
           <tbody>
             {% for horse in horse_rows %}
-            <tr>
+            <tr{% if horse.prediction_rank == 1 %} class="prediction-top"{% endif %}>
               <td>{{ horse.horse_number }}</td>
               <td>{{ horse.horse_name }}</td>
               <td>{{ horse.jockey or "-" }}</td>
@@ -229,17 +327,17 @@
     </div>
 
     <div class="panel">
-      <h2>上位予測ダッチング方式</h2>
+      <h2>{{ explained_term("上位予測ダッチング方式", "dutching_method") }}</h2>
       {% if simulation_dutching_pre %}
       <div class="metric-grid">
         <div><strong>予算</strong><br>{{ simulation_dutching_pre.budget }}円</div>
         <div><strong>購入単位</strong><br>{{ simulation_dutching_pre.stake_unit }}円</div>
         <div><strong>自動選択頭数</strong><br>{{ simulation_dutching_pre.selected_count }}頭</div>
-        <div><strong>カバー確率</strong><br>{{ "%.2f"|format(simulation_dutching_pre.coverage_probability * 100) }}%</div>
-        <div><strong>グループ期待値</strong><br>{{ "%.3f"|format(simulation_dutching_pre.group_expected_value) }}</div>
-        <div><strong>期待払戻額</strong><br>{{ "%.0f"|format(simulation_dutching_pre.expected_return) }}円</div>
-        <div><strong>最低払戻額</strong><br>{{ "%.0f"|format(simulation_dutching_pre.minimum_payout) }}円</div>
-        <div><strong>最低利益</strong><br>{{ "%.0f"|format(simulation_dutching_pre.minimum_profit) }}円</div>
+        <div><strong>{{ explained_term("カバー確率", "coverage_probability") }}</strong><br>{{ "%.2f"|format(simulation_dutching_pre.coverage_probability * 100) }}%</div>
+        <div><strong>{{ explained_term("グループ期待値", "group_expected_value") }}</strong><br>{{ "%.3f"|format(simulation_dutching_pre.group_expected_value) }}</div>
+        <div><strong>{{ explained_term("期待払戻額", "expected_return") }}</strong><br>{{ "%.0f"|format(simulation_dutching_pre.expected_return) }}円</div>
+        <div><strong>{{ explained_term("最低払戻額", "minimum_payout") }}</strong><br>{{ "%.0f"|format(simulation_dutching_pre.minimum_payout) }}円</div>
+        <div><strong>{{ explained_term("最低利益", "minimum_profit") }}</strong><br>{{ "%.0f"|format(simulation_dutching_pre.minimum_profit) }}円</div>
         <div><strong>合計購入額</strong><br>{{ simulation_dutching_pre.total_stake }}円</div>
         <div><strong>未使用予算</strong><br>{{ simulation_dutching_pre.unused_budget }}円</div>
       </div>
@@ -267,7 +365,7 @@
       <h3>頭数別比較</h3>
       <div class="table-scroll">
         <table>
-          <thead><tr><th>頭数</th><th>対象馬番</th><th>カバー確率</th><th>グループ期待値</th><th>最低払戻額</th><th>最低利益</th><th>判定</th><th>除外理由</th></tr></thead>
+          <thead><tr><th>頭数</th><th>対象馬番</th><th>{{ explained_term("カバー確率", "coverage_probability") }}</th><th>{{ explained_term("グループ期待値", "group_expected_value") }}</th><th>{{ explained_term("最低払戻額", "minimum_payout") }}</th><th>{{ explained_term("最低利益", "minimum_profit") }}</th><th>判定</th><th>除外理由</th></tr></thead>
           <tbody>
             {% for item in simulation_dutching_pre.evaluated_counts %}
             <tr{% if simulation_dutching_pre.selections and item.selection_count == simulation_dutching_pre.selected_count %} class="selected-row"{% endif %}>
@@ -280,7 +378,7 @@
               <td>
                 {% if simulation_dutching_pre.selections and item.selection_count == simulation_dutching_pre.selected_count %}採用{% elif item.eligible %}適格{% else %}除外{% endif %}
               </td>
-              <td>{{ item.rejection_reasons | join(", ") if item.rejection_reasons else "-" }}</td>
+              <td>{{ rejection_reason_text(item.rejection_reasons) }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -296,8 +394,8 @@
       {% if simulation_value_pre %}
       <div class="metric-grid">
         <div><strong>予算上限</strong><br>{{ simulation_value_pre.budget }}円</div>
-        <div><strong>最低EV</strong><br>{{ simulation_value_pre.settings.ev_threshold }}</div>
-        <div><strong>Kelly係数</strong><br>{{ simulation_value_pre.settings.kelly_fraction }}</div>
+        <div><strong>{{ explained_term("最低EV", "minimum_ev") }}</strong><br>{{ simulation_value_pre.settings.ev_threshold }}</div>
+        <div><strong>{{ explained_term("Kelly係数", "kelly_fraction") }}</strong><br>{{ simulation_value_pre.settings.kelly_fraction }}</div>
         <div><strong>購入単位</strong><br>{{ simulation_value_pre.stake_unit }}円</div>
         <div><strong>合計購入額</strong><br>{{ simulation_value_pre.total_stake }}円</div>
         <div><strong>未使用予算</strong><br>{{ simulation_value_pre.unused_budget }}円</div>
@@ -305,7 +403,7 @@
       {% if simulation_value_pre.selections %}
       <div class="table-scroll">
         <table>
-          <thead><tr><th>馬番</th><th>予測勝率</th><th>単勝オッズ</th><th>EV</th><th>Full Kelly</th><th>Fractional Kelly</th><th>購入額</th></tr></thead>
+          <thead><tr><th>馬番</th><th>予測勝率</th><th>単勝オッズ</th><th>{{ explained_term("EV", "ev") }}</th><th>{{ explained_term("Full Kelly", "full_kelly") }}</th><th>{{ explained_term("Fractional Kelly", "fractional_kelly") }}</th><th>購入額</th></tr></thead>
           <tbody>
             {% for item in simulation_value_pre.selections %}
             <tr>
@@ -341,23 +439,27 @@
           </select>
         </label>
         <label class="simulator-field">予算（円）
-          <input name="budget" type="number" min="{{ custom_simulation_data.stake_unit }}" step="1" value="{{ simulation_value_pre.budget }}" required>
+          <input name="budget" type="number" min="{{ custom_simulation_data.stake_unit }}" step="{{ custom_simulation_data.stake_unit }}" value="{{ simulation_value_pre.budget }}" required>
         </label>
-        <label class="simulator-field value-field" hidden>最低EV
-          <input name="ev_threshold" type="number" min="1" step="0.01" value="{{ simulation_value_pre.settings.ev_threshold }}">
-        </label>
-        <label class="simulator-field value-field" hidden>Kelly係数
-          <input name="kelly_fraction" type="number" min="0" max="1" step="0.05" value="{{ simulation_value_pre.settings.kelly_fraction }}">
-        </label>
+        <div class="simulator-field value-field" hidden>
+          <span class="simulator-field-label"><label for="custom-ev-threshold">最低EV</label>{{ info_tooltip("最低EV", "minimum_ev") }}</span>
+          <input id="custom-ev-threshold" name="ev_threshold" type="number" min="1" step="0.01" value="{{ simulation_value_pre.settings.ev_threshold }}">
+        </div>
+        <div class="simulator-field value-field" hidden>
+          <span class="simulator-field-label"><label for="custom-kelly-fraction">Kelly係数</label>{{ info_tooltip("Kelly係数", "kelly_fraction") }}</span>
+          <input id="custom-kelly-fraction" name="kelly_fraction" type="number" min="0" max="1" step="0.05" value="{{ simulation_value_pre.settings.kelly_fraction }}">
+        </div>
         <label class="simulator-field dutching-field">最大対象頭数
           <input name="max_selection_count" type="number" min="1" max="{{ custom_simulation_data.horses | length }}" step="1" value="{{ simulation_dutching_pre.settings.max_selection_count }}">
         </label>
-        <label class="simulator-field dutching-field">最低カバー確率
-          <input name="min_coverage_probability" type="number" min="0" max="1" step="0.01" value="{{ simulation_dutching_pre.settings.min_coverage_probability }}">
-        </label>
-        <label class="simulator-field dutching-field">最低グループ期待値
-          <input name="min_group_expected_value" type="number" min="0" step="0.01" value="{{ simulation_dutching_pre.settings.min_group_expected_value }}">
-        </label>
+        <div class="simulator-field dutching-field">
+          <span class="simulator-field-label"><label for="custom-min-coverage">最低カバー確率</label>{{ info_tooltip("カバー確率", "coverage_probability") }}</span>
+          <input id="custom-min-coverage" name="min_coverage_probability" type="number" min="0" max="1" step="0.01" value="{{ simulation_dutching_pre.settings.min_coverage_probability }}">
+        </div>
+        <div class="simulator-field dutching-field">
+          <span class="simulator-field-label"><label for="custom-min-group-ev">最低グループ期待値</label>{{ info_tooltip("グループ期待値", "group_expected_value") }}</span>
+          <input id="custom-min-group-ev" name="min_group_expected_value" type="number" min="0" step="0.01" value="{{ simulation_dutching_pre.settings.min_group_expected_value }}">
+        </div>
         <label class="simulator-field dutching-field">頭数
           <select name="fixed_selection_count">
             <option value="0">自動</option>
@@ -382,21 +484,21 @@
         </div>
         <div class="metric-grid" id="custom-dutching-metrics" hidden>
           <div><strong>選択頭数</strong><br><span id="custom-dutching-count">0頭</span></div>
-          <div><strong>カバー確率</strong><br><span id="custom-dutching-coverage">0%</span></div>
-          <div><strong>グループ期待値</strong><br><span id="custom-dutching-ev">0</span></div>
-          <div><strong>期待払戻額</strong><br><span id="custom-dutching-return">0円</span></div>
-          <div><strong>最低払戻額</strong><br><span id="custom-dutching-min-payout">0円</span></div>
-          <div><strong>最低利益</strong><br><span id="custom-dutching-min-profit">0円</span></div>
+          <div><strong>{{ explained_term("カバー確率", "coverage_probability") }}</strong><br><span id="custom-dutching-coverage">0%</span></div>
+          <div><strong>{{ explained_term("グループ期待値", "group_expected_value") }}</strong><br><span id="custom-dutching-ev">0</span></div>
+          <div><strong>{{ explained_term("期待払戻額", "expected_return") }}</strong><br><span id="custom-dutching-return">0円</span></div>
+          <div><strong>{{ explained_term("最低払戻額", "minimum_payout") }}</strong><br><span id="custom-dutching-min-payout">0円</span></div>
+          <div><strong>{{ explained_term("最低利益", "minimum_profit") }}</strong><br><span id="custom-dutching-min-profit">0円</span></div>
         </div>
         <div class="table-scroll" id="custom-value-table" hidden>
-          <table><thead><tr><th>馬番</th><th>予測勝率</th><th>単勝オッズ</th><th>EV</th><th>Full Kelly</th><th>Fractional Kelly</th><th>購入額</th></tr></thead><tbody id="custom-value-rows"></tbody></table>
+          <table><thead><tr><th>馬番</th><th>予測勝率</th><th>単勝オッズ</th><th>{{ explained_term("EV", "ev") }}</th><th>{{ explained_term("Full Kelly", "full_kelly") }}</th><th>{{ explained_term("Fractional Kelly", "fractional_kelly") }}</th><th>購入額</th></tr></thead><tbody id="custom-value-rows"></tbody></table>
         </div>
         <div class="table-scroll" id="custom-dutching-table" hidden>
           <table><thead><tr><th>馬番</th><th>予測勝率</th><th>単勝オッズ</th><th>購入額</th><th>的中時払戻額</th><th>的中時利益</th></tr></thead><tbody id="custom-dutching-rows"></tbody></table>
         </div>
         <div id="custom-dutching-evaluations" hidden>
           <h3>頭数別比較</h3>
-          <div class="table-scroll"><table><thead><tr><th>頭数</th><th>対象馬番</th><th>カバー確率</th><th>グループ期待値</th><th>最低払戻額</th><th>最低利益</th><th>判定</th><th>除外理由</th></tr></thead><tbody id="custom-dutching-evaluation-rows"></tbody></table></div>
+          <div class="table-scroll"><table><thead><tr><th>頭数</th><th>対象馬番</th><th>{{ explained_term("カバー確率", "coverage_probability") }}</th><th>{{ explained_term("グループ期待値", "group_expected_value") }}</th><th>{{ explained_term("最低払戻額", "minimum_payout") }}</th><th>{{ explained_term("最低利益", "minimum_profit") }}</th><th>判定</th><th>除外理由</th></tr></thead><tbody id="custom-dutching-evaluation-rows"></tbody></table></div>
         </div>
       </div>
     </div>
@@ -605,6 +707,9 @@
           return;
         }
         const data = JSON.parse(document.getElementById("custom-simulator-data").textContent);
+        const rejectionReasonText = (reasons) => reasons.length
+          ? reasons.map((reason) => data.display.rejection_reason_labels[reason] || data.display.unknown_rejection_reason_label).join("、")
+          : "-";
         const form = document.getElementById("custom-simulator-form");
         const error = document.getElementById("custom-simulator-error");
         const empty = document.getElementById("custom-simulator-empty");
@@ -715,7 +820,7 @@
             addCell(row, `${yen.format(item.minimum_payout)}円`);
             addCell(row, `${yen.format(item.minimum_profit)}円`);
             addCell(row, item.eligible ? "適格" : "除外");
-            addCell(row, item.rejection_reasons.length ? item.rejection_reasons.join(", ") : "-");
+            addCell(row, rejectionReasonText(item.rejection_reasons));
             evaluationRows.appendChild(row);
           }
         };
@@ -786,11 +891,19 @@
       <h2>実結果</h2>
       <p><strong>着順:</strong> {{ result.finish_order | join(" - ") }}</p>
       <div class="table-scroll">
-        <table>
-          <thead><tr><th>馬番</th><th>着順</th><th>単勝払戻</th></tr></thead>
+        <table class="result-table">
+          <thead><tr><th>馬番</th><th>馬名</th><th>予測順位</th><th>1着確率</th><th>実着順</th><th>予想との差</th><th>単勝払戻</th></tr></thead>
           <tbody>
             {% for item in result_rows %}
-            <tr><td>{{ item.horse_number }}</td><td>{{ item.finish_position }}</td><td>{{ item.payout_per_100 if item.payout_per_100 is not none else "-" }}</td></tr>
+            <tr{% if item.row_class %} class="{{ item.row_class }}"{% endif %}>
+              <td>{{ item.horse_number }}</td>
+              <td>{{ item.horse_name }}</td>
+              <td>{{ item.prediction_rank ~ "位" if item.prediction_rank is not none else "-" }}</td>
+              <td>{{ "%.1f"|format(item.win_probability * 100) ~ "%" if item.win_probability is not none else "-" }}</td>
+              <td>{{ item.finish_position_label }}</td>
+              <td class="comparison-cell"><span class="{{ item.comparison_class }}">{{ item.comparison_text }}</span></td>
+              <td>{{ item.payout_per_100 ~ "円" if item.payout_per_100 is not none else "-" }}</td>
+            </tr>
             {% endfor %}
           </tbody>
         </table>
@@ -856,5 +969,38 @@
     {% endif %}
 
   </main>
+  <script>
+    (() => {
+      const tooltipTriggers = Array.from(document.querySelectorAll(".tooltip-trigger"));
+      const closeTooltips = () => {
+        for (const trigger of tooltipTriggers) {
+          trigger.closest(".term-tooltip").removeAttribute("data-open");
+          trigger.setAttribute("aria-expanded", "false");
+        }
+      };
+
+      for (const trigger of tooltipTriggers) {
+        trigger.addEventListener("click", (event) => {
+          event.stopPropagation();
+          const tooltip = trigger.closest(".term-tooltip");
+          const shouldOpen = tooltip.getAttribute("data-open") !== "true";
+          closeTooltips();
+          if (shouldOpen) {
+            tooltip.setAttribute("data-open", "true");
+            trigger.setAttribute("aria-expanded", "true");
+          }
+        });
+      }
+      document.addEventListener("click", closeTooltips);
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeTooltips();
+          if (document.activeElement?.classList.contains("tooltip-trigger")) {
+            document.activeElement.blur();
+          }
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

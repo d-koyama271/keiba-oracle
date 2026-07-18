@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>keiba-oracle</title>
+  <title>中央競馬 予想レース一覧 | keiba-oracle</title>
   <style>
     body {
       margin: 0;
       font-family: "Yu Gothic", "Hiragino Sans", sans-serif;
-      background: linear-gradient(180deg, #f7f3eb 0%, #ebdfcd 100%);
+      background: #f2f2f0;
       color: #1f2520;
     }
     main {
@@ -27,6 +27,9 @@
       width: 100%;
       border-collapse: collapse;
     }
+    .table-scroll {
+      overflow-x: auto;
+    }
     th, td {
       text-align: left;
       padding: 12px 8px;
@@ -44,7 +47,8 @@
 <body>
   <main>
     <div class="panel">
-      <h1>中央競馬 11R 一覧</h1>
+      <h1>中央競馬 予想レース一覧</h1>
+      <div class="table-scroll">
       <table>
         <thead>
           <tr>
@@ -58,11 +62,16 @@
         <tbody>
 
           <tr>
-            <td colspan="5">公開済みレースはまだありません。</td>
+            <td>2026-07-12</td>
+            <td>福島</td>
+            <td>七夕賞</td>
+            <td>結果公開</td>
+            <td><a href="races/2026-07-12/fukushima_11r.html">開く</a></td>
           </tr>
 
         </tbody>
       </table>
+      </div>
     </div>
   </main>
 </body>

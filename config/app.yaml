@@ -14,7 +14,7 @@ simulation:
   budget: 3000
   stake_unit: 100
   value:
-    ev_threshold: 1.05
+    ev_threshold: 1.0
     kelly_fraction: 0.5
   dutching:
     max_selection_count: 5

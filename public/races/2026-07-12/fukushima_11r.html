@@ -1,0 +1,1442 @@
+
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>七夕賞 | keiba-oracle</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f1ea;
+      --panel: #fffdf8;
+      --ink: #1f2520;
+      --line: #d5ccbe;
+      --accent: #32594d;
+      --muted: #6f766c;
+      --result-bg: #eaf0f5;
+      --result-panel: #f7fafc;
+      --result-line: #9eb2c3;
+      --result-accent: #315b78;
+    }
+    body {
+      margin: 0;
+      font-family: "Yu Gothic", "Hiragino Sans", sans-serif;
+      background: #f2f2f0;
+      color: var(--ink);
+    }
+    main {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 10px 30px rgba(50, 89, 77, 0.06);
+    }
+    h1, h2, h3 { margin-top: 0; }
+    .meta, .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      font-size: 14px;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #dde9e4;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .selected-row { background: #edf4f1; }
+    .small {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    a { color: var(--accent); }
+    ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+    .simulator-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      align-items: end;
+      margin: 18px 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f8f4ec;
+    }
+    .simulator-field {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .simulator-field-label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .simulator-field input,
+    .simulator-field select {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+    }
+    .simulator-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .simulator-checkbox input { width: auto; }
+    .simulator-form button {
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 18px;
+      background: var(--accent);
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .simulator-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      margin: 12px 0;
+    }
+    .simulator-error {
+      color: #9b352b;
+      font-weight: 700;
+    }
+    .table-scroll { overflow-x: auto; }
+    .term-with-tooltip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    .term-tooltip {
+      display: inline-flex;
+      align-items: center;
+    }
+    .term-tooltip .tooltip-trigger {
+      display: inline-grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      min-width: 18px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 13px;
+      line-height: 1;
+      cursor: help;
+    }
+    .term-tooltip .tooltip-trigger:hover,
+    .term-tooltip .tooltip-trigger:focus-visible {
+      color: var(--accent);
+      outline: 2px solid #9bb8ae;
+      outline-offset: 2px;
+    }
+    .tooltip-content {
+      position: fixed;
+      z-index: 100;
+      left: 50%;
+      bottom: 20px;
+      width: min(440px, calc(100vw - 32px));
+      box-sizing: border-box;
+      padding: 12px 14px;
+      border-radius: 9px;
+      background: #243b36;
+      color: #fff;
+      box-shadow: 0 12px 32px rgba(31, 37, 32, 0.24);
+      font-size: 13px;
+      font-weight: 400;
+      line-height: 1.6;
+      text-align: left;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 8px);
+      transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
+    }
+    .term-tooltip:hover .tooltip-content,
+    .tooltip-trigger:focus-visible + .tooltip-content,
+    .term-tooltip[data-open="true"] .tooltip-content {
+      visibility: visible;
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    .result-section {
+      margin-top: 40px;
+      padding: 24px 18px 20px;
+      border-top: 5px solid var(--result-accent);
+      border-radius: 14px;
+      background: var(--result-bg);
+    }
+    .result-section-title {
+      color: var(--result-accent);
+      margin-bottom: 18px;
+    }
+    .result-panel {
+      background: var(--result-panel);
+      border-color: var(--result-line);
+      box-shadow: 0 10px 26px rgba(49, 91, 120, 0.08);
+    }
+    .result-panel h2,
+    .result-panel h3 {
+      color: var(--result-accent);
+    }
+    .result-section .result-panel:last-child { margin-bottom: 0; }
+    .prediction-top { background: #e7f1ec; }
+    .result-winner { background: #e4eef3; }
+    .prediction-hit {
+      background: #fff1c9;
+      box-shadow: inset 4px 0 0 #d5a72e;
+    }
+    .comparison-up {
+      color: #2f6b63;
+      font-weight: 700;
+    }
+    .comparison-neutral { color: #5f6870; }
+    .comparison-down {
+      color: #8a5148;
+      font-weight: 700;
+    }
+    .result-table .comparison-cell { white-space: nowrap; }
+    [hidden] { display: none !important; }
+    @media (max-width: 640px) {
+      main { padding: 20px 12px 40px; }
+      .panel { padding: 15px; }
+      th, td { padding: 8px 6px; }
+      .result-section {
+        margin-top: 28px;
+        padding: 18px 10px 12px;
+      }
+      .tooltip-content {
+        bottom: 12px;
+        width: calc(100vw - 24px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="panel">
+      <div class="status">結果公開</div>
+      <h1>福島 11R 七夕賞</h1>
+      <h2>レース基本情報</h2>
+      <div class="meta">
+        <div><strong>日付</strong><br>2026-07-12</div>
+        <div><strong>発走</strong><br>15:45</div>
+        <div><strong>距離</strong><br>芝 2000m</div>
+        <div><strong>馬場</strong><br>稍重</div>
+        <div><strong>オッズ記録時刻</strong><br>2026-07-12 15:52:02</div>
+        <div><strong>発走時点との差</strong><br>発走7分後</div>
+      </div>
+      <p class="small">※ 発走後に記録されたオッズスナップショットです。厳密な発走前オッズではありません。</p>
+      <p class="small"><a href="../../index.html">一覧へ戻る</a> / <a href="https://race.netkeiba.com/race/shutuba.html?race_id=202603020611">netkeiba</a></p>
+    </div>
+
+    <div class="panel">
+      <h2>予想</h2>
+      
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>馬番</th>
+              <th>馬名</th>
+              <th>騎手</th>
+              <th>単勝オッズ</th>
+              <th>人気</th>
+              <th>1着確率</th>
+              <th>予想順位</th>
+              <th>理由</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+            <tr>
+              <td>1</td>
+              <td>ボーンディスウェイ</td>
+              <td>丸山</td>
+              <td>45.6</td>
+              <td>14</td>
+              <td>2.3%</td>
+              <td>13位</td>
+              <td>近走は長距離で着順を落としているが、芝1800〜2200mでは28戦5勝、福島でも5戦3回の3着内があり、2000mへの距離短縮は好材料。G3では勝利がなく、差し脚質で展開依存もあるため上位評価までは上げにくい。</td>
+            </tr>
+            
+            <tr>
+              <td>2</td>
+              <td>コントラポスト</td>
+              <td>菊沢</td>
+              <td>15.1</td>
+              <td>8</td>
+              <td>6.3%</td>
+              <td>6位</td>
+              <td>近走は重賞を含め大きく崩れず、今回より重い斤量でも僅差の競馬を続けている。稍重では2戦1勝だが、2000m前後の実績と福島経験が乏しく、距離延長分を考慮して中位上位評価とした。</td>
+            </tr>
+            
+            <tr>
+              <td>3</td>
+              <td>ショウナンマグマ</td>
+              <td>三浦</td>
+              <td>169.8</td>
+              <td>16</td>
+              <td>0.3%</td>
+              <td>16位</td>
+              <td>近3走はいずれも12着以下で着差も大きく、G3では11戦して3着内1回とクラス実績も弱い。稍重での勝利経験と斤量減はあるが、近況を覆す根拠としては不足する。</td>
+            </tr>
+            
+            <tr class="prediction-top">
+              <td>4</td>
+              <td>カラマティアノス</td>
+              <td>岩田康</td>
+              <td>4.7</td>
+              <td>1</td>
+              <td>15.4%</td>
+              <td>1位</td>
+              <td>芝2000mのG3勝ちとG2での2着があり、近走もG3で0.3秒差と能力は上位。芝1800〜2200mで8戦6回の3着内も安定している。一方で58kg、福島初経験、稍重実績なしを考慮し、市場評価からはわずかに抑えた。</td>
+            </tr>
+            
+            <tr>
+              <td>5</td>
+              <td>オーロラエックス</td>
+              <td>坂井</td>
+              <td>31.1</td>
+              <td>11</td>
+              <td>3.1%</td>
+              <td>10位</td>
+              <td>芝1800〜2200mで13戦5勝と勝ち切る力はあるが、直近3走は6着、9着、16着で状態面に不確実性がある。55kgと距離延長は好材料だが、福島初経験と追込型による展開依存を考慮した。</td>
+            </tr>
+            
+            <tr>
+              <td>6</td>
+              <td>マイネルモーント</td>
+              <td>石川</td>
+              <td>13.2</td>
+              <td>6</td>
+              <td>6.1%</td>
+              <td>7位</td>
+              <td>福島芝2000mの直近走で0.4秒差4着があり、今回は当時より2kg軽い56kg。G2でも僅差4着がある一方、G3では7戦して3着内1回で勝ち切れておらず、追込型のため展開面の不確実性も残る。</td>
+            </tr>
+            
+            <tr>
+              <td>7</td>
+              <td>メリオーレム</td>
+              <td>Ｍデムーロ</td>
+              <td>22.9</td>
+              <td>9</td>
+              <td>3.3%</td>
+              <td>9位</td>
+              <td>芝2000mのG3で0.5秒差5着があり、55kgは有利。ただし近走は勝ち切れず、G3成績も2戦して3着内なし。福島と稍重の経験が乏しく、差し脚質で位置取りにも左右される。</td>
+            </tr>
+            
+            <tr>
+              <td>8</td>
+              <td>クリスマスパレード</td>
+              <td>杉原</td>
+              <td>37.3</td>
+              <td>13</td>
+              <td>2.1%</td>
+              <td>14位</td>
+              <td>福島芝2000mのG3で0.5秒差6着があり、稍重では1戦1勝。ただし近2走は16着、15着と大きく崩れ、今回は106日ぶり。先行力はあるが、近況と重賞での安定性を考慮して低めの評価とした。</td>
+            </tr>
+            
+            <tr>
+              <td>9</td>
+              <td>オニャンコポン</td>
+              <td>吉田豊</td>
+              <td>73.5</td>
+              <td>15</td>
+              <td>0.7%</td>
+              <td>15位</td>
+              <td>54kgと福島での3着内実績はあるが、近3走はいずれも二桁着順で、稍重でも2戦して3着内なし。G3での勝利経験はあるものの、現在の状態を強く評価できる材料が少ない。</td>
+            </tr>
+            
+            <tr>
+              <td>10</td>
+              <td>センツブラッド</td>
+              <td>原</td>
+              <td>14.8</td>
+              <td>7</td>
+              <td>5.9%</td>
+              <td>8位</td>
+              <td>福島の重賞で2着経験があり、稍重でも1戦1勝。56kgで先行できる点も今回条件に合う。一方、直近2走は10着、14着で、G3では5戦未勝利のため、復調を前提とした過度な評価は避けた。</td>
+            </tr>
+            
+            <tr>
+              <td>11</td>
+              <td>アスクナイスショー</td>
+              <td>田辺</td>
+              <td>5.0</td>
+              <td>2</td>
+              <td>13.0%</td>
+              <td>3位</td>
+              <td>福島では3戦すべて3着内で、芝1800〜2200mも14戦4勝と今回条件への適性が高い。55kgと先行力も有利だが、重賞実績は前走G2の10着のみで、106日ぶりかつ他にも先行馬がいる点から市場評価より抑えた。</td>
+            </tr>
+            
+            <tr>
+              <td>12</td>
+              <td>リカンカブール</td>
+              <td>荻野極</td>
+              <td>23.1</td>
+              <td>10</td>
+              <td>3.0%</td>
+              <td>11位</td>
+              <td>芝1800〜2200mで5勝しG3勝利もあるが、近走は重賞で6〜7着が続き、福島でも7着。140日ぶりで57kgとなるため、安定した先行力は評価しつつも勝ち切る確率は限定的とした。</td>
+            </tr>
+            
+            <tr>
+              <td>13</td>
+              <td>バトルボーン</td>
+              <td>戸崎圭</td>
+              <td>6.9</td>
+              <td>4</td>
+              <td>12.2%</td>
+              <td>4位</td>
+              <td>通算11戦5勝、芝1800〜2200mで9戦4勝、3着内7回と安定性が高い。近2走も3着を続け、稍重では1戦1勝。ただし重賞実績はG2の8着のみで、先手型同士の競り合いと騎手変更を考慮した。</td>
+            </tr>
+            
+            <tr>
+              <td>14</td>
+              <td>オールナット</td>
+              <td>西村淳</td>
+              <td>32.2</td>
+              <td>12</td>
+              <td>2.7%</td>
+              <td>12位</td>
+              <td>芝2000mのG3勝ちがあり、芝1800〜2200mでは10戦4勝と能力はある。反面、直近2走は10着、13着で今回は175日ぶり、57.5kg。追込型で展開依存も大きく、復調の不確実性を重く見た。</td>
+            </tr>
+            
+            <tr>
+              <td>15</td>
+              <td>ヤマニンブークリエ</td>
+              <td>横山典</td>
+              <td>8.7</td>
+              <td>5</td>
+              <td>8.8%</td>
+              <td>5位</td>
+              <td>直近の芝2000mG3で0.4秒差5着、G2でも2着があり、近走の相手関係は強い。56kgと先行力を評価したが、稍重では1戦16着で、福島経験もないため馬場適性には不確実性がある。</td>
+            </tr>
+            
+            <tr>
+              <td>16</td>
+              <td>サヴォーナ</td>
+              <td>池添</td>
+              <td>6.4</td>
+              <td>3</td>
+              <td>14.9%</td>
+              <td>2位</td>
+              <td>福島では3戦3勝で、直近も同じ福島芝2000mを58kgで勝利しており、今回条件への適性は最上位。芝1800〜2200mでも7戦2勝、3着内3回。ただし91日ぶりで、稍重では1戦6着のため馬場悪化分を割り引いた。</td>
+            </tr>
+            
+          </tbody>
+        </table>
+      </div>
+      <p><strong>総括:</strong> 福島芝2000mへの明確な適性を持つ16を高く評価し、重賞での近走内容が強い4、条件適性と先行力のある11、安定した通算成績を持つ13が続く。先行型が複数いるため展開は一頭に極端に有利とは決めず、斤量、稍重実績、近走状態を加味して上位馬の確率差を抑えた。</p>
+      
+    </div>
+
+    <div class="panel">
+      <h2><span class="term-with-tooltip"><span>上位予測ダッチング方式</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="上位予測ダッチング方式: AIの予測上位馬を複数選び、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">AIの予測上位馬を複数選び、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。</span>
+</span></span></h2>
+      
+      <div class="metric-grid">
+        <div><strong>予算</strong><br>3000円</div>
+        <div><strong>購入単位</strong><br>100円</div>
+        <div><strong>自動選択頭数</strong><br>4頭</div>
+        <div><strong><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="カバー確率: 選択した馬の1着確率を合計した値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択した馬の1着確率を合計した値です。</span>
+</span></span></strong><br>55.41%</div>
+        <div><strong><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。</span>
+</span></span></strong><br>0.780</div>
+        <div><strong><span class="term-with-tooltip"><span>期待払戻額</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="期待払戻額: 各馬の予測確率を考慮した、平均的な払戻見込み額です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">各馬の予測確率を考慮した、平均的な払戻見込み額です。</span>
+</span></span></strong><br>2340円</div>
+        <div><strong><span class="term-with-tooltip"><span>最低払戻額</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="最低払戻額: 選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。</span>
+</span></span></strong><br>4000円</div>
+        <div><strong><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択した馬のうち、最も利益が低い馬が的中した場合の利益です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択した馬のうち、最も利益が低い馬が的中した場合の利益です。</span>
+</span></span></strong><br>1000円</div>
+        <div><strong>合計購入額</strong><br>3000円</div>
+        <div><strong>未使用予算</strong><br>0円</div>
+      </div>
+      
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>馬番</th><th>予測勝率</th><th>単勝オッズ</th><th>購入額</th><th>的中時払戻額</th><th>的中時利益</th></tr></thead>
+          <tbody>
+            
+            <tr>
+              <td>4</td>
+              <td>15.41%</td>
+              <td>4.7</td>
+              <td>900円</td>
+              <td>4230円</td>
+              <td>1230円</td>
+            </tr>
+            
+            <tr>
+              <td>16</td>
+              <td>14.89%</td>
+              <td>6.4</td>
+              <td>700円</td>
+              <td>4480円</td>
+              <td>1480円</td>
+            </tr>
+            
+            <tr>
+              <td>11</td>
+              <td>12.96%</td>
+              <td>5.0</td>
+              <td>800円</td>
+              <td>4000円</td>
+              <td>1000円</td>
+            </tr>
+            
+            <tr>
+              <td>13</td>
+              <td>12.15%</td>
+              <td>6.9</td>
+              <td>600円</td>
+              <td>4140円</td>
+              <td>1140円</td>
+            </tr>
+            
+          </tbody>
+        </table>
+      </div>
+      
+      <h3>頭数別比較</h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>頭数</th><th>対象馬番</th><th><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="カバー確率: 選択した馬の1着確率を合計した値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択した馬の1着確率を合計した値です。</span>
+</span></span></th><th><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。</span>
+</span></span></th><th><span class="term-with-tooltip"><span>最低払戻額</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="最低払戻額: 選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。</span>
+</span></span></th><th><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択した馬のうち、最も利益が低い馬が的中した場合の利益です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択した馬のうち、最も利益が低い馬が的中した場合の利益です。</span>
+</span></span></th><th>判定</th><th>除外理由</th></tr></thead>
+          <tbody>
+            
+            <tr>
+              <td>1</td>
+              <td>4</td>
+              <td>15.41%</td>
+              <td>0.724</td>
+              <td>14100円</td>
+              <td>11100円</td>
+              <td>
+                除外
+              </td>
+              <td>カバー確率が最低基準未満</td>
+            </tr>
+            
+            <tr>
+              <td>2</td>
+              <td>4, 16</td>
+              <td>30.30%</td>
+              <td>0.823</td>
+              <td>7990円</td>
+              <td>4990円</td>
+              <td>
+                除外
+              </td>
+              <td>カバー確率が最低基準未満</td>
+            </tr>
+            
+            <tr>
+              <td>3</td>
+              <td>4, 16, 11</td>
+              <td>43.26%</td>
+              <td>0.757</td>
+              <td>5120円</td>
+              <td>2120円</td>
+              <td>
+                適格
+              </td>
+              <td>-</td>
+            </tr>
+            
+            <tr class="selected-row">
+              <td>4</td>
+              <td>4, 16, 11, 13</td>
+              <td>55.41%</td>
+              <td>0.780</td>
+              <td>4000円</td>
+              <td>1000円</td>
+              <td>
+                採用
+              </td>
+              <td>-</td>
+            </tr>
+            
+            <tr>
+              <td>5</td>
+              <td>4, 16, 11, 13, 15</td>
+              <td>64.17%</td>
+              <td>0.776</td>
+              <td>3450円</td>
+              <td>450円</td>
+              <td>
+                適格
+              </td>
+              <td>-</td>
+            </tr>
+            
+          </tbody>
+        </table>
+      </div>
+      
+    </div>
+
+    <div class="panel">
+      <h2>期待値重視方式</h2>
+      
+      <div class="metric-grid">
+        <div><strong>予算上限</strong><br>3000円</div>
+        <div><strong><span class="term-with-tooltip"><span>最低EV</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="最低EV: 1着確率と単勝オッズから計算した期待値について、購入対象とする最低ラインです。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">1着確率と単勝オッズから計算した期待値について、購入対象とする最低ラインです。</span>
+</span></span></strong><br>1.0</div>
+        <div><strong><span class="term-with-tooltip"><span>Kelly係数</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="Kelly係数: Kelly基準は、予測確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">Kelly基準は、予測確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。</span>
+</span></span></strong><br>0.5</div>
+        <div><strong>購入単位</strong><br>100円</div>
+        <div><strong>合計購入額</strong><br>0円</div>
+        <div><strong>未使用予算</strong><br>3000円</div>
+      </div>
+      
+      <p><strong>購入なし</strong></p>
+      
+      
+    </div>
+
+    
+    <div class="panel" id="custom-simulator">
+      <h2>カスタム購入シミュレーション</h2>
+      <p class="small">入力内容と計算結果はこの画面内だけで使用し、正式な購入想定・収支には反映しません。</p>
+      <form class="simulator-form" id="custom-simulator-form">
+        <label class="simulator-field">方式
+          <select name="method">
+            <option value="dutching" selected>上位予測ダッチング</option>
+            <option value="value">期待値重視</option>
+          </select>
+        </label>
+        <label class="simulator-field">予算（円）
+          <input name="budget" type="number" min="100" step="100" value="3000" required>
+        </label>
+        <div class="simulator-field value-field" hidden>
+          <span class="simulator-field-label"><label for="custom-ev-threshold">最低EV</label><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="最低EV: 1着確率と単勝オッズから計算した期待値について、購入対象とする最低ラインです。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">1着確率と単勝オッズから計算した期待値について、購入対象とする最低ラインです。</span>
+</span></span>
+          <input id="custom-ev-threshold" name="ev_threshold" type="number" min="1" step="0.01" value="1.0">
+        </div>
+        <div class="simulator-field value-field" hidden>
+          <span class="simulator-field-label"><label for="custom-kelly-fraction">Kelly係数</label><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="Kelly係数: Kelly基準は、予測確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">Kelly基準は、予測確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。</span>
+</span></span>
+          <input id="custom-kelly-fraction" name="kelly_fraction" type="number" min="0" max="1" step="0.05" value="0.5">
+        </div>
+        <label class="simulator-field dutching-field">最大対象頭数
+          <input name="max_selection_count" type="number" min="1" max="16" step="1" value="5">
+        </label>
+        <div class="simulator-field dutching-field">
+          <span class="simulator-field-label"><label for="custom-min-coverage">最低カバー確率</label><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="カバー確率: 選択した馬の1着確率を合計した値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択した馬の1着確率を合計した値です。</span>
+</span></span>
+          <input id="custom-min-coverage" name="min_coverage_probability" type="number" min="0" max="1" step="0.01" value="0.4">
+        </div>
+        <div class="simulator-field dutching-field">
+          <span class="simulator-field-label"><label for="custom-min-group-ev">最低グループ期待値</label><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。</span>
+</span></span>
+          <input id="custom-min-group-ev" name="min_group_expected_value" type="number" min="0" step="0.01" value="0.0">
+        </div>
+        <label class="simulator-field dutching-field">頭数
+          <select name="fixed_selection_count">
+            <option value="0">自動</option>
+            <option value="1">1頭</option><option value="2">2頭</option><option value="3">3頭</option><option value="4">4頭</option><option value="5">5頭</option><option value="6">6頭</option><option value="7">7頭</option><option value="8">8頭</option><option value="9">9頭</option><option value="10">10頭</option><option value="11">11頭</option><option value="12">12頭</option><option value="13">13頭</option><option value="14">14頭</option><option value="15">15頭</option><option value="16">16頭</option>
+          </select>
+        </label>
+        <label class="simulator-checkbox dutching-field">
+          <input name="require_profit_if_hit" type="checkbox" checked>
+          的中時利益を必須にする
+        </label>
+        <button type="submit">再計算</button>
+      </form>
+      <p class="small">購入単位は100円です。頭数の手動指定は画面内の確認にだけ使用します。</p>
+      <p class="simulator-error" id="custom-simulator-error" role="alert" hidden></p>
+      <div id="custom-simulator-result" aria-live="polite">
+        <p id="custom-simulator-empty" hidden><strong>購入なし</strong></p>
+        <div class="simulator-summary" id="custom-simulator-summary" hidden>
+          <span>方式: <strong id="custom-simulator-method">-</strong></span>
+          <span>計算予算: <strong id="custom-simulator-budget">0円</strong></span>
+          <span>合計購入額: <strong id="custom-simulator-total">0円</strong></span>
+          <span>未使用予算: <strong id="custom-simulator-unused">0円</strong></span>
+        </div>
+        <div class="metric-grid" id="custom-dutching-metrics" hidden>
+          <div><strong>選択頭数</strong><br><span id="custom-dutching-count">0頭</span></div>
+          <div><strong><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="カバー確率: 選択した馬の1着確率を合計した値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択した馬の1着確率を合計した値です。</span>
+</span></span></strong><br><span id="custom-dutching-coverage">0%</span></div>
+          <div><strong><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。</span>
+</span></span></strong><br><span id="custom-dutching-ev">0</span></div>
+          <div><strong><span class="term-with-tooltip"><span>期待払戻額</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="期待払戻額: 各馬の予測確率を考慮した、平均的な払戻見込み額です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">各馬の予測確率を考慮した、平均的な払戻見込み額です。</span>
+</span></span></strong><br><span id="custom-dutching-return">0円</span></div>
+          <div><strong><span class="term-with-tooltip"><span>最低払戻額</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="最低払戻額: 選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。</span>
+</span></span></strong><br><span id="custom-dutching-min-payout">0円</span></div>
+          <div><strong><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択した馬のうち、最も利益が低い馬が的中した場合の利益です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択した馬のうち、最も利益が低い馬が的中した場合の利益です。</span>
+</span></span></strong><br><span id="custom-dutching-min-profit">0円</span></div>
+        </div>
+        <div class="table-scroll" id="custom-value-table" hidden>
+          <table><thead><tr><th>馬番</th><th>予測勝率</th><th>単勝オッズ</th><th><span class="term-with-tooltip"><span>EV</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="EV: 1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。</span>
+</span></span></th><th><span class="term-with-tooltip"><span>Full Kelly</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="Full Kelly: 予測確率とオッズからKelly基準で算出した、予算に対する購入割合です。Kelly係数を掛ける前の値で、係数1.0に相当します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">予測確率とオッズからKelly基準で算出した、予算に対する購入割合です。Kelly係数を掛ける前の値で、係数1.0に相当します。</span>
+</span></span></th><th><span class="term-with-tooltip"><span>Fractional Kelly</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="Fractional Kelly: Full KellyにKelly係数を掛けて抑制した購入割合です。係数0.5ならハーフケリーとなります。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">Full KellyにKelly係数を掛けて抑制した購入割合です。係数0.5ならハーフケリーとなります。</span>
+</span></span></th><th>購入額</th></tr></thead><tbody id="custom-value-rows"></tbody></table>
+        </div>
+        <div class="table-scroll" id="custom-dutching-table" hidden>
+          <table><thead><tr><th>馬番</th><th>予測勝率</th><th>単勝オッズ</th><th>購入額</th><th>的中時払戻額</th><th>的中時利益</th></tr></thead><tbody id="custom-dutching-rows"></tbody></table>
+        </div>
+        <div id="custom-dutching-evaluations" hidden>
+          <h3>頭数別比較</h3>
+          <div class="table-scroll"><table><thead><tr><th>頭数</th><th>対象馬番</th><th><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="カバー確率: 選択した馬の1着確率を合計した値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択した馬の1着確率を合計した値です。</span>
+</span></span></th><th><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。</span>
+</span></span></th><th><span class="term-with-tooltip"><span>最低払戻額</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="最低払戻額: 選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。</span>
+</span></span></th><th><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択した馬のうち、最も利益が低い馬が的中した場合の利益です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択した馬のうち、最も利益が低い馬が的中した場合の利益です。</span>
+</span></span></th><th>判定</th><th>除外理由</th></tr></thead><tbody id="custom-dutching-evaluation-rows"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+    <script type="application/json" id="custom-simulator-data">{"display": {"rejection_reason_labels": {"coverage_probability_below_threshold": "\u30ab\u30d0\u30fc\u78ba\u7387\u304c\u6700\u4f4e\u57fa\u6e96\u672a\u6e80", "group_expected_value_below_threshold": "\u30b0\u30eb\u30fc\u30d7\u671f\u5f85\u5024\u304c\u6700\u4f4e\u57fa\u6e96\u672a\u6e80", "insufficient_budget_units": "\u4e88\u7b97\u304c\u8cfc\u5165\u5358\u4f4d\u307e\u305f\u306f\u9078\u629e\u982d\u6570\u306b\u5bfe\u3057\u3066\u4e0d\u8db3", "minimum_profit_not_positive": "\u7684\u4e2d\u6642\u306e\u6700\u4f4e\u5229\u76ca\u3092\u78ba\u4fdd\u3067\u304d\u306a\u3044"}, "unknown_rejection_reason_label": "\u6761\u4ef6\u3092\u6e80\u305f\u3057\u3066\u3044\u307e\u305b\u3093"}, "horses": [{"horse_number": 1, "win_odds": 45.6, "win_probability": 0.022569}, {"horse_number": 2, "win_odds": 15.1, "win_probability": 0.063107}, {"horse_number": 3, "win_odds": 169.8, "win_probability": 0.003143}, {"horse_number": 4, "win_odds": 4.7, "win_probability": 0.154087}, {"horse_number": 5, "win_odds": 31.1, "win_probability": 0.03064}, {"horse_number": 6, "win_odds": 13.2, "win_probability": 0.06064}, {"horse_number": 7, "win_odds": 22.9, "win_probability": 0.033289}, {"horse_number": 8, "win_odds": 37.3, "win_probability": 0.02146}, {"horse_number": 9, "win_odds": 73.5, "win_probability": 0.00726}, {"horse_number": 10, "win_odds": 14.8, "win_probability": 0.059235}, {"horse_number": 11, "win_odds": 5.0, "win_probability": 0.129596}, {"horse_number": 12, "win_odds": 23.1, "win_probability": 0.029701}, {"horse_number": 13, "win_odds": 6.9, "win_probability": 0.121531}, {"horse_number": 14, "win_odds": 32.2, "win_probability": 0.027226}, {"horse_number": 15, "win_odds": 8.7, "win_probability": 0.087624}, {"horse_number": 16, "win_odds": 6.4, "win_probability": 0.148892}], "stake_unit": 100}</script>
+    <script>
+      const SIMULATION_EPSILON = 1e-12;
+
+      function roundSimulationValue(value) {
+        return Math.round(value * 1000000) / 1000000;
+      }
+
+      function simulationRows(horses) {
+        return horses
+          .map((horse) => ({
+            horse_number: Number(horse.horse_number),
+            predicted_probability: Number(horse.win_probability),
+            win_odds: Number(horse.win_odds),
+          }))
+          .filter((horse) =>
+            Number.isFinite(horse.predicted_probability) && horse.predicted_probability >= 0 &&
+            Number.isFinite(horse.win_odds) && horse.win_odds > 1
+          );
+      }
+
+      function calculateValueSimulation(horses, budget, stakeUnit, settings) {
+        const candidates = [];
+        for (const row of simulationRows(horses)) {
+          const expectedValue = row.predicted_probability * row.win_odds;
+          const b = row.win_odds - 1;
+          const fullKelly = Math.max(0, ((b * row.predicted_probability) - (1 - row.predicted_probability)) / b);
+          const fractionalKelly = fullKelly * settings.kelly_fraction;
+          if (expectedValue + SIMULATION_EPSILON < settings.ev_threshold || fullKelly <= 0 || fractionalKelly <= 0) {
+            continue;
+          }
+          candidates.push({
+            horse_number: row.horse_number,
+            predicted_probability: roundSimulationValue(row.predicted_probability),
+            win_odds: row.win_odds,
+            expected_value: roundSimulationValue(expectedValue),
+            full_kelly: roundSimulationValue(fullKelly),
+            fractional_kelly: roundSimulationValue(fractionalKelly),
+            raw_stake: budget * fractionalKelly,
+          });
+        }
+        candidates.sort((left, right) =>
+          (right.expected_value - left.expected_value) || (left.horse_number - right.horse_number)
+        );
+        const totalRawStake = candidates.reduce((total, item) => total + item.raw_stake, 0);
+        const scale = totalRawStake > budget ? budget / totalRawStake : 1;
+        const selections = [];
+        for (const candidate of candidates) {
+          const stake = Math.floor(((candidate.raw_stake * scale) / stakeUnit) + SIMULATION_EPSILON) * stakeUnit;
+          if (stake < stakeUnit) {
+            continue;
+          }
+          const { raw_stake: ignored, ...selection } = candidate;
+          selection.stake = stake;
+          selections.push(selection);
+        }
+        const totalStake = selections.reduce((total, item) => total + item.stake, 0);
+        return {
+          budget,
+          stake_unit: stakeUnit,
+          settings: {
+            ev_threshold: settings.ev_threshold,
+            kelly_fraction: settings.kelly_fraction,
+          },
+          total_stake: totalStake,
+          unused_budget: budget - totalStake,
+          selections,
+        };
+      }
+
+      function allocateDutchingStakes(rows, budget, stakeUnit) {
+        const budgetUnits = Math.floor(budget / stakeUnit);
+        if (budgetUnits < rows.length) {
+          return [];
+        }
+        const units = new Map(rows.map((row) => [row.horse_number, 1]));
+        for (let remaining = budgetUnits - rows.length; remaining > 0; remaining -= 1) {
+          let target = rows[0];
+          for (const row of rows.slice(1)) {
+            const payout = roundSimulationValue(units.get(row.horse_number) * stakeUnit * row.win_odds);
+            const targetPayout = roundSimulationValue(units.get(target.horse_number) * stakeUnit * target.win_odds);
+            if (payout < targetPayout || (payout === targetPayout && row.horse_number < target.horse_number)) {
+              target = row;
+            }
+          }
+          units.set(target.horse_number, units.get(target.horse_number) + 1);
+        }
+        const totalStake = budgetUnits * stakeUnit;
+        return rows.map((row) => {
+          const stake = units.get(row.horse_number) * stakeUnit;
+          const estimatedPayout = stake * row.win_odds;
+          return {
+            horse_number: row.horse_number,
+            predicted_probability: roundSimulationValue(row.predicted_probability),
+            win_odds: row.win_odds,
+            stake,
+            estimated_payout: roundSimulationValue(estimatedPayout),
+            estimated_profit: roundSimulationValue(estimatedPayout - totalStake),
+          };
+        });
+      }
+
+      function evaluateDutchingCount(rows, budget, stakeUnit, settings) {
+        const selections = allocateDutchingStakes(rows, budget, stakeUnit);
+        const coverageProbability = roundSimulationValue(rows.reduce((total, row) => total + row.predicted_probability, 0));
+        const totalStake = selections.reduce((total, item) => total + item.stake, 0);
+        const expectedReturn = roundSimulationValue(
+          selections.reduce((total, item) => total + (item.predicted_probability * item.estimated_payout), 0)
+        );
+        const groupExpectedValue = totalStake ? roundSimulationValue(expectedReturn / totalStake) : 0;
+        const minimumPayout = selections.length ? Math.min(...selections.map((item) => item.estimated_payout)) : 0;
+        const minimumProfit = totalStake ? roundSimulationValue(minimumPayout - totalStake) : 0;
+        const rejectionReasons = [];
+        if (coverageProbability + SIMULATION_EPSILON < settings.min_coverage_probability) {
+          rejectionReasons.push("coverage_probability_below_threshold");
+        }
+        if (groupExpectedValue + SIMULATION_EPSILON < settings.min_group_expected_value) {
+          rejectionReasons.push("group_expected_value_below_threshold");
+        }
+        if (!selections.length) {
+          rejectionReasons.push("insufficient_budget_units");
+        }
+        if (settings.require_profit_if_hit && minimumProfit <= 0) {
+          rejectionReasons.push("minimum_profit_not_positive");
+        }
+        return {
+          evaluation: {
+            selection_count: rows.length,
+            horse_numbers: rows.map((row) => row.horse_number),
+            coverage_probability: coverageProbability,
+            expected_return: expectedReturn,
+            group_expected_value: groupExpectedValue,
+            minimum_payout: roundSimulationValue(minimumPayout),
+            minimum_profit: minimumProfit,
+            eligible: rejectionReasons.length === 0,
+            rejection_reasons: rejectionReasons,
+          },
+          selections,
+        };
+      }
+
+      function selectBestDutching(evaluations) {
+        const eligible = evaluations.filter((item) => item.evaluation.eligible);
+        eligible.sort((left, right) =>
+          (right.evaluation.group_expected_value - left.evaluation.group_expected_value) ||
+          (right.evaluation.coverage_probability - left.evaluation.coverage_probability) ||
+          (left.evaluation.selection_count - right.evaluation.selection_count)
+        );
+        return eligible[0] || null;
+      }
+
+      function calculateDutchingSimulation(horses, budget, stakeUnit, settings, fixedSelectionCount = 0) {
+        const rows = simulationRows(horses).sort((left, right) =>
+          (right.predicted_probability - left.predicted_probability) || (left.horse_number - right.horse_number)
+        );
+        const evaluations = [];
+        const evaluationLimit = Math.min(settings.max_selection_count, rows.length);
+        for (let count = 1; count <= evaluationLimit; count += 1) {
+          evaluations.push(evaluateDutchingCount(rows.slice(0, count), budget, stakeUnit, settings));
+        }
+        const selected = fixedSelectionCount > 0
+          ? evaluations.find((item) => item.evaluation.selection_count === fixedSelectionCount) || null
+          : selectBestDutching(evaluations);
+        const result = {
+          budget,
+          stake_unit: stakeUnit,
+          settings: {
+            max_selection_count: settings.max_selection_count,
+            min_coverage_probability: settings.min_coverage_probability,
+            min_group_expected_value: settings.min_group_expected_value,
+            require_profit_if_hit: settings.require_profit_if_hit,
+          },
+          selected_count: 0,
+          coverage_probability: 0,
+          expected_return: 0,
+          group_expected_value: 0,
+          minimum_payout: 0,
+          minimum_profit: 0,
+          total_stake: 0,
+          unused_budget: budget,
+          evaluated_counts: evaluations.map((item) => item.evaluation),
+          selections: [],
+        };
+        if (!selected || !selected.selections.length) {
+          return result;
+        }
+        const evaluation = selected.evaluation;
+        result.selected_count = evaluation.selection_count;
+        result.coverage_probability = evaluation.coverage_probability;
+        result.expected_return = evaluation.expected_return;
+        result.group_expected_value = evaluation.group_expected_value;
+        result.minimum_payout = evaluation.minimum_payout;
+        result.minimum_profit = evaluation.minimum_profit;
+        result.total_stake = selected.selections.reduce((total, item) => total + item.stake, 0);
+        result.unused_budget = budget - result.total_stake;
+        result.selections = selected.selections;
+        return result;
+      }
+
+      (() => {
+        const root = document.getElementById("custom-simulator");
+        if (!root) {
+          return;
+        }
+        const data = JSON.parse(document.getElementById("custom-simulator-data").textContent);
+        const rejectionReasonText = (reasons) => reasons.length
+          ? reasons.map((reason) => data.display.rejection_reason_labels[reason] || data.display.unknown_rejection_reason_label).join("、")
+          : "-";
+        const form = document.getElementById("custom-simulator-form");
+        const error = document.getElementById("custom-simulator-error");
+        const empty = document.getElementById("custom-simulator-empty");
+        const summary = document.getElementById("custom-simulator-summary");
+        const valueTable = document.getElementById("custom-value-table");
+        const dutchingTable = document.getElementById("custom-dutching-table");
+        const dutchingMetrics = document.getElementById("custom-dutching-metrics");
+        const dutchingEvaluations = document.getElementById("custom-dutching-evaluations");
+        const valueRows = document.getElementById("custom-value-rows");
+        const dutchingRows = document.getElementById("custom-dutching-rows");
+        const evaluationRows = document.getElementById("custom-dutching-evaluation-rows");
+        const yen = new Intl.NumberFormat("ja-JP");
+
+        const addCell = (row, value) => {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          row.appendChild(cell);
+        };
+
+        const setMethodFields = () => {
+          const dutching = form.elements.method.value === "dutching";
+          root.querySelectorAll(".value-field").forEach((field) => { field.hidden = dutching; });
+          root.querySelectorAll(".dutching-field").forEach((field) => { field.hidden = !dutching; });
+        };
+
+        const validate = () => {
+          const enteredBudget = Number(form.elements.budget.value);
+          const stakeUnit = Number(data.stake_unit);
+          if (!Number.isInteger(enteredBudget) || enteredBudget <= 0) {
+            return "予算は正の整数で入力してください。";
+          }
+          if (Math.floor(enteredBudget / stakeUnit) * stakeUnit < stakeUnit) {
+            return `予算は購入単位の${stakeUnit}円以上にしてください。`;
+          }
+          if (form.elements.method.value === "value") {
+            const evThreshold = Number(form.elements.ev_threshold.value);
+            const kellyFraction = Number(form.elements.kelly_fraction.value);
+            if (!Number.isFinite(evThreshold) || evThreshold < 1) {
+              return "最低EVは1.0以上で入力してください。";
+            }
+            if (!Number.isFinite(kellyFraction) || kellyFraction < 0 || kellyFraction > 1) {
+              return "Kelly係数は0以上1以下で入力してください。";
+            }
+          } else {
+            const maxCount = Number(form.elements.max_selection_count.value);
+            const coverage = Number(form.elements.min_coverage_probability.value);
+            const groupEv = Number(form.elements.min_group_expected_value.value);
+            const fixedCount = Number(form.elements.fixed_selection_count.value);
+            if (!Number.isInteger(maxCount) || maxCount < 1 || maxCount > data.horses.length) {
+              return "最大対象頭数を出走頭数以内の正の整数で入力してください。";
+            }
+            if (!Number.isFinite(coverage) || coverage < 0 || coverage > 1) {
+              return "最低カバー確率は0以上1以下で入力してください。";
+            }
+            if (!Number.isFinite(groupEv) || groupEv < 0) {
+              return "最低グループ期待値は0以上で入力してください。";
+            }
+            if (fixedCount > maxCount) {
+              return "手動指定頭数は最大対象頭数以下にしてください。";
+            }
+          }
+          return "";
+        };
+
+        const renderValue = (result) => {
+          valueRows.replaceChildren();
+          for (const item of result.selections) {
+            const row = document.createElement("tr");
+            addCell(row, String(item.horse_number));
+            addCell(row, `${(item.predicted_probability * 100).toFixed(2)}%`);
+            addCell(row, item.win_odds.toFixed(1));
+            addCell(row, item.expected_value.toFixed(3));
+            addCell(row, item.full_kelly.toFixed(4));
+            addCell(row, item.fractional_kelly.toFixed(4));
+            addCell(row, `${yen.format(item.stake)}円`);
+            valueRows.appendChild(row);
+          }
+        };
+
+        const renderDutching = (result) => {
+          document.getElementById("custom-dutching-count").textContent = `${result.selected_count}頭`;
+          document.getElementById("custom-dutching-coverage").textContent = `${(result.coverage_probability * 100).toFixed(2)}%`;
+          document.getElementById("custom-dutching-ev").textContent = result.group_expected_value.toFixed(3);
+          document.getElementById("custom-dutching-return").textContent = `${yen.format(result.expected_return)}円`;
+          document.getElementById("custom-dutching-min-payout").textContent = `${yen.format(result.minimum_payout)}円`;
+          document.getElementById("custom-dutching-min-profit").textContent = `${yen.format(result.minimum_profit)}円`;
+          dutchingRows.replaceChildren();
+          for (const item of result.selections) {
+            const row = document.createElement("tr");
+            addCell(row, String(item.horse_number));
+            addCell(row, `${(item.predicted_probability * 100).toFixed(2)}%`);
+            addCell(row, item.win_odds.toFixed(1));
+            addCell(row, `${yen.format(item.stake)}円`);
+            addCell(row, `${yen.format(item.estimated_payout)}円`);
+            addCell(row, `${yen.format(item.estimated_profit)}円`);
+            dutchingRows.appendChild(row);
+          }
+          evaluationRows.replaceChildren();
+          for (const item of result.evaluated_counts) {
+            const row = document.createElement("tr");
+            if (result.selections.length && item.selection_count === result.selected_count) {
+              row.className = "selected-row";
+            }
+            addCell(row, String(item.selection_count));
+            addCell(row, item.horse_numbers.join(", "));
+            addCell(row, `${(item.coverage_probability * 100).toFixed(2)}%`);
+            addCell(row, item.group_expected_value.toFixed(3));
+            addCell(row, `${yen.format(item.minimum_payout)}円`);
+            addCell(row, `${yen.format(item.minimum_profit)}円`);
+            addCell(row, item.eligible ? "適格" : "除外");
+            addCell(row, rejectionReasonText(item.rejection_reasons));
+            evaluationRows.appendChild(row);
+          }
+        };
+
+        const recalculate = () => {
+          setMethodFields();
+          const message = validate();
+          error.textContent = message;
+          error.hidden = !message;
+          if (message) {
+            empty.hidden = true;
+            summary.hidden = true;
+            valueTable.hidden = true;
+            dutchingTable.hidden = true;
+            dutchingMetrics.hidden = true;
+            dutchingEvaluations.hidden = true;
+            return;
+          }
+
+          const method = form.elements.method.value;
+          const stakeUnit = Number(data.stake_unit);
+          const budget = Math.floor(Number(form.elements.budget.value) / stakeUnit) * stakeUnit;
+          let result;
+          if (method === "value") {
+            result = calculateValueSimulation(data.horses, budget, stakeUnit, {
+              ev_threshold: Number(form.elements.ev_threshold.value),
+              kelly_fraction: Number(form.elements.kelly_fraction.value),
+            });
+            renderValue(result);
+          } else {
+            result = calculateDutchingSimulation(data.horses, budget, stakeUnit, {
+              max_selection_count: Number(form.elements.max_selection_count.value),
+              min_coverage_probability: Number(form.elements.min_coverage_probability.value),
+              min_group_expected_value: Number(form.elements.min_group_expected_value.value),
+              require_profit_if_hit: form.elements.require_profit_if_hit.checked,
+            }, Number(form.elements.fixed_selection_count.value));
+            renderDutching(result);
+          }
+
+          document.getElementById("custom-simulator-method").textContent = method === "value" ? "期待値重視" : "上位予測ダッチング";
+          document.getElementById("custom-simulator-budget").textContent = `${yen.format(result.budget)}円`;
+          document.getElementById("custom-simulator-total").textContent = `${yen.format(result.total_stake)}円`;
+          document.getElementById("custom-simulator-unused").textContent = `${yen.format(result.unused_budget)}円`;
+          summary.hidden = false;
+          empty.hidden = result.selections.length > 0;
+          valueTable.hidden = method !== "value" || result.selections.length === 0;
+          dutchingTable.hidden = method !== "dutching" || result.selections.length === 0;
+          dutchingMetrics.hidden = method !== "dutching";
+          dutchingEvaluations.hidden = method !== "dutching";
+        };
+
+        form.elements.method.addEventListener("change", recalculate);
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          recalculate();
+        });
+        recalculate();
+      })();
+    </script>
+    
+
+    
+    <section class="result-section">
+      <h2 class="result-section-title">レース結果</h2>
+
+    
+    <div class="panel result-panel">
+      <h2>実結果</h2>
+      <p><strong>着順:</strong> 11 - 6 - 9 - 10 - 1 - 15 - 4 - 5 - 2 - 16 - 8 - 13 - 12 - 3 - 14 - 7</p>
+      <div class="table-scroll">
+        <table class="result-table">
+          <thead><tr><th>馬番</th><th>馬名</th><th>予測順位</th><th>1着確率</th><th>実着順</th><th>予想との差</th><th>単勝払戻</th></tr></thead>
+          <tbody>
+            
+            <tr>
+              <td>1</td>
+              <td>ボーンディスウェイ</td>
+              <td>13位</td>
+              <td>2.3%</td>
+              <td>5着</td>
+              <td class="comparison-cell"><span class="comparison-up">8着上</span></td>
+              <td>-</td>
+            </tr>
+            
+            <tr>
+              <td>2</td>
+              <td>コントラポスト</td>
+              <td>6位</td>
+              <td>6.3%</td>
+              <td>9着</td>
+              <td class="comparison-cell"><span class="comparison-down">3着下</span></td>
+              <td>-</td>
+            </tr>
+            
+            <tr>
+              <td>3</td>
+              <td>ショウナンマグマ</td>
+              <td>16位</td>
+              <td>0.3%</td>
+              <td>14着</td>
+              <td class="comparison-cell"><span class="comparison-up">2着上</span></td>
+              <td>-</td>
+            </tr>
+            
+            <tr class="prediction-top">
+              <td>4</td>
+              <td>カラマティアノス</td>
+              <td>1位</td>
+              <td>15.4%</td>
+              <td>7着</td>
+              <td class="comparison-cell"><span class="comparison-down">6着下</span></td>
+              <td>-</td>
+            </tr>
+            
+            <tr>
+              <td>5</td>
+              <td>オーロラエックス</td>
+              <td>10位</td>
+              <td>3.1%</td>
+              <td>8着</td>
+              <td class="comparison-cell"><span class="comparison-up">2着上</span></td>
+              <td>-</td>
+            </tr>
+            
+            <tr>
+              <td>6</td>
+              <td>マイネルモーント</td>
+              <td>7位</td>
+              <td>6.1%</td>
+              <td>2着</td>
+              <td class="comparison-cell"><span class="comparison-up">5着上</span></td>
+              <td>-</td>
+            </tr>
+            
+            <tr>
+              <td>7</td>
+              <td>メリオーレム</td>
+              <td>9位</td>
+              <td>3.3%</td>
+              <td>16着</td>
+              <td class="comparison-cell"><span class="comparison-down">7着下</span></td>
+              <td>-</td>
+            </tr>
+            
+            <tr>
+              <td>8</td>
+              <td>クリスマスパレード</td>
+              <td>14位</td>
+              <td>2.1%</td>
+              <td>11着</td>
+              <td class="comparison-cell"><span class="comparison-up">3着上</span></td>
+              <td>-</td>
+            </tr>
+            
+            <tr>
+              <td>9</td>
+              <td>オニャンコポン</td>
+              <td>15位</td>
+              <td>0.7%</td>
+              <td>3着</td>
+              <td class="comparison-cell"><span class="comparison-up">12着上</span></td>
+              <td>-</td>
+            </tr>
+            
+            <tr>
+              <td>10</td>
+              <td>センツブラッド</td>
+              <td>8位</td>
+              <td>5.9%</td>
+              <td>4着</td>
+              <td class="comparison-cell"><span class="comparison-up">4着上</span></td>
+              <td>-</td>
+            </tr>
+            
+            <tr class="result-winner">
+              <td>11</td>
+              <td>アスクナイスショー</td>
+              <td>3位</td>
+              <td>13.0%</td>
+              <td>1着</td>
+              <td class="comparison-cell"><span class="comparison-up">2着上</span></td>
+              <td>500円</td>
+            </tr>
+            
+            <tr>
+              <td>12</td>
+              <td>リカンカブール</td>
+              <td>11位</td>
+              <td>3.0%</td>
+              <td>13着</td>
+              <td class="comparison-cell"><span class="comparison-down">2着下</span></td>
+              <td>-</td>
+            </tr>
+            
+            <tr>
+              <td>13</td>
+              <td>バトルボーン</td>
+              <td>4位</td>
+              <td>12.2%</td>
+              <td>12着</td>
+              <td class="comparison-cell"><span class="comparison-down">8着下</span></td>
+              <td>-</td>
+            </tr>
+            
+            <tr>
+              <td>14</td>
+              <td>オールナット</td>
+              <td>12位</td>
+              <td>2.7%</td>
+              <td>15着</td>
+              <td class="comparison-cell"><span class="comparison-down">3着下</span></td>
+              <td>-</td>
+            </tr>
+            
+            <tr>
+              <td>15</td>
+              <td>ヤマニンブークリエ</td>
+              <td>5位</td>
+              <td>8.8%</td>
+              <td>6着</td>
+              <td class="comparison-cell"><span class="comparison-down">1着下</span></td>
+              <td>-</td>
+            </tr>
+            
+            <tr>
+              <td>16</td>
+              <td>サヴォーナ</td>
+              <td>2位</td>
+              <td>14.9%</td>
+              <td>10着</td>
+              <td class="comparison-cell"><span class="comparison-down">8着下</span></td>
+              <td>-</td>
+            </tr>
+            
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+
+    
+    <div class="panel result-panel">
+      <h2>予測評価</h2>
+      <div class="stats">
+        <div><strong>勝ち馬の予測順位</strong><br>3位</div>
+        <div><strong>勝ち馬の予測確率</strong><br>12.96%</div>
+        <div><strong>Top1</strong><br>不的中</div>
+        <div><strong>Top3</strong><br>的中</div>
+        <div><strong>Top5</strong><br>的中</div>
+        <div><strong>Log Loss</strong><br>2.043333</div>
+        <div><strong>Brier Score</strong><br>0.052615</div>
+      </div>
+      
+      <h3>市場ベースライン比較</h3>
+      <p>市場の勝ち馬確率 15.91% / 順位 2位</p>
+      <p>Log Loss差 +0.205295 / Brier Score差 +0.003447</p>
+      
+      <p class="notice">市場比較には発走後に記録されたオッズを使用しているため、正式な発走前性能比較ではありません。</p>
+      
+      
+      <h3>シミュレーション収支</h3>
+      <p><strong>期待値重視:</strong> 投資 0円 / 回収 0円 / 損益 0円</p>
+      <p><strong>ダッチング:</strong> 投資 3000円 / 回収 4000円 / 損益 1000円 / ROI 33.33%</p>
+    </div>
+    
+
+    
+    <div class="panel result-panel">
+      <h2>期待値重視方式の購入結果</h2>
+      
+      <p><strong>購入なし</strong></p>
+      <p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
+      
+    </div>
+    
+
+    
+    <div class="panel result-panel">
+      <h2>ダッチング方式の購入結果</h2>
+      
+      <p><strong>投資:</strong> 3000円 / <strong>回収:</strong> 4000円 / <strong>損益:</strong> 1000円 / <strong>ROI:</strong> 33.33%</p>
+      <table><thead><tr><th>馬番</th><th>購入額</th><th>的中</th><th>回収額</th></tr></thead><tbody><tr><td>4</td><td>900円</td><td>no</td><td>0円</td></tr><tr><td>16</td><td>700円</td><td>no</td><td>0円</td></tr><tr><td>11</td><td>800円</td><td>yes</td><td>4000円</td></tr><tr><td>13</td><td>600円</td><td>no</td><td>0円</td></tr></tbody></table>
+      
+    </div>
+    
+
+    </section>
+    
+
+  </main>
+  <script>
+    (() => {
+      const tooltipTriggers = Array.from(document.querySelectorAll(".tooltip-trigger"));
+      const closeTooltips = () => {
+        for (const trigger of tooltipTriggers) {
+          trigger.closest(".term-tooltip").removeAttribute("data-open");
+          trigger.setAttribute("aria-expanded", "false");
+        }
+      };
+
+      for (const trigger of tooltipTriggers) {
+        trigger.addEventListener("click", (event) => {
+          event.stopPropagation();
+          const tooltip = trigger.closest(".term-tooltip");
+          const shouldOpen = tooltip.getAttribute("data-open") !== "true";
+          closeTooltips();
+          if (shouldOpen) {
+            tooltip.setAttribute("data-open", "true");
+            trigger.setAttribute("aria-expanded", "true");
+          }
+        });
+      }
+      document.addEventListener("click", closeTooltips);
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeTooltips();
+          if (document.activeElement?.classList.contains("tooltip-trigger")) {
+            document.activeElement.blur();
+          }
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
