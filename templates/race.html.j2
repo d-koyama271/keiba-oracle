@@ -26,6 +26,15 @@
       --result-panel: #f7fafc;
       --result-line: #9eb2c3;
       --result-accent: #315b78;
+      --status-prediction-bg: {{ status_colors.prediction.background }};
+      --status-prediction-color: {{ status_colors.prediction.color }};
+      --status-prediction-border: {{ status_colors.prediction.border }};
+      --status-result-bg: {{ status_colors.result.background }};
+      --status-result-color: {{ status_colors.result.color }};
+      --status-result-border: {{ status_colors.result.border }};
+      --status-pending-bg: {{ status_colors.pending.background }};
+      --status-pending-color: {{ status_colors.pending.color }};
+      --status-pending-border: {{ status_colors.pending.border }};
     }
     body {
       margin: 0;
@@ -57,11 +66,28 @@
       display: inline-block;
       padding: 4px 10px;
       border-radius: 999px;
-      background: #dde9e4;
-      color: var(--accent);
+      border: 1px solid transparent;
       font-weight: 700;
       font-size: 13px;
-      margin-bottom: 12px;
+    }
+    .race-status { margin-bottom: 12px; }
+    .status-prediction {
+      background: var(--status-prediction-bg);
+      color: var(--status-prediction-color);
+      border-color: var(--status-prediction-border);
+    }
+    .status-result {
+      background: var(--status-result-bg);
+      color: var(--status-result-color);
+      border-color: var(--status-result-border);
+    }
+    .status-pending {
+      background: var(--status-pending-bg);
+      color: var(--status-pending-color);
+      border-color: var(--status-pending-border);
+    }
+    .ev-above-threshold {
+      background: #edf4f1;
     }
     table {
       width: 100%;
@@ -272,7 +298,7 @@
 <body>
   <main>
     <div class="panel">
-      <div class="status">{{ status_label }}</div>
+      <div class="status race-status {{ status_class }}">{{ status_label }}</div>
       <h1>{{ race.track }} {{ race.race_number }}R {{ race.race_name }}</h1>
       <h2>レース基本情報</h2>
       <div class="meta">
@@ -280,7 +306,7 @@
         <div><strong>発走</strong><br>{{ race.start_time or "-" }}</div>
         <div><strong>距離</strong><br>{{ race.surface or "-" }} {{ race.distance or "-" }}m</div>
         <div><strong>馬場</strong><br>{{ race.going or "-" }}</div>
-        <div><strong>オッズ記録時刻</strong><br>{{ race.odds_captured_at or "-" }}</div>
+        <div><strong>オッズ記録時刻</strong><br>{{ odds_captured_at_label }}</div>
         <div><strong>発走時点との差</strong><br>{{ odds_timing_label }}</div>
       </div>
       {% if odds_recorded_after_start %}<p class="small">※ 発走後に記録されたオッズスナップショットです。厳密な発走前オッズではありません。</p>{% endif %}
@@ -400,6 +426,26 @@
         <div><strong>合計購入額</strong><br>{{ simulation_value_pre.total_stake }}円</div>
         <div><strong>未使用予算</strong><br>{{ simulation_value_pre.unused_budget }}円</div>
       </div>
+      <h3>全馬期待値一覧</h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>EV順位</th><th>馬番</th><th>馬名</th><th>1着確率</th><th>単勝オッズ</th><th>{{ explained_term("EV", "ev") }}</th><th>最低EV判定</th></tr></thead>
+          <tbody>
+            {% for item in expected_value_rows %}
+            <tr{% if item.meets_threshold %} class="ev-above-threshold"{% endif %}>
+              <td>{{ (item.ev_rank|string) ~ "位" if item.ev_rank is not none else "-" }}</td>
+              <td>{{ item.horse_number }}</td>
+              <td>{{ item.horse_name }}</td>
+              <td>{{ "%.2f%%"|format(item.win_probability * 100) if item.win_probability is not none else "-" }}</td>
+              <td>{{ item.win_odds if item.win_odds is not none else "-" }}</td>
+              <td>{{ "%.3f"|format(item.expected_value) if item.expected_value is not none else "-" }}</td>
+              <td>{% if item.meets_threshold is none %}算出不可{% elif item.meets_threshold %}基準以上{% else %}基準未満{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <h3>購入対象</h3>
       {% if simulation_value_pre.selections %}
       <div class="table-scroll">
         <table>
@@ -443,7 +489,7 @@
         </label>
         <div class="simulator-field value-field" hidden>
           <span class="simulator-field-label"><label for="custom-ev-threshold">最低EV</label>{{ info_tooltip("最低EV", "minimum_ev") }}</span>
-          <input id="custom-ev-threshold" name="ev_threshold" type="number" min="1" step="0.01" value="{{ simulation_value_pre.settings.ev_threshold }}">
+          <input id="custom-ev-threshold" name="ev_threshold" type="number" min="0" step="0.01" value="{{ simulation_value_pre.settings.ev_threshold }}">
         </div>
         <div class="simulator-field value-field" hidden>
           <span class="simulator-field-label"><label for="custom-kelly-fraction">Kelly係数</label>{{ info_tooltip("Kelly係数", "kelly_fraction") }}</span>
@@ -508,6 +554,15 @@
 
       function roundSimulationValue(value) {
         return Math.round(value * 1000000) / 1000000;
+      }
+
+      function parseMinimumEv(value) {
+        const text = String(value ?? "").trim();
+        if (!text) {
+          return null;
+        }
+        const parsed = Number(text);
+        return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
       }
 
       function simulationRows(horses) {
@@ -745,10 +800,10 @@
             return `予算は購入単位の${stakeUnit}円以上にしてください。`;
           }
           if (form.elements.method.value === "value") {
-            const evThreshold = Number(form.elements.ev_threshold.value);
+            const evThreshold = parseMinimumEv(form.elements.ev_threshold.value);
             const kellyFraction = Number(form.elements.kelly_fraction.value);
-            if (!Number.isFinite(evThreshold) || evThreshold < 1) {
-              return "最低EVは1.0以上で入力してください。";
+            if (evThreshold === null) {
+              return "最低EVは0以上で入力してください。";
             }
             if (!Number.isFinite(kellyFraction) || kellyFraction < 0 || kellyFraction > 1) {
               return "Kelly係数は0以上1以下で入力してください。";
@@ -846,7 +901,7 @@
           let result;
           if (method === "value") {
             result = calculateValueSimulation(data.horses, budget, stakeUnit, {
-              ev_threshold: Number(form.elements.ev_threshold.value),
+              ev_threshold: parseMinimumEv(form.elements.ev_threshold.value),
               kelly_fraction: Number(form.elements.kelly_fraction.value),
             });
             renderValue(result);

@@ -5,6 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>中央競馬 予想レース一覧 | keiba-oracle</title>
   <style>
+    :root {
+      --status-prediction-bg: {{ status_colors.prediction.background }};
+      --status-prediction-color: {{ status_colors.prediction.color }};
+      --status-prediction-border: {{ status_colors.prediction.border }};
+      --status-result-bg: {{ status_colors.result.background }};
+      --status-result-color: {{ status_colors.result.color }};
+      --status-result-border: {{ status_colors.result.border }};
+      --status-pending-bg: {{ status_colors.pending.background }};
+      --status-pending-color: {{ status_colors.pending.color }};
+      --status-pending-border: {{ status_colors.pending.border }};
+    }
     body {
       margin: 0;
       font-family: "Yu Gothic", "Hiragino Sans", sans-serif;
@@ -42,6 +53,30 @@
       color: #32594d;
       text-decoration: none;
     }
+    .status {
+      display: inline-block;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .status-prediction {
+      background: var(--status-prediction-bg);
+      color: var(--status-prediction-color);
+      border-color: var(--status-prediction-border);
+    }
+    .status-result {
+      background: var(--status-result-bg);
+      color: var(--status-result-color);
+      border-color: var(--status-result-border);
+    }
+    .status-pending {
+      background: var(--status-pending-bg);
+      color: var(--status-pending-color);
+      border-color: var(--status-pending-border);
+    }
   </style>
 </head>
 <body>
@@ -65,7 +100,7 @@
             <td>{{ race.date }}</td>
             <td>{{ race.track }}</td>
             <td>{{ race.race_name }}</td>
-            <td>{{ race.status_label }}</td>
+            <td><span class="status {{ race.status_class }}">{{ race.status_label }}</span></td>
             <td><a href="{{ race.href }}">開く</a></td>
           </tr>
 {% else %}

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import math
 import shutil
 from pathlib import Path
 from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from simulate import calculate_expected_value, meets_ev_threshold
 from utils import (
     ensure_dir,
     list_race_files,
@@ -28,13 +30,22 @@ STATUS_LABELS = {
     "prediction_only": "予想公開",
     "result_published": "結果公開",
 }
+STATUS_CLASSES = {
+    "prediction_only": "status-prediction",
+    "result_published": "status-result",
+}
+STATUS_COLORS = {
+    "prediction": {"background": "#dde9e4", "color": "#32594d", "border": "#b8cec5"},
+    "result": {"background": "#e4eef3", "color": "#315b78", "border": "#b7cbd7"},
+    "pending": {"background": "#ececeb", "color": "#5f625f", "border": "#d0d1cf"},
+}
 SITE_BACKGROUND = "#f2f2f0"
 
 TOOLTIPS = {
     "dutching_method": "AIの予測上位馬を複数選び、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。",
     "coverage_probability": "選択した馬の1着確率を合計した値です。",
     "group_expected_value": "選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。",
-    "minimum_ev": "1着確率と単勝オッズから計算した期待値について、購入対象とする最低ラインです。",
+    "minimum_ev": "1着確率と単勝オッズから計算した期待値について、購入対象とする最低ラインです。1.0が損益分岐の目安です。1.0未満も入力できますが、Kelly基準で購入割合が0以下になる馬には購入額を割り当てません。",
     "kelly_fraction": "Kelly基準は、予測確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。",
     "ev": "1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。",
     "full_kelly": "予測確率とオッズからKelly基準で算出した、予算に対する購入割合です。Kelly係数を掛ける前の値で、係数1.0に相当します。",
@@ -55,6 +66,15 @@ UNKNOWN_REJECTION_REASON_LABEL = "条件を満たしていません"
 
 def status_label(status: str) -> str:
     return STATUS_LABELS.get(status, "処理中")
+
+
+def status_class(status: str) -> str:
+    return STATUS_CLASSES.get(status, "status-pending")
+
+
+def format_jst_datetime(value: str | None) -> str:
+    parsed = parse_jst_datetime(value)
+    return parsed.strftime("%Y-%m-%d %H:%M:%S") if parsed else "-"
 
 
 def rejection_reason_text(reasons: list[str]) -> str:
@@ -111,6 +131,58 @@ def build_odds_timing(race: dict[str, Any]) -> tuple[str, bool]:
     if seconds_from_start < 0:
         return f"発走{minutes}分前", False
     return f"発走{minutes}分後", True
+
+
+def finite_float(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
+
+
+def build_expected_value_rows(
+    horse_rows: list[dict[str, Any]],
+    ev_threshold: float,
+) -> list[dict[str, Any]]:
+    rows = []
+    for horse in horse_rows:
+        probability = finite_float((horse.get("prediction") or {}).get("win_probability"))
+        odds = finite_float(horse.get("win_odds"))
+        expected_value = (
+            calculate_expected_value(probability, odds)
+            if probability is not None and odds is not None
+            else None
+        )
+        rows.append(
+            {
+                "horse_number": horse["horse_number"],
+                "horse_name": horse["horse_name"],
+                "win_probability": probability,
+                "win_odds": odds,
+                "expected_value": expected_value,
+                "meets_threshold": (
+                    meets_ev_threshold(expected_value, ev_threshold)
+                    if expected_value is not None
+                    else None
+                ),
+            }
+        )
+
+    rows.sort(
+        key=lambda item: (
+            item["expected_value"] is None,
+            -(item["expected_value"] or 0.0),
+            item["horse_number"],
+        )
+    )
+    for rank, row in enumerate((item for item in rows if item["expected_value"] is not None), start=1):
+        row["ev_rank"] = rank
+    for row in rows:
+        row.setdefault("ev_rank", None)
+    return rows
 
 
 def build_environment(root: Path | None = None) -> Environment:
@@ -185,6 +257,10 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
     dutching_simulation = simulation.get("dutching") or {}
     value_pre = value_simulation.get("pre")
     dutching_pre = dutching_simulation.get("pre")
+    expected_value_rows = build_expected_value_rows(
+        horse_rows,
+        float(value_pre["settings"]["ev_threshold"]),
+    ) if value_pre else []
     custom_simulation_horses = [
         {
             "horse_number": horse["horse_number"],
@@ -215,11 +291,15 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         "evaluation": evaluation,
         "horse_rows": horse_rows,
         "result_rows": result_rows,
+        "expected_value_rows": expected_value_rows,
         "status": status,
         "status_label": status_label(status),
+        "status_class": status_class(status),
+        "status_colors": STATUS_COLORS,
         "site_background": SITE_BACKGROUND,
         "tooltips": TOOLTIPS,
         "rejection_reason_text": rejection_reason_text,
+        "odds_captured_at_label": format_jst_datetime(race.get("odds_captured_at")),
         "odds_timing_label": odds_timing_label,
         "odds_recorded_after_start": odds_recorded_after_start,
         "custom_simulation_data": custom_simulation_data,
@@ -271,12 +351,17 @@ def render_site(
                 "track": race["track"],
                 "race_name": race["race_name"],
                 "status_label": context["status_label"],
+                "status_class": context["status_class"],
                 "href": relative_path.as_posix(),
             }
         )
 
     index_rows.sort(key=lambda item: (item["date"], item["track"]))
-    index_html = index_template.render(races=index_rows, site_background=SITE_BACKGROUND)
+    index_html = index_template.render(
+        races=index_rows,
+        site_background=SITE_BACKGROUND,
+        status_colors=STATUS_COLORS,
+    )
     (output_dir / "index.html").write_text(index_html, encoding="utf-8")
     return output_dir
 

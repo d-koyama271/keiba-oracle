@@ -22,6 +22,14 @@ def round_ratio(value: float) -> float:
     return round(value, 6)
 
 
+def calculate_expected_value(probability: float, odds: float) -> float:
+    return probability * odds
+
+
+def meets_ev_threshold(expected_value: float, threshold: float) -> bool:
+    return expected_value + EPSILON >= threshold
+
+
 def simulation_settings(config: dict[str, Any]) -> tuple[int, int, dict[str, Any], dict[str, Any]]:
     simulation = config["simulation"]
     budget = int(simulation["budget"])
@@ -66,11 +74,11 @@ def calculate_value_pre(payload: dict[str, Any], config: dict[str, Any]) -> dict
     for row in prediction_rows(payload):
         probability = row["predicted_probability"]
         odds = row["win_odds"]
-        expected_value = probability * odds
+        expected_value = calculate_expected_value(probability, odds)
         b = odds - 1.0
         full_kelly = max(0.0, ((b * probability) - (1.0 - probability)) / b)
         fractional_kelly = full_kelly * kelly_fraction
-        if expected_value + EPSILON < ev_threshold or full_kelly <= 0 or fractional_kelly <= 0:
+        if not meets_ev_threshold(expected_value, ev_threshold) or full_kelly <= 0 or fractional_kelly <= 0:
             continue
         candidates.append(
             {

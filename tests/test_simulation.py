@@ -156,6 +156,20 @@ class ValueSimulationTests(unittest.TestCase):
         self.assertEqual(below["unused_budget"], below["budget"])
         self.assertEqual(zero_kelly["selections"], [])
 
+    def test_ev_thresholds_below_one_keep_non_positive_kelly_unselected(self) -> None:
+        payload = make_payload([(1, 0.20, 4.0), (2, 0.40, 3.0)])
+        for threshold in (0, 0.5, 0.99, 1.0, 1.05):
+            result = calculate_value_pre(payload, make_config(ev_threshold=threshold))
+
+            self.assertEqual([item["horse_number"] for item in result["selections"]], [2])
+            self.assertTrue(all(item["full_kelly"] >= 0 for item in result["selections"]))
+            self.assertTrue(all(item["fractional_kelly"] >= 0 for item in result["selections"]))
+            self.assertTrue(all(item["stake"] >= 0 for item in result["selections"]))
+
+        no_edge = calculate_value_pre(make_payload([(1, 0.20, 4.0)]), make_config(ev_threshold=0))
+        self.assertEqual(no_edge["selections"], [])
+        self.assertEqual(no_edge["total_stake"], 0)
+
     def test_kelly_changes_stake_without_forcing_full_budget(self) -> None:
         totals = []
         for fraction in (0.25, 0.5, 1.0):
@@ -431,8 +445,12 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         self.assertIn('<div class="simulator-field value-field" hidden>', rendered)
         self.assertIn('<label class="simulator-field dutching-field">最大対象頭数', rendered)
         self.assertIn('name="budget" type="number" min="100" step="100" value="1000"', rendered)
-        self.assertIn('name="ev_threshold" type="number" min="1" step="0.01" value="1.0"', rendered)
-        self.assertIn('<div class="status">結果公開</div>', rendered)
+        self.assertIn('name="ev_threshold" type="number" min="0" step="0.01" value="1.0"', rendered)
+        self.assertIn("最低EVは0以上で入力してください。", rendered)
+        self.assertIn('<div class="status race-status status-result">結果公開</div>', rendered)
+        self.assertIn("全馬期待値一覧", rendered)
+        self.assertIn("EV順位", rendered)
+        self.assertIn("最低EV判定", rendered)
         self.assertNotIn("予想生成", rendered)
         self.assertNotIn("結果生成", rendered)
         self.assertIn('<section class="result-section">', rendered)
@@ -443,7 +461,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
             "AIの予測上位馬を複数選び、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。",
             "選択した馬の1着確率を合計した値です。",
             "選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。",
-            "1着確率と単勝オッズから計算した期待値について、購入対象とする最低ラインです。",
+            "1着確率と単勝オッズから計算した期待値について、購入対象とする最低ラインです。1.0が損益分岐の目安です。1.0未満も入力できますが、Kelly基準で購入割合が0以下になる馬には購入額を割り当てません。",
             "Kelly基準は、予測確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。",
             "1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。",
             "予測確率とオッズからKelly基準で算出した、予算に対する購入割合です。Kelly係数を掛ける前の値で、係数1.0に相当します。",
@@ -474,6 +492,25 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         self.assertNotIn("localStorage", rendered)
         self.assertNotIn("document.cookie", rendered)
         self.assertNotIn("fetch(", rendered)
+
+    def test_all_horse_expected_values_are_rendered_without_changing_simulation(self) -> None:
+        payload = make_payload(
+            [(1, 0.3333334, 3.0), (2, 0.25, 4.0), (3, 0.2, 5.0), (4, 0.1, None)]
+        )
+        payload["simulation"] = calculate_pre_simulation(payload, make_config())
+        simulation_before = copy.deepcopy(payload["simulation"])
+
+        rendered = build_environment(ROOT).get_template("race.html.j2").render(**build_race_context(payload))
+        soup = BeautifulSoup(rendered, "html.parser")
+        table = soup.find("h3", string="全馬期待値一覧").find_next("table")
+        rows = [[cell.get_text(strip=True) for cell in row.select("td")] for row in table.select("tbody tr")]
+
+        self.assertEqual(len(rows), 4)
+        self.assertEqual([row[1] for row in rows], ["1", "2", "3", "4"])
+        self.assertEqual([row[0] for row in rows], ["1位", "2位", "3位", "-"])
+        self.assertEqual([row[5] for row in rows], ["1.000", "1.000", "1.000", "-"])
+        self.assertEqual([row[6] for row in rows], ["基準以上", "基準以上", "基準以上", "算出不可"])
+        self.assertEqual(payload["simulation"], simulation_before)
 
     def test_rejection_reasons_are_localized_for_normal_and_custom_tables(self) -> None:
         payload = make_payload(DUTCHING_ROWS)
@@ -599,12 +636,15 @@ new Function({json.dumps(full_script)});
 const horses = {json.dumps(horses)};
 const output = {{
   value: calculateValueSimulation(horses, 1000, 100, {{ev_threshold: 1.0, kelly_fraction: 0.5}}),
+  value_below_one: calculateValueSimulation(horses, 1000, 100, {{ev_threshold: 0.5, kelly_fraction: 0.5}}),
   dutching: calculateDutchingSimulation(horses, 1000, 100, {{
     max_selection_count: 5,
     min_coverage_probability: 0.4,
     min_group_expected_value: 0.0,
     require_profit_if_hit: true
-  }})
+  }}),
+  minimum_ev_valid: ["0", "0.5", "0.99", "1.0", "1.05"].map(parseMinimumEv),
+  minimum_ev_invalid: ["-0.01", "", "NaN", "Infinity"].map(parseMinimumEv)
 }};
 process.stdout.write(JSON.stringify(output));
 """
@@ -616,6 +656,12 @@ process.stdout.write(JSON.stringify(output));
             check=True,
         )
         javascript_result = json.loads(completed.stdout)
+        self.assertEqual(javascript_result.pop("minimum_ev_valid"), [0, 0.5, 0.99, 1.0, 1.05])
+        self.assertEqual(javascript_result.pop("minimum_ev_invalid"), [None, None, None, None])
+        python_result["value_below_one"] = calculate_value_pre(
+            payload,
+            make_config(budget=1000, ev_threshold=0.5),
+        )
         self.assertEqual(javascript_result, python_result)
 
 
