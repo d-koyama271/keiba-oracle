@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -115,6 +116,35 @@
     th {
       color: var(--muted);
       font-weight: 700;
+    }
+    .sort-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-weight: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .sort-button:hover,
+    .sort-button:focus-visible {
+      color: var(--accent);
+    }
+    .result-table .sort-button:hover,
+    .result-table .sort-button:focus-visible {
+      color: var(--result-accent);
+    }
+    .sort-button:focus-visible {
+      outline: 2px solid #9bb8ae;
+      outline-offset: 2px;
+    }
+    .sort-indicator {
+      font-size: 11px;
+      opacity: 0.75;
     }
     .selected-row { background: #fff6dc; }
     .small {
@@ -397,161 +427,189 @@
       
       <p class="table-scroll-hint">表は横にスクロールできます</p>
       <div class="table-scroll">
-        <table class="prediction-table">
+        <table class="prediction-table" data-sortable>
           <thead>
             <tr>
-              <th class="nowrap">馬番</th>
-              <th class="horse-name">馬名</th>
-              <th class="nowrap">騎手</th>
-              <th class="nowrap">単勝オッズ</th>
-              <th class="nowrap">人気</th>
-              <th class="nowrap">1着確率</th>
-              <th class="nowrap">予想順位</th>
+              <th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="0" data-sort-type="number" data-sort-first="ascending">
+    馬番 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+              <th class="horse-name" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="1" data-sort-type="text" data-sort-first="ascending">
+    馬名 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+              <th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="text" data-sort-first="ascending">
+    騎手 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+              <th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="ascending">
+    単勝オッズ <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+              <th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
+    人気 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+              <th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="descending">
+    1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+              <th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="ascending">
+    予想順位 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
               <th class="reason-cell">理由</th>
             </tr>
           </thead>
           <tbody>
             
             <tr>
-              <td class="nowrap">1</td>
+              <td class="nowrap" data-sort-value="1">1</td>
               <td class="horse-name">ダマスク</td>
               <td class="nowrap">黛</td>
-              <td class="nowrap">60.6</td>
-              <td class="nowrap">12</td>
-              <td class="nowrap">1.2%</td>
-              <td class="nowrap">12位</td>
+              <td class="nowrap" data-sort-value="60.6">60.6</td>
+              <td class="nowrap" data-sort-value="12">12</td>
+              <td class="nowrap" data-sort-value="0.012">1.2%</td>
+              <td class="nowrap" data-sort-value="12">12位</td>
               <td class="reason-cell">函館ダート1000mの新馬戦は0.4秒差で勝ったが、今回は芝への変更と200m延長。市場評価も低く、芝適性を裏付ける実績がないため限定的な評価とした。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">2</td>
+              <td class="nowrap" data-sort-value="2">2</td>
               <td class="horse-name">ダイシンドラゴン</td>
               <td class="nowrap">丹内</td>
-              <td class="nowrap">26.2</td>
-              <td class="nowrap">7</td>
-              <td class="nowrap">3.4%</td>
-              <td class="nowrap">8位</td>
+              <td class="nowrap" data-sort-value="26.2">26.2</td>
+              <td class="nowrap" data-sort-value="7">7</td>
+              <td class="nowrap" data-sort-value="0.034">3.4%</td>
+              <td class="nowrap" data-sort-value="8">8位</td>
               <td class="reason-cell">函館芝1200mを2戦し、前走は先行して0.3秒差で勝利。同条件経験は評価できるが、走破内容は上位候補より見劣り、未勝利戦からの相手強化もある。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">3</td>
+              <td class="nowrap" data-sort-value="3">3</td>
               <td class="horse-name">セタキト</td>
               <td class="nowrap">斎藤</td>
-              <td class="nowrap">37.6</td>
-              <td class="nowrap">9</td>
-              <td class="nowrap">2.0%</td>
-              <td class="nowrap">10位</td>
+              <td class="nowrap" data-sort-value="37.6">37.6</td>
+              <td class="nowrap" data-sort-value="9">9</td>
+              <td class="nowrap" data-sort-value="0.02">2.0%</td>
+              <td class="nowrap" data-sort-value="10">10位</td>
               <td class="reason-cell">函館芝1000mの新馬戦を逃げ切った先行力はあるが、着差は小さく、今回は200m延長と斤量2kg増。1200mでの持続力が未確認で市場評価以上には上げにくい。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">4</td>
+              <td class="nowrap" data-sort-value="4">4</td>
               <td class="horse-name">アルテクィーン</td>
               <td class="nowrap">鮫島駿</td>
-              <td class="nowrap">27.9</td>
-              <td class="nowrap">8</td>
-              <td class="nowrap">3.6%</td>
-              <td class="nowrap">7位</td>
+              <td class="nowrap" data-sort-value="27.9">27.9</td>
+              <td class="nowrap" data-sort-value="8">8</td>
+              <td class="nowrap" data-sort-value="0.036">3.6%</td>
+              <td class="nowrap" data-sort-value="7">7位</td>
               <td class="reason-cell">函館芝1200mで良馬場と稍重の双方を2着し、条件への安定性は高い。前走は7番と同タイムだったが、2戦とも勝ち切れておらず、先手型が多い展開も課題となる。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">5</td>
+              <td class="nowrap" data-sort-value="5">5</td>
               <td class="horse-name">フェリチタ</td>
               <td class="nowrap">横山和</td>
-              <td class="nowrap">40.0</td>
-              <td class="nowrap">10</td>
-              <td class="nowrap">2.5%</td>
-              <td class="nowrap">9位</td>
+              <td class="nowrap" data-sort-value="40.0">40.0</td>
+              <td class="nowrap" data-sort-value="10">10</td>
+              <td class="nowrap" data-sort-value="0.025">2.5%</td>
+              <td class="nowrap" data-sort-value="9">9位</td>
               <td class="reason-cell">函館芝1200mの新馬戦を逃げて0.5秒差で勝利。内容は評価できるが、前半が緩めの展開で、今回は先行馬が多く同様に運べる保証がない。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">6</td>
+              <td class="nowrap" data-sort-value="6">6</td>
               <td class="horse-name">ウンスイ</td>
               <td class="nowrap">横山琉</td>
-              <td class="nowrap">96.1</td>
-              <td class="nowrap">13</td>
-              <td class="nowrap">0.6%</td>
-              <td class="nowrap">13位</td>
+              <td class="nowrap" data-sort-value="96.1">96.1</td>
+              <td class="nowrap" data-sort-value="13">13</td>
+              <td class="nowrap" data-sort-value="0.006">0.6%</td>
+              <td class="nowrap" data-sort-value="13">13位</td>
               <td class="reason-cell">門別ダート1000mでは勝っているが、前走の1200m戦は3.6秒差の最下位。芝実績もなく、直近内容と条件変更の両面で強い根拠に乏しい。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">7</td>
+              <td class="nowrap" data-sort-value="7">7</td>
               <td class="horse-name">ショウナンカノア</td>
               <td class="nowrap">池添</td>
-              <td class="nowrap">18.7</td>
-              <td class="nowrap">6</td>
-              <td class="nowrap">5.4%</td>
-              <td class="nowrap">6位</td>
+              <td class="nowrap" data-sort-value="18.7">18.7</td>
+              <td class="nowrap" data-sort-value="6">6</td>
+              <td class="nowrap" data-sort-value="0.054">5.4%</td>
+              <td class="nowrap" data-sort-value="6">6位</td>
               <td class="reason-cell">函館芝1200mの前走で4番を競り落とし、上がりも0.3秒速かった。初戦からの改善が明確で市場評価以上の余地はあるが、稍重では6着だったため馬場状態不明はリスク。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">8</td>
+              <td class="nowrap" data-sort-value="8">8</td>
               <td class="horse-name">クロリス</td>
               <td class="nowrap">岩田康</td>
-              <td class="nowrap">50.8</td>
-              <td class="nowrap">11</td>
-              <td class="nowrap">1.4%</td>
-              <td class="nowrap">11位</td>
+              <td class="nowrap" data-sort-value="50.8">50.8</td>
+              <td class="nowrap" data-sort-value="11">11</td>
+              <td class="nowrap" data-sort-value="0.014">1.4%</td>
+              <td class="nowrap" data-sort-value="11">11位</td>
               <td class="reason-cell">阪神ダート1400mの新馬戦を逃げ切ったが、今回は芝への変更と200m短縮。先行力はあるものの、函館芝1200mで必要な速度への対応は未確認。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">9</td>
+              <td class="nowrap" data-sort-value="9">9</td>
               <td class="horse-name">イモージェン</td>
               <td class="nowrap">佐々木</td>
-              <td class="nowrap">4.5</td>
-              <td class="nowrap">2</td>
-              <td class="nowrap">17.8%</td>
-              <td class="nowrap">2位</td>
+              <td class="nowrap" data-sort-value="4.5">4.5</td>
+              <td class="nowrap" data-sort-value="2">2</td>
+              <td class="nowrap" data-sort-value="0.178">17.8%</td>
+              <td class="nowrap" data-sort-value="2">2位</td>
               <td class="reason-cell">函館芝1200mの新馬戦を好位から上がり33.6秒で差し切った。先手型が多い組み合わせでも展開に対応しやすく、市場の高評価を概ね妥当と判断した。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">10</td>
+              <td class="nowrap" data-sort-value="10">10</td>
               <td class="horse-name">ノリヤンモーニン</td>
               <td class="nowrap">浜中</td>
-              <td class="nowrap">13.4</td>
-              <td class="nowrap">5</td>
-              <td class="nowrap">5.5%</td>
-              <td class="nowrap">5位</td>
+              <td class="nowrap" data-sort-value="13.4">13.4</td>
+              <td class="nowrap" data-sort-value="5">5</td>
+              <td class="nowrap" data-sort-value="0.055">5.5%</td>
+              <td class="nowrap" data-sort-value="5">5位</td>
               <td class="reason-cell">函館ダート1000mの新馬戦を0.9秒差で圧勝し、市場からも一定の評価を受けている。ただし芝への変更と200m延長があり、直接的な条件実績がない分を割り引いた。</td>
             </tr>
             
             <tr class="prediction-top">
-              <td class="nowrap">11</td>
+              <td class="nowrap" data-sort-value="11">11</td>
               <td class="horse-name">シグレ</td>
               <td class="nowrap">武豊</td>
-              <td class="nowrap">2.2</td>
-              <td class="nowrap">1</td>
-              <td class="nowrap">33.5%</td>
-              <td class="nowrap">1位</td>
+              <td class="nowrap" data-sort-value="2.2">2.2</td>
+              <td class="nowrap" data-sort-value="1">1</td>
+              <td class="nowrap" data-sort-value="0.335">33.5%</td>
+              <td class="nowrap" data-sort-value="1">1位</td>
               <td class="reason-cell">函館芝1200mの新馬戦を逃げて1.0秒差で完勝し、今回も同じ騎手が騎乗する。市場評価と勝利内容は最上位だが、前走が6頭立てで今回は先手型が多いため、オッズ換算値からはやや抑えた。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">12</td>
+              <td class="nowrap" data-sort-value="12">12</td>
               <td class="horse-name">ダイメイビッグボス</td>
               <td class="nowrap">横山武</td>
-              <td class="nowrap">11.3</td>
-              <td class="nowrap">4</td>
-              <td class="nowrap">9.0%</td>
-              <td class="nowrap">4位</td>
+              <td class="nowrap" data-sort-value="11.3">11.3</td>
+              <td class="nowrap" data-sort-value="4">4</td>
+              <td class="nowrap" data-sort-value="0.09">9.0%</td>
+              <td class="nowrap" data-sort-value="4">4位</td>
               <td class="reason-cell">函館芝1200mの稍重を中団から差し切り、0.3秒差で勝利。先行馬が多い今回は脚質面で有利になる可能性があり、市場評価よりやや上方修正した。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">13</td>
+              <td class="nowrap" data-sort-value="13">13</td>
               <td class="horse-name">ロンドンガーズ</td>
               <td class="nowrap">北村友</td>
-              <td class="nowrap">5.1</td>
-              <td class="nowrap">3</td>
-              <td class="nowrap">14.1%</td>
-              <td class="nowrap">3位</td>
+              <td class="nowrap" data-sort-value="5.1">5.1</td>
+              <td class="nowrap" data-sort-value="3">3</td>
+              <td class="nowrap" data-sort-value="0.141">14.1%</td>
+              <td class="nowrap" data-sort-value="3">3位</td>
               <td class="reason-cell">阪神芝1200mの新馬戦を逃げて0.5秒差で勝ち、上がり33.8秒の内容も良い。能力上位と評価するが、函館経験がなく、先手型が多い展開と騎手変更を考慮して市場評価から少し下げた。</td>
             </tr>
             
@@ -1554,6 +1612,70 @@
     <p class="small">本ページはAIによる確率推定と購入シミュレーションを掲載するもので、的中や利益を保証するものではありません。投票はご自身の判断で行ってください。</p>
   </main>
   <script>
+    const initializeSortableTable = (table) => {
+      const body = table.tBodies[0];
+      if (!body) return;
+
+      const buttons = Array.from(table.querySelectorAll("thead .sort-button"));
+      Array.from(body.rows).forEach((row, index) => {
+        row.dataset.originalIndex = String(index);
+      });
+
+      const originalIndex = (row) => Number(row.dataset.originalIndex);
+      const resetHeader = (button) => {
+        button.closest("th").setAttribute("aria-sort", "none");
+        button.querySelector(".sort-indicator").textContent = "↕";
+      };
+      const readValue = (row, columnIndex, valueType) => {
+        const cell = row.cells[columnIndex];
+        const rawValue = valueType === "number"
+          ? (cell?.dataset.sortValue ?? "")
+          : (cell?.textContent?.trim() ?? "");
+        if (["", "-", "null", "undefined", "NaN"].includes(rawValue)) return null;
+        if (valueType === "text") return rawValue;
+        const number = Number(rawValue);
+        return Number.isFinite(number) ? number : null;
+      };
+
+      for (const button of buttons) {
+        button.addEventListener("click", () => {
+          const header = button.closest("th");
+          const currentDirection = header.getAttribute("aria-sort") || "none";
+          const firstDirection = button.dataset.sortFirst === "descending" ? "descending" : "ascending";
+          const oppositeDirection = firstDirection === "ascending" ? "descending" : "ascending";
+          const nextDirection = currentDirection === "none"
+            ? firstDirection
+            : currentDirection === firstDirection
+              ? oppositeDirection
+              : "none";
+
+          buttons.forEach(resetHeader);
+          const rows = Array.from(body.rows);
+          if (nextDirection === "none") {
+            rows.sort((rowA, rowB) => originalIndex(rowA) - originalIndex(rowB));
+          } else {
+            header.setAttribute("aria-sort", nextDirection);
+            button.querySelector(".sort-indicator").textContent = nextDirection === "ascending" ? "▲" : "▼";
+            const columnIndex = Number(button.dataset.sortColumn);
+            const valueType = button.dataset.sortType;
+            rows.sort((rowA, rowB) => {
+              const valueA = readValue(rowA, columnIndex, valueType);
+              const valueB = readValue(rowB, columnIndex, valueType);
+              if (valueA === null && valueB === null) return originalIndex(rowA) - originalIndex(rowB);
+              if (valueA === null) return 1;
+              if (valueB === null) return -1;
+              const comparison = valueType === "text"
+                ? valueA.localeCompare(valueB, "ja")
+                : valueA - valueB;
+              if (comparison === 0) return originalIndex(rowA) - originalIndex(rowB);
+              return nextDirection === "ascending" ? comparison : -comparison;
+            });
+          }
+          rows.forEach((row) => body.appendChild(row));
+        });
+      }
+    };
+
     (() => {
       const tooltipTriggers = Array.from(document.querySelectorAll(".tooltip-trigger"));
       const closeTooltips = () => {
@@ -1584,6 +1706,9 @@
           }
         }
       });
+      document.querySelectorAll(
+        ".prediction-table[data-sortable], .result-table[data-sortable]"
+      ).forEach(initializeSortableTable);
     })();
   </script>
 </body>

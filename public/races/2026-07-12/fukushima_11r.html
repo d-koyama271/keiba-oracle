@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -115,6 +116,35 @@
     th {
       color: var(--muted);
       font-weight: 700;
+    }
+    .sort-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-weight: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .sort-button:hover,
+    .sort-button:focus-visible {
+      color: var(--accent);
+    }
+    .result-table .sort-button:hover,
+    .result-table .sort-button:focus-visible {
+      color: var(--result-accent);
+    }
+    .sort-button:focus-visible {
+      outline: 2px solid #9bb8ae;
+      outline-offset: 2px;
+    }
+    .sort-indicator {
+      font-size: 11px;
+      opacity: 0.75;
     }
     .selected-row { background: #fff6dc; }
     .small {
@@ -397,194 +427,222 @@
       
       <p class="table-scroll-hint">表は横にスクロールできます</p>
       <div class="table-scroll">
-        <table class="prediction-table">
+        <table class="prediction-table" data-sortable>
           <thead>
             <tr>
-              <th class="nowrap">馬番</th>
-              <th class="horse-name">馬名</th>
-              <th class="nowrap">騎手</th>
-              <th class="nowrap">単勝オッズ</th>
-              <th class="nowrap">人気</th>
-              <th class="nowrap">1着確率</th>
-              <th class="nowrap">予想順位</th>
+              <th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="0" data-sort-type="number" data-sort-first="ascending">
+    馬番 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+              <th class="horse-name" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="1" data-sort-type="text" data-sort-first="ascending">
+    馬名 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+              <th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="text" data-sort-first="ascending">
+    騎手 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+              <th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="ascending">
+    単勝オッズ <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+              <th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
+    人気 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+              <th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="descending">
+    1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+              <th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="ascending">
+    予想順位 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
               <th class="reason-cell">理由</th>
             </tr>
           </thead>
           <tbody>
             
             <tr>
-              <td class="nowrap">1</td>
+              <td class="nowrap" data-sort-value="1">1</td>
               <td class="horse-name">ボーンディスウェイ</td>
               <td class="nowrap">丸山</td>
-              <td class="nowrap">45.6</td>
-              <td class="nowrap">14</td>
-              <td class="nowrap">2.3%</td>
-              <td class="nowrap">13位</td>
+              <td class="nowrap" data-sort-value="45.6">45.6</td>
+              <td class="nowrap" data-sort-value="14">14</td>
+              <td class="nowrap" data-sort-value="0.022569">2.3%</td>
+              <td class="nowrap" data-sort-value="13">13位</td>
               <td class="reason-cell">近走は長距離で着順を落としているが、芝1800〜2200mでは28戦5勝、福島でも5戦3回の3着内があり、2000mへの距離短縮は好材料。G3では勝利がなく、差し脚質で展開依存もあるため上位評価までは上げにくい。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">2</td>
+              <td class="nowrap" data-sort-value="2">2</td>
               <td class="horse-name">コントラポスト</td>
               <td class="nowrap">菊沢</td>
-              <td class="nowrap">15.1</td>
-              <td class="nowrap">8</td>
-              <td class="nowrap">6.3%</td>
-              <td class="nowrap">6位</td>
+              <td class="nowrap" data-sort-value="15.1">15.1</td>
+              <td class="nowrap" data-sort-value="8">8</td>
+              <td class="nowrap" data-sort-value="0.063107">6.3%</td>
+              <td class="nowrap" data-sort-value="6">6位</td>
               <td class="reason-cell">近走は重賞を含め大きく崩れず、今回より重い斤量でも僅差の競馬を続けている。稍重では2戦1勝だが、2000m前後の実績と福島経験が乏しく、距離延長分を考慮して中位上位評価とした。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">3</td>
+              <td class="nowrap" data-sort-value="3">3</td>
               <td class="horse-name">ショウナンマグマ</td>
               <td class="nowrap">三浦</td>
-              <td class="nowrap">169.8</td>
-              <td class="nowrap">16</td>
-              <td class="nowrap">0.3%</td>
-              <td class="nowrap">16位</td>
+              <td class="nowrap" data-sort-value="169.8">169.8</td>
+              <td class="nowrap" data-sort-value="16">16</td>
+              <td class="nowrap" data-sort-value="0.003143">0.3%</td>
+              <td class="nowrap" data-sort-value="16">16位</td>
               <td class="reason-cell">近3走はいずれも12着以下で着差も大きく、G3では11戦して3着内1回とクラス実績も弱い。稍重での勝利経験と斤量減はあるが、近況を覆す根拠としては不足する。</td>
             </tr>
             
             <tr class="prediction-top">
-              <td class="nowrap">4</td>
+              <td class="nowrap" data-sort-value="4">4</td>
               <td class="horse-name">カラマティアノス</td>
               <td class="nowrap">岩田康</td>
-              <td class="nowrap">4.7</td>
-              <td class="nowrap">1</td>
-              <td class="nowrap">15.4%</td>
-              <td class="nowrap">1位</td>
+              <td class="nowrap" data-sort-value="4.7">4.7</td>
+              <td class="nowrap" data-sort-value="1">1</td>
+              <td class="nowrap" data-sort-value="0.154087">15.4%</td>
+              <td class="nowrap" data-sort-value="1">1位</td>
               <td class="reason-cell">芝2000mのG3勝ちとG2での2着があり、近走もG3で0.3秒差と能力は上位。芝1800〜2200mで8戦6回の3着内も安定している。一方で58kg、福島初経験、稍重実績なしを考慮し、市場評価からはわずかに抑えた。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">5</td>
+              <td class="nowrap" data-sort-value="5">5</td>
               <td class="horse-name">オーロラエックス</td>
               <td class="nowrap">坂井</td>
-              <td class="nowrap">31.1</td>
-              <td class="nowrap">11</td>
-              <td class="nowrap">3.1%</td>
-              <td class="nowrap">10位</td>
+              <td class="nowrap" data-sort-value="31.1">31.1</td>
+              <td class="nowrap" data-sort-value="11">11</td>
+              <td class="nowrap" data-sort-value="0.03064">3.1%</td>
+              <td class="nowrap" data-sort-value="10">10位</td>
               <td class="reason-cell">芝1800〜2200mで13戦5勝と勝ち切る力はあるが、直近3走は6着、9着、16着で状態面に不確実性がある。55kgと距離延長は好材料だが、福島初経験と追込型による展開依存を考慮した。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">6</td>
+              <td class="nowrap" data-sort-value="6">6</td>
               <td class="horse-name">マイネルモーント</td>
               <td class="nowrap">石川</td>
-              <td class="nowrap">13.2</td>
-              <td class="nowrap">6</td>
-              <td class="nowrap">6.1%</td>
-              <td class="nowrap">7位</td>
+              <td class="nowrap" data-sort-value="13.2">13.2</td>
+              <td class="nowrap" data-sort-value="6">6</td>
+              <td class="nowrap" data-sort-value="0.06064">6.1%</td>
+              <td class="nowrap" data-sort-value="7">7位</td>
               <td class="reason-cell">福島芝2000mの直近走で0.4秒差4着があり、今回は当時より2kg軽い56kg。G2でも僅差4着がある一方、G3では7戦して3着内1回で勝ち切れておらず、追込型のため展開面の不確実性も残る。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">7</td>
+              <td class="nowrap" data-sort-value="7">7</td>
               <td class="horse-name">メリオーレム</td>
               <td class="nowrap">Ｍデムーロ</td>
-              <td class="nowrap">22.9</td>
-              <td class="nowrap">9</td>
-              <td class="nowrap">3.3%</td>
-              <td class="nowrap">9位</td>
+              <td class="nowrap" data-sort-value="22.9">22.9</td>
+              <td class="nowrap" data-sort-value="9">9</td>
+              <td class="nowrap" data-sort-value="0.033289">3.3%</td>
+              <td class="nowrap" data-sort-value="9">9位</td>
               <td class="reason-cell">芝2000mのG3で0.5秒差5着があり、55kgは有利。ただし近走は勝ち切れず、G3成績も2戦して3着内なし。福島と稍重の経験が乏しく、差し脚質で位置取りにも左右される。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">8</td>
+              <td class="nowrap" data-sort-value="8">8</td>
               <td class="horse-name">クリスマスパレード</td>
               <td class="nowrap">杉原</td>
-              <td class="nowrap">37.3</td>
-              <td class="nowrap">13</td>
-              <td class="nowrap">2.1%</td>
-              <td class="nowrap">14位</td>
+              <td class="nowrap" data-sort-value="37.3">37.3</td>
+              <td class="nowrap" data-sort-value="13">13</td>
+              <td class="nowrap" data-sort-value="0.02146">2.1%</td>
+              <td class="nowrap" data-sort-value="14">14位</td>
               <td class="reason-cell">福島芝2000mのG3で0.5秒差6着があり、稍重では1戦1勝。ただし近2走は16着、15着と大きく崩れ、今回は106日ぶり。先行力はあるが、近況と重賞での安定性を考慮して低めの評価とした。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">9</td>
+              <td class="nowrap" data-sort-value="9">9</td>
               <td class="horse-name">オニャンコポン</td>
               <td class="nowrap">吉田豊</td>
-              <td class="nowrap">73.5</td>
-              <td class="nowrap">15</td>
-              <td class="nowrap">0.7%</td>
-              <td class="nowrap">15位</td>
+              <td class="nowrap" data-sort-value="73.5">73.5</td>
+              <td class="nowrap" data-sort-value="15">15</td>
+              <td class="nowrap" data-sort-value="0.00726">0.7%</td>
+              <td class="nowrap" data-sort-value="15">15位</td>
               <td class="reason-cell">54kgと福島での3着内実績はあるが、近3走はいずれも二桁着順で、稍重でも2戦して3着内なし。G3での勝利経験はあるものの、現在の状態を強く評価できる材料が少ない。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">10</td>
+              <td class="nowrap" data-sort-value="10">10</td>
               <td class="horse-name">センツブラッド</td>
               <td class="nowrap">原</td>
-              <td class="nowrap">14.8</td>
-              <td class="nowrap">7</td>
-              <td class="nowrap">5.9%</td>
-              <td class="nowrap">8位</td>
+              <td class="nowrap" data-sort-value="14.8">14.8</td>
+              <td class="nowrap" data-sort-value="7">7</td>
+              <td class="nowrap" data-sort-value="0.059235">5.9%</td>
+              <td class="nowrap" data-sort-value="8">8位</td>
               <td class="reason-cell">福島の重賞で2着経験があり、稍重でも1戦1勝。56kgで先行できる点も今回条件に合う。一方、直近2走は10着、14着で、G3では5戦未勝利のため、復調を前提とした過度な評価は避けた。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">11</td>
+              <td class="nowrap" data-sort-value="11">11</td>
               <td class="horse-name">アスクナイスショー</td>
               <td class="nowrap">田辺</td>
-              <td class="nowrap">5.0</td>
-              <td class="nowrap">2</td>
-              <td class="nowrap">13.0%</td>
-              <td class="nowrap">3位</td>
+              <td class="nowrap" data-sort-value="5.0">5.0</td>
+              <td class="nowrap" data-sort-value="2">2</td>
+              <td class="nowrap" data-sort-value="0.129596">13.0%</td>
+              <td class="nowrap" data-sort-value="3">3位</td>
               <td class="reason-cell">福島では3戦すべて3着内で、芝1800〜2200mも14戦4勝と今回条件への適性が高い。55kgと先行力も有利だが、重賞実績は前走G2の10着のみで、106日ぶりかつ他にも先行馬がいる点から市場評価より抑えた。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">12</td>
+              <td class="nowrap" data-sort-value="12">12</td>
               <td class="horse-name">リカンカブール</td>
               <td class="nowrap">荻野極</td>
-              <td class="nowrap">23.1</td>
-              <td class="nowrap">10</td>
-              <td class="nowrap">3.0%</td>
-              <td class="nowrap">11位</td>
+              <td class="nowrap" data-sort-value="23.1">23.1</td>
+              <td class="nowrap" data-sort-value="10">10</td>
+              <td class="nowrap" data-sort-value="0.029701">3.0%</td>
+              <td class="nowrap" data-sort-value="11">11位</td>
               <td class="reason-cell">芝1800〜2200mで5勝しG3勝利もあるが、近走は重賞で6〜7着が続き、福島でも7着。140日ぶりで57kgとなるため、安定した先行力は評価しつつも勝ち切る確率は限定的とした。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">13</td>
+              <td class="nowrap" data-sort-value="13">13</td>
               <td class="horse-name">バトルボーン</td>
               <td class="nowrap">戸崎圭</td>
-              <td class="nowrap">6.9</td>
-              <td class="nowrap">4</td>
-              <td class="nowrap">12.2%</td>
-              <td class="nowrap">4位</td>
+              <td class="nowrap" data-sort-value="6.9">6.9</td>
+              <td class="nowrap" data-sort-value="4">4</td>
+              <td class="nowrap" data-sort-value="0.121531">12.2%</td>
+              <td class="nowrap" data-sort-value="4">4位</td>
               <td class="reason-cell">通算11戦5勝、芝1800〜2200mで9戦4勝、3着内7回と安定性が高い。近2走も3着を続け、稍重では1戦1勝。ただし重賞実績はG2の8着のみで、先手型同士の競り合いと騎手変更を考慮した。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">14</td>
+              <td class="nowrap" data-sort-value="14">14</td>
               <td class="horse-name">オールナット</td>
               <td class="nowrap">西村淳</td>
-              <td class="nowrap">32.2</td>
-              <td class="nowrap">12</td>
-              <td class="nowrap">2.7%</td>
-              <td class="nowrap">12位</td>
+              <td class="nowrap" data-sort-value="32.2">32.2</td>
+              <td class="nowrap" data-sort-value="12">12</td>
+              <td class="nowrap" data-sort-value="0.027226">2.7%</td>
+              <td class="nowrap" data-sort-value="12">12位</td>
               <td class="reason-cell">芝2000mのG3勝ちがあり、芝1800〜2200mでは10戦4勝と能力はある。反面、直近2走は10着、13着で今回は175日ぶり、57.5kg。追込型で展開依存も大きく、復調の不確実性を重く見た。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">15</td>
+              <td class="nowrap" data-sort-value="15">15</td>
               <td class="horse-name">ヤマニンブークリエ</td>
               <td class="nowrap">横山典</td>
-              <td class="nowrap">8.7</td>
-              <td class="nowrap">5</td>
-              <td class="nowrap">8.8%</td>
-              <td class="nowrap">5位</td>
+              <td class="nowrap" data-sort-value="8.7">8.7</td>
+              <td class="nowrap" data-sort-value="5">5</td>
+              <td class="nowrap" data-sort-value="0.087624">8.8%</td>
+              <td class="nowrap" data-sort-value="5">5位</td>
               <td class="reason-cell">直近の芝2000mG3で0.4秒差5着、G2でも2着があり、近走の相手関係は強い。56kgと先行力を評価したが、稍重では1戦16着で、福島経験もないため馬場適性には不確実性がある。</td>
             </tr>
             
             <tr>
-              <td class="nowrap">16</td>
+              <td class="nowrap" data-sort-value="16">16</td>
               <td class="horse-name">サヴォーナ</td>
               <td class="nowrap">池添</td>
-              <td class="nowrap">6.4</td>
-              <td class="nowrap">3</td>
-              <td class="nowrap">14.9%</td>
-              <td class="nowrap">2位</td>
+              <td class="nowrap" data-sort-value="6.4">6.4</td>
+              <td class="nowrap" data-sort-value="3">3</td>
+              <td class="nowrap" data-sort-value="0.148892">14.9%</td>
+              <td class="nowrap" data-sort-value="2">2位</td>
               <td class="reason-cell">福島では3戦3勝で、直近も同じ福島芝2000mを58kgで勝利しており、今回条件への適性は最上位。芝1800〜2200mでも7戦2勝、3着内3回。ただし91日ぶりで、稍重では1戦6着のため馬場悪化分を割り引いた。</td>
             </tr>
             
@@ -1637,168 +1695,196 @@
       <p><strong>着順:</strong> 11 - 6 - 9 - 10 - 1 - 15 - 4 - 5 - 2 - 16 - 8 - 13 - 12 - 3 - 14 - 7</p>
       <p class="table-scroll-hint">表は横にスクロールできます</p>
       <div class="table-scroll">
-        <table class="result-table">
-          <thead><tr><th class="nowrap">馬番</th><th class="horse-name">馬名</th><th class="nowrap">予測順位</th><th class="nowrap">1着確率</th><th class="nowrap">実着順</th><th class="nowrap">予想との差</th><th class="nowrap">単勝払戻</th></tr></thead>
+        <table class="result-table" data-sortable>
+          <thead><tr><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="0" data-sort-type="number" data-sort-first="ascending">
+    馬番 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="horse-name" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="1" data-sort-type="text" data-sort-first="ascending">
+    馬名 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="number" data-sort-first="ascending">
+    予測順位 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="descending">
+    1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
+    実着順 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="ascending">
+    予想との差 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="descending">
+    単勝払戻 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th></tr></thead>
           <tbody>
             
             <tr>
-              <td class="nowrap">1</td>
+              <td class="nowrap" data-sort-value="1">1</td>
               <td class="horse-name">ボーンディスウェイ</td>
-              <td class="nowrap">13位</td>
-              <td class="nowrap">2.3%</td>
-              <td class="nowrap">5着</td>
-              <td class="comparison-cell nowrap"><span class="comparison-up">8着上</span></td>
-              <td class="nowrap">-</td>
+              <td class="nowrap" data-sort-value="13">13位</td>
+              <td class="nowrap" data-sort-value="0.022569">2.3%</td>
+              <td class="nowrap" data-sort-value="5">5着</td>
+              <td class="comparison-cell nowrap" data-sort-value="-8"><span class="comparison-up">8着上</span></td>
+              <td class="nowrap" data-sort-value="">-</td>
             </tr>
             
             <tr>
-              <td class="nowrap">2</td>
+              <td class="nowrap" data-sort-value="2">2</td>
               <td class="horse-name">コントラポスト</td>
-              <td class="nowrap">6位</td>
-              <td class="nowrap">6.3%</td>
-              <td class="nowrap">9着</td>
-              <td class="comparison-cell nowrap"><span class="comparison-down">3着下</span></td>
-              <td class="nowrap">-</td>
+              <td class="nowrap" data-sort-value="6">6位</td>
+              <td class="nowrap" data-sort-value="0.063107">6.3%</td>
+              <td class="nowrap" data-sort-value="9">9着</td>
+              <td class="comparison-cell nowrap" data-sort-value="3"><span class="comparison-down">3着下</span></td>
+              <td class="nowrap" data-sort-value="">-</td>
             </tr>
             
             <tr>
-              <td class="nowrap">3</td>
+              <td class="nowrap" data-sort-value="3">3</td>
               <td class="horse-name">ショウナンマグマ</td>
-              <td class="nowrap">16位</td>
-              <td class="nowrap">0.3%</td>
-              <td class="nowrap">14着</td>
-              <td class="comparison-cell nowrap"><span class="comparison-up">2着上</span></td>
-              <td class="nowrap">-</td>
+              <td class="nowrap" data-sort-value="16">16位</td>
+              <td class="nowrap" data-sort-value="0.003143">0.3%</td>
+              <td class="nowrap" data-sort-value="14">14着</td>
+              <td class="comparison-cell nowrap" data-sort-value="-2"><span class="comparison-up">2着上</span></td>
+              <td class="nowrap" data-sort-value="">-</td>
             </tr>
             
             <tr class="prediction-top">
-              <td class="nowrap">4</td>
+              <td class="nowrap" data-sort-value="4">4</td>
               <td class="horse-name">カラマティアノス</td>
-              <td class="nowrap">1位</td>
-              <td class="nowrap">15.4%</td>
-              <td class="nowrap">7着</td>
-              <td class="comparison-cell nowrap"><span class="comparison-down">6着下</span></td>
-              <td class="nowrap">-</td>
+              <td class="nowrap" data-sort-value="1">1位</td>
+              <td class="nowrap" data-sort-value="0.154087">15.4%</td>
+              <td class="nowrap" data-sort-value="7">7着</td>
+              <td class="comparison-cell nowrap" data-sort-value="6"><span class="comparison-down">6着下</span></td>
+              <td class="nowrap" data-sort-value="">-</td>
             </tr>
             
             <tr>
-              <td class="nowrap">5</td>
+              <td class="nowrap" data-sort-value="5">5</td>
               <td class="horse-name">オーロラエックス</td>
-              <td class="nowrap">10位</td>
-              <td class="nowrap">3.1%</td>
-              <td class="nowrap">8着</td>
-              <td class="comparison-cell nowrap"><span class="comparison-up">2着上</span></td>
-              <td class="nowrap">-</td>
+              <td class="nowrap" data-sort-value="10">10位</td>
+              <td class="nowrap" data-sort-value="0.03064">3.1%</td>
+              <td class="nowrap" data-sort-value="8">8着</td>
+              <td class="comparison-cell nowrap" data-sort-value="-2"><span class="comparison-up">2着上</span></td>
+              <td class="nowrap" data-sort-value="">-</td>
             </tr>
             
             <tr>
-              <td class="nowrap">6</td>
+              <td class="nowrap" data-sort-value="6">6</td>
               <td class="horse-name">マイネルモーント</td>
-              <td class="nowrap">7位</td>
-              <td class="nowrap">6.1%</td>
-              <td class="nowrap">2着</td>
-              <td class="comparison-cell nowrap"><span class="comparison-up">5着上</span></td>
-              <td class="nowrap">-</td>
+              <td class="nowrap" data-sort-value="7">7位</td>
+              <td class="nowrap" data-sort-value="0.06064">6.1%</td>
+              <td class="nowrap" data-sort-value="2">2着</td>
+              <td class="comparison-cell nowrap" data-sort-value="-5"><span class="comparison-up">5着上</span></td>
+              <td class="nowrap" data-sort-value="">-</td>
             </tr>
             
             <tr>
-              <td class="nowrap">7</td>
+              <td class="nowrap" data-sort-value="7">7</td>
               <td class="horse-name">メリオーレム</td>
-              <td class="nowrap">9位</td>
-              <td class="nowrap">3.3%</td>
-              <td class="nowrap">16着</td>
-              <td class="comparison-cell nowrap"><span class="comparison-down">7着下</span></td>
-              <td class="nowrap">-</td>
+              <td class="nowrap" data-sort-value="9">9位</td>
+              <td class="nowrap" data-sort-value="0.033289">3.3%</td>
+              <td class="nowrap" data-sort-value="16">16着</td>
+              <td class="comparison-cell nowrap" data-sort-value="7"><span class="comparison-down">7着下</span></td>
+              <td class="nowrap" data-sort-value="">-</td>
             </tr>
             
             <tr>
-              <td class="nowrap">8</td>
+              <td class="nowrap" data-sort-value="8">8</td>
               <td class="horse-name">クリスマスパレード</td>
-              <td class="nowrap">14位</td>
-              <td class="nowrap">2.1%</td>
-              <td class="nowrap">11着</td>
-              <td class="comparison-cell nowrap"><span class="comparison-up">3着上</span></td>
-              <td class="nowrap">-</td>
+              <td class="nowrap" data-sort-value="14">14位</td>
+              <td class="nowrap" data-sort-value="0.02146">2.1%</td>
+              <td class="nowrap" data-sort-value="11">11着</td>
+              <td class="comparison-cell nowrap" data-sort-value="-3"><span class="comparison-up">3着上</span></td>
+              <td class="nowrap" data-sort-value="">-</td>
             </tr>
             
             <tr>
-              <td class="nowrap">9</td>
+              <td class="nowrap" data-sort-value="9">9</td>
               <td class="horse-name">オニャンコポン</td>
-              <td class="nowrap">15位</td>
-              <td class="nowrap">0.7%</td>
-              <td class="nowrap">3着</td>
-              <td class="comparison-cell nowrap"><span class="comparison-up">12着上</span></td>
-              <td class="nowrap">-</td>
+              <td class="nowrap" data-sort-value="15">15位</td>
+              <td class="nowrap" data-sort-value="0.00726">0.7%</td>
+              <td class="nowrap" data-sort-value="3">3着</td>
+              <td class="comparison-cell nowrap" data-sort-value="-12"><span class="comparison-up">12着上</span></td>
+              <td class="nowrap" data-sort-value="">-</td>
             </tr>
             
             <tr>
-              <td class="nowrap">10</td>
+              <td class="nowrap" data-sort-value="10">10</td>
               <td class="horse-name">センツブラッド</td>
-              <td class="nowrap">8位</td>
-              <td class="nowrap">5.9%</td>
-              <td class="nowrap">4着</td>
-              <td class="comparison-cell nowrap"><span class="comparison-up">4着上</span></td>
-              <td class="nowrap">-</td>
+              <td class="nowrap" data-sort-value="8">8位</td>
+              <td class="nowrap" data-sort-value="0.059235">5.9%</td>
+              <td class="nowrap" data-sort-value="4">4着</td>
+              <td class="comparison-cell nowrap" data-sort-value="-4"><span class="comparison-up">4着上</span></td>
+              <td class="nowrap" data-sort-value="">-</td>
             </tr>
             
             <tr class="result-winner">
-              <td class="nowrap">11</td>
+              <td class="nowrap" data-sort-value="11">11</td>
               <td class="horse-name">アスクナイスショー</td>
-              <td class="nowrap">3位</td>
-              <td class="nowrap">13.0%</td>
-              <td class="nowrap">1着</td>
-              <td class="comparison-cell nowrap"><span class="comparison-up">2着上</span></td>
-              <td class="nowrap">500円</td>
+              <td class="nowrap" data-sort-value="3">3位</td>
+              <td class="nowrap" data-sort-value="0.129596">13.0%</td>
+              <td class="nowrap" data-sort-value="1">1着</td>
+              <td class="comparison-cell nowrap" data-sort-value="-2"><span class="comparison-up">2着上</span></td>
+              <td class="nowrap" data-sort-value="500">500円</td>
             </tr>
             
             <tr>
-              <td class="nowrap">12</td>
+              <td class="nowrap" data-sort-value="12">12</td>
               <td class="horse-name">リカンカブール</td>
-              <td class="nowrap">11位</td>
-              <td class="nowrap">3.0%</td>
-              <td class="nowrap">13着</td>
-              <td class="comparison-cell nowrap"><span class="comparison-down">2着下</span></td>
-              <td class="nowrap">-</td>
+              <td class="nowrap" data-sort-value="11">11位</td>
+              <td class="nowrap" data-sort-value="0.029701">3.0%</td>
+              <td class="nowrap" data-sort-value="13">13着</td>
+              <td class="comparison-cell nowrap" data-sort-value="2"><span class="comparison-down">2着下</span></td>
+              <td class="nowrap" data-sort-value="">-</td>
             </tr>
             
             <tr>
-              <td class="nowrap">13</td>
+              <td class="nowrap" data-sort-value="13">13</td>
               <td class="horse-name">バトルボーン</td>
-              <td class="nowrap">4位</td>
-              <td class="nowrap">12.2%</td>
-              <td class="nowrap">12着</td>
-              <td class="comparison-cell nowrap"><span class="comparison-down">8着下</span></td>
-              <td class="nowrap">-</td>
+              <td class="nowrap" data-sort-value="4">4位</td>
+              <td class="nowrap" data-sort-value="0.121531">12.2%</td>
+              <td class="nowrap" data-sort-value="12">12着</td>
+              <td class="comparison-cell nowrap" data-sort-value="8"><span class="comparison-down">8着下</span></td>
+              <td class="nowrap" data-sort-value="">-</td>
             </tr>
             
             <tr>
-              <td class="nowrap">14</td>
+              <td class="nowrap" data-sort-value="14">14</td>
               <td class="horse-name">オールナット</td>
-              <td class="nowrap">12位</td>
-              <td class="nowrap">2.7%</td>
-              <td class="nowrap">15着</td>
-              <td class="comparison-cell nowrap"><span class="comparison-down">3着下</span></td>
-              <td class="nowrap">-</td>
+              <td class="nowrap" data-sort-value="12">12位</td>
+              <td class="nowrap" data-sort-value="0.027226">2.7%</td>
+              <td class="nowrap" data-sort-value="15">15着</td>
+              <td class="comparison-cell nowrap" data-sort-value="3"><span class="comparison-down">3着下</span></td>
+              <td class="nowrap" data-sort-value="">-</td>
             </tr>
             
             <tr>
-              <td class="nowrap">15</td>
+              <td class="nowrap" data-sort-value="15">15</td>
               <td class="horse-name">ヤマニンブークリエ</td>
-              <td class="nowrap">5位</td>
-              <td class="nowrap">8.8%</td>
-              <td class="nowrap">6着</td>
-              <td class="comparison-cell nowrap"><span class="comparison-down">1着下</span></td>
-              <td class="nowrap">-</td>
+              <td class="nowrap" data-sort-value="5">5位</td>
+              <td class="nowrap" data-sort-value="0.087624">8.8%</td>
+              <td class="nowrap" data-sort-value="6">6着</td>
+              <td class="comparison-cell nowrap" data-sort-value="1"><span class="comparison-down">1着下</span></td>
+              <td class="nowrap" data-sort-value="">-</td>
             </tr>
             
             <tr>
-              <td class="nowrap">16</td>
+              <td class="nowrap" data-sort-value="16">16</td>
               <td class="horse-name">サヴォーナ</td>
-              <td class="nowrap">2位</td>
-              <td class="nowrap">14.9%</td>
-              <td class="nowrap">10着</td>
-              <td class="comparison-cell nowrap"><span class="comparison-down">8着下</span></td>
-              <td class="nowrap">-</td>
+              <td class="nowrap" data-sort-value="2">2位</td>
+              <td class="nowrap" data-sort-value="0.148892">14.9%</td>
+              <td class="nowrap" data-sort-value="10">10着</td>
+              <td class="comparison-cell nowrap" data-sort-value="8"><span class="comparison-down">8着下</span></td>
+              <td class="nowrap" data-sort-value="">-</td>
             </tr>
             
           </tbody>
@@ -1859,6 +1945,70 @@
     <p class="small">本ページはAIによる確率推定と購入シミュレーションを掲載するもので、的中や利益を保証するものではありません。投票はご自身の判断で行ってください。</p>
   </main>
   <script>
+    const initializeSortableTable = (table) => {
+      const body = table.tBodies[0];
+      if (!body) return;
+
+      const buttons = Array.from(table.querySelectorAll("thead .sort-button"));
+      Array.from(body.rows).forEach((row, index) => {
+        row.dataset.originalIndex = String(index);
+      });
+
+      const originalIndex = (row) => Number(row.dataset.originalIndex);
+      const resetHeader = (button) => {
+        button.closest("th").setAttribute("aria-sort", "none");
+        button.querySelector(".sort-indicator").textContent = "↕";
+      };
+      const readValue = (row, columnIndex, valueType) => {
+        const cell = row.cells[columnIndex];
+        const rawValue = valueType === "number"
+          ? (cell?.dataset.sortValue ?? "")
+          : (cell?.textContent?.trim() ?? "");
+        if (["", "-", "null", "undefined", "NaN"].includes(rawValue)) return null;
+        if (valueType === "text") return rawValue;
+        const number = Number(rawValue);
+        return Number.isFinite(number) ? number : null;
+      };
+
+      for (const button of buttons) {
+        button.addEventListener("click", () => {
+          const header = button.closest("th");
+          const currentDirection = header.getAttribute("aria-sort") || "none";
+          const firstDirection = button.dataset.sortFirst === "descending" ? "descending" : "ascending";
+          const oppositeDirection = firstDirection === "ascending" ? "descending" : "ascending";
+          const nextDirection = currentDirection === "none"
+            ? firstDirection
+            : currentDirection === firstDirection
+              ? oppositeDirection
+              : "none";
+
+          buttons.forEach(resetHeader);
+          const rows = Array.from(body.rows);
+          if (nextDirection === "none") {
+            rows.sort((rowA, rowB) => originalIndex(rowA) - originalIndex(rowB));
+          } else {
+            header.setAttribute("aria-sort", nextDirection);
+            button.querySelector(".sort-indicator").textContent = nextDirection === "ascending" ? "▲" : "▼";
+            const columnIndex = Number(button.dataset.sortColumn);
+            const valueType = button.dataset.sortType;
+            rows.sort((rowA, rowB) => {
+              const valueA = readValue(rowA, columnIndex, valueType);
+              const valueB = readValue(rowB, columnIndex, valueType);
+              if (valueA === null && valueB === null) return originalIndex(rowA) - originalIndex(rowB);
+              if (valueA === null) return 1;
+              if (valueB === null) return -1;
+              const comparison = valueType === "text"
+                ? valueA.localeCompare(valueB, "ja")
+                : valueA - valueB;
+              if (comparison === 0) return originalIndex(rowA) - originalIndex(rowB);
+              return nextDirection === "ascending" ? comparison : -comparison;
+            });
+          }
+          rows.forEach((row) => body.appendChild(row));
+        });
+      }
+    };
+
     (() => {
       const tooltipTriggers = Array.from(document.querySelectorAll(".tooltip-trigger"));
       const closeTooltips = () => {
@@ -1889,6 +2039,9 @@
           }
         }
       });
+      document.querySelectorAll(
+        ".prediction-table[data-sortable], .result-table[data-sortable]"
+      ).forEach(initializeSortableTable);
     })();
   </script>
 </body>

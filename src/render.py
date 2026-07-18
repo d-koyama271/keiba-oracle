@@ -326,6 +326,11 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
             horse["prediction_rank"],
             finish_position,
         )
+        comparison_sort_value = (
+            numeric_finish - horse["prediction_rank"]
+            if numeric_finish is not None and horse["prediction_rank"] is not None
+            else None
+        )
         result_rows.append(
             {
                 "horse_number": horse["horse_number"],
@@ -334,8 +339,10 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
                 "win_probability": (horse["prediction"] or {}).get("win_probability"),
                 "finish_position": finish_position,
                 "finish_position_label": f"{numeric_finish}着" if numeric_finish is not None else (finish_position or "-"),
+                "finish_position_sort_value": numeric_finish,
                 "comparison_text": comparison_text,
                 "comparison_class": comparison_class,
+                "comparison_sort_value": comparison_sort_value,
                 "row_class": result_highlight_class(horse["prediction_rank"], finish_position),
                 "payout_per_100": horse["payout_per_100"],
             }

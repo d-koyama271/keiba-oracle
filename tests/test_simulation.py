@@ -696,6 +696,87 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         self.assertTrue(all("horse-name" in cell.get("class", []) for cell in result_table.select("tbody td:nth-child(2)")))
         self.assertTrue(all("nowrap" in cell.get("class", []) for cell in value_table.select("tbody td:not(:nth-child(3))")))
 
+    def test_only_prediction_and_result_tables_are_sortable_with_raw_values(self) -> None:
+        rendered = build_environment(ROOT).get_template("race.html.j2").render(
+            **build_race_context(self.full_payload())
+        )
+        soup = BeautifulSoup(rendered, "html.parser")
+        sortable_tables = soup.select("table[data-sortable]")
+
+        self.assertEqual(len(sortable_tables), 2)
+        self.assertEqual(
+            [table.get("class") for table in sortable_tables],
+            [["prediction-table"], ["result-table"]],
+        )
+        self.assertFalse(
+            any(
+                table.has_attr("data-sortable")
+                for table in soup.select(
+                    ".simulation-table, .evaluation-table, .value-detail-table"
+                )
+            )
+        )
+
+        def header_specs(table):
+            return [
+                (
+                    button.get_text(" ", strip=True).replace(" ↕", ""),
+                    button["data-sort-type"],
+                    button["data-sort-first"],
+                    int(button["data-sort-column"]),
+                    button.parent["aria-sort"],
+                )
+                for button in table.select("thead .sort-button")
+            ]
+
+        prediction_table, result_table = sortable_tables
+        self.assertEqual(
+            header_specs(prediction_table),
+            [
+                ("馬番", "number", "ascending", 0, "none"),
+                ("馬名", "text", "ascending", 1, "none"),
+                ("騎手", "text", "ascending", 2, "none"),
+                ("単勝オッズ", "number", "ascending", 3, "none"),
+                ("人気", "number", "ascending", 4, "none"),
+                ("1着確率", "number", "descending", 5, "none"),
+                ("予想順位", "number", "ascending", 6, "none"),
+            ],
+        )
+        self.assertEqual(
+            header_specs(result_table),
+            [
+                ("馬番", "number", "ascending", 0, "none"),
+                ("馬名", "text", "ascending", 1, "none"),
+                ("予測順位", "number", "ascending", 2, "none"),
+                ("1着確率", "number", "descending", 3, "none"),
+                ("実着順", "number", "ascending", 4, "none"),
+                ("予想との差", "number", "ascending", 5, "none"),
+                ("単勝払戻", "number", "descending", 6, "none"),
+            ],
+        )
+        self.assertIsNone(prediction_table.select("thead th")[-1].find("button"))
+        self.assertTrue(
+            all(button.get("type") == "button" for button in soup.select(".sort-button"))
+        )
+
+        prediction_first = prediction_table.select_one("tbody tr")
+        self.assertEqual(
+            [cell.get("data-sort-value") for cell in prediction_first.select("td")],
+            ["1", None, None, "4.0", "1", "0.3", "1", None],
+        )
+        result_first = result_table.select_one("tbody tr")
+        self.assertEqual(
+            [cell.get("data-sort-value") for cell in result_first.select("td")],
+            ["1", None, "1", "0.3", "1", "0", "400"],
+        )
+        self.assertIn("const initializeSortableTable = (table) =>", rendered)
+        self.assertIn(
+            '".prediction-table[data-sortable], .result-table[data-sortable]"',
+            rendered,
+        )
+        self.assertIn('valueA.localeCompare(valueB, "ja")', rendered)
+        self.assertIn('row.dataset.originalIndex = String(index)', rendered)
+
     def test_all_horse_expected_values_are_rendered_without_changing_simulation(self) -> None:
         payload = make_payload(
             [(1, 0.02, 60.0), (2, 0.39, 3.0), (3, 0.2, 4.0), (4, 0.1, None)]
@@ -789,7 +870,10 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         rendered = build_environment(ROOT).get_template("race.html.j2").render(**build_race_context(payload))
         soup = BeautifulSoup(rendered, "html.parser")
         table = soup.find("h3", string="実結果").find_next("table")
-        headers = [cell.get_text(strip=True) for cell in table.select("thead th")]
+        headers = [
+            cell.get_text(" ", strip=True).replace(" ↕", "")
+            for cell in table.select("thead th")
+        ]
         rows = {
             int(cells[0].get_text(strip=True)): (row, [cell.get_text(strip=True) for cell in cells])
             for row in table.select("tbody tr")
@@ -803,6 +887,14 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         self.assertEqual(rows[1][1], ["1", "Horse 1", "1位", "40.0%", "2着", "1着下", "-"])
         self.assertEqual(rows[2][1], ["2", "Horse 2", "2位", "35.0%", "1着", "1着上", "500円"])
         self.assertEqual(rows[3][1], ["3", "Horse 3", "3位", "25.0%", "3着", "差なし", "-"])
+        self.assertEqual(
+            [cell.get("data-sort-value") for cell in rows[1][0].select("td")],
+            ["1", None, "1", "0.4", "2", "1", ""],
+        )
+        self.assertEqual(
+            [cell.get("data-sort-value") for cell in rows[2][0].select("td")],
+            ["2", None, "2", "0.35", "1", "-1", "500"],
+        )
         self.assertIn("prediction-top", rows[1][0].get("class", []))
         self.assertIn("result-winner", rows[2][0].get("class", []))
         self.assertNotIn("prediction-hit", rows[1][0].get("class", []))
@@ -880,6 +972,132 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
             self.assertIn("購入なし", section)
             self.assertNotIn("ROI", section)
             self.assertNotIn("<table", section)
+
+    @unittest.skipUnless(shutil.which("node"), "Node.js is required for table sorting")
+    def test_sortable_table_javascript_cycles_stably_and_keeps_missing_last(self) -> None:
+        template = (ROOT / "templates" / "race.html.j2").read_text(encoding="utf-8")
+        start = template.index("    const initializeSortableTable")
+        end = template.index("    (() => {", start)
+        functions = template[start:end]
+        node_script = functions + r"""
+const makeCell = (text, sortValue) => ({
+  textContent: text,
+  dataset: sortValue === undefined ? {} : {sortValue: String(sortValue)}
+});
+const makeRow = (id, number, probability, name, className, reason) => ({
+  id,
+  className,
+  reason,
+  dataset: {},
+  cells: [
+    makeCell(String(number), number),
+    makeCell(probability === undefined ? "-" : `${probability * 100}%`, probability),
+    makeCell(name)
+  ]
+});
+const rows = [
+  makeRow("two", 2, 0.4, "カ", "prediction-top", "reason two"),
+  makeRow("ten", 10, 0.4, "ア", "", "reason ten"),
+  makeRow("one", 1, undefined, "-", "", "reason one"),
+  makeRow("three", 3, 0.6, "イ", "result-winner", "reason three")
+];
+const body = {
+  rows,
+  appendChild(row) {
+    const index = this.rows.indexOf(row);
+    if (index >= 0) this.rows.splice(index, 1);
+    this.rows.push(row);
+  }
+};
+const makeButton = (column, type, first) => {
+  const indicator = {textContent: "↕"};
+  const header = {
+    attributes: {"aria-sort": "none"},
+    getAttribute(name) { return this.attributes[name]; },
+    setAttribute(name, value) { this.attributes[name] = value; }
+  };
+  const button = {
+    dataset: {sortColumn: String(column), sortType: type, sortFirst: first},
+    closest() { return header; },
+    querySelector() { return indicator; },
+    addEventListener(typeName, handler) { if (typeName === "click") this.handler = handler; },
+    click() { this.handler(); },
+    header,
+    indicator
+  };
+  return button;
+};
+const numberButton = makeButton(0, "number", "ascending");
+const probabilityButton = makeButton(1, "number", "descending");
+const nameButton = makeButton(2, "text", "ascending");
+const buttons = [numberButton, probabilityButton, nameButton];
+const table = {
+  tBodies: [body],
+  querySelectorAll() { return buttons; }
+};
+const ids = () => body.rows.map((row) => row.id);
+initializeSortableTable(table);
+const output = {initial: ids()};
+numberButton.click();
+output.numberAscending = ids();
+numberButton.click();
+output.numberDescending = ids();
+numberButton.click();
+output.numberRestored = ids();
+probabilityButton.click();
+output.probabilityDescending = ids();
+probabilityButton.click();
+output.probabilityAscending = ids();
+nameButton.click();
+output.nameAscending = ids();
+output.switchedHeaders = {
+  probability: probabilityButton.header.getAttribute("aria-sort"),
+  probabilityIndicator: probabilityButton.indicator.textContent,
+  name: nameButton.header.getAttribute("aria-sort"),
+  nameIndicator: nameButton.indicator.textContent
+};
+nameButton.click();
+output.nameDescending = ids();
+nameButton.click();
+output.nameRestored = ids();
+output.preserved = {
+  className: body.rows[0].className,
+  reason: body.rows[0].reason
+};
+process.stdout.write(JSON.stringify(output));
+"""
+        completed = subprocess.run(
+            [shutil.which("node"), "-"],
+            input=node_script,
+            text=True,
+            encoding="utf-8",
+            capture_output=True,
+            check=True,
+        )
+        result = json.loads(completed.stdout)
+
+        self.assertEqual(result["initial"], ["two", "ten", "one", "three"])
+        self.assertEqual(result["numberAscending"], ["one", "two", "three", "ten"])
+        self.assertEqual(result["numberDescending"], ["ten", "three", "two", "one"])
+        self.assertEqual(result["numberRestored"], result["initial"])
+        self.assertEqual(result["probabilityDescending"], ["three", "two", "ten", "one"])
+        self.assertEqual(result["probabilityAscending"], ["two", "ten", "three", "one"])
+        self.assertEqual(result["nameAscending"], ["ten", "three", "two", "one"])
+        self.assertEqual(result["nameDescending"], ["two", "three", "ten", "one"])
+        self.assertEqual(result["nameRestored"], result["initial"])
+        self.assertEqual(
+            result["switchedHeaders"],
+            {
+                "probability": "none",
+                "probabilityIndicator": "↕",
+                "name": "ascending",
+                "nameIndicator": "▲",
+            },
+        )
+        self.assertEqual(
+            result["preserved"],
+            {"className": "prediction-top", "reason": "reason two"},
+        )
 
     @unittest.skipUnless(shutil.which("node"), "Node.js is required for JavaScript parity")
     def test_python_and_javascript_results_match(self) -> None:

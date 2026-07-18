@@ -7,6 +7,13 @@
 {% macro explained_term(term, key) -%}
 <span class="term-with-tooltip"><span>{{ term }}</span>{{ info_tooltip(term, key) }}</span>
 {%- endmacro %}
+{% macro sortable_header(label, column, value_type, first_direction, class_name="nowrap") -%}
+<th class="{{ class_name }}" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="{{ column }}" data-sort-type="{{ value_type }}" data-sort-first="{{ first_direction }}">
+    {{ label }} <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+{%- endmacro %}
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -122,6 +129,35 @@
     th {
       color: var(--muted);
       font-weight: 700;
+    }
+    .sort-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-weight: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .sort-button:hover,
+    .sort-button:focus-visible {
+      color: var(--accent);
+    }
+    .result-table .sort-button:hover,
+    .result-table .sort-button:focus-visible {
+      color: var(--result-accent);
+    }
+    .sort-button:focus-visible {
+      outline: 2px solid #9bb8ae;
+      outline-offset: 2px;
+    }
+    .sort-indicator {
+      font-size: 11px;
+      opacity: 0.75;
     }
     .selected-row { background: #fff6dc; }
     .small {
@@ -404,29 +440,29 @@
       {% if prediction %}
       <p class="table-scroll-hint">表は横にスクロールできます</p>
       <div class="table-scroll">
-        <table class="prediction-table">
+        <table class="prediction-table" data-sortable>
           <thead>
             <tr>
-              <th class="nowrap">馬番</th>
-              <th class="horse-name">馬名</th>
-              <th class="nowrap">騎手</th>
-              <th class="nowrap">単勝オッズ</th>
-              <th class="nowrap">人気</th>
-              <th class="nowrap">1着確率</th>
-              <th class="nowrap">予想順位</th>
+              {{ sortable_header("馬番", 0, "number", "ascending") }}
+              {{ sortable_header("馬名", 1, "text", "ascending", "horse-name") }}
+              {{ sortable_header("騎手", 2, "text", "ascending") }}
+              {{ sortable_header("単勝オッズ", 3, "number", "ascending") }}
+              {{ sortable_header("人気", 4, "number", "ascending") }}
+              {{ sortable_header("1着確率", 5, "number", "descending") }}
+              {{ sortable_header("予想順位", 6, "number", "ascending") }}
               <th class="reason-cell">理由</th>
             </tr>
           </thead>
           <tbody>
             {% for horse in horse_rows %}
             <tr{% if horse.prediction_rank == 1 %} class="prediction-top"{% endif %}>
-              <td class="nowrap">{{ horse.horse_number }}</td>
+              <td class="nowrap" data-sort-value="{{ horse.horse_number }}">{{ horse.horse_number }}</td>
               <td class="horse-name">{{ horse.horse_name }}</td>
               <td class="nowrap">{{ horse.jockey or "-" }}</td>
-              <td class="nowrap">{{ horse.win_odds if horse.win_odds is not none else "-" }}</td>
-              <td class="nowrap">{{ horse.popularity if horse.popularity is not none else "-" }}</td>
-              <td class="nowrap">{% if horse.prediction %}{{ "%.1f"|format(horse.prediction.win_probability * 100) }}%{% else %}-{% endif %}</td>
-              <td class="nowrap">{{ horse.prediction_rank ~ "位" if horse.prediction_rank is not none else "-" }}</td>
+              <td class="nowrap" data-sort-value="{{ horse.win_odds if horse.win_odds is not none else '' }}">{{ horse.win_odds if horse.win_odds is not none else "-" }}</td>
+              <td class="nowrap" data-sort-value="{{ horse.popularity if horse.popularity is not none else '' }}">{{ horse.popularity if horse.popularity is not none else "-" }}</td>
+              <td class="nowrap" data-sort-value="{{ horse.prediction.win_probability if horse.prediction else '' }}">{% if horse.prediction %}{{ "%.1f"|format(horse.prediction.win_probability * 100) }}%{% else %}-{% endif %}</td>
+              <td class="nowrap" data-sort-value="{{ horse.prediction_rank if horse.prediction_rank is not none else '' }}">{{ horse.prediction_rank ~ "位" if horse.prediction_rank is not none else "-" }}</td>
               <td class="reason-cell">{{ horse.prediction.reason if horse.prediction else "-" }}</td>
             </tr>
             {% endfor %}
@@ -1100,18 +1136,18 @@
       <p><strong>着順:</strong> {{ result.finish_order | join(" - ") }}</p>
       <p class="table-scroll-hint">表は横にスクロールできます</p>
       <div class="table-scroll">
-        <table class="result-table">
-          <thead><tr><th class="nowrap">馬番</th><th class="horse-name">馬名</th><th class="nowrap">予測順位</th><th class="nowrap">1着確率</th><th class="nowrap">実着順</th><th class="nowrap">予想との差</th><th class="nowrap">単勝払戻</th></tr></thead>
+        <table class="result-table" data-sortable>
+          <thead><tr>{{ sortable_header("馬番", 0, "number", "ascending") }}{{ sortable_header("馬名", 1, "text", "ascending", "horse-name") }}{{ sortable_header("予測順位", 2, "number", "ascending") }}{{ sortable_header("1着確率", 3, "number", "descending") }}{{ sortable_header("実着順", 4, "number", "ascending") }}{{ sortable_header("予想との差", 5, "number", "ascending") }}{{ sortable_header("単勝払戻", 6, "number", "descending") }}</tr></thead>
           <tbody>
             {% for item in result_rows %}
             <tr{% if item.row_class %} class="{{ item.row_class }}"{% endif %}>
-              <td class="nowrap">{{ item.horse_number }}</td>
+              <td class="nowrap" data-sort-value="{{ item.horse_number }}">{{ item.horse_number }}</td>
               <td class="horse-name">{{ item.horse_name }}</td>
-              <td class="nowrap">{{ item.prediction_rank ~ "位" if item.prediction_rank is not none else "-" }}</td>
-              <td class="nowrap">{{ "%.1f"|format(item.win_probability * 100) ~ "%" if item.win_probability is not none else "-" }}</td>
-              <td class="nowrap">{{ item.finish_position_label }}</td>
-              <td class="comparison-cell nowrap"><span class="{{ item.comparison_class }}">{{ item.comparison_text }}</span></td>
-              <td class="nowrap">{{ item.payout_per_100 ~ "円" if item.payout_per_100 is not none else "-" }}</td>
+              <td class="nowrap" data-sort-value="{{ item.prediction_rank if item.prediction_rank is not none else '' }}">{{ item.prediction_rank ~ "位" if item.prediction_rank is not none else "-" }}</td>
+              <td class="nowrap" data-sort-value="{{ item.win_probability if item.win_probability is not none else '' }}">{{ "%.1f"|format(item.win_probability * 100) ~ "%" if item.win_probability is not none else "-" }}</td>
+              <td class="nowrap" data-sort-value="{{ item.finish_position_sort_value if item.finish_position_sort_value is not none else '' }}">{{ item.finish_position_label }}</td>
+              <td class="comparison-cell nowrap" data-sort-value="{{ item.comparison_sort_value if item.comparison_sort_value is not none else '' }}"><span class="{{ item.comparison_class }}">{{ item.comparison_text }}</span></td>
+              <td class="nowrap" data-sort-value="{{ item.payout_per_100 if item.payout_per_100 is not none else '' }}">{{ item.payout_per_100 ~ "円" if item.payout_per_100 is not none else "-" }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -1180,6 +1216,70 @@
     <p class="small">本ページはAIによる確率推定と購入シミュレーションを掲載するもので、的中や利益を保証するものではありません。投票はご自身の判断で行ってください。</p>
   </main>
   <script>
+    const initializeSortableTable = (table) => {
+      const body = table.tBodies[0];
+      if (!body) return;
+
+      const buttons = Array.from(table.querySelectorAll("thead .sort-button"));
+      Array.from(body.rows).forEach((row, index) => {
+        row.dataset.originalIndex = String(index);
+      });
+
+      const originalIndex = (row) => Number(row.dataset.originalIndex);
+      const resetHeader = (button) => {
+        button.closest("th").setAttribute("aria-sort", "none");
+        button.querySelector(".sort-indicator").textContent = "↕";
+      };
+      const readValue = (row, columnIndex, valueType) => {
+        const cell = row.cells[columnIndex];
+        const rawValue = valueType === "number"
+          ? (cell?.dataset.sortValue ?? "")
+          : (cell?.textContent?.trim() ?? "");
+        if (["", "-", "null", "undefined", "NaN"].includes(rawValue)) return null;
+        if (valueType === "text") return rawValue;
+        const number = Number(rawValue);
+        return Number.isFinite(number) ? number : null;
+      };
+
+      for (const button of buttons) {
+        button.addEventListener("click", () => {
+          const header = button.closest("th");
+          const currentDirection = header.getAttribute("aria-sort") || "none";
+          const firstDirection = button.dataset.sortFirst === "descending" ? "descending" : "ascending";
+          const oppositeDirection = firstDirection === "ascending" ? "descending" : "ascending";
+          const nextDirection = currentDirection === "none"
+            ? firstDirection
+            : currentDirection === firstDirection
+              ? oppositeDirection
+              : "none";
+
+          buttons.forEach(resetHeader);
+          const rows = Array.from(body.rows);
+          if (nextDirection === "none") {
+            rows.sort((rowA, rowB) => originalIndex(rowA) - originalIndex(rowB));
+          } else {
+            header.setAttribute("aria-sort", nextDirection);
+            button.querySelector(".sort-indicator").textContent = nextDirection === "ascending" ? "▲" : "▼";
+            const columnIndex = Number(button.dataset.sortColumn);
+            const valueType = button.dataset.sortType;
+            rows.sort((rowA, rowB) => {
+              const valueA = readValue(rowA, columnIndex, valueType);
+              const valueB = readValue(rowB, columnIndex, valueType);
+              if (valueA === null && valueB === null) return originalIndex(rowA) - originalIndex(rowB);
+              if (valueA === null) return 1;
+              if (valueB === null) return -1;
+              const comparison = valueType === "text"
+                ? valueA.localeCompare(valueB, "ja")
+                : valueA - valueB;
+              if (comparison === 0) return originalIndex(rowA) - originalIndex(rowB);
+              return nextDirection === "ascending" ? comparison : -comparison;
+            });
+          }
+          rows.forEach((row) => body.appendChild(row));
+        });
+      }
+    };
+
     (() => {
       const tooltipTriggers = Array.from(document.querySelectorAll(".tooltip-trigger"));
       const closeTooltips = () => {
@@ -1210,6 +1310,9 @@
           }
         }
       });
+      document.querySelectorAll(
+        ".prediction-table[data-sortable], .result-table[data-sortable]"
+      ).forEach(initializeSortableTable);
     })();
   </script>
 </body>
