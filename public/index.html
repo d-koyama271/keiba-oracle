@@ -3,8 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>中央競馬 予想レース一覧 | keiba-oracle</title>
+  <meta name="description" content="中央競馬の各レースについて、AIが出走馬の過去成績・条件適性・市場オッズなどから1着確率を推定し、購入シミュレーションを掲載します。">
+  <title>中央競馬 AI予想レース一覧 | keiba-oracle</title>
   <style>
+    :root {
+      --status-prediction-bg: #dde9e4;
+      --status-prediction-color: #32594d;
+      --status-prediction-border: #b8cec5;
+      --status-result-bg: #e4eef3;
+      --status-result-color: #315b78;
+      --status-result-border: #b7cbd7;
+      --status-pending-bg: #ececeb;
+      --status-pending-color: #5f625f;
+      --status-pending-border: #d0d1cf;
+    }
     body {
       margin: 0;
       font-family: "Yu Gothic", "Hiragino Sans", sans-serif;
@@ -15,6 +27,8 @@
       max-width: 980px;
       margin: 0 auto;
       padding: 32px 20px 56px;
+      box-sizing: border-box;
+      min-width: 0;
     }
     .panel {
       background: rgba(255, 253, 248, 0.96);
@@ -22,13 +36,23 @@
       border-radius: 14px;
       padding: 20px;
       box-shadow: 0 12px 30px rgba(50, 89, 77, 0.06);
+      min-width: 0;
     }
     table {
       width: 100%;
       border-collapse: collapse;
     }
     .table-scroll {
+      width: 100%;
+      max-width: 100%;
       overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+    .index-table { min-width: 700px; }
+    .nowrap {
+      white-space: nowrap;
+      word-break: keep-all;
     }
     th, td {
       text-align: left;
@@ -42,37 +66,100 @@
       color: #32594d;
       text-decoration: none;
     }
+    .page-link {
+      color: #32594d;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      white-space: nowrap;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .status-prediction {
+      background: var(--status-prediction-bg);
+      color: var(--status-prediction-color);
+      border-color: var(--status-prediction-border);
+    }
+    .status-result {
+      background: var(--status-result-bg);
+      color: var(--status-result-color);
+      border-color: var(--status-result-border);
+    }
+    .status-pending {
+      background: var(--status-pending-bg);
+      color: var(--status-pending-color);
+      border-color: var(--status-pending-border);
+    }
+    .small {
+      color: #6f766c;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+    @media (max-width: 640px) {
+      main { padding: 20px 12px 40px; }
+      .panel { padding: 15px; }
+      table { font-size: 13px; }
+      th, td { padding: 8px 7px; }
+    }
   </style>
 </head>
 <body>
   <main>
     <div class="panel">
-      <h1>中央競馬 予想レース一覧</h1>
+      <h1>中央競馬 AI予想レース一覧</h1>
+      <p class="small">AIが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。</p>
       <div class="table-scroll">
-      <table>
+      <table class="index-table">
         <thead>
           <tr>
-            <th>日付</th>
-            <th>開催場</th>
+            <th class="nowrap">日付</th>
+            <th class="nowrap">発走</th>
+            <th class="nowrap">開催場</th>
             <th>レース名</th>
-            <th>状態</th>
-            <th>ページ</th>
+            <th class="nowrap">状態</th>
+            <th class="nowrap">ページ</th>
           </tr>
         </thead>
         <tbody>
 
           <tr>
-            <td>2026-07-12</td>
-            <td>福島</td>
+            <td class="nowrap">2026-07-19</td>
+            <td class="nowrap">15:45</td>
+            <td class="nowrap">小倉</td>
+            <td>小倉記念</td>
+            <td class="nowrap"><span class="status status-prediction">予想公開</span></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-07-19/kokura_11r.html">開く</a></td>
+          </tr>
+
+          <tr>
+            <td class="nowrap">2026-07-19</td>
+            <td class="nowrap">15:20</td>
+            <td class="nowrap">函館</td>
+            <td>函館2歳S</td>
+            <td class="nowrap"><span class="status status-prediction">予想公開</span></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-07-19/hakodate_11r.html">開く</a></td>
+          </tr>
+
+          <tr>
+            <td class="nowrap">2026-07-12</td>
+            <td class="nowrap">15:45</td>
+            <td class="nowrap">福島</td>
             <td>七夕賞</td>
-            <td>結果公開</td>
-            <td><a href="races/2026-07-12/fukushima_11r.html">開く</a></td>
+            <td class="nowrap"><span class="status status-result">結果公開</span></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-07-12/fukushima_11r.html">開く</a></td>
           </tr>
 
         </tbody>
       </table>
       </div>
     </div>
+    <p class="small">AI予想およびシミュレーション結果は、的中や利益を保証するものではありません。</p>
   </main>
 </body>
 </html>
