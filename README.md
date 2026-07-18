@@ -132,7 +132,9 @@ python src/run_post.py --date 2026-04-14
 }
 ```
 
-`schema_version` は `4` です。`race` には取得時点の `weather` と正規化した `class_grade` を保存します。各馬の `past_runs` は対象レース自身を除外した直近5走で、走破タイム、ペース、馬体重、当時の人気・オッズなどの詳細を含みます。
+`schema_version` は `5` です。`race` には取得時点の `weather` と正規化した `class_grade` を保存します。各馬の `past_runs` は対象レース自身を除外した直近5走で、走破タイム、ペース、馬体重、当時の人気・オッズなどの詳細を含みます。
+
+単勝オッズはnetkeibaを優先し、全出走馬分を検証できない場合だけJRA公式へ切り替えます。同一レース内で取得元は混在させず、`race.odds_source` と採用元の `race.odds_source_url` を保存します。`race.odds_captured_at` は全馬の単勝オッズと人気の検証に成功した時刻で、両取得元とも失敗した場合は3項目とも `null` です。
 
 馬成績のAJAXレスポンスに含まれる全JRA履歴はJSONへ保存せず、競馬場・surface・距離±200m・馬場・天候・クラス・騎手別の `career_summaries` に集計します。季節・枠番・馬番別集計や全履歴配列は生成しません。
 

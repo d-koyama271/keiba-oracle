@@ -3,12 +3,13 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import math
 import re
 import zlib
 from datetime import date as date_cls
 from pathlib import Path
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import unquote, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -34,6 +35,12 @@ RACE_LIST_DATE_URL = "https://race.netkeiba.com/top/race_list_get_date_list.html
 RACE_LIST_SUB_URL = "https://race.netkeiba.com/top/race_list_sub.html?kaisai_date={date_key}&current_group={current_group}#racelist_top_a"
 SHUTUBA_URL = "https://race.netkeiba.com/race/shutuba.html?race_id={race_id}"
 RESULT_URL = "https://race.netkeiba.com/race/result.html?race_id={race_id}"
+NETKEIBA_ODDS_URL = "https://race.netkeiba.com/api/api_get_jra_odds.html"
+JRA_HOME_URL = "https://www.jra.go.jp/"
+JRA_RACE_URL_PATTERN = re.compile(
+    r"CNAME=pw01dde01(?P<track>\d{2})(?P<year>\d{4})(?P<meeting>\d{2})"
+    r"(?P<meeting_day>\d{2})(?P<race_number>\d{2})(?P<date>\d{8})/[0-9A-Fa-f]{2}"
+)
 HORSE_HISTORY_HEADERS = {"日付", "開催", "距離", "着順"}
 DISTANCE_BAND_METERS = 200
 JRA_TRACK_CODES = {f"{code:02d}" for code in range(1, 11)}
@@ -74,7 +81,7 @@ def discover_race_ids(session: requests.Session, target_date: str) -> list[str]:
 
 def fetch_win_odds(session: requests.Session, race_id: str) -> tuple[dict[int, dict[str, Any]], str | None]:
     response = session.get(
-        "https://race.netkeiba.com/api/api_get_jra_odds.html",
+        NETKEIBA_ODDS_URL,
         headers=REQUEST_HEADERS,
         params={
             "pid": "api_get_jra_odds",
@@ -90,7 +97,7 @@ def fetch_win_odds(session: requests.Session, race_id: str) -> tuple[dict[int, d
     )
     response.raise_for_status()
     payload = parse_jsonp_body(response.text)
-    if payload.get("status") != "result" or not payload.get("data"):
+    if not payload.get("data"):
         return {}, None
 
     body = zlib.decompress(base64.b64decode(payload["data"])).decode("utf-8")
@@ -104,11 +111,279 @@ def fetch_win_odds(session: requests.Session, race_id: str) -> tuple[dict[int, d
         horse_number = parse_int(row[3])
         if horse_number is None:
             continue
+        if horse_number in odds_map:
+            raise ValueError(f"duplicate horse number in netkeiba odds: {horse_number}")
         odds_map[horse_number] = {
             "win_odds": parse_float(row[0]),
             "popularity": parse_int(row[2]),
         }
     return odds_map, odds_payload.get("official_datetime")
+
+
+def normalize_horse_name(value: str | None) -> str:
+    return normalize_space(value).replace(" ", "")
+
+
+def parse_entry_horse_identities(html: str) -> dict[int, str]:
+    table = find_entry_table(BeautifulSoup(html, "html.parser"))
+    if table is None:
+        return {}
+
+    horses: dict[int, str] = {}
+    for row in rows_from_table(table):
+        horse_number = parse_int(row.get("馬番"))
+        horse_name = normalize_space(row.get("馬名"))
+        if horse_number is None or not horse_name:
+            continue
+        if horse_number in horses:
+            raise ValueError(f"duplicate horse number in entry table: {horse_number}")
+        horses[horse_number] = horse_name
+    return horses
+
+
+def validate_odds_snapshot(
+    odds_map: dict[int, dict[str, Any]],
+    expected_horses: dict[int, str],
+    source_horses: dict[int, str],
+) -> str | None:
+    expected_numbers = set(expected_horses)
+    source_numbers = set(source_horses)
+    odds_numbers = set(odds_map)
+    if not expected_numbers:
+        return "target entry horses are unavailable"
+    if source_numbers != expected_numbers:
+        return f"horse numbers mismatch: expected={sorted(expected_numbers)} source={sorted(source_numbers)}"
+    if odds_numbers != expected_numbers:
+        return f"odds horse numbers mismatch: expected={sorted(expected_numbers)} actual={sorted(odds_numbers)}"
+
+    popularities: list[int] = []
+    horse_count = len(expected_horses)
+    for horse_number in sorted(expected_numbers):
+        expected_name = expected_horses[horse_number]
+        source_name = source_horses[horse_number]
+        if normalize_horse_name(expected_name) != normalize_horse_name(source_name):
+            return (
+                f"horse name mismatch: horse_number={horse_number} "
+                f"expected={expected_name} source={source_name}"
+            )
+
+        row = odds_map[horse_number]
+        odds = row.get("win_odds")
+        popularity = row.get("popularity")
+        if isinstance(odds, bool) or not isinstance(odds, (int, float)):
+            return f"invalid win odds: horse_number={horse_number} value={odds}"
+        if not math.isfinite(float(odds)) or float(odds) < 1.0:
+            return f"invalid win odds: horse_number={horse_number} value={odds}"
+        if isinstance(popularity, bool) or not isinstance(popularity, int):
+            return f"invalid popularity: horse_number={horse_number} value={popularity}"
+        if popularity < 1 or popularity > horse_count:
+            return f"invalid popularity: horse_number={horse_number} value={popularity}"
+        popularities.append(popularity)
+
+    if len(set(popularities)) != horse_count:
+        return f"duplicate popularity values: {popularities}"
+    return None
+
+
+def jra_race_url_identity(url: str) -> tuple[str, str, str, str, str, str] | None:
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or parsed.hostname != "www.jra.go.jp":
+        return None
+    match = JRA_RACE_URL_PATTERN.search(unquote(url))
+    if not match:
+        return None
+    return (
+        match.group("year"),
+        match.group("track"),
+        match.group("meeting"),
+        match.group("meeting_day"),
+        match.group("race_number"),
+        match.group("date"),
+    )
+
+
+def expected_jra_race_identity(race_id: str, race_date: str) -> tuple[str, str, str, str, str, str]:
+    return (
+        race_id[0:4],
+        race_id[4:6],
+        race_id[6:8],
+        race_id[8:10],
+        race_id[10:12],
+        race_date.replace("-", ""),
+    )
+
+
+def jra_race_links(html: str, base_url: str) -> list[str]:
+    soup = BeautifulSoup(html, "html.parser")
+    links = []
+    for anchor in soup.find_all("a", href=True):
+        url = urljoin(base_url, anchor["href"])
+        if jra_race_url_identity(url) is not None:
+            links.append(url)
+    return list(dict.fromkeys(links))
+
+
+def discover_jra_race_url(session: requests.Session, race_id: str, race: dict[str, Any]) -> str:
+    expected = expected_jra_race_identity(race_id, race["date"])
+    target_date_key = expected[-1]
+    home_links = jra_race_links(fetch_html(session, JRA_HOME_URL), JRA_HOME_URL)
+    for url in home_links:
+        if jra_race_url_identity(url) == expected:
+            return url
+
+    target_date_links = [url for url in home_links if jra_race_url_identity(url)[-1] == target_date_key]
+    if not target_date_links:
+        raise ValueError(f"JRA official race link is unavailable for {race['date']}")
+
+    anchor_url = target_date_links[0]
+    page_links = jra_race_links(fetch_html(session, anchor_url), anchor_url)
+    for url in page_links:
+        if jra_race_url_identity(url) == expected:
+            return url
+    raise ValueError(f"JRA official race page was not identified for race_id={race_id}")
+
+
+def parse_jra_win_odds(
+    html: str,
+) -> tuple[dict[str, Any], dict[int, str], dict[int, dict[str, Any]]]:
+    soup = BeautifulSoup(html, "html.parser")
+    table = soup.select_one("#syutsuba table")
+    date_node = soup.select_one("#syutsuba .race_header .date_line .date")
+    race_number_node = soup.select_one("#syutsuba .race_number img[alt]")
+    if table is None or date_node is None or race_number_node is None:
+        raise ValueError("JRA official entry table or race header is unavailable")
+
+    date_text = normalize_space(date_node.get_text(" ", strip=True))
+    date_match = re.search(r"(\d{4})年(\d{1,2})月(\d{1,2})日", date_text)
+    holding_match = re.search(r"(\d+)回(.+?)(\d+)日", date_text)
+    race_number = parse_int(race_number_node.get("alt"))
+    if not date_match or not holding_match or race_number is None:
+        raise ValueError("JRA official race identity is unavailable")
+
+    start_node = soup.select_one("#syutsuba .date_line .time strong")
+    start_match = re.search(r"(\d{1,2})時(\d{2})分", normalize_space(start_node.get_text()) if start_node else "")
+    course_node = soup.select_one("#syutsuba .race_title .course")
+    course_text = normalize_space(course_node.get_text(" ", strip=True)) if course_node else ""
+    distance_match = re.search(r"([\d,]+)\s*メートル", course_text)
+    surface = "ダート" if "ダート" in course_text else ("障害" if "障害" in course_text else ("芝" if "芝" in course_text else None))
+    race_name_node = soup.select_one("#syutsuba .race_name")
+    race_name = None
+    if race_name_node is not None:
+        race_name = normalize_space(
+            " ".join(str(child) for child in race_name_node.contents if getattr(child, "name", None) is None)
+        ) or None
+
+    identity = {
+        "date": (
+            f"{int(date_match.group(1)):04d}-{int(date_match.group(2)):02d}-{int(date_match.group(3)):02d}"
+        ),
+        "track": holding_match.group(2),
+        "meeting_number": int(holding_match.group(1)),
+        "meeting_day": int(holding_match.group(3)),
+        "race_number": race_number,
+        "race_name": race_name,
+        "start_time": f"{int(start_match.group(1)):02d}:{int(start_match.group(2)):02d}" if start_match else None,
+        "distance": int(distance_match.group(1).replace(",", "")) if distance_match else None,
+        "surface": surface,
+    }
+
+    horses: dict[int, str] = {}
+    odds_map: dict[int, dict[str, Any]] = {}
+    for row in table.select("tbody > tr"):
+        direct_cells = row.find_all("td", recursive=False)
+        number_cell = next((cell for cell in direct_cells if "num" in (cell.get("class") or [])), None)
+        horse_cell = next((cell for cell in direct_cells if "horse" in (cell.get("class") or [])), None)
+        horse_number = parse_int(number_cell.get_text(" ", strip=True)) if number_cell else None
+        name_node = horse_cell.select_one(".name_line .name") if horse_cell else None
+        horse_name = normalize_space(name_node.get_text(" ", strip=True)) if name_node else ""
+        if horse_number is None or not horse_name:
+            continue
+        if horse_number in horses:
+            raise ValueError(f"duplicate horse number in JRA official entry table: {horse_number}")
+
+        odds_node = horse_cell.select_one(".odds_line span.num strong")
+        popularity_node = horse_cell.select_one(".odds_line .pop_rank")
+        popularity_match = re.search(
+            r"(\d+)\s*番人気",
+            normalize_space(popularity_node.get_text(" ", strip=True)) if popularity_node else "",
+        )
+        horses[horse_number] = horse_name
+        odds_map[horse_number] = {
+            "win_odds": parse_float(odds_node.get_text(" ", strip=True)) if odds_node else None,
+            "popularity": int(popularity_match.group(1)) if popularity_match else None,
+        }
+    return identity, horses, odds_map
+
+
+def validate_jra_race_identity(race_id: str, race: dict[str, Any], identity: dict[str, Any]) -> str | None:
+    required = {
+        "date": race.get("date"),
+        "track": race.get("track"),
+        "race_number": int(race.get("race_number") or race_id[-2:]),
+        "meeting_number": int(race_id[6:8]),
+        "meeting_day": int(race_id[8:10]),
+    }
+    for field, expected in required.items():
+        if identity.get(field) != expected:
+            return f"{field} mismatch: expected={expected} actual={identity.get(field)}"
+
+    for field in ("start_time", "distance", "surface"):
+        expected = race.get(field)
+        if expected is not None and identity.get(field) != expected:
+            return f"{field} mismatch: expected={expected} actual={identity.get(field)}"
+    return None
+
+
+def fetch_validated_win_odds(
+    session: requests.Session,
+    race_id: str,
+    race: dict[str, Any],
+    expected_horses: dict[int, str],
+    logger: Any,
+    job_name: str,
+) -> tuple[dict[int, dict[str, Any]], str | None, str | None, str | None]:
+    log_job(logger, job_name, race_id, "netkeiba win odds fetch started")
+    try:
+        netkeiba_odds, _ = fetch_win_odds(session, race_id)
+        log_job(logger, job_name, race_id, f"netkeiba win odds fetched: {len(netkeiba_odds)} horses")
+        reason = validate_odds_snapshot(netkeiba_odds, expected_horses, expected_horses)
+    except Exception as exc:  # noqa: BLE001
+        netkeiba_odds = {}
+        log_job(logger, job_name, race_id, "netkeiba win odds fetched: 0 horses")
+        reason = str(exc)
+
+    if reason is None:
+        captured_at = now_jst_iso()
+        source_url = f"{NETKEIBA_ODDS_URL}?race_id={race_id}"
+        log_job(logger, job_name, race_id, f"odds source adopted: netkeiba captured_at={captured_at}")
+        return netkeiba_odds, captured_at, "netkeiba", source_url
+
+    log_job(logger, job_name, race_id, f"netkeiba odds rejected: {reason}")
+    log_job(logger, job_name, race_id, "JRA official win odds fallback started")
+    try:
+        jra_url = discover_jra_race_url(session, race_id, race)
+        log_job(logger, job_name, race_id, f"JRA official race page identified: {jra_url}")
+        identity, jra_horses, jra_odds = parse_jra_win_odds(fetch_html(session, jra_url))
+        log_job(logger, job_name, race_id, f"JRA official win odds fetched: {len(jra_odds)} horses")
+        identity_reason = validate_jra_race_identity(race_id, race, identity)
+        if identity_reason is not None:
+            raise ValueError(f"JRA race identity validation failed: {identity_reason}")
+        log_job(logger, job_name, race_id, "JRA race identity validation succeeded")
+        reason = validate_odds_snapshot(jra_odds, expected_horses, jra_horses)
+        if reason is not None:
+            raise ValueError(reason)
+    except Exception as exc:  # noqa: BLE001
+        log_job(
+            logger,
+            job_name,
+            race_id,
+            f"odds unavailable after JRA fallback: {exc}; odds_captured_at=null",
+        )
+        return {}, None, None, None
+
+    captured_at = now_jst_iso()
+    log_job(logger, job_name, race_id, f"odds source adopted: jra captured_at={captured_at}")
+    return jra_odds, captured_at, "jra", jra_url
 
 
 def normalize_header(value: str | None) -> str:
@@ -511,6 +786,8 @@ def parse_race_overview(html: str, race_id: str, target_date: str, odds_referenc
         "class_grade": normalize_class_grade(f"{race_name} {detail_text}", soup),
         "source_url": SHUTUBA_URL.format(race_id=race_id),
         "odds_captured_at": None,
+        "odds_source": None,
+        "odds_source_url": None,
         "odds_reference_minutes_before_start": odds_reference_minutes,
     }
 
@@ -567,14 +844,13 @@ def parse_horses(
     current_race: dict[str, Any],
     current_race_id: str,
     odds_map: dict[int, dict[str, Any]],
-    existing_horses: list[dict[str, Any]] | None = None,
+    _existing_horses: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     soup = BeautifulSoup(html, "html.parser")
     table = find_entry_table(soup)
     if table is None:
         return []
 
-    existing_lookup = {horse["horse_number"]: horse for horse in (existing_horses or []) if horse.get("horse_number") is not None}
     horses: list[dict[str, Any]] = []
     for row in rows_from_table(table):
         horse_number = parse_int(row.get("馬番"))
@@ -586,15 +862,14 @@ def parse_horses(
         horse_url = urljoin("https://db.netkeiba.com", horse_link["href"]) if horse_link else None
 
         odds = odds_map.get(horse_number, {})
-        previous = existing_lookup.get(horse_number, {})
         horse = {
             "horse_number": horse_number,
             "frame_number": parse_int(row.get("枠")),
             "horse_name": row.get("馬名"),
             "jockey": row.get("騎手"),
             "weight_carried": parse_float(row.get("斤量")),
-            "popularity": odds.get("popularity", previous.get("popularity")),
-            "win_odds": odds.get("win_odds", previous.get("win_odds")),
+            "popularity": odds.get("popularity"),
+            "win_odds": odds.get("win_odds"),
         }
 
         past_runs: list[dict[str, Any]] = []
@@ -706,8 +981,18 @@ def collect_races(
                 target_date,
                 int(config["odds_reference_minutes_before_start"]),
             )
-            odds_map, odds_captured_at = fetch_win_odds(session, race_id)
-            race["odds_captured_at"] = odds_captured_at or now_jst_iso()
+            expected_horses = parse_entry_horse_identities(entry_html)
+            odds_map, odds_captured_at, odds_source, odds_source_url = fetch_validated_win_odds(
+                session,
+                race_id,
+                race,
+                expected_horses,
+                logger,
+                job_name,
+            )
+            race["odds_captured_at"] = odds_captured_at
+            race["odds_source"] = odds_source
+            race["odds_source_url"] = odds_source_url
             horses = parse_horses(
                 session,
                 entry_html,

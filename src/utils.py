@@ -11,7 +11,7 @@ from typing import Any
 import yaml
 
 JST = timezone(timedelta(hours=9), name="Asia/Tokyo")
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 REQUIRED_TOP_LEVEL_KEYS = ("meta", "race", "horses", "prediction", "simulation", "result", "evaluation")
 TRACK_CODE_TO_NAME = {
     "01": "札幌",

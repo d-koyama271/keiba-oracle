@@ -261,8 +261,13 @@ class MultipleRaceGenerationTests(unittest.TestCase):
                 stack.enter_context(patch.object(collect_module, "parse_race_overview", side_effect=overview))
                 stack.enter_context(patch.object(
                     collect_module,
-                    "fetch_win_odds",
-                    return_value=({1: {"odds": 2.5, "popularity": 1}}, "2026-07-18T12:00:00+09:00"),
+                    "fetch_validated_win_odds",
+                    return_value=(
+                        {1: {"win_odds": 2.5, "popularity": 1}},
+                        "2026-07-18T12:00:00+09:00",
+                        "netkeiba",
+                        "https://example.invalid/odds",
+                    ),
                 ))
                 stack.enter_context(patch.object(collect_module, "parse_horses", side_effect=horses))
                 paths = collect_module.collect_races(config, "test-multiple-collect", "2026-07-19", "pre", root)
