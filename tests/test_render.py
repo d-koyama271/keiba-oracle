@@ -89,14 +89,41 @@ class RenderTests(unittest.TestCase):
         self.assertEqual(payload["race"]["odds_captured_at"], saved_value)
 
     def test_expected_value_rows_use_raw_values_sort_and_handle_missing_odds(self) -> None:
-        rows = build_expected_value_rows(
-            [
-                {"horse_number": 3, "horse_name": "Horse 3", "win_odds": 5.0, "prediction": {"win_probability": 0.2}},
-                {"horse_number": 1, "horse_name": "Horse 1", "win_odds": 3.0, "prediction": {"win_probability": 0.3333334}},
-                {"horse_number": 4, "horse_name": "Horse 4", "win_odds": None, "prediction": {"win_probability": 0.1}},
-                {"horse_number": 2, "horse_name": "Horse 2", "win_odds": 4.0, "prediction": {"win_probability": 0.25}},
+        horse_rows = [
+            {"horse_number": 3, "horse_name": "Horse 3", "win_odds": 5.0, "prediction": {"win_probability": 0.2}},
+            {"horse_number": 1, "horse_name": "Horse 1", "win_odds": 3.0, "prediction": {"win_probability": 0.3333334}},
+            {"horse_number": 4, "horse_name": "Horse 4", "win_odds": None, "prediction": {"win_probability": 0.1}},
+            {"horse_number": 2, "horse_name": "Horse 2", "win_odds": 4.0, "prediction": {"win_probability": 0.25}},
+        ]
+        payload = {
+            "horses": [
+                {
+                    "horse_number": horse["horse_number"],
+                    "horse_name": horse["horse_name"],
+                    "win_odds": horse["win_odds"],
+                }
+                for horse in horse_rows
             ],
-            1.0,
+            "prediction": {
+                "horses": [
+                    {
+                        "horse_number": horse["horse_number"],
+                        "win_probability": horse["prediction"]["win_probability"],
+                    }
+                    for horse in horse_rows
+                ]
+            },
+        }
+        value_pre = {
+            "budget": 3000,
+            "stake_unit": 100,
+            "settings": {"ev_threshold": 1.0, "kelly_fraction": 0.5},
+            "selections": [],
+        }
+        rows = build_expected_value_rows(
+            payload,
+            horse_rows,
+            value_pre,
         )
 
         self.assertEqual([row["horse_number"] for row in rows], [1, 2, 3, 4])
@@ -178,7 +205,13 @@ class RenderTests(unittest.TestCase):
             race_html = (output / "races" / "2026-01-01" / "nakayama_11r.html").read_text(
                 encoding="utf-8"
             )
-            self.assertIn("中央競馬 予想レース一覧", index)
+            self.assertIn("<title>中央競馬 AI予想レース一覧 | keiba-oracle</title>", index)
+            self.assertIn("<h1>中央競馬 AI予想レース一覧</h1>", index)
+            self.assertIn(
+                "AIが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。",
+                index,
+            )
+            self.assertNotIn('class="ai-badge"', index)
             self.assertIn("background: #f2f2f0", index)
             self.assertIn("background: #f2f2f0", race_html)
             self.assertIn("予想済み", index)
@@ -192,7 +225,18 @@ class RenderTests(unittest.TestCase):
             self.assertTrue((output / "assets" / "site.css").exists())
             self.assertFalse((output / stale.relative_to(public)).exists())
             self.assertFalse((output / "races" / "2026-01-02" / "tokyo_11r.html").exists())
-            self.assertIn('<div class="status race-status status-prediction">予想公開</div>', race_html)
+            self.assertIn('<div class="page-badges">', race_html)
+            self.assertIn('<span class="ai-badge">AI予想</span>', race_html)
+            self.assertIn('<span class="status status-prediction">予想公開</span>', race_html)
+            self.assertIn("background: #eee8f6", race_html)
+            self.assertIn("color: #604879", race_html)
+            self.assertIn("flex-wrap: wrap", race_html)
+            self.assertEqual(
+                race_html.count(
+                    "AIが各馬の過去成績、コース・距離適性、斤量、脚質、市場オッズなどから1着確率を推定しています。"
+                ),
+                1,
+            )
             self.assertIn("--status-prediction-bg: #dde9e4", race_html)
             self.assertIn("--status-result-bg: #e4eef3", race_html)
             self.assertNotIn("prediction_only", race_html)

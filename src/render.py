@@ -8,7 +8,7 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from simulate import calculate_expected_value, meets_ev_threshold
+from simulate import calculate_value_details, minimum_budget_for_value_stake
 from utils import (
     ensure_dir,
     list_race_files,
@@ -48,8 +48,11 @@ TOOLTIPS = {
     "minimum_ev": "1着確率と単勝オッズから計算した期待値について、購入対象とする最低ラインです。1.0が損益分岐の目安です。1.0未満も入力できますが、Kelly基準で購入割合が0以下になる馬には購入額を割り当てません。",
     "kelly_fraction": "Kelly基準は、予測確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。",
     "ev": "1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。",
-    "full_kelly": "予測確率とオッズからKelly基準で算出した、予算に対する購入割合です。Kelly係数を掛ける前の値で、係数1.0に相当します。",
+    "full_kelly": "予測確率と単勝オッズからKelly基準で算出した、予算に対する購入割合です。",
     "fractional_kelly": "Full KellyにKelly係数を掛けて抑制した購入割合です。係数0.5ならハーフケリーとなります。",
+    "applied_kelly": "Full KellyへKelly係数を掛けた、実際のシミュレーションで使用する購入割合です。",
+    "theoretical_stake": "現在の予算に適用Kellyを掛けた、購入単位へ丸める前の購入額です。",
+    "minimum_budget": "現在の設定条件で、購入額が初めて1購入単位以上になる予算です。",
     "minimum_payout": "選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。",
     "minimum_profit": "選択した馬のうち、最も利益が低い馬が的中した場合の利益です。",
     "expected_return": "各馬の予測確率を考慮した、平均的な払戻見込み額です。",
@@ -144,30 +147,64 @@ def finite_float(value: Any) -> float | None:
 
 
 def build_expected_value_rows(
+    payload: dict[str, Any],
     horse_rows: list[dict[str, Any]],
-    ev_threshold: float,
+    value_pre: dict[str, Any],
 ) -> list[dict[str, Any]]:
+    budget = int(value_pre["budget"])
+    stake_unit = int(value_pre["stake_unit"])
+    settings = value_pre["settings"]
+    details = calculate_value_details(payload, budget, stake_unit, settings)
+    detail_lookup = {item["horse_number"]: item for item in details}
+    selection_lookup = {
+        item["horse_number"]: item
+        for item in value_pre.get("selections", [])
+    }
     rows = []
     for horse in horse_rows:
         probability = finite_float((horse.get("prediction") or {}).get("win_probability"))
         odds = finite_float(horse.get("win_odds"))
-        expected_value = (
-            calculate_expected_value(probability, odds)
-            if probability is not None and odds is not None
-            else None
-        )
+        detail = detail_lookup.get(horse["horse_number"])
+        selection = selection_lookup.get(horse["horse_number"])
+        if detail is None:
+            purchase_status = "unavailable"
+            purchase_decision = "算出不可"
+        elif not detail["meets_threshold"]:
+            purchase_status = "ev_below"
+            purchase_decision = "EV基準未満"
+        elif detail["full_kelly"] <= 0 or detail["fractional_kelly"] <= 0:
+            purchase_status = "zero_kelly"
+            purchase_decision = "Kelly割合が0"
+        elif selection is None:
+            purchase_status = "below_unit"
+            purchase_decision = "購入単位未満"
+        else:
+            purchase_status = "purchase"
+            purchase_decision = f"購入：{selection['stake']}円"
+
         rows.append(
             {
                 "horse_number": horse["horse_number"],
                 "horse_name": horse["horse_name"],
                 "win_probability": probability,
                 "win_odds": odds,
-                "expected_value": expected_value,
-                "meets_threshold": (
-                    meets_ev_threshold(expected_value, ev_threshold)
-                    if expected_value is not None
+                "expected_value": detail["expected_value"] if detail else None,
+                "meets_threshold": detail["meets_threshold"] if detail else None,
+                "full_kelly": detail["full_kelly"] if detail else None,
+                "fractional_kelly": detail["fractional_kelly"] if detail else None,
+                "theoretical_stake": detail["theoretical_stake"] if detail else None,
+                "minimum_budget": (
+                    minimum_budget_for_value_stake(
+                        payload,
+                        stake_unit,
+                        settings,
+                        horse["horse_number"],
+                    )
+                    if detail and detail["eligible"]
                     else None
                 ),
+                "purchase_status": purchase_status,
+                "purchase_decision": purchase_decision,
             }
         )
 
@@ -183,6 +220,29 @@ def build_expected_value_rows(
     for row in rows:
         row.setdefault("ev_rank", None)
     return rows
+
+
+def value_no_purchase_message(
+    rows: list[dict[str, Any]],
+    stake_unit: int,
+    kelly_fraction: float,
+) -> str:
+    if any(row["purchase_status"] == "purchase" for row in rows):
+        return ""
+    calculable = [row for row in rows if row["expected_value"] is not None]
+    if not calculable:
+        return "オッズまたは予測確率を算出できる馬がありません。"
+    above_threshold = [row for row in calculable if row["meets_threshold"]]
+    if not above_threshold:
+        return "最低EVを満たす馬がありません。"
+    if any(row["purchase_status"] == "below_unit" for row in above_threshold):
+        return (
+            "EV基準以上の馬はありますが、現在の予算ではKelly基準の購入額が"
+            f"{stake_unit}円未満となるため、購入対象はありません。"
+        )
+    if kelly_fraction <= 0:
+        return "Kelly係数が0のため、購入対象はありません。"
+    return "EV基準以上の馬はありますが、Kelly割合が0のため、購入対象はありません。"
 
 
 def build_environment(root: Path | None = None) -> Environment:
@@ -257,10 +317,16 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
     dutching_simulation = simulation.get("dutching") or {}
     value_pre = value_simulation.get("pre")
     dutching_pre = dutching_simulation.get("pre")
-    expected_value_rows = build_expected_value_rows(
-        horse_rows,
-        float(value_pre["settings"]["ev_threshold"]),
-    ) if value_pre else []
+    expected_value_rows = build_expected_value_rows(payload, horse_rows, value_pre) if value_pre else []
+    value_no_purchase_reason = (
+        value_no_purchase_message(
+            expected_value_rows,
+            int(value_pre["stake_unit"]),
+            float(value_pre["settings"]["kelly_fraction"]),
+        )
+        if value_pre and not value_pre.get("selections")
+        else ""
+    )
     custom_simulation_horses = [
         {
             "horse_number": horse["horse_number"],
@@ -292,6 +358,7 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         "horse_rows": horse_rows,
         "result_rows": result_rows,
         "expected_value_rows": expected_value_rows,
+        "value_no_purchase_reason": value_no_purchase_reason,
         "status": status,
         "status_label": status_label(status),
         "status_class": status_class(status),

@@ -62,6 +62,89 @@ def prediction_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+def calculate_value_details(
+    payload: dict[str, Any],
+    budget: int,
+    stake_unit: int,
+    settings: dict[str, Any],
+) -> list[dict[str, Any]]:
+    ev_threshold = float(settings["ev_threshold"])
+    kelly_fraction = float(settings["kelly_fraction"])
+    details = []
+
+    for row in prediction_rows(payload):
+        probability = row["predicted_probability"]
+        odds = row["win_odds"]
+        expected_value = calculate_expected_value(probability, odds)
+        b = odds - 1.0
+        full_kelly = max(0.0, (expected_value - 1.0) / b)
+        fractional_kelly = full_kelly * kelly_fraction
+        meets_threshold = meets_ev_threshold(expected_value, ev_threshold)
+        eligible = meets_threshold and full_kelly > 0 and fractional_kelly > 0
+        details.append(
+            {
+                "horse_number": row["horse_number"],
+                "predicted_probability": probability,
+                "win_odds": odds,
+                "expected_value": expected_value,
+                "full_kelly": full_kelly,
+                "fractional_kelly": fractional_kelly,
+                "meets_threshold": meets_threshold,
+                "eligible": eligible,
+                "_raw_stake": budget * fractional_kelly if eligible else 0.0,
+            }
+        )
+
+    total_raw_stake = sum(item["_raw_stake"] for item in details)
+    scale = budget / total_raw_stake if total_raw_stake > budget else 1.0
+    for item in details:
+        if item["eligible"]:
+            theoretical_stake = item["_raw_stake"] * scale
+            stake = math.floor((theoretical_stake / stake_unit) + EPSILON) * stake_unit
+            item["theoretical_stake"] = theoretical_stake
+            item["stake"] = int(stake)
+        else:
+            item["theoretical_stake"] = 0.0 if item["meets_threshold"] else None
+            item["stake"] = 0
+        del item["_raw_stake"]
+    return details
+
+
+def minimum_budget_for_value_stake(
+    payload: dict[str, Any],
+    stake_unit: int,
+    settings: dict[str, Any],
+    horse_number: int,
+) -> int | None:
+    def target_detail(budget: int) -> dict[str, Any] | None:
+        return next(
+            (
+                item
+                for item in calculate_value_details(payload, budget, stake_unit, settings)
+                if item["horse_number"] == horse_number
+            ),
+            None,
+        )
+
+    initial = target_detail(1)
+    if initial is None or not initial["eligible"]:
+        return None
+
+    low = 0
+    high = max(1, stake_unit)
+    while (target_detail(high) or {}).get("stake", 0) < stake_unit:
+        low = high
+        high *= 2
+
+    while low + 1 < high:
+        middle = (low + high) // 2
+        if (target_detail(middle) or {}).get("stake", 0) >= stake_unit:
+            high = middle
+        else:
+            low = middle
+    return high
+
+
 def calculate_value_pre(payload: dict[str, Any], config: dict[str, Any]) -> dict[str, Any] | None:
     if not payload.get("prediction"):
         return None
@@ -69,40 +152,25 @@ def calculate_value_pre(payload: dict[str, Any], config: dict[str, Any]) -> dict
     budget, stake_unit, settings, _ = simulation_settings(config)
     ev_threshold = float(settings["ev_threshold"])
     kelly_fraction = float(settings["kelly_fraction"])
-    candidates = []
-
-    for row in prediction_rows(payload):
-        probability = row["predicted_probability"]
-        odds = row["win_odds"]
-        expected_value = calculate_expected_value(probability, odds)
-        b = odds - 1.0
-        full_kelly = max(0.0, ((b * probability) - (1.0 - probability)) / b)
-        fractional_kelly = full_kelly * kelly_fraction
-        if not meets_ev_threshold(expected_value, ev_threshold) or full_kelly <= 0 or fractional_kelly <= 0:
+    details = calculate_value_details(payload, budget, stake_unit, settings)
+    selections = []
+    for item in sorted(
+        details,
+        key=lambda detail: (-round_ratio(detail["expected_value"]), detail["horse_number"]),
+    ):
+        if item["stake"] < stake_unit:
             continue
-        candidates.append(
+        selections.append(
             {
-                "horse_number": row["horse_number"],
-                "predicted_probability": round_ratio(probability),
-                "win_odds": odds,
-                "expected_value": round_ratio(expected_value),
-                "full_kelly": round_ratio(full_kelly),
-                "fractional_kelly": round_ratio(fractional_kelly),
-                "_raw_stake": budget * fractional_kelly,
+                "horse_number": item["horse_number"],
+                "predicted_probability": round_ratio(item["predicted_probability"]),
+                "win_odds": item["win_odds"],
+                "expected_value": round_ratio(item["expected_value"]),
+                "full_kelly": round_ratio(item["full_kelly"]),
+                "fractional_kelly": round_ratio(item["fractional_kelly"]),
+                "stake": item["stake"],
             }
         )
-
-    candidates.sort(key=lambda item: (-item["expected_value"], item["horse_number"]))
-    total_raw_stake = sum(item["_raw_stake"] for item in candidates)
-    scale = budget / total_raw_stake if total_raw_stake > budget else 1.0
-    selections = []
-    for item in candidates:
-        adjusted_stake = item.pop("_raw_stake") * scale
-        stake = math.floor((adjusted_stake / stake_unit) + EPSILON) * stake_unit
-        if stake < stake_unit:
-            continue
-        item["stake"] = int(stake)
-        selections.append(item)
 
     total_stake = sum(item["stake"] for item in selections)
     return {

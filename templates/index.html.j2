@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>中央競馬 予想レース一覧 | keiba-oracle</title>
+  <title>中央競馬 AI予想レース一覧 | keiba-oracle</title>
   <style>
     :root {
       --status-prediction-bg: {{ status_colors.prediction.background }};
@@ -77,12 +77,18 @@
       color: var(--status-pending-color);
       border-color: var(--status-pending-border);
     }
+    .small {
+      color: #6f766c;
+      font-size: 14px;
+      line-height: 1.7;
+    }
   </style>
 </head>
 <body>
   <main>
     <div class="panel">
-      <h1>中央競馬 予想レース一覧</h1>
+      <h1>中央競馬 AI予想レース一覧</h1>
+      <p class="small">AIが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。</p>
       <div class="table-scroll">
       <table>
         <thead>
