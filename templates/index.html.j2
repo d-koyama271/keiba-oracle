@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="中央競馬の各レースについて、AIが出走馬の過去成績・条件適性・市場オッズなどから1着確率を推定し、購入シミュレーションを掲載します。">
   <title>中央競馬 AI予想レース一覧 | keiba-oracle</title>
   <style>
     :root {
@@ -26,6 +27,8 @@
       max-width: 980px;
       margin: 0 auto;
       padding: 32px 20px 56px;
+      box-sizing: border-box;
+      min-width: 0;
     }
     .panel {
       background: rgba(255, 253, 248, 0.96);
@@ -33,13 +36,23 @@
       border-radius: 14px;
       padding: 20px;
       box-shadow: 0 12px 30px rgba(50, 89, 77, 0.06);
+      min-width: 0;
     }
     table {
       width: 100%;
       border-collapse: collapse;
     }
     .table-scroll {
+      width: 100%;
+      max-width: 100%;
       overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+    .index-table { min-width: 700px; }
+    .nowrap {
+      white-space: nowrap;
+      word-break: keep-all;
     }
     th, td {
       text-align: left;
@@ -52,6 +65,12 @@
     a {
       color: #32594d;
       text-decoration: none;
+    }
+    .page-link {
+      color: #32594d;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      white-space: nowrap;
     }
     .status {
       display: inline-block;
@@ -82,6 +101,12 @@
       font-size: 14px;
       line-height: 1.7;
     }
+    @media (max-width: 640px) {
+      main { padding: 20px 12px 40px; }
+      .panel { padding: 15px; }
+      table { font-size: 13px; }
+      th, td { padding: 8px 7px; }
+    }
   </style>
 </head>
 <body>
@@ -90,34 +115,37 @@
       <h1>中央競馬 AI予想レース一覧</h1>
       <p class="small">AIが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。</p>
       <div class="table-scroll">
-      <table>
+      <table class="index-table">
         <thead>
           <tr>
-            <th>日付</th>
-            <th>開催場</th>
+            <th class="nowrap">日付</th>
+            <th class="nowrap">発走</th>
+            <th class="nowrap">開催場</th>
             <th>レース名</th>
-            <th>状態</th>
-            <th>ページ</th>
+            <th class="nowrap">状態</th>
+            <th class="nowrap">ページ</th>
           </tr>
         </thead>
         <tbody>
 {% for race in races %}
           <tr>
-            <td>{{ race.date }}</td>
-            <td>{{ race.track }}</td>
-            <td>{{ race.race_name }}</td>
-            <td><span class="status {{ race.status_class }}">{{ race.status_label }}</span></td>
-            <td><a href="{{ race.href }}">開く</a></td>
+            <td class="nowrap">{{ race.date }}</td>
+            <td class="nowrap">{{ race.start_time or "-" }}</td>
+            <td class="nowrap">{{ race.track }}</td>
+            <td>{{ race.race_name|e }}</td>
+            <td class="nowrap"><span class="status {{ race.status_class }}">{{ race.status_label }}</span></td>
+            <td class="nowrap"><a class="page-link" href="{{ race.href }}">開く</a></td>
           </tr>
 {% else %}
           <tr>
-            <td colspan="5">公開済みレースはまだありません。</td>
+            <td colspan="6">公開済みレースはまだありません。</td>
           </tr>
 {% endfor %}
         </tbody>
       </table>
       </div>
     </div>
+    <p class="small">AI予想およびシミュレーション結果は、的中や利益を保証するものではありません。</p>
   </main>
 </body>
 </html>

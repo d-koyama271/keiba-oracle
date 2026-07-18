@@ -34,6 +34,10 @@ STATUS_CLASSES = {
     "prediction_only": "status-prediction",
     "result_published": "status-result",
 }
+INDEX_STATUS_PRIORITIES = {
+    "prediction_only": 0,
+    "result_published": 2,
+}
 STATUS_COLORS = {
     "prediction": {"background": "#dde9e4", "color": "#32594d", "border": "#b8cec5"},
     "result": {"background": "#e4eef3", "color": "#315b78", "border": "#b7cbd7"},
@@ -43,6 +47,7 @@ SITE_BACKGROUND = "#f2f2f0"
 
 TOOLTIPS = {
     "dutching_method": "AIの予測上位馬を複数選び、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。",
+    "value_method": "AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。",
     "coverage_probability": "選択した馬の1着確率を合計した値です。",
     "group_expected_value": "選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。",
     "minimum_ev": "1着確率と単勝オッズから計算した期待値について、購入対象とする最低ラインです。1.0が損益分岐の目安です。1.0未満も入力できますが、Kelly基準で購入割合が0以下になる馬には購入額を割り当てません。",
@@ -73,6 +78,17 @@ def status_label(status: str) -> str:
 
 def status_class(status: str) -> str:
     return STATUS_CLASSES.get(status, "status-pending")
+
+
+def index_row_sort_key(row: dict[str, Any]) -> tuple[int, float, str, str]:
+    start = race_start_datetime(row.get("date"), row.get("start_time") or "00:00")
+    timestamp = start.timestamp() if start else float("-inf")
+    return (
+        INDEX_STATUS_PRIORITIES.get(row.get("status"), 1),
+        -timestamp,
+        row.get("track") or "",
+        row.get("href") or "",
+    )
 
 
 def format_jst_datetime(value: str | None) -> str:
@@ -114,10 +130,10 @@ def result_highlight_class(prediction_rank: int | None, finish_position: Any) ->
     finish = comparable_finish_position(finish_position)
     if prediction_rank == 1 and finish == 1:
         return "prediction-hit"
-    if prediction_rank == 1:
-        return "prediction-top"
     if finish == 1:
         return "result-winner"
+    if prediction_rank == 1:
+        return "prediction-top"
     return ""
 
 
@@ -260,6 +276,13 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
     result = payload.get("result")
     evaluation = payload.get("evaluation")
     odds_timing_label, odds_recorded_after_start = build_odds_timing(race)
+    has_recorded_odds = (
+        parse_jst_datetime(race.get("odds_captured_at")) is not None
+        and any(
+            (odds := finite_float(horse.get("win_odds"))) is not None and odds > 0
+            for horse in payload.get("horses", [])
+        )
+    )
 
     prediction_horses = (prediction or {}).get("horses", [])
     prediction_lookup = {item["horse_number"]: item for item in prediction_horses}
@@ -288,6 +311,11 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
             }
         )
 
+    value_simulation = simulation.get("value") or {}
+    dutching_simulation = simulation.get("dutching") or {}
+    value_pre = value_simulation.get("pre")
+    dutching_pre = dutching_simulation.get("pre")
+
     result_rows = []
     for horse in horse_rows:
         if horse["horse_number"] not in result_lookup:
@@ -313,10 +341,6 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
             }
         )
 
-    value_simulation = simulation.get("value") or {}
-    dutching_simulation = simulation.get("dutching") or {}
-    value_pre = value_simulation.get("pre")
-    dutching_pre = dutching_simulation.get("pre")
     expected_value_rows = build_expected_value_rows(payload, horse_rows, value_pre) if value_pre else []
     value_no_purchase_reason = (
         value_no_purchase_message(
@@ -369,6 +393,7 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         "odds_captured_at_label": format_jst_datetime(race.get("odds_captured_at")),
         "odds_timing_label": odds_timing_label,
         "odds_recorded_after_start": odds_recorded_after_start,
+        "has_recorded_odds": has_recorded_odds,
         "custom_simulation_data": custom_simulation_data,
     }
 
@@ -415,15 +440,17 @@ def render_site(
         index_rows.append(
             {
                 "date": race["date"],
+                "start_time": race.get("start_time"),
                 "track": race["track"],
                 "race_name": race["race_name"],
+                "status": context["status"],
                 "status_label": context["status_label"],
                 "status_class": context["status_class"],
                 "href": relative_path.as_posix(),
             }
         )
 
-    index_rows.sort(key=lambda item: (item["date"], item["track"]))
+    index_rows.sort(key=index_row_sort_key)
     index_html = index_template.render(
         races=index_rows,
         site_background=SITE_BACKGROUND,

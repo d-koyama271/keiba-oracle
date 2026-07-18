@@ -12,7 +12,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ race.race_name }} | keiba-oracle</title>
+  <title>{{ race.race_name|e }}{% if "AI予想" not in race.race_name %} AI予想{% endif %} | keiba-oracle</title>
+  <meta name="description" content="{{ race.race_name|e }}のAI予想。各馬の1着確率、予想理由、上位予測ダッチング方式と期待値重視方式による購入シミュレーションを掲載します。">
   <style>
     :root {
       color-scheme: light;
@@ -46,6 +47,8 @@
       max-width: 1080px;
       margin: 0 auto;
       padding: 32px 20px 60px;
+      box-sizing: border-box;
+      min-width: 0;
     }
     .panel {
       background: var(--panel);
@@ -54,6 +57,7 @@
       padding: 20px;
       margin-bottom: 18px;
       box-shadow: 0 10px 30px rgba(50, 89, 77, 0.06);
+      min-width: 0;
     }
     h1, h2, h3 { margin-top: 0; }
     .meta, .metric-grid {
@@ -102,7 +106,7 @@
       border-color: var(--status-pending-border);
     }
     .ev-above-threshold {
-      background: #edf4f1;
+      background: #f6f3f8;
     }
     table {
       width: 100%;
@@ -119,7 +123,7 @@
       color: var(--muted);
       font-weight: 700;
     }
-    .selected-row { background: #edf4f1; }
+    .selected-row { background: #fff6dc; }
     .small {
       color: var(--muted);
       font-size: 13px;
@@ -197,7 +201,34 @@
       color: #9b352b;
       font-weight: 700;
     }
-    .table-scroll { overflow-x: auto; }
+    .table-scroll {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+    .table-scroll-hint { display: none; }
+    .horse-name {
+      min-width: 8em;
+      white-space: nowrap;
+      word-break: keep-all;
+      overflow-wrap: normal;
+    }
+    .nowrap {
+      white-space: nowrap;
+      word-break: keep-all;
+    }
+    .prediction-table { min-width: 980px; }
+    .prediction-table .reason-cell {
+      min-width: 300px;
+      white-space: normal;
+      line-height: 1.6;
+    }
+    .value-detail-table { min-width: 1200px; }
+    .simulation-table { min-width: 680px; }
+    .evaluation-table { min-width: 860px; }
+    .result-table { min-width: 820px; }
     .term-with-tooltip {
       display: inline-flex;
       align-items: center;
@@ -261,6 +292,20 @@
       opacity: 1;
       transform: translate(-50%, 0);
     }
+    .simulation-section {
+      margin-top: 32px;
+    }
+    .simulation-section-title {
+      color: var(--accent);
+      margin-bottom: 18px;
+    }
+    .simulation-panel h4,
+    .result-panel h4 {
+      margin: 28px 0 10px;
+    }
+    #custom-dutching-evaluations h3 {
+      margin: 28px 0 10px;
+    }
     .result-section {
       margin-top: 40px;
       padding: 24px 18px 20px;
@@ -278,16 +323,15 @@
       box-shadow: 0 10px 26px rgba(49, 91, 120, 0.08);
     }
     .result-panel h2,
-    .result-panel h3 {
+    .result-panel h3,
+    .result-panel h4 {
       color: var(--result-accent);
     }
     .result-section .result-panel:last-child { margin-bottom: 0; }
-    .prediction-top { background: #e7f1ec; }
+    .prediction-top { background: #f1ecf7; }
+    .simulation-selected { background: #fff6dc; }
     .result-winner { background: #e4eef3; }
-    .prediction-hit {
-      background: #fff1c9;
-      box-shadow: inset 4px 0 0 #d5a72e;
-    }
+    .prediction-hit { background: #e3f0e7; }
     .comparison-up {
       color: #2f6b63;
       font-weight: 700;
@@ -302,10 +346,28 @@
     @media (max-width: 640px) {
       main { padding: 20px 12px 40px; }
       .panel { padding: 15px; }
-      th, td { padding: 8px 6px; }
+      table { font-size: 13px; }
+      th, td { padding: 8px 7px; }
+      .horse-name { min-width: 7.5em; }
+      .table-scroll-hint {
+        display: block;
+        margin: 0 0 6px;
+        color: var(--muted);
+        font-size: 12px;
+        text-align: right;
+      }
       .result-section {
         margin-top: 28px;
         padding: 18px 10px 12px;
+      }
+      .simulation-panel h4,
+      .result-panel h4 {
+        margin-top: 24px;
+        margin-bottom: 8px;
+      }
+      #custom-dutching-evaluations h3 {
+        margin-top: 24px;
+        margin-bottom: 8px;
       }
       .tooltip-content {
         bottom: 12px;
@@ -331,6 +393,7 @@
         <div><strong>オッズ記録時刻</strong><br>{{ odds_captured_at_label }}</div>
         <div><strong>発走時点との差</strong><br>{{ odds_timing_label }}</div>
       </div>
+      {% if has_recorded_odds %}<p class="small">単勝オッズと人気は記録時点の値です。現在のオッズとは異なる場合があります。</p>{% endif %}
       {% if odds_recorded_after_start %}<p class="small">※ 発走後に記録されたオッズスナップショットです。厳密な発走前オッズではありません。</p>{% endif %}
       <p class="small"><a href="../../index.html">一覧へ戻る</a> / <a href="{{ race.source_url }}">netkeiba</a></p>
     </div>
@@ -339,31 +402,32 @@
       <h2>予想</h2>
       <p class="small prediction-description">AIが各馬の過去成績、コース・距離適性、斤量、脚質、市場オッズなどから1着確率を推定しています。</p>
       {% if prediction %}
+      <p class="table-scroll-hint">表は横にスクロールできます</p>
       <div class="table-scroll">
-        <table>
+        <table class="prediction-table">
           <thead>
             <tr>
-              <th>馬番</th>
-              <th>馬名</th>
-              <th>騎手</th>
-              <th>単勝オッズ</th>
-              <th>人気</th>
-              <th>1着確率</th>
-              <th>予想順位</th>
-              <th>理由</th>
+              <th class="nowrap">馬番</th>
+              <th class="horse-name">馬名</th>
+              <th class="nowrap">騎手</th>
+              <th class="nowrap">単勝オッズ</th>
+              <th class="nowrap">人気</th>
+              <th class="nowrap">1着確率</th>
+              <th class="nowrap">予想順位</th>
+              <th class="reason-cell">理由</th>
             </tr>
           </thead>
           <tbody>
             {% for horse in horse_rows %}
             <tr{% if horse.prediction_rank == 1 %} class="prediction-top"{% endif %}>
-              <td>{{ horse.horse_number }}</td>
-              <td>{{ horse.horse_name }}</td>
-              <td>{{ horse.jockey or "-" }}</td>
-              <td>{{ horse.win_odds if horse.win_odds is not none else "-" }}</td>
-              <td>{{ horse.popularity if horse.popularity is not none else "-" }}</td>
-              <td>{% if horse.prediction %}{{ "%.1f"|format(horse.prediction.win_probability * 100) }}%{% else %}-{% endif %}</td>
-              <td>{{ horse.prediction_rank ~ "位" if horse.prediction_rank is not none else "-" }}</td>
-              <td>{{ horse.prediction.reason if horse.prediction else "-" }}</td>
+              <td class="nowrap">{{ horse.horse_number }}</td>
+              <td class="horse-name">{{ horse.horse_name }}</td>
+              <td class="nowrap">{{ horse.jockey or "-" }}</td>
+              <td class="nowrap">{{ horse.win_odds if horse.win_odds is not none else "-" }}</td>
+              <td class="nowrap">{{ horse.popularity if horse.popularity is not none else "-" }}</td>
+              <td class="nowrap">{% if horse.prediction %}{{ "%.1f"|format(horse.prediction.win_probability * 100) }}%{% else %}-{% endif %}</td>
+              <td class="nowrap">{{ horse.prediction_rank ~ "位" if horse.prediction_rank is not none else "-" }}</td>
+              <td class="reason-cell">{{ horse.prediction.reason if horse.prediction else "-" }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -375,8 +439,12 @@
       {% endif %}
     </div>
 
-    <div class="panel">
-      <h2>{{ explained_term("上位予測ダッチング方式", "dutching_method") }}</h2>
+    <section class="simulation-section">
+      <h2 class="simulation-section-title">購入シミュレーション</h2>
+
+    <div class="panel simulation-panel">
+      <h3>{{ explained_term("上位予測ダッチング方式", "dutching_method") }}</h3>
+      <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
       {% if simulation_dutching_pre %}
       <div class="metric-grid">
         <div><strong>予算</strong><br>{{ simulation_dutching_pre.budget }}円</div>
@@ -392,17 +460,17 @@
       </div>
       {% if simulation_dutching_pre.selections %}
       <div class="table-scroll">
-        <table>
-          <thead><tr><th>馬番</th><th>予測勝率</th><th>単勝オッズ</th><th>購入額</th><th>的中時払戻額</th><th>的中時利益</th></tr></thead>
+        <table class="simulation-table">
+          <thead><tr><th class="nowrap">馬番</th><th class="nowrap">予測勝率</th><th class="nowrap">単勝オッズ</th><th class="nowrap">購入額</th><th class="nowrap">的中時払戻額</th><th class="nowrap">的中時利益</th></tr></thead>
           <tbody>
             {% for item in simulation_dutching_pre.selections %}
             <tr>
-              <td>{{ item.horse_number }}</td>
-              <td>{{ "%.2f"|format(item.predicted_probability * 100) }}%</td>
-              <td>{{ item.win_odds }}</td>
-              <td>{{ item.stake }}円</td>
-              <td>{{ "%.0f"|format(item.estimated_payout) }}円</td>
-              <td>{{ "%.0f"|format(item.estimated_profit) }}円</td>
+              <td class="nowrap">{{ item.horse_number }}</td>
+              <td class="nowrap">{{ "%.2f"|format(item.predicted_probability * 100) }}%</td>
+              <td class="nowrap">{{ item.win_odds }}</td>
+              <td class="nowrap">{{ item.stake }}円</td>
+              <td class="nowrap">{{ "%.0f"|format(item.estimated_payout) }}円</td>
+              <td class="nowrap">{{ "%.0f"|format(item.estimated_profit) }}円</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -411,20 +479,21 @@
       {% else %}
       <p><strong>購入なし</strong></p>
       {% endif %}
-      <h3>頭数別比較</h3>
+      <h4>頭数別比較</h4>
+      <p class="table-scroll-hint">表は横にスクロールできます</p>
       <div class="table-scroll">
-        <table>
-          <thead><tr><th>頭数</th><th>対象馬番</th><th>{{ explained_term("カバー確率", "coverage_probability") }}</th><th>{{ explained_term("グループ期待値", "group_expected_value") }}</th><th>{{ explained_term("最低払戻額", "minimum_payout") }}</th><th>{{ explained_term("最低利益", "minimum_profit") }}</th><th>判定</th><th>除外理由</th></tr></thead>
+        <table class="evaluation-table">
+          <thead><tr><th class="nowrap">頭数</th><th class="nowrap">対象馬番</th><th class="nowrap">{{ explained_term("カバー確率", "coverage_probability") }}</th><th class="nowrap">{{ explained_term("グループ期待値", "group_expected_value") }}</th><th class="nowrap">{{ explained_term("最低払戻額", "minimum_payout") }}</th><th class="nowrap">{{ explained_term("最低利益", "minimum_profit") }}</th><th class="nowrap">判定</th><th>除外理由</th></tr></thead>
           <tbody>
             {% for item in simulation_dutching_pre.evaluated_counts %}
             <tr{% if simulation_dutching_pre.selections and item.selection_count == simulation_dutching_pre.selected_count %} class="selected-row"{% endif %}>
-              <td>{{ item.selection_count }}</td>
-              <td>{{ item.horse_numbers | join(", ") }}</td>
-              <td>{{ "%.2f"|format(item.coverage_probability * 100) }}%</td>
-              <td>{{ "%.3f"|format(item.group_expected_value) }}</td>
-              <td>{{ "%.0f"|format(item.minimum_payout) }}円</td>
-              <td>{{ "%.0f"|format(item.minimum_profit) }}円</td>
-              <td>
+              <td class="nowrap">{{ item.selection_count }}</td>
+              <td class="nowrap">{{ item.horse_numbers | join(", ") }}</td>
+              <td class="nowrap">{{ "%.2f"|format(item.coverage_probability * 100) }}%</td>
+              <td class="nowrap">{{ "%.3f"|format(item.group_expected_value) }}</td>
+              <td class="nowrap">{{ "%.0f"|format(item.minimum_payout) }}円</td>
+              <td class="nowrap">{{ "%.0f"|format(item.minimum_profit) }}円</td>
+              <td class="nowrap">
                 {% if simulation_dutching_pre.selections and item.selection_count == simulation_dutching_pre.selected_count %}採用{% elif item.eligible %}適格{% else %}除外{% endif %}
               </td>
               <td>{{ rejection_reason_text(item.rejection_reasons) }}</td>
@@ -438,8 +507,8 @@
       {% endif %}
     </div>
 
-    <div class="panel">
-      <h2>期待値重視方式</h2>
+    <div class="panel simulation-panel">
+      <h3>{{ explained_term("期待値重視方式", "value_method") }}</h3>
       {% if simulation_value_pre %}
       <div class="metric-grid">
         <div><strong>予算上限</strong><br>{{ simulation_value_pre.budget }}円</div>
@@ -449,45 +518,46 @@
         <div><strong>合計購入額</strong><br>{{ simulation_value_pre.total_stake }}円</div>
         <div><strong>未使用予算</strong><br>{{ simulation_value_pre.unused_budget }}円</div>
       </div>
-      <h3>全馬期待値一覧</h3>
+      <h4>全馬期待値一覧</h4>
+      <p class="table-scroll-hint">表は横にスクロールできます</p>
       <div class="table-scroll">
-        <table>
-          <thead><tr><th>EV順位</th><th>馬番</th><th>馬名</th><th>1着確率</th><th>単勝オッズ</th><th>{{ explained_term("EV", "ev") }}</th><th>EV基準</th><th>{{ explained_term("Full Kelly", "full_kelly") }}</th><th>{{ explained_term("適用Kelly", "applied_kelly") }}</th><th>{{ explained_term("理論購入額", "theoretical_stake") }}</th><th>{{ explained_term((simulation_value_pre.stake_unit|string) ~ "円購入に必要な最低予算", "minimum_budget") }}</th><th>購入判定</th></tr></thead>
+        <table class="value-detail-table">
+          <thead><tr><th class="nowrap">EV順位</th><th class="nowrap">馬番</th><th class="horse-name">馬名</th><th class="nowrap">1着確率</th><th class="nowrap">単勝オッズ</th><th class="nowrap">{{ explained_term("EV", "ev") }}</th><th class="nowrap">EV基準</th><th class="nowrap">{{ explained_term("Full Kelly", "full_kelly") }}</th><th class="nowrap">{{ explained_term("適用Kelly", "applied_kelly") }}</th><th class="nowrap">{{ explained_term("理論購入額", "theoretical_stake") }}</th><th class="nowrap">{{ explained_term((simulation_value_pre.stake_unit|string) ~ "円購入に必要な最低予算", "minimum_budget") }}</th><th class="nowrap">購入判定</th></tr></thead>
           <tbody>
             {% for item in expected_value_rows %}
-            <tr{% if item.meets_threshold %} class="ev-above-threshold"{% endif %}>
-              <td>{{ (item.ev_rank|string) ~ "位" if item.ev_rank is not none else "-" }}</td>
-              <td>{{ item.horse_number }}</td>
-              <td>{{ item.horse_name }}</td>
-              <td>{{ "%.2f%%"|format(item.win_probability * 100) if item.win_probability is not none else "-" }}</td>
-              <td>{{ item.win_odds if item.win_odds is not none else "-" }}</td>
-              <td>{{ "%.3f"|format(item.expected_value) if item.expected_value is not none else "-" }}</td>
-              <td>{% if item.meets_threshold is none %}算出不可{% elif item.meets_threshold %}基準以上{% else %}基準未満{% endif %}</td>
-              <td>{{ "%.4f%%"|format(item.full_kelly * 100) if item.full_kelly is not none else "-" }}</td>
-              <td>{{ "%.4f%%"|format(item.fractional_kelly * 100) if item.fractional_kelly is not none else "-" }}</td>
-              <td>{{ "%.2f円"|format(item.theoretical_stake) if item.theoretical_stake is not none else "-" }}</td>
-              <td>{{ "約{:,}円".format(item.minimum_budget) if item.minimum_budget is not none else "-" }}</td>
-              <td>{{ item.purchase_decision }}</td>
+            <tr{% if item.purchase_status == "purchase" %} class="simulation-selected"{% elif item.meets_threshold %} class="ev-above-threshold"{% endif %}>
+              <td class="nowrap">{{ (item.ev_rank|string) ~ "位" if item.ev_rank is not none else "-" }}</td>
+              <td class="nowrap">{{ item.horse_number }}</td>
+              <td class="horse-name">{{ item.horse_name }}</td>
+              <td class="nowrap">{{ "%.2f%%"|format(item.win_probability * 100) if item.win_probability is not none else "-" }}</td>
+              <td class="nowrap">{{ item.win_odds if item.win_odds is not none else "-" }}</td>
+              <td class="nowrap">{{ "%.3f"|format(item.expected_value) if item.expected_value is not none else "-" }}</td>
+              <td class="nowrap">{% if item.meets_threshold is none %}算出不可{% elif item.meets_threshold %}基準以上{% else %}基準未満{% endif %}</td>
+              <td class="nowrap">{{ "%.4f%%"|format(item.full_kelly * 100) if item.full_kelly is not none else "-" }}</td>
+              <td class="nowrap">{{ "%.4f%%"|format(item.fractional_kelly * 100) if item.fractional_kelly is not none else "-" }}</td>
+              <td class="nowrap">{{ "%.2f円"|format(item.theoretical_stake) if item.theoretical_stake is not none else "-" }}</td>
+              <td class="nowrap">{{ "約{:,}円".format(item.minimum_budget) if item.minimum_budget is not none else "-" }}</td>
+              <td class="nowrap">{{ item.purchase_decision }}</td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
-      <h3>購入対象</h3>
+      <h4>購入対象</h4>
       {% if simulation_value_pre.selections %}
       <div class="table-scroll">
-        <table>
-          <thead><tr><th>馬番</th><th>予測勝率</th><th>単勝オッズ</th><th>{{ explained_term("EV", "ev") }}</th><th>{{ explained_term("Full Kelly", "full_kelly") }}</th><th>{{ explained_term("Fractional Kelly", "fractional_kelly") }}</th><th>購入額</th></tr></thead>
+        <table class="simulation-table">
+          <thead><tr><th class="nowrap">馬番</th><th class="nowrap">予測勝率</th><th class="nowrap">単勝オッズ</th><th class="nowrap">{{ explained_term("EV", "ev") }}</th><th class="nowrap">{{ explained_term("Full Kelly", "full_kelly") }}</th><th class="nowrap">{{ explained_term("Fractional Kelly", "fractional_kelly") }}</th><th class="nowrap">購入額</th></tr></thead>
           <tbody>
             {% for item in simulation_value_pre.selections %}
             <tr>
-              <td>{{ item.horse_number }}</td>
-              <td>{{ "%.2f"|format(item.predicted_probability * 100) }}%</td>
-              <td>{{ item.win_odds }}</td>
-              <td>{{ "%.3f"|format(item.expected_value) }}</td>
-              <td>{{ "%.4f"|format(item.full_kelly) }}</td>
-              <td>{{ "%.4f"|format(item.fractional_kelly) }}</td>
-              <td>{{ item.stake }}円</td>
+              <td class="nowrap">{{ item.horse_number }}</td>
+              <td class="nowrap">{{ "%.2f"|format(item.predicted_probability * 100) }}%</td>
+              <td class="nowrap">{{ item.win_odds }}</td>
+              <td class="nowrap">{{ "%.3f"|format(item.expected_value) }}</td>
+              <td class="nowrap">{{ "%.4f"|format(item.full_kelly) }}</td>
+              <td class="nowrap">{{ "%.4f"|format(item.fractional_kelly) }}</td>
+              <td class="nowrap">{{ item.stake }}円</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -500,11 +570,12 @@
       <p>予想取込後に生成されます。</p>
       {% endif %}
     </div>
+    </section>
 
     {% if simulation_value_pre and simulation_dutching_pre and custom_simulation_data.horses %}
     <div class="panel" id="custom-simulator">
       <h2>カスタム購入シミュレーション</h2>
-      <p class="small">入力内容と計算結果はこの画面内だけで使用し、正式な購入想定・収支には反映しません。</p>
+      <p class="small">予算や各条件を任意に変更して、購入額や払戻額をシミュレーションできます。</p>
       <form class="simulator-form" id="custom-simulator-form">
         <label class="simulator-field">方式
           <select name="method">
@@ -565,14 +636,15 @@
           <div><strong>{{ explained_term("最低利益", "minimum_profit") }}</strong><br><span id="custom-dutching-min-profit">0円</span></div>
         </div>
         <div class="table-scroll" id="custom-value-table" hidden>
-          <table><thead><tr><th>馬番</th><th>予測勝率</th><th>単勝オッズ</th><th>{{ explained_term("EV", "ev") }}</th><th>{{ explained_term("Full Kelly", "full_kelly") }}</th><th>{{ explained_term("Fractional Kelly", "fractional_kelly") }}</th><th>購入額</th></tr></thead><tbody id="custom-value-rows"></tbody></table>
+          <table class="simulation-table"><thead><tr><th class="nowrap">馬番</th><th class="nowrap">予測勝率</th><th class="nowrap">単勝オッズ</th><th class="nowrap">{{ explained_term("EV", "ev") }}</th><th class="nowrap">{{ explained_term("Full Kelly", "full_kelly") }}</th><th class="nowrap">{{ explained_term("Fractional Kelly", "fractional_kelly") }}</th><th class="nowrap">購入額</th></tr></thead><tbody id="custom-value-rows"></tbody></table>
         </div>
         <div class="table-scroll" id="custom-dutching-table" hidden>
-          <table><thead><tr><th>馬番</th><th>予測勝率</th><th>単勝オッズ</th><th>購入額</th><th>的中時払戻額</th><th>的中時利益</th></tr></thead><tbody id="custom-dutching-rows"></tbody></table>
+          <table class="simulation-table"><thead><tr><th class="nowrap">馬番</th><th class="nowrap">予測勝率</th><th class="nowrap">単勝オッズ</th><th class="nowrap">購入額</th><th class="nowrap">的中時払戻額</th><th class="nowrap">的中時利益</th></tr></thead><tbody id="custom-dutching-rows"></tbody></table>
         </div>
         <div id="custom-dutching-evaluations" hidden>
           <h3>頭数別比較</h3>
-          <div class="table-scroll"><table><thead><tr><th>頭数</th><th>対象馬番</th><th>{{ explained_term("カバー確率", "coverage_probability") }}</th><th>{{ explained_term("グループ期待値", "group_expected_value") }}</th><th>{{ explained_term("最低払戻額", "minimum_payout") }}</th><th>{{ explained_term("最低利益", "minimum_profit") }}</th><th>判定</th><th>除外理由</th></tr></thead><tbody id="custom-dutching-evaluation-rows"></tbody></table></div>
+          <p class="table-scroll-hint">表は横にスクロールできます</p>
+          <div class="table-scroll"><table class="evaluation-table"><thead><tr><th class="nowrap">頭数</th><th class="nowrap">対象馬番</th><th class="nowrap">{{ explained_term("カバー確率", "coverage_probability") }}</th><th class="nowrap">{{ explained_term("グループ期待値", "group_expected_value") }}</th><th class="nowrap">{{ explained_term("最低払戻額", "minimum_payout") }}</th><th class="nowrap">{{ explained_term("最低利益", "minimum_profit") }}</th><th class="nowrap">判定</th><th>除外理由</th></tr></thead><tbody id="custom-dutching-evaluation-rows"></tbody></table></div>
         </div>
       </div>
     </div>
@@ -851,9 +923,12 @@
         const evaluationRows = document.getElementById("custom-dutching-evaluation-rows");
         const yen = new Intl.NumberFormat("ja-JP");
 
-        const addCell = (row, value) => {
+        const addCell = (row, value, className = "nowrap") => {
           const cell = document.createElement("td");
           cell.textContent = value;
+          if (className) {
+            cell.className = className;
+          }
           row.appendChild(cell);
         };
 
@@ -948,7 +1023,7 @@
             addCell(row, `${yen.format(item.minimum_payout)}円`);
             addCell(row, `${yen.format(item.minimum_profit)}円`);
             addCell(row, item.eligible ? "適格" : "除外");
-            addCell(row, rejectionReasonText(item.rejection_reasons));
+            addCell(row, rejectionReasonText(item.rejection_reasons), "");
             evaluationRows.appendChild(row);
           }
         };
@@ -1021,21 +1096,22 @@
 
     {% if result %}
     <div class="panel result-panel">
-      <h2>実結果</h2>
+      <h3>実結果</h3>
       <p><strong>着順:</strong> {{ result.finish_order | join(" - ") }}</p>
+      <p class="table-scroll-hint">表は横にスクロールできます</p>
       <div class="table-scroll">
         <table class="result-table">
-          <thead><tr><th>馬番</th><th>馬名</th><th>予測順位</th><th>1着確率</th><th>実着順</th><th>予想との差</th><th>単勝払戻</th></tr></thead>
+          <thead><tr><th class="nowrap">馬番</th><th class="horse-name">馬名</th><th class="nowrap">予測順位</th><th class="nowrap">1着確率</th><th class="nowrap">実着順</th><th class="nowrap">予想との差</th><th class="nowrap">単勝払戻</th></tr></thead>
           <tbody>
             {% for item in result_rows %}
             <tr{% if item.row_class %} class="{{ item.row_class }}"{% endif %}>
-              <td>{{ item.horse_number }}</td>
-              <td>{{ item.horse_name }}</td>
-              <td>{{ item.prediction_rank ~ "位" if item.prediction_rank is not none else "-" }}</td>
-              <td>{{ "%.1f"|format(item.win_probability * 100) ~ "%" if item.win_probability is not none else "-" }}</td>
-              <td>{{ item.finish_position_label }}</td>
-              <td class="comparison-cell"><span class="{{ item.comparison_class }}">{{ item.comparison_text }}</span></td>
-              <td>{{ item.payout_per_100 ~ "円" if item.payout_per_100 is not none else "-" }}</td>
+              <td class="nowrap">{{ item.horse_number }}</td>
+              <td class="horse-name">{{ item.horse_name }}</td>
+              <td class="nowrap">{{ item.prediction_rank ~ "位" if item.prediction_rank is not none else "-" }}</td>
+              <td class="nowrap">{{ "%.1f"|format(item.win_probability * 100) ~ "%" if item.win_probability is not none else "-" }}</td>
+              <td class="nowrap">{{ item.finish_position_label }}</td>
+              <td class="comparison-cell nowrap"><span class="{{ item.comparison_class }}">{{ item.comparison_text }}</span></td>
+              <td class="nowrap">{{ item.payout_per_100 ~ "円" if item.payout_per_100 is not none else "-" }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -1046,7 +1122,7 @@
 
     {% if evaluation %}
     <div class="panel result-panel">
-      <h2>予測評価</h2>
+      <h3>予測評価</h3>
       <div class="stats">
         <div><strong>勝ち馬の予測順位</strong><br>{{ evaluation.winner.predicted_rank }}位</div>
         <div><strong>勝ち馬の予測確率</strong><br>{{ "%.2f"|format(evaluation.winner.predicted_probability * 100) }}%</div>
@@ -1057,7 +1133,7 @@
         <div><strong>Brier Score</strong><br>{{ "%.6f"|format(evaluation.metrics.brier_score) }}</div>
       </div>
       {% if evaluation.market_baseline.available %}
-      <h3>市場ベースライン比較</h3>
+      <h4>市場ベースライン比較</h4>
       <p>市場の勝ち馬確率 {{ "%.2f"|format(evaluation.market_baseline.winner_probability * 100) }}% / 順位 {{ evaluation.market_baseline.winner_rank }}位</p>
       <p>Log Loss差 {{ "%+.6f"|format(evaluation.market_baseline.model_log_loss_difference) }} / Brier Score差 {{ "%+.6f"|format(evaluation.market_baseline.model_brier_difference) }}</p>
       {% if evaluation.market_baseline.odds_recorded_after_start %}
@@ -1066,34 +1142,34 @@
       {% else %}
       <p>市場ベースライン: 利用可能な単勝オッズが不足しています。</p>
       {% endif %}
-      <h3>シミュレーション収支</h3>
+      <h4>シミュレーション収支</h4>
       <p><strong>期待値重視:</strong> 投資 {{ evaluation.simulation_results.value.total_stake }}円 / 回収 {{ evaluation.simulation_results.value.total_return }}円 / 損益 {{ evaluation.simulation_results.value.profit }}円{% if evaluation.simulation_results.value.roi is not none %} / ROI {{ "%.2f"|format(evaluation.simulation_results.value.roi * 100) }}%{% endif %}</p>
-      <p><strong>ダッチング:</strong> 投資 {{ evaluation.simulation_results.dutching.total_stake }}円 / 回収 {{ evaluation.simulation_results.dutching.total_return }}円 / 損益 {{ evaluation.simulation_results.dutching.profit }}円{% if evaluation.simulation_results.dutching.roi is not none %} / ROI {{ "%.2f"|format(evaluation.simulation_results.dutching.roi * 100) }}%{% endif %}</p>
+      <p><strong>上位予測ダッチング:</strong> 投資 {{ evaluation.simulation_results.dutching.total_stake }}円 / 回収 {{ evaluation.simulation_results.dutching.total_return }}円 / 損益 {{ evaluation.simulation_results.dutching.profit }}円{% if evaluation.simulation_results.dutching.roi is not none %} / ROI {{ "%.2f"|format(evaluation.simulation_results.dutching.roi * 100) }}%{% endif %}</p>
     </div>
     {% endif %}
 
     {% if simulation_value_post %}
     <div class="panel result-panel">
-      <h2>期待値重視方式の購入結果</h2>
+      <h3>期待値重視方式のシミュレーション結果</h3>
       {% if simulation_value_post.total_stake == 0 %}
       <p><strong>購入なし</strong></p>
       <p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
       {% else %}
       <p><strong>投資:</strong> {{ simulation_value_post.total_stake }}円 / <strong>回収:</strong> {{ simulation_value_post.total_return }}円 / <strong>損益:</strong> {{ simulation_value_post.profit }}円 / <strong>ROI:</strong> {{ "%.2f"|format(simulation_value_post.roi * 100) }}%</p>
-      <table><thead><tr><th>馬番</th><th>購入額</th><th>的中</th><th>回収額</th></tr></thead><tbody>{% for item in simulation_value_post.selections %}<tr><td>{{ item.horse_number }}</td><td>{{ item.stake }}円</td><td>{{ "yes" if item.hit else "no" }}</td><td>{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
+      <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody>{% for item in simulation_value_post.selections %}<tr><td class="nowrap">{{ item.horse_number }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ "yes" if item.hit else "no" }}</td><td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
       {% endif %}
     </div>
     {% endif %}
 
     {% if simulation_dutching_post %}
     <div class="panel result-panel">
-      <h2>ダッチング方式の購入結果</h2>
+      <h3>上位予測ダッチング方式のシミュレーション結果</h3>
       {% if simulation_dutching_post.total_stake == 0 %}
       <p><strong>購入なし</strong></p>
       <p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
       {% else %}
       <p><strong>投資:</strong> {{ simulation_dutching_post.total_stake }}円 / <strong>回収:</strong> {{ simulation_dutching_post.total_return }}円 / <strong>損益:</strong> {{ simulation_dutching_post.profit }}円 / <strong>ROI:</strong> {{ "%.2f"|format(simulation_dutching_post.roi * 100) }}%</p>
-      <table><thead><tr><th>馬番</th><th>購入額</th><th>的中</th><th>回収額</th></tr></thead><tbody>{% for item in simulation_dutching_post.selections %}<tr><td>{{ item.horse_number }}</td><td>{{ item.stake }}円</td><td>{{ "yes" if item.hit else "no" }}</td><td>{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
+      <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody>{% for item in simulation_dutching_post.selections %}<tr><td class="nowrap">{{ item.horse_number }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ "yes" if item.hit else "no" }}</td><td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
       {% endif %}
     </div>
     {% endif %}
@@ -1101,6 +1177,7 @@
     </section>
     {% endif %}
 
+    <p class="small">本ページはAIによる確率推定と購入シミュレーションを掲載するもので、的中や利益を保証するものではありません。投票はご自身の判断で行ってください。</p>
   </main>
   <script>
     (() => {
