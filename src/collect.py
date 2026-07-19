@@ -908,8 +908,18 @@ def parse_result(html: str) -> dict[str, Any] | None:
     finish_order = []
     for row in rows_from_table(result_table):
         horse_number = parse_int(row.get("馬番"))
-        finish_position = parse_finish_position(row.get("着順"))
-        if horse_number is None or finish_position is None:
+        finish_text = normalize_space(row.get("着順"))
+        finish_position = parse_finish_position(finish_text)
+        if horse_number is None:
+            continue
+        if finish_position is None:
+            status = next(
+                (flag for flag in ("中止", "除外", "取消", "失格") if flag in finish_text),
+                None,
+            )
+            if status is None:
+                continue
+            horses.append({"horse_number": horse_number, "finish_position": status})
             continue
         horses.append({"horse_number": horse_number, "finish_position": finish_position})
         finish_order.append(horse_number)
