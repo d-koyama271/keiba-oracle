@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -37,15 +36,6 @@ from utils import (
 LOOKAHEAD_DAYS = 21
 
 
-def start_time_minutes(value: str | None) -> int:
-    if not value:
-        return 0
-    match = re.match(r"^(\d{1,2}):(\d{2})$", value)
-    if not match:
-        return 0
-    return int(match.group(1)) * 60 + int(match.group(2))
-
-
 def grade_rank(race_name: str | None, soup: BeautifulSoup | None = None) -> int:
     return {"G1": 3, "G2": 2, "G3": 1}.get(normalize_class_grade(race_name, soup), 0)
 
@@ -54,69 +44,100 @@ def select_default_races(config: dict) -> tuple[str, list[dict], str]:
     session = requests.Session()
     start_date = date.fromisoformat(today_jst())
     target_tracks = set(config["target_races"])
-    fallback_date = None
-    fallback_candidates = None
+    first_race_date = None
+    graded_candidates = []
+    fallback_race_ids = []
 
     for offset in range(LOOKAHEAD_DAYS + 1):
         target_date = (start_date + timedelta(days=offset)).isoformat()
-        race_ids = discover_race_ids(session, target_date)
-        if not race_ids:
+        graded_race_ids = discover_race_ids(
+            session,
+            target_date,
+            race_number=None,
+            graded_only=True,
+        )
+        main_race_ids = discover_race_ids(session, target_date)
+        if not graded_race_ids and not main_race_ids:
+            if first_race_date:
+                break
             continue
+        if first_race_date is None:
+            first_race_date = target_date
 
-        candidates = []
-        target_race_found = False
-        for race_id in race_ids:
+        for race_id in graded_race_ids:
             track_name = track_name_from_race_id(race_id)
             if track_name not in target_tracks:
                 continue
-            target_race_found = True
             html = fetch_html(session, SHUTUBA_URL.format(race_id=race_id))
             soup = BeautifulSoup(html, "html.parser")
             entry_table = find_entry_table(soup)
             if entry_table is None:
-                continue
+                raise RuntimeError(f"Race overview is unavailable for graded race {race_id}")
             race = parse_race_overview(
                 html,
                 race_id,
                 target_date,
                 int(config["odds_reference_minutes_before_start"]),
             )
-            candidates.append(
+            graded_candidates.append(
                 {
                     "race_id": race_id,
                     "race": race,
                     "grade_rank": grade_rank(race.get("race_name"), soup),
-                    "start_minutes": start_time_minutes(race.get("start_time")),
                 }
             )
 
-        if target_race_found and not candidates:
-            raise RuntimeError(f"Race overview is unavailable for next race date {target_date}")
+        fallback_race_ids.extend((target_date, race_id) for race_id in main_race_ids)
 
-        if not candidates:
+    if graded_candidates:
+        selected_date = min(item["race"]["date"] for item in graded_candidates)
+        return (
+            selected_date,
+            sorted(
+                graded_candidates,
+                key=lambda item: (item["race"]["date"], item["race_id"]),
+            ),
+            "all graded races in next race period",
+        )
+
+    fallback_candidates = []
+    for target_date, race_id in fallback_race_ids:
+        track_name = track_name_from_race_id(race_id)
+        if track_name not in target_tracks:
             continue
+        html = fetch_html(session, SHUTUBA_URL.format(race_id=race_id))
+        soup = BeautifulSoup(html, "html.parser")
+        if find_entry_table(soup) is None:
+            raise RuntimeError(f"Race overview is unavailable for fallback race {race_id}")
+        race = parse_race_overview(
+            html,
+            race_id,
+            target_date,
+            int(config["odds_reference_minutes_before_start"]),
+        )
+        fallback_candidates.append(
+            {
+                "race_id": race_id,
+                "race": race,
+                "grade_rank": 0,
+            }
+        )
 
-        if fallback_candidates is None:
-            fallback_date = target_date
-            fallback_candidates = candidates
+    if fallback_candidates:
+        selected_date = min(item["race"]["date"] for item in fallback_candidates)
+        return (
+            selected_date,
+            sorted(
+                fallback_candidates,
+                key=lambda item: (item["race"]["date"], item["race_id"]),
+            ),
+            "fallback: no graded race in next race period; all 11R",
+        )
 
-        graded = [item for item in candidates if item["grade_rank"] > 0]
-        if graded:
-            return (
-                target_date,
-                sorted(graded, key=lambda item: item["race_id"]),
-                "graded races on nearest graded race date",
-            )
-
-    if fallback_date and fallback_candidates:
-        selected = sorted(
-            fallback_candidates,
-            key=lambda item: (item["grade_rank"], item["start_minutes"], item["race_id"]),
-            reverse=True,
-        )[0]
-        return fallback_date, [selected], "fallback: no graded 11R in lookahead"
-
-    raise RuntimeError(f"No target JRA 11R found from {start_date.isoformat()} within {LOOKAHEAD_DAYS} days")
+    raise RuntimeError(
+        f"No target JRA graded race or 11R found from "
+        f"{start_date.isoformat()} within {LOOKAHEAD_DAYS} days"
+    )
 
 
 def target_odds_datetime(race: dict, reference_minutes: int) -> datetime:
@@ -163,6 +184,8 @@ def main() -> None:
     args = parser.parse_args()
 
     config = load_config()
+    selected_races = None
+    selected_race_ids = None
     if args.date:
         target_date = parse_target_date(args.date)
     else:
@@ -182,11 +205,12 @@ def main() -> None:
             track_name = race["track"]
             race_number = race.get("race_number") or 11
             race_name = race.get("race_name") or "-"
+            race_date = race.get("date") or target_date
             grade = f"G{4 - item['grade_rank']}" if item["grade_rank"] else "-"
             start_time = race.get("start_time") or "-"
             target_time_text = target_time.strftime("%Y-%m-%d %H:%M:%S %Z")
             print(
-                f"selected race: {target_date} {track_name} {race_number}R {race_name} "
+                f"selected race: {race_date} {track_name} {race_number}R {race_name} "
                 f"grade={grade} start={start_time} race_id={race_id} reason={reason}"
             )
             print(f"odds collection target: {target_time_text}")
@@ -194,9 +218,29 @@ def main() -> None:
                 print("warning: collecting before the configured odds target time")
                 print("continuing manual collection")
 
-        config["target_races"] = [item["race"]["track"] for item in selected_races]
+        config["target_races"] = list(
+            dict.fromkeys(item["race"]["track"] for item in selected_races)
+        )
 
-    paths = collect_races(config, "pre_collect", target_date, "pre")
+    if selected_races:
+        collection_targets = {}
+        for item in selected_races:
+            race_date = item["race"]["date"]
+            collection_targets.setdefault(race_date, []).append(item["race_id"])
+    else:
+        collection_targets = {target_date: selected_race_ids}
+
+    paths = []
+    for collection_date, race_ids in sorted(collection_targets.items()):
+        paths.extend(
+            collect_races(
+                config,
+                "pre_collect",
+                collection_date,
+                "pre",
+                selected_race_ids=race_ids,
+            )
+        )
     exported = export_prediction_chat_input(paths, config, "pre_collect")
     if not paths:
         raise SystemExit(f"No race JSON updated for {target_date}")

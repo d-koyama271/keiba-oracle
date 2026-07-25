@@ -1,6 +1,6 @@
 # keiba-oracle
 
-中央競馬の各開催場 11R を対象に、`netkeiba` から必要情報を取得し、LLM で各馬の 1 着確率を予想し、購入シミュレーションを行い、静的 HTML を生成する最小構成のファイルベース実装です。
+中央競馬の重賞を対象に、`netkeiba` から必要情報を取得し、LLM で各馬の 1 着確率を予想し、購入シミュレーションを行い、静的 HTML を生成する最小構成のファイルベース実装です。次の開催期間に重賞がない場合だけ、各開催場の 11R を対象にします。
 
 実装方針は次の通りです。
 
@@ -105,8 +105,8 @@ python src/run_post.py --date 2026-04-14
 
 ## 生成物
 
-- レース JSON: `data/races/YYYY-MM-DD/track_11r.json`
-- レースページ: `public/races/YYYY-MM-DD/track_11r.html`
+- レース JSON: `data/races/YYYY-MM-DD/track_Nr.json`
+- レースページ: `public/races/YYYY-MM-DD/track_Nr.html`
 - 一覧ページ: `public/index.html`
 
 各レース JSON のトップレベルは固定です。
@@ -142,7 +142,7 @@ python src/run_post.py --date 2026-04-14
 
 `run_pre.py`
 
-1. `collect.py` で当日の 11R 情報を取得
+1. `collect.py` で対象レース情報を取得
 2. `predict.py` で各馬の 1 着確率を生成
 3. `simulate.py` で `simulation.value.pre` と `simulation.dutching.pre` を生成
 4. `render.py` で静的 HTML を生成
@@ -190,7 +190,7 @@ manual モードでは LLM API は呼ばず、チャットへ貼る入力 JSON �
 python src/run_pre_collect.py
 ```
 
-引数なしでは探索期間内で最も近い重賞開催日を選び、その日の重賞11Rをすべて収集します。期間内に重賞11Rがない場合だけ、最も近い開催日のうち発走が最も遅い11Rを1件選びます。各レースについて `odds_reference_minutes_before_start` に基づく推奨取得目標時刻を表示し、手動実行時は目標時刻より前でも警告を表示して収集と chat input 出力を続行します。
+引数なしでは、次の連続する中央競馬開催日を1開催期間として探索します。その期間の重賞（G1・G2・G3）をレース番号に関係なくすべて収集し、重賞が1件もない場合だけ各開催場の11Rをすべて収集します。グレードや発走時刻による1レースへの絞り込みは行いません。各レースについて `odds_reference_minutes_before_start` に基づく推奨取得目標時刻を表示し、手動実行時は目標時刻より前でも警告を表示して収集と chat input 出力を続行します。
 
 過去レース検証・再収集では日付を明示します。取得できるのはnetkeibaが返す単一スナップショットであり、発走後の時刻でもフロー検証に使用しますが、厳密なT-60履歴オッズではありません。
 

@@ -65,7 +65,12 @@ def parse_jsonp_body(raw: str) -> dict[str, Any]:
     return json.loads(text)
 
 
-def discover_race_ids(session: requests.Session, target_date: str) -> list[str]:
+def discover_race_ids(
+    session: requests.Session,
+    target_date: str,
+    race_number: int | None = 11,
+    graded_only: bool = False,
+) -> list[str]:
     date_key = target_date.replace("-", "")
     html = fetch_html(session, RACE_LIST_DATE_URL.format(date_key=date_key))
     soup = BeautifulSoup(html, "html.parser")
@@ -75,8 +80,22 @@ def discover_race_ids(session: requests.Session, target_date: str) -> list[str]:
         return []
 
     sub_html = fetch_html(session, RACE_LIST_SUB_URL.format(date_key=date_key, current_group=current_group))
-    race_ids = set(re.findall(r"race_id=(\d{12})", sub_html))
-    return sorted(race_id for race_id in race_ids if race_id.endswith("11"))
+    sub_soup = BeautifulSoup(sub_html, "html.parser")
+    race_ids = set()
+    for item in sub_soup.select("li.RaceList_DataItem"):
+        link = item.select_one('a[href*="race_id="]')
+        match = re.search(r"race_id=(\d{12})", link.get("href", "") if link else "")
+        if not match:
+            continue
+        race_id = match.group(1)
+        if race_number is not None and not race_id.endswith(f"{race_number:02d}"):
+            continue
+        if graded_only and not item.select_one(
+            ".Icon_GradeType1, .Icon_GradeType2, .Icon_GradeType3"
+        ):
+            continue
+        race_ids.add(race_id)
+    return sorted(race_ids)
 
 
 def fetch_win_odds(session: requests.Session, race_id: str) -> tuple[dict[int, dict[str, Any]], str | None]:
@@ -964,6 +983,7 @@ def collect_races(
     target_date: str,
     mode: str,
     root: Path | None = None,
+    selected_race_ids: list[str] | None = None,
 ) -> list[Path]:
     logger = setup_logger(job_name, config, root)
     target_races = set(config["target_races"])
@@ -971,7 +991,11 @@ def collect_races(
     session = requests.Session()
 
     try:
-        race_ids = discover_race_ids(session, target_date)
+        race_ids = (
+            sorted(set(selected_race_ids))
+            if selected_race_ids is not None
+            else discover_race_ids(session, target_date)
+        )
     except Exception as exc:  # noqa: BLE001
         log_job(logger, job_name, None, f"failed to fetch race list: {exc}")
         return []
@@ -982,8 +1006,6 @@ def collect_races(
             continue
 
         try:
-            path = race_json_path(config, target_date, track_name, 11, root)
-            existing = load_race_json(path)
             entry_html = fetch_html(session, SHUTUBA_URL.format(race_id=race_id))
             race = parse_race_overview(
                 entry_html,
@@ -991,6 +1013,9 @@ def collect_races(
                 target_date,
                 int(config["odds_reference_minutes_before_start"]),
             )
+            race_number = int(race.get("race_number") or race_id[-2:])
+            path = race_json_path(config, target_date, track_name, race_number, root)
+            existing = load_race_json(path)
             expected_horses = parse_entry_horse_identities(entry_html)
             odds_map, odds_captured_at, odds_source, odds_source_url = fetch_validated_win_odds(
                 session,
@@ -1025,7 +1050,7 @@ def collect_races(
 
             save_race_json(path, payload)
             processed.append(path)
-            log_job(logger, job_name, race_id, f"collected {track_name} 11R -> {path}")
+            log_job(logger, job_name, race_id, f"collected {track_name} {race_number}R -> {path}")
         except Exception as exc:  # noqa: BLE001
             log_job(logger, job_name, race_id, f"scraping skipped: {exc}")
 

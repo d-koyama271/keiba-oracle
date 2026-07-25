@@ -271,8 +271,8 @@ def list_race_files(config: dict[str, Any], race_date: str | None = None, root: 
     if not base_dir.exists():
         return []
     if race_date:
-        return sorted((base_dir / race_date).glob("*_11r.json"))
-    return sorted(base_dir.glob("*/*_11r.json"))
+        return sorted((base_dir / race_date).glob("*_*r.json"))
+    return sorted(base_dir.glob("*/*_*r.json"))
 
 
 def find_race_file_by_race_id(config: dict[str, Any], race_id: str, root: Path | None = None) -> Path | None:
