@@ -210,7 +210,7 @@ python src/watcher.py
 python src/run_post_collect.py --date 2026-04-12
 ```
 
-1. `run_post_collect.py` が `result` を反映し、既存の決定的な計算で両方式の `post` を確定します。
+1. `run_post_collect.py` が予想済みrace JSONの `meta.race_id` から結果だけを取得して `result` を反映し、既存の決定的な計算で両方式の `post` を確定します。
 2. `evaluation` を決定的に生成します。
 3. 結果HTMLを生成し、`public/` を更新します。レース後のLLM処理や追加の `watcher.py` 実行は不要です。
 

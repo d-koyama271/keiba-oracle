@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from collect import collect_races
+from collect import collect_results
 from evaluation import evaluate_paths
 from publish import publish_site
 from render import render_site
@@ -11,6 +11,7 @@ from simulate import simulate_paths
 from utils import (
     load_config,
     load_race_json,
+    list_race_files,
     log_job,
     parse_target_date,
     save_race_json,
@@ -44,7 +45,18 @@ def publish_post_results(
 
 
 def run_post_flow(config: dict, target_date: str, job_name: str) -> list[Path]:
-    paths = collect_races(config, job_name, target_date, "post")
+    logger = setup_logger(job_name, config)
+    target_paths = []
+    for path in list_race_files(config, target_date):
+        payload = load_race_json(path)
+        if payload and payload.get("prediction"):
+            target_paths.append(path)
+
+    if not target_paths:
+        log_job(logger, job_name, None, f"post collection skipped: no predicted race JSON for {target_date}")
+        return []
+
+    paths = collect_results(config, job_name, target_paths)
     simulated_paths = simulate_paths(paths, config, "post", job_name)
     return publish_post_results(simulated_paths, config, job_name)
 

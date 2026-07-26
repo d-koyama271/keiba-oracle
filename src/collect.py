@@ -977,6 +977,68 @@ def parse_result(html: str) -> dict[str, Any] | None:
     }
 
 
+def validate_complete_result(
+    result: dict[str, Any] | None,
+    entered_horses: list[dict[str, Any]],
+) -> None:
+    if not result:
+        raise ValueError("result is not available")
+
+    expected_numbers = [int(horse["horse_number"]) for horse in entered_horses]
+    result_numbers = [int(horse["horse_number"]) for horse in result.get("horses", [])]
+    if len(result_numbers) != len(set(result_numbers)):
+        raise ValueError("result contains duplicate horse numbers")
+    if set(result_numbers) != set(expected_numbers):
+        raise ValueError(
+            f"result is incomplete: expected={len(expected_numbers)} actual={len(result_numbers)}"
+        )
+
+    winner_numbers = {
+        int(horse["horse_number"])
+        for horse in result["horses"]
+        if horse.get("finish_position") == 1
+    }
+    payouts = result.get("payouts", {}).get("win", [])
+    payout_numbers = {
+        int(payout["horse_number"])
+        for payout in payouts
+        if int(payout.get("payout_per_100") or 0) > 0
+    }
+    if not winner_numbers or payout_numbers != winner_numbers:
+        raise ValueError("win payout is unavailable or does not match the winner")
+
+
+def collect_results(
+    config: dict[str, Any],
+    job_name: str,
+    race_paths: list[Path],
+    root: Path | None = None,
+) -> list[Path]:
+    logger = setup_logger(job_name, config, root)
+    session = requests.Session()
+    processed: list[Path] = []
+
+    for path in race_paths:
+        payload = load_race_json(path)
+        race_id = (payload or {}).get("meta", {}).get("race_id")
+        if not payload or not race_id:
+            log_job(logger, job_name, race_id, f"result skipped: race JSON missing -> {path}")
+            continue
+
+        try:
+            result_html = fetch_html(session, RESULT_URL.format(race_id=race_id))
+            result = parse_result(result_html)
+            validate_complete_result(result, payload.get("horses", []))
+            payload["result"] = result
+            save_race_json(path, payload)
+            processed.append(path)
+            log_job(logger, job_name, race_id, f"result collected -> {path}")
+        except Exception as exc:  # noqa: BLE001
+            log_job(logger, job_name, race_id, f"result scraping skipped: {exc}")
+
+    return processed
+
+
 def collect_races(
     config: dict[str, Any],
     job_name: str,
