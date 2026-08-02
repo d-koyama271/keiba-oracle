@@ -26,8 +26,9 @@ def inbox_files(kind: str) -> list[Path]:
     return sorted(path for path in directory.glob("*.json") if path.is_file())
 
 
-def archive_processed(path: Path) -> Path:
-    processed_dir = ensure_dir(path.parent / "processed")
+def archive_processed(path: Path, race_path: Path) -> Path:
+    race_date = race_path.parent.name
+    processed_dir = ensure_dir(path.parent / "processed" / race_date)
     target = processed_dir / path.name
     if target.exists():
         target = processed_dir / f"{path.stem}_{int(time.time())}{path.suffix}"
@@ -56,7 +57,7 @@ def process_once(config: dict, logger_name: str) -> int:
             race_path = import_prediction_response(path, config, logger_name)
             if race_path:
                 finalize_pre(race_path, config, logger_name)
-                archive_processed(path)
+                archive_processed(path, race_path)
                 processed_count += 1
         except Exception as exc:  # noqa: BLE001
             log_job(logger, logger_name, None, f"prediction processing failed: {path} -> {exc}")

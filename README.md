@@ -202,7 +202,7 @@ python src/watcher.py
 1. `run_pre_collect.py` が `data/races/...json` を更新します。
 2. prediction 用の chat input JSON を `outbox/chat_input/prediction/` に出力します。
 3. 外部チャットから返ってきた prediction JSON を `inbox/prediction/` に置きます。
-4. `watcher.py` が `prediction` を反映し、両方式の `pre -> render -> publish` を実行します。
+4. `watcher.py` が `prediction` を反映し、両方式の `pre -> render -> publish` を実行します。処理済み応答は `inbox/prediction/processed/YYYY-MM-DD/` に移動します。
 
 レース後:
 
