@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -27,9 +31,90 @@ class LLMClient:
         raise RuntimeError(f"Failed to parse LLM JSON response: {last_error}") from last_error
 
     def _invoke_text(self, prompt: str) -> str:
+        if self.provider == "codex":
+            return self._invoke_codex(prompt)
         if self.provider == "openai":
             return self._invoke_openai(prompt)
         raise ValueError(f"Unsupported llm_provider: {self.provider}")
+
+    def _invoke_codex(self, prompt: str) -> str:
+        executable = shutil.which("codex")
+        if not executable:
+            raise RuntimeError("Codex CLI is not available on PATH")
+
+        schema = {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["horses", "optional_summary"],
+            "properties": {
+                "horses": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["horse_number", "win_probability", "reason"],
+                        "properties": {
+                            "horse_number": {"type": "integer", "minimum": 1},
+                            "win_probability": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1,
+                            },
+                            "reason": {"type": "string", "minLength": 1},
+                        },
+                    },
+                },
+                "optional_summary": {"type": "string", "minLength": 1},
+            },
+        }
+
+        with tempfile.TemporaryDirectory(prefix="keiba-oracle-codex-") as directory:
+            working_dir = Path(directory)
+            schema_path = working_dir / "prediction.schema.json"
+            output_path = working_dir / "prediction.json"
+            schema_path.write_text(json.dumps(schema, ensure_ascii=False), encoding="utf-8")
+
+            command = [
+                executable,
+                "exec",
+                "--ephemeral",
+                "--ignore-user-config",
+                "--ignore-rules",
+                "--skip-git-repo-check",
+                "--sandbox",
+                "read-only",
+                "--color",
+                "never",
+            ]
+            if self.model and self.model != "default":
+                command.extend(["--model", self.model])
+            command.extend(
+                [
+                    "--output-schema",
+                    str(schema_path),
+                    "--output-last-message",
+                    str(output_path),
+                    "-",
+                ]
+            )
+
+            completed = subprocess.run(
+                command,
+                input=prompt,
+                cwd=working_dir,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                timeout=600,
+                check=False,
+            )
+            if completed.returncode != 0:
+                error = (completed.stderr or completed.stdout).strip()
+                raise RuntimeError(f"Codex CLI failed: {error[-2000:]}")
+            if not output_path.exists():
+                raise RuntimeError("Codex CLI did not produce a prediction response")
+            return output_path.read_text(encoding="utf-8")
 
     def _invoke_openai(self, prompt: str) -> str:
         api_key = os.getenv("OPENAI_API_KEY")

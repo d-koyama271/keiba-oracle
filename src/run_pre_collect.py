@@ -159,6 +159,9 @@ def export_prediction_chat_input(paths: list[Path], config: dict, job_name: str)
         if not payload.get("horses"):
             log_job(logger, job_name, payload["meta"].get("race_id"), "prediction chat_input skipped: horses missing")
             continue
+        if payload.get("prediction"):
+            log_job(logger, job_name, payload["meta"].get("race_id"), "prediction input skipped: prediction already exists")
+            continue
         payload["prediction"] = None
         payload["simulation"] = {
             "value": {"pre": None, "post": None},
@@ -178,16 +181,11 @@ def export_prediction_chat_input(paths: list[Path], config: dict, job_name: str)
     return exported
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--date", default=None)
-    args = parser.parse_args()
-
-    config = load_config()
+def collect_pre_races(config: dict, target_date_value: str | None, job_name: str) -> tuple[str, list[Path]]:
     selected_races = None
     selected_race_ids = None
-    if args.date:
-        target_date = parse_target_date(args.date)
+    if target_date_value:
+        target_date = parse_target_date(target_date_value)
     else:
         try:
             target_date, selected_races, reason = select_default_races(config)
@@ -216,7 +214,7 @@ def main() -> None:
             print(f"odds collection target: {target_time_text}")
             if now_jst() < target_time:
                 print("warning: collecting before the configured odds target time")
-                print("continuing manual collection")
+                print("continuing collection")
 
         config["target_races"] = list(
             dict.fromkeys(item["race"]["track"] for item in selected_races)
@@ -235,17 +233,41 @@ def main() -> None:
         paths.extend(
             collect_races(
                 config,
-                "pre_collect",
+                job_name,
                 collection_date,
                 "pre",
                 selected_race_ids=race_ids,
             )
         )
-    exported = export_prediction_chat_input(paths, config, "pre_collect")
+    return target_date, paths
+
+
+def run_pre_collect_flow(
+    config: dict,
+    target_date_value: str | None,
+    job_name: str,
+) -> tuple[list[Path], list[Path]]:
+    target_date, paths = collect_pre_races(config, target_date_value, job_name)
+    exported = export_prediction_chat_input(paths, config, job_name)
     if not paths:
         raise SystemExit(f"No race JSON updated for {target_date}")
-    if not exported:
+    pending_count = sum(
+        1
+        for path in paths
+        if not (load_race_json(path) or {}).get("prediction")
+    )
+    if pending_count and len(exported) < pending_count:
         raise SystemExit(f"No prediction chat_input exported for {target_date}")
+    return paths, exported
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--date", default=None)
+    args = parser.parse_args()
+
+    config = load_config()
+    run_pre_collect_flow(config, args.date, "pre_collect")
 
 
 if __name__ == "__main__":

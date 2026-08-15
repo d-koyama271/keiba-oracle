@@ -18,6 +18,7 @@ from utils import (
     read_text,
     repo_root,
     save_race_json,
+    set_race_status,
     setup_logger,
 )
 
@@ -79,6 +80,7 @@ def normalize_prediction_response(response: dict[str, Any], horses: list[dict[st
         raise ValueError("prediction response missing horses")
 
     horse_numbers = [horse["horse_number"] for horse in horses]
+    expected_numbers = set(horse_numbers)
     number_to_item: dict[int, dict[str, Any]] = {}
     for item in items:
         horse_number = parse_int(item.get("horse_number"))
@@ -86,12 +88,18 @@ def normalize_prediction_response(response: dict[str, Any], horses: list[dict[st
         reason = str(item.get("reason", "")).strip()
         if horse_number is None or probability is None:
             raise ValueError("invalid horse prediction item")
+        if horse_number not in expected_numbers:
+            raise ValueError(f"unexpected horse prediction: {horse_number}")
+        if horse_number in number_to_item:
+            raise ValueError(f"duplicate horse prediction: {horse_number}")
         if probability < 0:
             raise ValueError("prediction probability must not be negative")
+        if not reason:
+            raise ValueError(f"prediction reason is missing: {horse_number}")
         number_to_item[horse_number] = {
             "horse_number": horse_number,
             "win_probability": max(0.0, min(probability, 1.0)),
-            "reason": reason or "比較上位",
+            "reason": reason,
         }
 
     missing = [number for number in horse_numbers if number not in number_to_item]
@@ -122,16 +130,16 @@ def normalize_prediction_response(response: dict[str, Any], horses: list[dict[st
     }
 
 
-def build_prediction_prompt(config: dict[str, Any], payload: dict[str, Any], root: Path | None = None) -> str:
+def build_prediction_prompt(
+    config: dict[str, Any],
+    prediction_input: dict[str, Any],
+    root: Path | None = None,
+) -> str:
     root = root or repo_root()
     template = read_text(root / "config" / "prompt_prediction.txt")
-    context = {
-        "race": payload["race"],
-        "horses": payload["horses"],
-    }
     prompt = template.replace(
         "{{RACE_CONTEXT}}",
-        json.dumps(context, ensure_ascii=False, indent=2),
+        json.dumps(prediction_input, ensure_ascii=False, indent=2),
     )
     return prompt
 
@@ -152,11 +160,41 @@ def build_prediction_chat_input(
     }
 
 
+def validate_prediction_input(
+    prediction_input: dict[str, Any],
+    race_payload: dict[str, Any],
+) -> None:
+    if set(prediction_input) != {"meta", "race", "horses"}:
+        raise ValueError("prediction input must contain only meta, race, and horses")
+
+    race_id = str((prediction_input.get("meta") or {}).get("race_id") or "")
+    if race_id != str(race_payload["meta"].get("race_id") or ""):
+        raise ValueError("prediction input race_id does not match race JSON")
+    if prediction_input.get("race") != race_payload.get("race"):
+        raise ValueError("prediction input race does not match race JSON")
+    if prediction_input.get("horses") != race_payload.get("horses"):
+        raise ValueError("prediction input horses do not match race JSON")
+
+
+def load_prediction_inputs(paths: list[Path]) -> dict[str, dict[str, Any]]:
+    inputs: dict[str, dict[str, Any]] = {}
+    for path in paths:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        race_id = str((payload.get("meta") or {}).get("race_id") or "")
+        if not race_id:
+            raise ValueError(f"prediction input missing race_id: {path}")
+        if race_id in inputs:
+            raise ValueError(f"duplicate prediction input race_id: {race_id}")
+        inputs[race_id] = payload
+    return inputs
+
+
 def predict_file(
     path: Path,
     config: dict[str, Any],
     job_name: str,
     root: Path | None = None,
+    prediction_input: dict[str, Any] | None = None,
 ) -> bool:
     logger = setup_logger(job_name, config, root)
     payload = load_race_json(path)
@@ -169,17 +207,27 @@ def predict_file(
         return False
 
     try:
+        if payload.get("prediction"):
+            normalize_prediction_response(payload["prediction"], payload["horses"])
+            log_job(logger, job_name, race_id, "prediction reused: existing prediction is valid")
+            return True
+
+        prediction_input = prediction_input or build_prediction_chat_input(config, payload, root)
+        validate_prediction_input(prediction_input, payload)
         if config["llm_provider"] == "mock":
-            response = build_mock_prediction(payload)
+            response = build_mock_prediction(prediction_input)
         else:
             client = LLMClient.from_config(config)
-            prompt = build_prediction_prompt(config, payload, root)
+            prompt = build_prediction_prompt(config, prediction_input, root)
             response = client.invoke_json(prompt, max_retries=2)
         prediction = normalize_prediction_response(response, payload["horses"])
+        if config["llm_provider"] == "codex" and not prediction.get("optional_summary"):
+            raise ValueError("Codex prediction summary is missing")
         prediction["model_provider"] = config["llm_provider"]
         prediction["model_name"] = config["llm_model"]
         prediction["predicted_at"] = now_jst_iso()
         payload["prediction"] = prediction
+        set_race_status(payload, pre_status="prediction_imported")
         save_race_json(path, payload)
         log_job(logger, job_name, race_id, "prediction updated")
         return True
@@ -193,10 +241,14 @@ def predict_paths(
     config: dict[str, Any],
     job_name: str,
     root: Path | None = None,
+    prediction_inputs: dict[str, dict[str, Any]] | None = None,
 ) -> list[Path]:
     updated = []
     for path in paths:
-        if predict_file(path, config, job_name, root):
+        payload = load_race_json(path) or {}
+        race_id = str((payload.get("meta") or {}).get("race_id") or "")
+        prediction_input = (prediction_inputs or {}).get(race_id)
+        if predict_file(path, config, job_name, root, prediction_input):
             updated.append(path)
     return updated
 

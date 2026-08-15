@@ -1,14 +1,54 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
-from collect import collect_races
-from predict import predict_paths
+from predict import load_prediction_inputs, predict_paths
 from publish import publish_site
 from render import render_site
-from run_pre_collect import export_prediction_chat_input
+from run_pre_collect import run_pre_collect_flow
 from simulate import simulate_paths
-from utils import load_config, log_job, parse_target_date, setup_logger
+from utils import (
+    load_config,
+    load_race_json,
+    log_job,
+    save_race_json,
+    set_race_status,
+    setup_logger,
+)
+
+
+def run_pre_flow(config: dict, target_date: str | None, job_name: str = "pre") -> list[Path]:
+    logger = setup_logger(job_name, config)
+    paths, input_paths = run_pre_collect_flow(config, target_date, job_name)
+    prediction_inputs = load_prediction_inputs(input_paths)
+    pending_race_ids = {
+        str(payload["meta"].get("race_id") or "")
+        for path in paths
+        if (payload := load_race_json(path)) and not payload.get("prediction")
+    }
+    if set(prediction_inputs) != pending_race_ids:
+        raise RuntimeError("pre flow stopped: finalized prediction inputs do not match pending races")
+
+    predicted_paths = predict_paths(paths, config, job_name, prediction_inputs=prediction_inputs)
+    if set(predicted_paths) != set(paths):
+        raise RuntimeError("pre flow stopped: prediction generation failed")
+
+    simulated_paths = simulate_paths(predicted_paths, config, "pre", job_name)
+    if set(simulated_paths) != set(paths):
+        raise RuntimeError("pre flow stopped: simulation generation failed")
+
+    for path in simulated_paths:
+        payload = load_race_json(path)
+        if not payload:
+            raise RuntimeError(f"pre flow stopped: race JSON missing -> {path}")
+        set_race_status(payload, pre_status="published")
+        save_race_json(path, payload)
+
+    render_site(config, job_name, None)
+    public_path = publish_site(config)
+    log_job(logger, job_name, None, f"published site -> {public_path}")
+    return simulated_paths
 
 
 def main() -> None:
@@ -17,20 +57,7 @@ def main() -> None:
     args = parser.parse_args()
 
     config = load_config()
-    target_date = parse_target_date(args.date)
-    logger = setup_logger("pre", config)
-
-    paths = collect_races(config, "pre", target_date, "pre")
-    if config["llm_provider"] == "manual":
-        export_prediction_chat_input(paths, config, "pre")
-        log_job(logger, "pre", None, "manual mode prepared prediction chat_input")
-        return
-
-    predict_paths(paths, config, "pre")
-    simulate_paths(paths, config, "pre", "pre")
-    render_site(config, "pre", None)
-    public_path = publish_site(config)
-    log_job(logger, "pre", None, f"published site -> {public_path}")
+    run_pre_flow(config, args.date)
 
 
 if __name__ == "__main__":

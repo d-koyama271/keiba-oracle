@@ -1,12 +1,12 @@
 # keiba-oracle
 
-中央競馬の重賞を対象に、`netkeiba` から必要情報を取得し、LLM で各馬の 1 着確率を予想し、購入シミュレーションを行い、静的 HTML を生成する最小構成のファイルベース実装です。次の開催期間に重賞がない場合だけ、各開催場の 11R を対象にします。
+中央競馬の重賞を対象に、`netkeiba` から必要情報を取得し、Codex で各馬の 1 着確率を予想し、購入シミュレーションを行い、静的 HTML を生成する最小構成のファイルベース実装です。次の開催期間に重賞がない場合だけ、各開催場の 11R を対象にします。
 
 実装方針は次の通りです。
 
 - 1 レース 1 JSON
 - `prediction` と `simulation` を分離
-- LLM は `predict.py` の予想だけで利用
+- Codex は `predict.py` の予想だけで利用
 - 記事本文はテンプレート埋め込み
 - 出力サイトは静的 HTML
 
@@ -56,21 +56,13 @@ README.md
 pip install -r requirements.txt
 ```
 
-3. 既定の `config/app.yaml` は `llm_provider: manual` なので、まずは API キーなしで manual モード運用できます。
-
-4. 将来 OpenAI を使う場合は `config/app.yaml` の `llm_provider` を `openai` に変えたうえで、環境変数を設定します。
+3. Codex CLI を用意し、`codex` コマンドへログインします。
 
 ```bash
-set OPENAI_API_KEY=your_api_key
+codex login status
 ```
 
-PowerShell の場合は次です。
-
-```powershell
-$env:OPENAI_API_KEY="your_api_key"
-```
-
-5. 必要なら `config/app.yaml` を調整します。
+4. 必要なら `config/app.yaml` を調整します。既定値は `llm_provider: codex` です。外部 AI API キーは使用しません。
 
 主な設定値:
 
@@ -82,8 +74,8 @@ $env:OPENAI_API_KEY="your_api_key"
 - `simulation.value.kelly_fraction`: 期待値重視方式の fractional Kelly 係数
 - `simulation.dutching.*`: ダッチング方式の最大頭数、最低カバー確率、最低グループ期待値、的中時利益条件
 - `publish_mode`: `github_pages` を想定
-- `llm_provider`: 既定は `manual`、実接続時は `openai`
-- `llm_model`: 使用モデル名
+- `llm_provider`: 通常運用では `codex`
+- `llm_model`: Codex で使用するモデル名
 - `data_dir`: レース JSON 保存先
 - `public_dir`: 公開物の出力先
 
@@ -92,7 +84,7 @@ $env:OPENAI_API_KEY="your_api_key"
 レース前ジョブ:
 
 ```bash
-python src/run_pre.py --date 2026-04-14
+python src/run_pre.py
 ```
 
 レース後ジョブ:
@@ -101,7 +93,7 @@ python src/run_pre.py --date 2026-04-14
 python src/run_post.py --date 2026-04-14
 ```
 
-`run_pre.py` / `run_post.py` では、`--date` を省略すると当日の日付を使います。
+`run_pre.py` は日付を省略すると、次の連続する中央競馬開催期間を探索し、その期間の重賞をすべて対象にします。重賞が1件もない場合だけ、各開催場の11Rを対象にします。`run_post.py` は日付を省略すると当日を対象にします。過去レースを明示して検証する場合は、どちらも `--date YYYY-MM-DD` を使用できます。
 
 ## 生成物
 
@@ -143,10 +135,15 @@ python src/run_post.py --date 2026-04-14
 `run_pre.py`
 
 1. `collect.py` で対象レース情報を取得
-2. `predict.py` で各馬の 1 着確率を生成
-3. `simulate.py` で `simulation.value.pre` と `simulation.dutching.pre` を生成
-4. `render.py` で静的 HTML を生成
-5. `publish.py` で `public/` を更新
+2. 予想開始時点の `meta` / `race` / `horses` だけで予想入力 JSON を確定
+3. `predict.py` から Codex を実行し、各馬の 1 着確率・理由・総括を検証して保存
+4. `simulate.py` で `simulation.value.pre` と `simulation.dutching.pre` を生成
+5. `render.py` で静的 HTML と index を生成
+6. `publish.py` で `public/` を更新
+
+Codex は一時作業ディレクトリ内の読み取り専用・構造化出力モードで実行され、プロンプトに埋め込んだ確定済み予想入力 JSON だけを予想材料にします。Web、リポジトリ内ファイル、公開済み HTML、結果、過去の別予想、評価データは参照させません。
+
+正常に保存した予想には `model_provider`、`model_name`、`predicted_at` を記録します。通常フローを再実行しても、有効な既存予想は再生成・上書きせず、そのままシミュレーション以降へ渡します。
 
 `run_post.py`
 
@@ -180,29 +177,19 @@ python src/run_post.py --date 2026-04-14
 
 状態はレース前入力生成後が `pre_status: awaiting_prediction`、予想公開後が `pre_status: published` です。`post_status` は結果待ちの `awaiting_result` から、結果・両post・evaluation・HTML公開完了後に `published` となります。
 
-## Manual モード
+## Codex 予想フロー
 
-manual モードでは LLM API は呼ばず、チャットへ貼る入力 JSON を `outbox/` に出し、返却 JSON を `inbox/` へ置いて downstream を進めます。
+通常のレース前運用は `run_pre.py` だけで完了します。収集時に確定した予想入力 JSON は監査用に `outbox/chat_input/prediction/` にも保存しますが、人が外部チャットへ貼り付けたり、応答を `inbox/` へ戻したりする必要はありません。
 
-レース前:
-
-```bash
-python src/run_pre_collect.py
-```
-
-引数なしでは、次の連続する中央競馬開催日を1開催期間として探索します。その期間の重賞（G1・G2・G3）をレース番号に関係なくすべて収集し、重賞が1件もない場合だけ各開催場の11Rをすべて収集します。グレードや発走時刻による1レースへの絞り込みは行いません。各レースについて `odds_reference_minutes_before_start` に基づく推奨取得目標時刻を表示し、手動実行時は目標時刻より前でも警告を表示して収集と chat input 出力を続行します。
+引数なしでは、次の連続する中央競馬開催日を1開催期間として探索します。その期間の重賞（G1・G2・G3）をレース番号に関係なくすべて収集し、重賞が1件もない場合だけ各開催場の11Rをすべて収集します。各レースについて `odds_reference_minutes_before_start` に基づく推奨取得目標時刻を表示し、目標時刻より前でも警告だけを表示して処理を続行します。
 
 過去レース検証・再収集では日付を明示します。取得できるのはnetkeibaが返す単一スナップショットであり、発走後の時刻でもフロー検証に使用しますが、厳密なT-60履歴オッズではありません。
 
 ```bash
-python src/run_pre_collect.py --date 2026-04-12
-python src/watcher.py
+python src/run_pre.py --date 2026-04-12
 ```
 
-1. `run_pre_collect.py` が `data/races/...json` を更新します。
-2. prediction 用の chat input JSON を `outbox/chat_input/prediction/` に出力します。
-3. 外部チャットから返ってきた prediction JSON を `inbox/prediction/` に置きます。
-4. `watcher.py` が `prediction` を反映し、両方式の `pre -> render -> publish` を実行します。処理済み応答は `inbox/prediction/processed/YYYY-MM-DD/` に移動します。
+`run_pre_collect.py`、`response_importer.py`、`watcher.py`、`inbox/prediction/` は、過去の手動応答を扱う後方互換用として残しています。通常のCodex予想公開では使用しません。手動応答の取込時も、既に有効な予想があるレースは上書きしません。
 
 レース後:
 
@@ -212,9 +199,9 @@ python src/run_post_collect.py --date 2026-04-12
 
 1. `run_post_collect.py` が予想済みrace JSONの `meta.race_id` から結果だけを取得して `result` を反映し、既存の決定的な計算で両方式の `post` を確定します。
 2. `evaluation` を決定的に生成します。
-3. 結果HTMLを生成し、`public/` を更新します。レース後のLLM処理や追加の `watcher.py` 実行は不要です。
+3. 結果HTMLを生成し、`public/` を更新します。レース後のAI予想処理や追加の `watcher.py` 実行は不要です。
 
-inbox へ置く response JSON の想定:
+後方互換用の inbox response JSON の想定:
 
 prediction:
 
@@ -239,7 +226,7 @@ prediction:
 ## 補足
 
 - `collect.py` は `netkeiba` の HTML 構造に依存します。取得に失敗したレースはスキップし、ログへ出します。
-- `predict.py` の LLM 応答が不正 JSON の場合は再試行します。
+- `predict.py` の Codex 応答が不正 JSON の場合は再試行します。
 - `prediction` がない場合は両方式の `pre` を作りません。
 - `result` がない場合は両方式の `post` を作りません。
 - `prediction`、`result`、両方式の `post` がそろわない場合は `evaluation` を作りません。
@@ -247,7 +234,7 @@ prediction:
 
 ## テスト
 
-固定データだけを使用し、netkeibaやLLM APIへ接続しません。
+固定データとモックしたCodex CLI応答だけを使用し、netkeibaやCodexサービスへ接続しません。
 
 ```bash
 python -m unittest discover -s tests -v

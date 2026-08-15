@@ -22,7 +22,7 @@ simulation:
     min_group_expected_value: 0.00
     require_profit_if_hit: true
 publish_mode: github_pages
-llm_provider: manual
-llm_model: manual-chat
+llm_provider: codex
+llm_model: gpt-5.6-luna
 data_dir: data
 public_dir: public

@@ -41,11 +41,18 @@ def import_prediction_response(path: Path, config: dict[str, Any], job_name: str
     race_payload = load_race_json(race_path)
     if not race_payload:
         raise FileNotFoundError(f"race json missing: {race_path}")
+    if race_payload.get("prediction"):
+        raise ValueError(f"prediction already exists for race_id={race_id}")
 
     response = payload.get("prediction", payload)
     normalized = normalize_prediction_response(response, race_payload["horses"])
-    normalized["model_provider"] = config["llm_provider"]
-    normalized["model_name"] = config["llm_model"]
+    response_meta = payload.get("meta") or {}
+    normalized["model_provider"] = str(
+        response.get("model_provider") or response_meta.get("model_provider") or "manual"
+    )
+    normalized["model_name"] = str(
+        response.get("model_name") or response_meta.get("model_name") or "manual-import"
+    )
     normalized["predicted_at"] = now_jst_iso()
     race_payload["prediction"] = normalized
     set_race_status(race_payload, pre_status="prediction_imported")
