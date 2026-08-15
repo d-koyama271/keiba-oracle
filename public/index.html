@@ -38,6 +38,23 @@
       box-shadow: 0 12px 30px rgba(50, 89, 77, 0.06);
       min-width: 0;
     }
+    .panel + .panel { margin-top: 20px; }
+    .performance-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .performance-item {
+      padding: 14px;
+      border: 1px solid #ded6ca;
+      border-radius: 10px;
+      background: #faf8f3;
+    }
+    .performance-value {
+      margin-top: 8px;
+      font-size: 24px;
+      font-weight: 700;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -104,6 +121,7 @@
     @media (max-width: 640px) {
       main { padding: 20px 12px 40px; }
       .panel { padding: 15px; }
+      .performance-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       table { font-size: 13px; }
       th, td { padding: 8px 7px; }
     }
@@ -114,6 +132,32 @@
     <div class="panel">
       <h1>中央競馬 AI予想レース一覧</h1>
       <p class="small">AIが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。</p>
+    </div>
+
+
+    <section class="panel performance-panel">
+      <h2>予測成績</h2>
+      <div class="performance-grid">
+        <div class="performance-item">
+          <strong>現在の的中率</strong>
+          <div class="performance-value">30.0%</div>
+          <div class="small">3 / 10レース</div>
+        </div>
+        <div class="performance-item">
+          <strong>Top3的中率</strong>
+          <div class="performance-value">50.0%</div>
+        </div>
+        <div class="performance-item">
+          <strong>Top5的中率</strong>
+          <div class="performance-value">50.0%</div>
+        </div>
+        <div class="performance-item">
+          <strong>勝ち馬の平均予想順位</strong>
+          <div class="performance-value">5.7位</div>
+        </div>
+      </div>
+    </section>
+    <div class="panel">
       <div class="table-scroll">
       <table class="index-table">
         <thead>

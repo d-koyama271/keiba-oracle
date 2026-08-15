@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -134,14 +135,38 @@ def build_prediction_prompt(
     config: dict[str, Any],
     prediction_input: dict[str, Any],
     root: Path | None = None,
+    prompt_template: str | None = None,
 ) -> str:
     root = root or repo_root()
-    template = read_text(root / "config" / "prompt_prediction.txt")
+    template = (
+        prompt_template
+        if prompt_template is not None
+        else read_text(root / "config" / "prompt_prediction.txt")
+    )
     prompt = template.replace(
         "{{RACE_CONTEXT}}",
         json.dumps(prediction_input, ensure_ascii=False, indent=2),
     )
     return prompt
+
+
+def sha256_text(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def prediction_input_sha256(prediction_input: dict[str, Any]) -> str:
+    stable_input = dict(prediction_input)
+    stable_meta = dict(prediction_input.get("meta") or {})
+    stable_meta.pop("generated_at", None)
+    stable_input["meta"] = stable_meta
+    serialized = json.dumps(
+        stable_input,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    )
+    return sha256_text(serialized)
 
 
 def build_prediction_chat_input(
@@ -214,11 +239,19 @@ def predict_file(
 
         prediction_input = prediction_input or build_prediction_chat_input(config, payload, root)
         validate_prediction_input(prediction_input, payload)
+        prompt_template = None
         if config["llm_provider"] == "mock":
             response = build_mock_prediction(prediction_input)
         else:
             client = LLMClient.from_config(config)
-            prompt = build_prediction_prompt(config, prediction_input, root)
+            prediction_root = root or repo_root()
+            prompt_template = read_text(prediction_root / "config" / "prompt_prediction.txt")
+            prompt = build_prediction_prompt(
+                config,
+                prediction_input,
+                root,
+                prompt_template,
+            )
             response = client.invoke_json(prompt, max_retries=2)
         prediction = normalize_prediction_response(response, payload["horses"])
         if config["llm_provider"] == "codex" and not prediction.get("optional_summary"):
@@ -226,6 +259,9 @@ def predict_file(
         prediction["model_provider"] = config["llm_provider"]
         prediction["model_name"] = config["llm_model"]
         prediction["predicted_at"] = now_jst_iso()
+        if prompt_template is not None:
+            prediction["prompt_sha256"] = sha256_text(prompt_template)
+            prediction["prediction_input_sha256"] = prediction_input_sha256(prediction_input)
         payload["prediction"] = prediction
         set_race_status(payload, pre_status="prediction_imported")
         save_race_json(path, payload)

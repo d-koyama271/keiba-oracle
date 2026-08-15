@@ -5,6 +5,7 @@ from pathlib import Path
 
 from collect import collect_results
 from evaluation import evaluate_paths
+from evaluation_summary import generate_evaluation_summary
 from publish import publish_site
 from render import render_site
 from simulate import simulate_paths
@@ -32,6 +33,7 @@ def publish_post_results(
         log_job(logger, job_name, None, "post publish skipped: evaluation missing")
         return []
 
+    generate_evaluation_summary(config, job_name, root)
     render_site(config, job_name, None, root)
     public_path = publish_site(config, root)
     for path in evaluated_paths:

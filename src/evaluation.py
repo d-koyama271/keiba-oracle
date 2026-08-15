@@ -72,13 +72,10 @@ def odds_recorded_after_start(race: dict[str, Any]) -> bool | None:
     return captured > start
 
 
-def market_baseline(
+def normalized_market_probabilities(
     payload: dict[str, Any],
     model_rows: list[dict[str, Any]],
-    winner: int,
-    model_log_loss: float,
-    model_brier_score: float,
-) -> dict[str, Any]:
+) -> list[dict[str, Any]] | None:
     horse_lookup = {int(horse["horse_number"]): horse for horse in payload.get("horses", [])}
     implied_rows = []
     for item in model_rows:
@@ -86,9 +83,9 @@ def market_baseline(
         try:
             odds_value = float(odds)
         except (TypeError, ValueError):
-            return {"available": False}
+            return None
         if odds_value <= 0:
-            return {"available": False}
+            return None
         implied_rows.append(
             {
                 "horse_number": item["horse_number"],
@@ -98,9 +95,22 @@ def market_baseline(
 
     total = sum(item["probability"] for item in implied_rows)
     if not implied_rows or total <= 0:
-        return {"available": False}
+        return None
     for item in implied_rows:
         item["probability"] /= total
+    return implied_rows
+
+
+def market_baseline(
+    payload: dict[str, Any],
+    model_rows: list[dict[str, Any]],
+    winner: int,
+    model_log_loss: float,
+    model_brier_score: float,
+) -> dict[str, Any]:
+    implied_rows = normalized_market_probabilities(payload, model_rows)
+    if implied_rows is None:
+        return {"available": False}
 
     ranked_market = sorted(
         implied_rows,

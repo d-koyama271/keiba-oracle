@@ -183,7 +183,11 @@ class EvaluationFlowTests(unittest.TestCase):
             path = root / "race.json"
             save_race_json(path, make_payload())
             try:
-                with patch.object(run_post_collect, "render_site") as render, patch.object(
+                with patch.object(
+                    run_post_collect,
+                    "generate_evaluation_summary",
+                    return_value=root / "data" / "evaluation_summary.json",
+                ) as generate_summary, patch.object(run_post_collect, "render_site") as render, patch.object(
                     run_post_collect,
                     "publish_site",
                     return_value=root / "public",
@@ -200,6 +204,7 @@ class EvaluationFlowTests(unittest.TestCase):
                 self.assertEqual(loaded["meta"]["post_status"], "published")
                 self.assertIsNotNone(loaded["evaluation"])
                 self.assertFalse((root / "outbox" / "chat_input" / "feedback").exists())
+                generate_summary.assert_called_once_with(config, "test-post-publish", root)
                 render.assert_called_once_with(config, "test-post-publish", None, root)
                 publish.assert_called_once_with(config, root)
             finally:

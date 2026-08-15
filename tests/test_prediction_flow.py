@@ -87,6 +87,24 @@ def logger(name: str):
 
 
 class PredictionValidationTests(unittest.TestCase):
+    def test_prediction_audit_hashes_are_stable_and_content_sensitive(self) -> None:
+        payload = race_payload()
+        first = predict.build_prediction_chat_input({}, payload)
+        second = json.loads(json.dumps(first, ensure_ascii=False))
+        second["meta"]["generated_at"] = "2099-01-01T00:00:00+09:00"
+
+        self.assertEqual(predict.sha256_text("same prompt"), predict.sha256_text("same prompt"))
+        self.assertNotEqual(predict.sha256_text("same prompt"), predict.sha256_text("changed prompt"))
+        self.assertEqual(
+            predict.prediction_input_sha256(first),
+            predict.prediction_input_sha256(second),
+        )
+        second["horses"][0]["horse_name"] = "changed horse"
+        self.assertNotEqual(
+            predict.prediction_input_sha256(first),
+            predict.prediction_input_sha256(second),
+        )
+
     def test_duplicate_and_unexpected_horse_numbers_are_rejected(self) -> None:
         horses = race_payload()["horses"]
         with self.assertRaisesRegex(ValueError, "duplicate horse prediction"):
@@ -159,6 +177,16 @@ class PredictionValidationTests(unittest.TestCase):
             self.assertEqual(saved["prediction"]["model_provider"], "codex")
             self.assertEqual(saved["prediction"]["model_name"], "gpt-test")
             self.assertEqual(saved["prediction"]["predicted_at"], "2026-08-15T14:00:00+09:00")
+            self.assertEqual(
+                saved["prediction"]["prompt_sha256"],
+                predict.sha256_text("Use only this JSON and return JSON: {{RACE_CONTEXT}}"),
+            )
+            self.assertEqual(
+                saved["prediction"]["prediction_input_sha256"],
+                predict.prediction_input_sha256(prediction_input),
+            )
+            self.assertEqual(len(saved["prediction"]["prompt_sha256"]), 64)
+            self.assertEqual(len(saved["prediction"]["prediction_input_sha256"]), 64)
             self.assertAlmostEqual(
                 sum(item["win_probability"] for item in saved["prediction"]["horses"]),
                 1.0,
@@ -181,6 +209,8 @@ class PredictionValidationTests(unittest.TestCase):
 
             self.assertTrue(reused)
             self.assertEqual(path.read_bytes(), before)
+            self.assertNotIn("prompt_sha256", load_race_json(path)["prediction"])
+            self.assertNotIn("prediction_input_sha256", load_race_json(path)["prediction"])
 
 
 class CodexClientTests(unittest.TestCase):

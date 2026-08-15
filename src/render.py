@@ -8,6 +8,7 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from evaluation_summary import load_evaluation_summary
 from simulate import calculate_value_details, minimum_budget_for_value_stake
 from utils import (
     ensure_dir,
@@ -462,6 +463,7 @@ def render_site(
     index_rows.sort(key=index_row_sort_key)
     index_html = index_template.render(
         races=index_rows,
+        evaluation_summary=load_evaluation_summary(config, root),
         site_background=SITE_BACKGROUND,
         status_colors=STATUS_COLORS,
     )

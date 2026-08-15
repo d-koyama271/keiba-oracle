@@ -25,6 +25,7 @@ src/
   predict.py
   simulate.py
   evaluation.py
+  evaluation_summary.py
   render.py
   publish.py
   response_importer.py
@@ -33,6 +34,7 @@ src/
   utils.py
 data/
   races/
+  evaluation_summary.json
 inbox/
   prediction/
 outbox/
@@ -100,6 +102,7 @@ python src/run_post.py --date 2026-04-14
 - レース JSON: `data/races/YYYY-MM-DD/track_Nr.json`
 - レースページ: `public/races/YYYY-MM-DD/track_Nr.html`
 - 一覧ページ: `public/index.html`
+- 全体評価集計: `data/evaluation_summary.json`
 
 各レース JSON のトップレベルは固定です。
 
@@ -143,15 +146,16 @@ python src/run_post.py --date 2026-04-14
 
 Codex は一時作業ディレクトリ内の読み取り専用・構造化出力モードで実行され、プロンプトに埋め込んだ確定済み予想入力 JSON だけを予想材料にします。Web、リポジトリ内ファイル、公開済み HTML、結果、過去の別予想、評価データは参照させません。
 
-正常に保存した予想には `model_provider`、`model_name`、`predicted_at` を記録します。通常フローを再実行しても、有効な既存予想は再生成・上書きせず、そのままシミュレーション以降へ渡します。
+正常に保存した新規予想には `model_provider`、`model_name`、`predicted_at` に加え、実際に使用したプロンプトと安定化した予想入力 JSON の `prompt_sha256`、`prediction_input_sha256` を記録します。過去予想へは補完しません。通常フローを再実行しても、有効な既存予想は再生成・上書きせず、そのままシミュレーション以降へ渡します。
 
 `run_post.py`
 
 1. `collect.py` で結果と払戻を取得
 2. `simulate.py` で両方式の `post` を確定
 3. `evaluation.py` で予測評価指標を生成
-4. `render.py` で同じページを更新
-5. `publish.py` で `public/` を更新
+4. `evaluation_summary.py` で全レースの評価集計を更新
+5. `render.py` で同じページと index を更新
+6. `publish.py` で `public/` を更新
 
 ## 購入シミュレーション
 
@@ -174,6 +178,14 @@ Codex は一時作業ディレクトリ内の読み取り専用・構造化出�
 - `simulation.value.post` と `simulation.dutching.post` の収支要約
 
 有効な単勝オッズが全馬分そろわない場合、`market_baseline.available` は `false` です。発走後に記録されたオッズを使用した比較には `odds_recorded_after_start: true` と注記を保存します。購入なしの評価用ROIは `null` です。
+
+`data/evaluation_summary.json` は正常な `evaluation` があるrace JSONだけから再生成する派生データです。全体のTop1・Top3・Top5成績、Log Loss・Brier Score、市場比較、確率校正、条件別精度、両購入シミュレーションの累積成績を保持し、race JSONへは書き戻しません。発走後オッズのレースは正式な市場比較から除外します。任意に再集計する場合は次を実行します。
+
+```bash
+python src/evaluation_summary.py
+```
+
+トップページの「予測成績」はこの集計ファイルを読み込みます。ファイルがない場合は未算出として `-` を表示し、予想入力にはこの集計を含めません。
 
 状態はレース前入力生成後が `pre_status: awaiting_prediction`、予想公開後が `pre_status: published` です。`post_status` は結果待ちの `awaiting_result` から、結果・両post・evaluation・HTML公開完了後に `published` となります。
 

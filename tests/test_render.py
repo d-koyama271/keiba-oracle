@@ -268,6 +268,11 @@ class RenderTests(unittest.TestCase):
                 "AIが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。",
                 index,
             )
+            self.assertIn("<h2>予測成績</h2>", index)
+            self.assertIn("現在の的中率", index)
+            self.assertIn("評価済みレースなし", index)
+            self.assertLess(index.index('class="panel performance-panel"'), index.index('<table class="index-table">'))
+            self.assertIn("grid-template-columns: repeat(2, minmax(0, 1fr))", index)
             self.assertNotIn('class="ai-badge"', index)
             self.assertIn("background: #f2f2f0", index)
             self.assertIn("background: #f2f2f0", race_html)
@@ -332,6 +337,54 @@ class RenderTests(unittest.TestCase):
                 ),
                 1,
             )
+
+    def test_index_renders_generated_evaluation_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(ROOT / "templates", root / "templates")
+            race_path = root / "data" / "races" / "2026-01-01" / "nakayama_11r.json"
+            race_path.parent.mkdir(parents=True)
+            race_path.write_text(
+                json.dumps(
+                    make_payload(predicted=True, track="中山", date="2026-01-01", name="予想済み"),
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            summary_path = root / "data" / "evaluation_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "overall": {
+                            "evaluated_races": 5,
+                            "top1_hits": 1,
+                            "top1_hit_rate": 0.2,
+                            "top3_hits": 3,
+                            "top3_hit_rate": 0.6,
+                            "top5_hits": 4,
+                            "top5_hit_rate": 0.8,
+                            "average_winner_predicted_rank": 3.4,
+                        }
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+
+            output = render_site(
+                {"data_dir": "data", "public_dir": "public"},
+                "test-render-summary",
+                root=root,
+            )
+            index = (output / "index.html").read_text(encoding="utf-8")
+
+            self.assertIn("20.0%", index)
+            self.assertIn("1 / 5レース", index)
+            self.assertIn("60.0%", index)
+            self.assertIn("80.0%", index)
+            self.assertIn("3.4位", index)
+            self.assertIn("予想済み", index)
+            self.assertLess(index.index("予測成績"), index.index("予想済み"))
 
 
 if __name__ == "__main__":
