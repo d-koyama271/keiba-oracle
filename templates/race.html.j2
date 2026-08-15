@@ -435,7 +435,7 @@
     </div>
 
     <div class="panel">
-      <h2>{{ "従来予想" if statistical_prediction else "予想" }}</h2>
+      <h2>{{ "総合AI予想" if statistical_prediction else "予想" }}</h2>
       <p class="small prediction-description">AIが各馬の過去成績、コース・距離適性、斤量、脚質、市場オッズなどから1着確率を推定しています。</p>
       {% if prediction %}
       <p class="table-scroll-hint">表は横にスクロールできます</p>
@@ -1209,7 +1209,7 @@
 
     {% if evaluation %}
     <div class="panel result-panel">
-      <h3>{{ "従来予想の予測評価" if statistical_prediction else "予測評価" }}</h3>
+      <h3>{{ "総合AI予想の予測評価" if statistical_prediction else "予測評価" }}</h3>
       <div class="stats">
         <div><strong>勝ち馬の予測順位</strong><br>{{ evaluation.winner.predicted_rank }}位</div>
         <div><strong>勝ち馬の予測確率</strong><br>{{ "%.2f"|format(evaluation.winner.predicted_probability * 100) }}%</div>
