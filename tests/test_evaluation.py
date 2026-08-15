@@ -144,6 +144,43 @@ class EvaluationMetricTests(unittest.TestCase):
 
         self.assertEqual(evaluation["market_baseline"], {"available": False})
 
+    def test_statistical_variant_uses_same_metrics_without_simulation_results(self) -> None:
+        payload = make_payload()
+        payload["prediction"]["variants"] = [
+            {
+                "method": "statistical",
+                "model_provider": "codex",
+                "model_name": "gpt-test",
+                "predicted_at": "2025-12-31T15:00:00+09:00",
+                "prompt_sha256": "prompt-hash",
+                "prediction_input_sha256": "input-hash",
+                "horses": [
+                    {"horse_number": 1, "win_probability": 0.2, "reason": "A"},
+                    {"horse_number": 2, "win_probability": 0.6, "reason": "B"},
+                    {"horse_number": 3, "win_probability": 0.2, "reason": "C"},
+                ],
+            }
+        ]
+
+        evaluation = build_evaluation(payload)
+        statistical = evaluation["variants"][0]
+
+        self.assertEqual(statistical["method"], "statistical")
+        self.assertEqual(statistical["model_provider"], "codex")
+        self.assertEqual(statistical["model_name"], "gpt-test")
+        self.assertEqual(
+            statistical["winner"],
+            {"horse_number": 2, "predicted_probability": 0.6, "predicted_rank": 1},
+        )
+        self.assertTrue(statistical["metrics"]["top1_hit"])
+        self.assertTrue(statistical["metrics"]["top3_hit"])
+        self.assertTrue(statistical["metrics"]["top5_hit"])
+        self.assertAlmostEqual(statistical["metrics"]["log_loss"], -math.log(0.6), places=6)
+        self.assertEqual(statistical["metrics"]["brier_score"], 0.08)
+        self.assertTrue(statistical["market_baseline"]["available"])
+        self.assertNotIn("simulation_results", statistical)
+        self.assertIn("simulation_results", evaluation)
+
     def test_evaluate_file_preserves_prediction_result_and_pre(self) -> None:
         payload = make_payload()
         prediction_before = copy.deepcopy(payload["prediction"])

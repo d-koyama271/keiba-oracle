@@ -3,7 +3,12 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from predict import load_prediction_inputs, predict_paths
+from predict import (
+    build_pending_statistical_inputs,
+    load_prediction_inputs,
+    predict_paths,
+    predict_statistical_paths,
+)
 from publish import publish_site
 from render import render_site
 from run_pre_collect import run_pre_collect_flow
@@ -22,6 +27,7 @@ def run_pre_flow(config: dict, target_date: str | None, job_name: str = "pre") -
     logger = setup_logger(job_name, config)
     paths, input_paths = run_pre_collect_flow(config, target_date, job_name)
     prediction_inputs = load_prediction_inputs(input_paths)
+    statistical_inputs = build_pending_statistical_inputs(paths, config)
     pending_race_ids = {
         str(payload["meta"].get("race_id") or "")
         for path in paths
@@ -34,7 +40,16 @@ def run_pre_flow(config: dict, target_date: str | None, job_name: str = "pre") -
     if set(predicted_paths) != set(paths):
         raise RuntimeError("pre flow stopped: prediction generation failed")
 
-    simulated_paths = simulate_paths(predicted_paths, config, "pre", job_name)
+    statistical_paths = predict_statistical_paths(
+        paths,
+        config,
+        job_name,
+        prediction_inputs=statistical_inputs,
+    )
+    if set(statistical_paths) != set(paths):
+        raise RuntimeError("pre flow stopped: statistical prediction generation failed")
+
+    simulated_paths = simulate_paths(statistical_paths, config, "pre", job_name)
     if set(simulated_paths) != set(paths):
         raise RuntimeError("pre flow stopped: simulation generation failed")
 

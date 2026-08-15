@@ -11,13 +11,17 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from evaluation_summary import load_evaluation_summary
 from simulate import calculate_value_details, minimum_budget_for_value_stake
 from utils import (
+    STATISTICAL_PREDICTION_METHOD,
+    evaluation_variants,
     ensure_dir,
+    find_variant,
     list_race_files,
     load_config,
     load_race_json,
     log_job,
     parse_jst_datetime,
     parse_target_date,
+    prediction_variants,
     public_dir,
     race_html_path,
     race_start_datetime,
@@ -275,9 +279,21 @@ def build_environment(root: Path | None = None) -> Environment:
 def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
     race = payload.get("race", {})
     prediction = payload.get("prediction")
+    statistical_prediction = find_variant(
+        prediction_variants(payload),
+        STATISTICAL_PREDICTION_METHOD,
+    )
     simulation = payload.get("simulation") or {}
     result = payload.get("result")
     evaluation = payload.get("evaluation")
+    statistical_evaluation = None
+    if statistical_prediction is not None:
+        statistical_evaluation = find_variant(
+            evaluation_variants(payload),
+            STATISTICAL_PREDICTION_METHOD,
+            statistical_prediction.get("model_provider"),
+            statistical_prediction.get("model_name"),
+        )
     odds_timing_label, odds_recorded_after_start = build_odds_timing(race)
     has_recorded_odds = (
         parse_jst_datetime(race.get("odds_captured_at")) is not None
@@ -299,10 +315,23 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
             start=1,
         )
     }
+    statistical_horses = (statistical_prediction or {}).get("horses", [])
+    statistical_lookup = {item["horse_number"]: item for item in statistical_horses}
+    statistical_ranks = {
+        item["horse_number"]: rank
+        for rank, item in enumerate(
+            sorted(
+                statistical_horses,
+                key=lambda item: (-float(item["win_probability"]), item["horse_number"]),
+            ),
+            start=1,
+        )
+    }
     result_lookup = {item["horse_number"]: item["finish_position"] for item in (result or {}).get("horses", [])}
     payout_lookup = {item["horse_number"]: item["payout_per_100"] for item in (result or {}).get("payouts", {}).get("win", [])}
 
     horse_rows = []
+    statistical_horse_rows = []
     for horse in sorted(payload.get("horses", []), key=lambda item: item["horse_number"]):
         horse_rows.append(
             {
@@ -311,6 +340,13 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
                 "prediction_rank": prediction_ranks.get(horse["horse_number"]),
                 "finish_position": result_lookup.get(horse["horse_number"]),
                 "payout_per_100": payout_lookup.get(horse["horse_number"]),
+            }
+        )
+        statistical_horse_rows.append(
+            {
+                **horse,
+                "prediction": statistical_lookup.get(horse["horse_number"]),
+                "prediction_rank": statistical_ranks.get(horse["horse_number"]),
             }
         )
 
@@ -383,13 +419,16 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "race": race,
         "prediction": prediction,
+        "statistical_prediction": statistical_prediction,
         "simulation_value_pre": value_pre,
         "simulation_value_post": value_simulation.get("post"),
         "simulation_dutching_pre": dutching_pre,
         "simulation_dutching_post": dutching_simulation.get("post"),
         "result": result,
         "evaluation": evaluation,
+        "statistical_evaluation": statistical_evaluation,
         "horse_rows": horse_rows,
+        "statistical_horse_rows": statistical_horse_rows,
         "result_rows": result_rows,
         "expected_value_rows": expected_value_rows,
         "value_no_purchase_reason": value_no_purchase_reason,

@@ -435,7 +435,7 @@
     </div>
 
     <div class="panel">
-      <h2>予想</h2>
+      <h2>{{ "従来予想" if statistical_prediction else "予想" }}</h2>
       <p class="small prediction-description">AIが各馬の過去成績、コース・距離適性、斤量、脚質、市場オッズなどから1着確率を推定しています。</p>
       {% if prediction %}
       <p class="table-scroll-hint">表は横にスクロールできます</p>
@@ -474,6 +474,39 @@
       <p>prediction はまだ生成されていません。</p>
       {% endif %}
     </div>
+
+    {% if statistical_prediction %}
+    <div class="panel">
+      <h2>統計重視予想</h2>
+      <p class="small prediction-description">市場由来の情報を使用せず、レース条件、過去成績、条件適性、近況、相手関係から1着確率を推定しています。</p>
+      <p class="table-scroll-hint">表は横にスクロールできます</p>
+      <div class="table-scroll">
+        <table class="prediction-table" data-sortable>
+          <thead>
+            <tr>
+              {{ sortable_header("馬番", 0, "number", "ascending") }}
+              {{ sortable_header("馬名", 1, "text", "ascending", "horse-name") }}
+              {{ sortable_header("1着確率", 2, "number", "descending") }}
+              {{ sortable_header("予想順位", 3, "number", "ascending") }}
+              <th class="reason-cell">理由</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for horse in statistical_horse_rows %}
+            <tr{% if horse.prediction_rank == 1 %} class="prediction-top"{% endif %}>
+              <td class="nowrap" data-sort-value="{{ horse.horse_number }}">{{ horse.horse_number }}</td>
+              <td class="horse-name">{{ horse.horse_name }}</td>
+              <td class="nowrap" data-sort-value="{{ horse.prediction.win_probability if horse.prediction else '' }}">{% if horse.prediction %}{{ "%.1f"|format(horse.prediction.win_probability * 100) }}%{% else %}-{% endif %}</td>
+              <td class="nowrap" data-sort-value="{{ horse.prediction_rank if horse.prediction_rank is not none else '' }}">{{ horse.prediction_rank ~ "位" if horse.prediction_rank is not none else "-" }}</td>
+              <td class="reason-cell">{{ horse.prediction.reason if horse.prediction else "-" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if statistical_prediction.optional_summary %}<p><strong>総括:</strong> {{ statistical_prediction.optional_summary }}</p>{% endif %}
+    </div>
+    {% endif %}
 
     <section class="simulation-section">
       <h2 class="simulation-section-title">購入シミュレーション</h2>
@@ -1176,7 +1209,7 @@
 
     {% if evaluation %}
     <div class="panel result-panel">
-      <h3>予測評価</h3>
+      <h3>{{ "従来予想の予測評価" if statistical_prediction else "予測評価" }}</h3>
       <div class="stats">
         <div><strong>勝ち馬の予測順位</strong><br>{{ evaluation.winner.predicted_rank }}位</div>
         <div><strong>勝ち馬の予測確率</strong><br>{{ "%.2f"|format(evaluation.winner.predicted_probability * 100) }}%</div>
@@ -1199,6 +1232,31 @@
       <h4>シミュレーション収支</h4>
       <p><strong>期待値重視:</strong> 投資 {{ evaluation.simulation_results.value.total_stake }}円 / 回収 {{ evaluation.simulation_results.value.total_return }}円 / 損益 {{ evaluation.simulation_results.value.profit }}円{% if evaluation.simulation_results.value.roi is not none %} / ROI {{ "%.2f"|format(evaluation.simulation_results.value.roi * 100) }}%{% endif %}</p>
       <p><strong>上位予測ダッチング:</strong> 投資 {{ evaluation.simulation_results.dutching.total_stake }}円 / 回収 {{ evaluation.simulation_results.dutching.total_return }}円 / 損益 {{ evaluation.simulation_results.dutching.profit }}円{% if evaluation.simulation_results.dutching.roi is not none %} / ROI {{ "%.2f"|format(evaluation.simulation_results.dutching.roi * 100) }}%{% endif %}</p>
+    </div>
+    {% endif %}
+
+    {% if statistical_evaluation %}
+    <div class="panel result-panel">
+      <h3>統計重視予想の予測評価</h3>
+      <div class="stats">
+        <div><strong>勝ち馬の予測順位</strong><br>{{ statistical_evaluation.winner.predicted_rank }}位</div>
+        <div><strong>勝ち馬の予測確率</strong><br>{{ "%.2f"|format(statistical_evaluation.winner.predicted_probability * 100) }}%</div>
+        <div><strong>Top1</strong><br>{{ "的中" if statistical_evaluation.metrics.top1_hit else "不的中" }}</div>
+        <div><strong>Top3</strong><br>{{ "的中" if statistical_evaluation.metrics.top3_hit else "不的中" }}</div>
+        <div><strong>Top5</strong><br>{{ "的中" if statistical_evaluation.metrics.top5_hit else "不的中" }}</div>
+        <div><strong>Log Loss</strong><br>{{ "%.6f"|format(statistical_evaluation.metrics.log_loss) }}</div>
+        <div><strong>Brier Score</strong><br>{{ "%.6f"|format(statistical_evaluation.metrics.brier_score) }}</div>
+      </div>
+      {% if statistical_evaluation.market_baseline.available %}
+      <h4>市場ベースライン比較</h4>
+      <p>市場の勝ち馬確率 {{ "%.2f"|format(statistical_evaluation.market_baseline.winner_probability * 100) }}% / 順位 {{ statistical_evaluation.market_baseline.winner_rank }}位</p>
+      <p>Log Loss差 {{ "%+.6f"|format(statistical_evaluation.market_baseline.model_log_loss_difference) }} / Brier Score差 {{ "%+.6f"|format(statistical_evaluation.market_baseline.model_brier_difference) }}</p>
+      {% if statistical_evaluation.market_baseline.odds_recorded_after_start %}
+      <p class="notice">市場比較には発走後に記録されたオッズを使用しているため、正式な発走前性能比較ではありません。</p>
+      {% endif %}
+      {% else %}
+      <p>市場ベースライン: 利用可能な単勝オッズが不足しています。</p>
+      {% endif %}
     </div>
     {% endif %}
 

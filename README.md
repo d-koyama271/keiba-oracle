@@ -16,6 +16,7 @@
 config/
   app.yaml
   prompt_prediction.txt
+  prompt_prediction_statistical.txt
 src/
   run_pre.py
   run_post.py
@@ -127,7 +128,9 @@ python src/run_post.py --date 2026-04-14
 }
 ```
 
-`schema_version` は `5` です。`race` には取得時点の `weather` と正規化した `class_grade` を保存します。各馬の `past_runs` は対象レース自身を除外した直近5走で、走破タイム、ペース、馬体重、当時の人気・オッズなどの詳細を含みます。
+`schema_version` は `6` です。既存の `prediction` 本体は従来予想のまま維持し、追加方式は `prediction.variants` に保存します。統計重視予想は `method: statistical` と `model_provider` / `model_name` で識別します。既存predictionに `method` がない場合は従来予想として扱い、過去JSONへのバックフィルは行いません。追加方式の結果評価も同様に `evaluation.variants` へ保存します。
+
+`race` には取得時点の `weather` と正規化した `class_grade` を保存します。各馬の `past_runs` は対象レース自身を除外した直近5走で、走破タイム、ペース、馬体重、当時の人気・オッズなどの詳細を含みます。
 
 単勝オッズはnetkeibaを優先し、全出走馬分を検証できない場合だけJRA公式へ切り替えます。同一レース内で取得元は混在させず、`race.odds_source` と採用元の `race.odds_source_url` を保存します。`race.odds_captured_at` は全馬の単勝オッズと人気の検証に成功した時刻で、両取得元とも失敗した場合は3項目とも `null` です。
 
@@ -138,9 +141,9 @@ python src/run_post.py --date 2026-04-14
 `run_pre.py`
 
 1. `collect.py` で対象レース情報を取得
-2. 予想開始時点の `meta` / `race` / `horses` だけで予想入力 JSON を確定
-3. `predict.py` から Codex を実行し、各馬の 1 着確率・理由・総括を検証して保存
-4. `simulate.py` で `simulation.value.pre` と `simulation.dutching.pre` を生成
+2. 予想開始時点の `meta` / `race` / `horses` を確定し、従来予想入力と、市場情報を除いた統計重視予想入力を独立して作成
+3. `predict.py` から Codex を実行し、従来予想と統計重視予想の各馬の 1 着確率・理由・総括を検証して保存
+4. 従来予想だけを入力として、`simulate.py` で `simulation.value.pre` と `simulation.dutching.pre` を生成
 5. `render.py` で静的 HTML と index を生成
 6. `publish.py` で `public/` を更新
 
@@ -148,12 +151,14 @@ Codex は一時作業ディレクトリ内の読み取り専用・構造化出�
 
 正常に保存した新規予想には `model_provider`、`model_name`、`predicted_at` に加え、実際に使用したプロンプトと安定化した予想入力 JSON の `prompt_sha256`、`prediction_input_sha256` を記録します。過去予想へは補完しません。通常フローを再実行しても、有効な既存予想は再生成・上書きせず、そのままシミュレーション以降へ渡します。
 
+統計重視予想は `config/prompt_prediction_statistical.txt` を使用します。今回・過去走のオッズ、人気、オッズ取得元・時刻・URL、市場由来の順位・確率を再帰的に除外し、レース条件、過去成績、走破タイム、着差、通過順、上がり、馬体重、`career_summaries` などの客観データだけを渡します。`prediction`、`simulation`、`result`、`evaluation` は入力に含めません。結果取得済みまたは発走済みのレースへ統計予想を後付けしません。
+
 `run_post.py`
 
 1. `collect.py` で結果と払戻を取得
 2. `simulate.py` で両方式の `post` を確定
-3. `evaluation.py` で予測評価指標を生成
-4. `evaluation_summary.py` で全レースの評価集計を更新
+3. `evaluation.py` で従来予想と統計重視予想へ同じ予測評価指標を生成
+4. `evaluation_summary.py` で従来集計、方式別集計、同一レース比較を更新
 5. `render.py` で同じページと index を更新
 6. `publish.py` で `public/` を更新
 
@@ -177,9 +182,11 @@ Codex は一時作業ディレクトリ内の読み取り専用・構造化出�
 - 単勝オッズの逆数を全馬で正規化した市場ベースライン。差分はモデル指標から市場指標を引きます。
 - `simulation.value.post` と `simulation.dutching.post` の収支要約
 
+トップレベルの `evaluation` は従来予想の評価です。統計重視予想には同じ勝ち馬確率・順位、Top1/3/5、Log Loss、Brier Score、市場ベースライン比較を計算して `evaluation.variants` へ保存します。統計重視予想の評価にはシミュレーション収支を混在させません。
+
 有効な単勝オッズが全馬分そろわない場合、`market_baseline.available` は `false` です。発走後に記録されたオッズを使用した比較には `odds_recorded_after_start: true` と注記を保存します。購入なしの評価用ROIは `null` です。
 
-`data/evaluation_summary.json` は正常な `evaluation` があるrace JSONだけから再生成する派生データです。全体のTop1・Top3・Top5成績、Log Loss・Brier Score、市場比較、確率校正、条件別精度、両購入シミュレーションの累積成績を保持し、race JSONへは書き戻しません。発走後オッズのレースは正式な市場比較から除外します。任意に再集計する場合は次を実行します。
+`data/evaluation_summary.json` は正常な `evaluation` があるrace JSONだけから再生成する派生データです。既存のトップレベル集計は従来予想の意味を維持します。`methods.traditional` と `methods.statistical` に方式別のTop1・Top3・Top5成績、Log Loss・Brier Score、確率校正、条件別精度を保存します。`paired_comparison` は両方式の評価がそろう同一レースだけを母数とし、Log Loss・Brier Score差は `statistical - traditional`（負なら統計重視予想が優位）です。市場比較と両購入シミュレーションの累積成績は従来予想のままです。race JSONへは書き戻さず、発走後オッズのレースは正式な市場比較から除外します。任意に再集計する場合は次を実行します。
 
 ```bash
 python src/evaluation_summary.py
@@ -192,6 +199,8 @@ python src/evaluation_summary.py
 ## Codex 予想フロー
 
 通常のレース前運用は `run_pre.py` だけで完了します。収集時に確定した予想入力 JSON は監査用に `outbox/chat_input/prediction/` にも保存しますが、人が外部チャットへ貼り付けたり、応答を `inbox/` へ戻したりする必要はありません。
+
+新規公開では従来予想と統計重視予想の両方が正常に保存されてからシミュレーションへ進みます。従来予想だけが既にある場合はそれを再利用し、欠けている統計重視予想だけを生成します。統計重視予想に失敗した場合は従来予想を残したまま停止し、不完全なページを公開しません。
 
 引数なしでは、次の連続する中央競馬開催日を1開催期間として探索します。その期間の重賞（G1・G2・G3）をレース番号に関係なくすべて収集し、重賞が1件もない場合だけ各開催場の11Rをすべて収集します。各レースについて `odds_reference_minutes_before_start` に基づく推奨取得目標時刻を表示し、目標時刻より前でも警告だけを表示して処理を続行します。
 

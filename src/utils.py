@@ -11,8 +11,10 @@ from typing import Any
 import yaml
 
 JST = timezone(timedelta(hours=9), name="Asia/Tokyo")
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 REQUIRED_TOP_LEVEL_KEYS = ("meta", "race", "horses", "prediction", "simulation", "result", "evaluation")
+TRADITIONAL_PREDICTION_METHOD = "traditional"
+STATISTICAL_PREDICTION_METHOD = "statistical"
 TRACK_CODE_TO_NAME = {
     "01": "札幌",
     "02": "函館",
@@ -245,6 +247,35 @@ def set_race_status(payload: dict[str, Any], *, pre_status: str | None = None, p
         meta["pre_status"] = pre_status
     if post_status is not None:
         meta["post_status"] = post_status
+
+
+def prediction_variants(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    prediction = payload.get("prediction")
+    variants = prediction.get("variants") if isinstance(prediction, dict) else None
+    return [item for item in variants if isinstance(item, dict)] if isinstance(variants, list) else []
+
+
+def evaluation_variants(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    evaluation = payload.get("evaluation")
+    variants = evaluation.get("variants") if isinstance(evaluation, dict) else None
+    return [item for item in variants if isinstance(item, dict)] if isinstance(variants, list) else []
+
+
+def find_variant(
+    variants: list[dict[str, Any]],
+    method: str,
+    provider: str | None = None,
+    model: str | None = None,
+) -> dict[str, Any] | None:
+    for item in variants:
+        if item.get("method") != method:
+            continue
+        if provider is not None and item.get("model_provider") != provider:
+            continue
+        if model is not None and item.get("model_name") != model:
+            continue
+        return item
+    return None
 
 
 def race_json_path(

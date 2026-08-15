@@ -216,6 +216,88 @@ class RenderTests(unittest.TestCase):
         self.assertEqual([row["horse_number"] for row in context["horse_rows"]], [1, 2, 3])
         self.assertEqual([row["prediction_rank"] for row in context["horse_rows"]], [1, 2, 3])
 
+    def test_statistical_prediction_and_evaluation_render_separately(self) -> None:
+        payload = make_payload(
+            predicted=True,
+            track="中山",
+            date="2026-01-01",
+            name="方式比較レース",
+        )
+        payload["prediction"]["variants"] = [
+            {
+                "method": "statistical",
+                "model_provider": "codex",
+                "model_name": "gpt-test",
+                "optional_summary": "客観データの比較では3番を上位評価。",
+                "horses": [
+                    {"horse_number": 1, "win_probability": 0.2, "reason": "条件実績。"},
+                    {"horse_number": 2, "win_probability": 0.3, "reason": "近走内容。"},
+                    {"horse_number": 3, "win_probability": 0.5, "reason": "相手比較。"},
+                ],
+            }
+        ]
+        payload["result"] = {
+            "finish_order": [3, 1, 2],
+            "horses": [
+                {"horse_number": 3, "finish_position": 1},
+                {"horse_number": 1, "finish_position": 2},
+                {"horse_number": 2, "finish_position": 3},
+            ],
+            "payouts": {"win": [{"horse_number": 3, "payout_per_100": 500}]},
+        }
+        payload["evaluation"] = {
+            "winner": {"horse_number": 3, "predicted_probability": 0.2, "predicted_rank": 3},
+            "metrics": {
+                "top1_hit": False,
+                "top3_hit": True,
+                "top5_hit": True,
+                "log_loss": 1.609438,
+                "brier_score": 0.24,
+            },
+            "market_baseline": {"available": False},
+            "simulation_results": {
+                "value": {"total_stake": 0, "total_return": 0, "profit": 0, "roi": None},
+                "dutching": {"total_stake": 0, "total_return": 0, "profit": 0, "roi": None},
+            },
+            "variants": [
+                {
+                    "method": "statistical",
+                    "model_provider": "codex",
+                    "model_name": "gpt-test",
+                    "winner": {
+                        "horse_number": 3,
+                        "predicted_probability": 0.5,
+                        "predicted_rank": 1,
+                    },
+                    "metrics": {
+                        "top1_hit": True,
+                        "top3_hit": True,
+                        "top5_hit": True,
+                        "log_loss": 0.693147,
+                        "brier_score": 0.126667,
+                    },
+                    "market_baseline": {"available": False},
+                }
+            ],
+        }
+
+        context = build_race_context(payload)
+        rendered = build_environment(ROOT).get_template("race.html.j2").render(**context)
+
+        self.assertEqual(
+            [row["prediction_rank"] for row in context["statistical_horse_rows"]],
+            [3, 2, 1],
+        )
+        self.assertEqual(context["statistical_evaluation"]["winner"]["predicted_rank"], 1)
+        self.assertIn("<h2>従来予想</h2>", rendered)
+        self.assertIn("<h2>統計重視予想</h2>", rendered)
+        self.assertIn("市場由来の情報を使用せず", rendered)
+        self.assertIn("客観データの比較では3番を上位評価。", rendered)
+        self.assertEqual(rendered.count('class="prediction-table" data-sortable'), 2)
+        self.assertIn("従来予想の予測評価", rendered)
+        self.assertIn("統計重視予想の予測評価", rendered)
+        self.assertEqual(rendered.count("シミュレーション収支"), 1)
+
     def test_render_only_prediction_races_and_remove_stale_managed_html(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -314,6 +396,8 @@ class RenderTests(unittest.TestCase):
             self.assertIn('<span class="ai-badge">AI予想</span>', race_html)
             self.assertIn('<span class="status status-prediction">予想公開</span>', race_html)
             self.assertIn("<title>予想済み AI予想 | keiba-oracle</title>", race_html)
+            self.assertIn("<h2>予想</h2>", race_html)
+            self.assertNotIn("統計重視予想", race_html)
             self.assertIn(
                 '<meta name="description" content="予想済みのAI予想。各馬の1着確率、予想理由、上位予測ダッチング方式と期待値重視方式による購入シミュレーションを掲載します。">',
                 race_html,

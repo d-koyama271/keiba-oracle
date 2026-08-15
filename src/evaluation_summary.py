@@ -10,12 +10,17 @@ from evaluation import normalized_market_probabilities, ranked_probabilities, ro
 from utils import (
     atomic_write_json,
     data_dir,
+    evaluation_variants,
+    find_variant,
     list_race_files,
     load_config,
     load_race_json,
     log_job,
     now_jst_iso,
+    prediction_variants,
     setup_logger,
+    STATISTICAL_PREDICTION_METHOD,
+    TRADITIONAL_PREDICTION_METHOD,
 )
 
 CALIBRATION_BUCKETS = (
@@ -46,8 +51,7 @@ def positive_integer(value: Any) -> int | None:
     return int(number)
 
 
-def evaluation_record(payload: dict[str, Any]) -> dict[str, Any] | None:
-    evaluation = payload.get("evaluation")
+def evaluation_record_from(evaluation: Any) -> dict[str, Any] | None:
     if not isinstance(evaluation, dict):
         return None
     winner = evaluation.get("winner")
@@ -77,6 +81,10 @@ def evaluation_record(payload: dict[str, Any]) -> dict[str, Any] | None:
         "top3_hit": hits[1],
         "top5_hit": hits[2],
     }
+
+
+def evaluation_record(payload: dict[str, Any]) -> dict[str, Any] | None:
+    return evaluation_record_from(payload.get("evaluation"))
 
 
 def aggregate_prediction_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
@@ -164,11 +172,10 @@ def aggregate_segments(
 
 
 def aggregate_calibration(
-    evaluated: list[tuple[dict[str, Any], dict[str, Any]]],
+    evaluated: list[tuple[dict[str, Any], dict[str, Any], dict[str, Any]]],
 ) -> list[dict[str, Any]]:
     values = [{"probabilities": [], "wins": 0} for _ in CALIBRATION_BUCKETS]
-    for payload, record in evaluated:
-        prediction = payload.get("prediction") or {}
+    for _, record, prediction in evaluated:
         for horse in prediction.get("horses", []):
             horse_number = positive_integer(horse.get("horse_number"))
             probability = finite_number(horse.get("win_probability"))
@@ -197,6 +204,97 @@ def aggregate_calibration(
             }
         )
     return calibration
+
+
+def method_evaluation(
+    payload: dict[str, Any],
+    method: str,
+) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    if method == TRADITIONAL_PREDICTION_METHOD:
+        prediction = payload.get("prediction")
+        record = evaluation_record(payload)
+        if not isinstance(prediction, dict) or record is None:
+            return None
+        return record, prediction
+
+    evaluation = find_variant(evaluation_variants(payload), method)
+    if evaluation is None:
+        return None
+    prediction = find_variant(
+        prediction_variants(payload),
+        method,
+        evaluation.get("model_provider"),
+        evaluation.get("model_name"),
+    )
+    record = evaluation_record_from(evaluation)
+    if prediction is None or record is None:
+        return None
+    return record, prediction
+
+
+def collect_method_evaluations(
+    payloads: list[dict[str, Any]],
+    method: str,
+) -> list[tuple[dict[str, Any], dict[str, Any], dict[str, Any]]]:
+    evaluated = []
+    for payload in payloads:
+        item = method_evaluation(payload, method)
+        if item is not None:
+            record, prediction = item
+            evaluated.append((payload, record, prediction))
+    return evaluated
+
+
+def build_method_summary(
+    evaluated: list[tuple[dict[str, Any], dict[str, Any], dict[str, Any]]],
+) -> dict[str, Any]:
+    return {
+        "overall": aggregate_prediction_metrics([record for _, record, _ in evaluated]),
+        "calibration": aggregate_calibration(evaluated),
+        "segments": aggregate_segments([(payload, record) for payload, record, _ in evaluated]),
+    }
+
+
+def build_paired_comparison(payloads: list[dict[str, Any]]) -> dict[str, Any]:
+    traditional_records = []
+    statistical_records = []
+    for payload in payloads:
+        traditional = method_evaluation(payload, TRADITIONAL_PREDICTION_METHOD)
+        statistical = method_evaluation(payload, STATISTICAL_PREDICTION_METHOD)
+        if traditional is None or statistical is None:
+            continue
+        traditional_records.append(traditional[0])
+        statistical_records.append(statistical[0])
+
+    traditional_metrics = aggregate_prediction_metrics(traditional_records)
+    statistical_metrics = aggregate_prediction_metrics(statistical_records)
+    count = len(traditional_records)
+    return {
+        "compared_races": count,
+        "methods": {
+            TRADITIONAL_PREDICTION_METHOD: traditional_metrics,
+            STATISTICAL_PREDICTION_METHOD: statistical_metrics,
+        },
+        "differences": {
+            "definition": "statistical minus traditional; negative values favor statistical",
+            "average_log_loss": (
+                round_metric(
+                    statistical_metrics["average_log_loss"]
+                    - traditional_metrics["average_log_loss"]
+                )
+                if count
+                else None
+            ),
+            "average_brier_score": (
+                round_metric(
+                    statistical_metrics["average_brier_score"]
+                    - traditional_metrics["average_brier_score"]
+                )
+                if count
+                else None
+            ),
+        },
+    }
 
 
 def comparable_market_records(
@@ -368,23 +466,26 @@ def build_evaluation_summary(
     payloads: list[dict[str, Any]],
     generated_at: str | None = None,
 ) -> dict[str, Any]:
-    evaluated = []
-    for payload in payloads:
-        record = evaluation_record(payload)
-        if record is not None:
-            evaluated.append((payload, record))
+    traditional = collect_method_evaluations(payloads, TRADITIONAL_PREDICTION_METHOD)
+    statistical = collect_method_evaluations(payloads, STATISTICAL_PREDICTION_METHOD)
+    evaluated = [(payload, record) for payload, record, _ in traditional]
     comparable = comparable_market_records(evaluated)
     return {
         "generated_at": generated_at or now_jst_iso(),
         "overall": aggregate_prediction_metrics([record for _, record in evaluated]),
         "market_comparison": aggregate_market_comparison(comparable),
-        "calibration": aggregate_calibration(evaluated),
+        "calibration": aggregate_calibration(traditional),
         "segments": aggregate_segments(evaluated),
         "market_characteristics": aggregate_market_characteristics(comparable),
         "simulation": {
             "value": aggregate_simulation(evaluated, "value"),
             "dutching": aggregate_simulation(evaluated, "dutching"),
         },
+        "methods": {
+            TRADITIONAL_PREDICTION_METHOD: build_method_summary(traditional),
+            STATISTICAL_PREDICTION_METHOD: build_method_summary(statistical),
+        },
+        "paired_comparison": build_paired_comparison(payloads),
     }
 
 

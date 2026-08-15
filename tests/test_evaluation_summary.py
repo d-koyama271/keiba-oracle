@@ -135,6 +135,55 @@ def evaluated_payload(
     }
 
 
+def add_statistical_evaluation(
+    payload: dict,
+    probabilities: list[float],
+    *,
+    log_loss: float,
+    brier_score: float,
+) -> dict:
+    winner_number = payload["result"]["horses"][0]["horse_number"]
+    ranked = sorted(
+        enumerate(probabilities, 1),
+        key=lambda item: (-item[1], item[0]),
+    )
+    winner_rank = next(index for index, item in enumerate(ranked, 1) if item[0] == winner_number)
+    prediction = {
+        "method": "statistical",
+        "model_provider": "codex",
+        "model_name": "gpt-test",
+        "horses": [
+            {
+                "horse_number": number,
+                "win_probability": probability,
+                "reason": "statistical",
+            }
+            for number, probability in enumerate(probabilities, 1)
+        ],
+    }
+    evaluation = {
+        "method": "statistical",
+        "model_provider": "codex",
+        "model_name": "gpt-test",
+        "winner": {
+            "horse_number": winner_number,
+            "predicted_probability": probabilities[winner_number - 1],
+            "predicted_rank": winner_rank,
+        },
+        "metrics": {
+            "log_loss": log_loss,
+            "brier_score": brier_score,
+            "top1_hit": winner_rank <= 1,
+            "top3_hit": winner_rank <= 3,
+            "top5_hit": winner_rank <= 5,
+        },
+        "market_baseline": {"available": False},
+    }
+    payload.setdefault("prediction", {}).setdefault("variants", []).append(prediction)
+    payload.setdefault("evaluation", {}).setdefault("variants", []).append(evaluation)
+    return payload
+
+
 class EvaluationSummaryTests(unittest.TestCase):
     def test_zero_evaluations_are_not_reported_as_zero_accuracy(self) -> None:
         summary = build_evaluation_summary(
@@ -195,6 +244,119 @@ class EvaluationSummaryTests(unittest.TestCase):
         self.assertEqual(summary["segments"]["field_size_band"]["～9頭"]["evaluated_races"], 1)
         self.assertEqual(summary["segments"]["field_size_band"]["10～13頭"]["evaluated_races"], 1)
         self.assertEqual(summary["segments"]["field_size_band"]["17頭以上"]["evaluated_races"], 1)
+
+    def test_method_summaries_and_paired_comparison_use_matching_races_only(self) -> None:
+        both_one = add_statistical_evaluation(
+            evaluated_payload(
+                "both-one",
+                winner_rank=1,
+                log_loss=0.1,
+                brier_score=0.01,
+                field_size=3,
+            ),
+            [0.2, 0.6, 0.2],
+            log_loss=0.3,
+            brier_score=0.03,
+        )
+        both_two = add_statistical_evaluation(
+            evaluated_payload(
+                "both-two",
+                winner_rank=3,
+                log_loss=0.5,
+                brier_score=0.05,
+                field_size=3,
+            ),
+            [0.1, 0.2, 0.7],
+            log_loss=0.2,
+            brier_score=0.02,
+        )
+        traditional_only = evaluated_payload(
+            "traditional-only",
+            winner_rank=2,
+            log_loss=0.4,
+            brier_score=0.04,
+            field_size=3,
+        )
+        statistical_only = add_statistical_evaluation(
+            evaluated_payload(
+                "statistical-only",
+                winner_rank=2,
+                log_loss=0.9,
+                brier_score=0.09,
+                track="京都",
+                field_size=3,
+            ),
+            [0.1, 0.8, 0.1],
+            log_loss=0.15,
+            brier_score=0.015,
+        )
+        statistical_only["prediction"] = {
+            "variants": statistical_only["prediction"]["variants"]
+        }
+        statistical_only["evaluation"] = {
+            "variants": statistical_only["evaluation"]["variants"]
+        }
+
+        summary = build_evaluation_summary(
+            [both_one, both_two, traditional_only, statistical_only],
+            "2026-01-01T00:00:00+09:00",
+        )
+
+        self.assertEqual(summary["overall"]["evaluated_races"], 3)
+        traditional = summary["methods"]["traditional"]
+        statistical = summary["methods"]["statistical"]
+        self.assertEqual(traditional["overall"]["evaluated_races"], 3)
+        self.assertEqual(statistical["overall"]["evaluated_races"], 3)
+        self.assertEqual(statistical["overall"]["top1_hits"], 2)
+        self.assertEqual(statistical["segments"]["track"]["京都"]["evaluated_races"], 1)
+        self.assertEqual(
+            sum(item["samples"] for item in statistical["calibration"]),
+            9,
+        )
+
+        paired = summary["paired_comparison"]
+        self.assertEqual(paired["compared_races"], 2)
+        self.assertEqual(paired["methods"]["traditional"]["top1_hits"], 1)
+        self.assertEqual(paired["methods"]["statistical"]["top1_hits"], 1)
+        self.assertEqual(paired["methods"]["traditional"]["average_log_loss"], 0.3)
+        self.assertEqual(paired["methods"]["statistical"]["average_log_loss"], 0.25)
+        self.assertEqual(paired["differences"]["average_log_loss"], -0.05)
+        self.assertEqual(paired["differences"]["average_brier_score"], -0.005)
+        self.assertIn("negative values favor statistical", paired["differences"]["definition"])
+
+    def test_method_summaries_support_traditional_only_and_statistical_only(self) -> None:
+        traditional_only = evaluated_payload("traditional-only", field_size=3)
+        statistical_only = add_statistical_evaluation(
+            evaluated_payload("statistical-only", field_size=3),
+            [0.2, 0.6, 0.2],
+            log_loss=0.4,
+            brier_score=0.04,
+        )
+        statistical_only["prediction"] = {
+            "variants": statistical_only["prediction"]["variants"]
+        }
+        statistical_only["evaluation"] = {
+            "variants": statistical_only["evaluation"]["variants"]
+        }
+
+        traditional_summary = build_evaluation_summary([traditional_only])
+        statistical_summary = build_evaluation_summary([statistical_only])
+
+        self.assertEqual(
+            traditional_summary["methods"]["traditional"]["overall"]["evaluated_races"],
+            1,
+        )
+        self.assertEqual(
+            traditional_summary["methods"]["statistical"]["overall"]["evaluated_races"],
+            0,
+        )
+        self.assertEqual(traditional_summary["paired_comparison"]["compared_races"], 0)
+        self.assertEqual(statistical_summary["overall"]["evaluated_races"], 0)
+        self.assertEqual(
+            statistical_summary["methods"]["statistical"]["overall"]["evaluated_races"],
+            1,
+        )
+        self.assertEqual(statistical_summary["paired_comparison"]["compared_races"], 0)
 
     def test_market_comparison_excludes_unavailable_and_after_start_odds(self) -> None:
         before_one = evaluated_payload(

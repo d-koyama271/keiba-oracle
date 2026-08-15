@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import copy
 import json
 import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import datetime
 from logging import NullHandler, getLogger
 from pathlib import Path
 from unittest.mock import patch
@@ -18,7 +20,7 @@ import run_pre  # noqa: E402
 import run_pre_collect  # noqa: E402
 import simulate  # noqa: E402
 from llm_client import LLMClient  # noqa: E402
-from utils import load_race_json, save_race_json  # noqa: E402
+from utils import JST, load_race_json, save_race_json  # noqa: E402
 
 
 def race_payload(prediction: dict | None = None) -> dict:
@@ -87,6 +89,18 @@ def logger(name: str):
 
 
 class PredictionValidationTests(unittest.TestCase):
+    def test_statistical_prompt_is_dedicated_and_contains_no_market_terms(self) -> None:
+        prompt_text = (ROOT / "config" / "prompt_prediction_statistical.txt").read_text(
+            encoding="utf-8"
+        )
+
+        for forbidden in predict.STATISTICAL_FORBIDDEN_OUTPUT_TERMS:
+            self.assertNotIn(forbidden, prompt_text.lower())
+        self.assertIn("全出走馬を横断比較", prompt_text)
+        self.assertIn("全馬の確率合計を1.0", prompt_text)
+        self.assertIn("Web検索", prompt_text)
+        self.assertIn("{{RACE_CONTEXT}}", prompt_text)
+
     def test_prediction_audit_hashes_are_stable_and_content_sensitive(self) -> None:
         payload = race_payload()
         first = predict.build_prediction_chat_input({}, payload)
@@ -212,6 +226,203 @@ class PredictionValidationTests(unittest.TestCase):
             self.assertNotIn("prompt_sha256", load_race_json(path)["prediction"])
             self.assertNotIn("prediction_input_sha256", load_race_json(path)["prediction"])
 
+    def test_statistical_input_removes_all_market_and_non_input_data(self) -> None:
+        payload = race_payload(valid_prediction())
+        payload["race"].update(
+            {
+                "surface": "芝",
+                "distance": 2000,
+                "odds_captured_at": "2026-08-16T14:45:00+09:00",
+                "odds_source": "netkeiba",
+                "odds_source_url": "https://example.invalid/odds",
+                "odds_reference_minutes_before_start": 60,
+                "normalized_market_probability": 0.4,
+                "source_url": "https://example.invalid/race",
+            }
+        )
+        payload["horses"][0].update(
+            {
+                "jockey": "騎手A",
+                "past_runs": [
+                    {
+                        "race_id": "202601010101",
+                        "finish_position": 2,
+                        "race_time_seconds": 120.4,
+                        "win_odds": 3.5,
+                        "popularity": 1,
+                        "market_probability": 0.25,
+                    }
+                ],
+            }
+        )
+        payload["simulation"]["value"]["pre"] = {"secret": "simulation"}
+        payload["result"] = {"secret": "result"}
+        payload["evaluation"] = {"secret": "evaluation"}
+        original = copy.deepcopy(payload)
+
+        first = predict.build_statistical_prediction_input(payload)
+        second = predict.build_statistical_prediction_input(payload)
+
+        self.assertEqual(first, second)
+        self.assertEqual(set(first), {"meta", "race", "horses"})
+        self.assertEqual(first["meta"]["method"], "statistical")
+        self.assertEqual(first["race"]["surface"], "芝")
+        self.assertEqual(first["race"]["distance"], 2000)
+        self.assertEqual(first["horses"][0]["jockey"], "騎手A")
+        self.assertEqual(first["horses"][0]["past_runs"][0]["finish_position"], 2)
+        self.assertEqual(first["horses"][0]["past_runs"][0]["race_time_seconds"], 120.4)
+
+        def all_keys(value):
+            if isinstance(value, dict):
+                for key, item in value.items():
+                    yield key
+                    yield from all_keys(item)
+            elif isinstance(value, list):
+                for item in value:
+                    yield from all_keys(item)
+
+        keys = set(all_keys(first))
+        for forbidden in (
+            "win_odds",
+            "popularity",
+            "market_probability",
+            "normalized_market_probability",
+            "odds_captured_at",
+            "odds_source",
+            "odds_source_url",
+            "odds_reference_minutes_before_start",
+            "source_url",
+            "prediction",
+            "simulation",
+            "result",
+            "evaluation",
+        ):
+            self.assertNotIn(forbidden, keys)
+        self.assertEqual(payload, original)
+        self.assertEqual(
+            predict.prediction_input_sha256(first),
+            predict.prediction_input_sha256(second),
+        )
+
+    def test_statistical_prediction_is_saved_as_variant_and_reused(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            prompt_text = "客観データだけを使う: {{RACE_CONTEXT}}"
+            (root / "config").mkdir()
+            (root / "config" / "prompt_prediction_statistical.txt").write_text(
+                prompt_text,
+                encoding="utf-8",
+            )
+            path = root / "data" / "races" / "2026-08-16" / "sapporo_11r.json"
+            traditional = valid_prediction()
+            payload = race_payload(copy.deepcopy(traditional))
+            payload["race"]["odds_source"] = "netkeiba"
+            payload["horses"][0]["past_runs"] = [
+                {"finish_position": 1, "win_odds": 2.5, "popularity": 1}
+            ]
+            save_race_json(path, payload)
+            frozen_input = predict.build_statistical_prediction_input(payload)
+            captured: dict[str, str] = {}
+
+            class FakeClient:
+                def invoke_json(self, prompt: str, max_retries: int = 2) -> dict:
+                    captured["prompt"] = prompt
+                    return {
+                        "horses": [
+                            {"horse_number": 1, "win_probability": 0.25, "reason": "近走内容を評価。"},
+                            {"horse_number": 2, "win_probability": 0.75, "reason": "条件適性を評価。"},
+                        ],
+                        "optional_summary": "2番を上位評価。",
+                    }
+
+            config = {"data_dir": "data", "llm_provider": "codex", "llm_model": "gpt-test"}
+            before_start = datetime(2026, 8, 16, 12, 0, tzinfo=JST)
+            with patch.object(predict, "setup_logger", return_value=logger("test.statistical")), patch.object(
+                predict.LLMClient,
+                "from_config",
+                return_value=FakeClient(),
+            ), patch.object(predict, "now_jst", return_value=before_start), patch.object(
+                predict,
+                "now_jst_iso",
+                return_value="2026-08-16T12:00:00+09:00",
+            ):
+                self.assertTrue(
+                    predict.predict_statistical_file(
+                        path,
+                        config,
+                        "test-statistical",
+                        root,
+                        frozen_input,
+                    )
+                )
+
+            saved = load_race_json(path)
+            self.assertEqual(saved["meta"]["schema_version"], 6)
+            self.assertEqual(
+                set(saved),
+                {"meta", "race", "horses", "prediction", "simulation", "result", "evaluation"},
+            )
+            saved_traditional = copy.deepcopy(saved["prediction"])
+            variants = saved_traditional.pop("variants")
+            self.assertEqual(saved_traditional, traditional)
+            self.assertEqual(len(variants), 1)
+            statistical = variants[0]
+            self.assertEqual(statistical["method"], "statistical")
+            self.assertEqual(statistical["model_provider"], "codex")
+            self.assertEqual(statistical["model_name"], "gpt-test")
+            self.assertEqual(statistical["predicted_at"], "2026-08-16T12:00:00+09:00")
+            self.assertEqual(statistical["prompt_sha256"], predict.sha256_text(prompt_text))
+            self.assertEqual(
+                statistical["prediction_input_sha256"],
+                predict.prediction_input_sha256(frozen_input),
+            )
+            self.assertAlmostEqual(
+                sum(item["win_probability"] for item in statistical["horses"]),
+                1.0,
+            )
+            self.assertNotIn("win_odds", captured["prompt"])
+            self.assertNotIn("popularity", captured["prompt"])
+            self.assertNotIn("odds_source", captured["prompt"])
+
+            before_reuse = path.read_bytes()
+            with patch.object(predict, "setup_logger", return_value=logger("test.statistical.reuse")), patch.object(
+                predict.LLMClient,
+                "from_config",
+                side_effect=AssertionError("Codex must not be called"),
+            ):
+                self.assertTrue(
+                    predict.predict_statistical_file(path, config, "test-statistical-reuse", root)
+                )
+            self.assertEqual(path.read_bytes(), before_reuse)
+
+    def test_statistical_prediction_is_not_backfilled_after_result(self) -> None:
+        payload = race_payload(valid_prediction())
+        payload["result"] = {"horses": [{"horse_number": 1, "finish_position": 1}]}
+
+        with self.assertRaisesRegex(ValueError, "after result collection"):
+            predict.ensure_statistical_prediction_is_pre_race(payload)
+
+        payload["result"] = None
+        after_start = datetime(2026, 8, 16, 16, 0, tzinfo=JST)
+        with patch.object(predict, "now_jst", return_value=after_start):
+            with self.assertRaisesRegex(ValueError, "after race start"):
+                predict.ensure_statistical_prediction_is_pre_race(payload)
+
+    def test_statistical_reason_cannot_reference_market_information(self) -> None:
+        with self.assertRaisesRegex(ValueError, "market-related wording"):
+            predict.validate_statistical_prediction_text(
+                {
+                    "horses": [
+                        {
+                            "horse_number": 1,
+                            "win_probability": 1.0,
+                            "reason": "上位人気を評価。",
+                        }
+                    ],
+                    "optional_summary": "客観比較。",
+                }
+            )
+
 
 class CodexClientTests(unittest.TestCase):
     def test_codex_cli_is_isolated_and_uses_structured_output(self) -> None:
@@ -302,6 +513,16 @@ class FlowAndCompatibilityTests(unittest.TestCase):
                 },
             }
 
+            class StatisticalClient:
+                def invoke_json(self, prompt: str, max_retries: int = 2) -> dict:
+                    return {
+                        "horses": [
+                            {"horse_number": 1, "win_probability": 0.2, "reason": "近走内容を評価。"},
+                            {"horse_number": 2, "win_probability": 0.8, "reason": "条件適性を評価。"},
+                        ],
+                        "optional_summary": "2番を上位評価。",
+                    }
+
             with patch.object(
                 run_pre,
                 "run_pre_collect_flow",
@@ -320,15 +541,30 @@ class FlowAndCompatibilityTests(unittest.TestCase):
             ), patch.object(run_pre, "publish_site", return_value=root / "public"), patch.object(
                 predict.LLMClient,
                 "from_config",
-                side_effect=AssertionError("Codex must not be called"),
+                return_value=StatisticalClient(),
+            ), patch.object(
+                predict,
+                "now_jst",
+                return_value=datetime(2026, 8, 16, 12, 0, tzinfo=JST),
             ):
                 processed = run_pre.run_pre_flow(config, None, "test-pre")
 
             saved = load_race_json(path)
             self.assertEqual(processed, [path])
-            self.assertEqual(saved["prediction"], original_prediction)
+            saved_traditional = copy.deepcopy(saved["prediction"])
+            statistical = saved_traditional.pop("variants")
+            self.assertEqual(saved_traditional, original_prediction)
+            self.assertEqual(statistical[0]["method"], "statistical")
+            self.assertEqual(statistical[0]["horses"][0]["win_probability"], 0.2)
             self.assertIsNotNone(saved["simulation"]["value"]["pre"])
             self.assertIsNotNone(saved["simulation"]["dutching"]["pre"])
+            for selection in saved["simulation"]["value"]["pre"]["selections"]:
+                expected = next(
+                    item["win_probability"]
+                    for item in original_prediction["horses"]
+                    if item["horse_number"] == selection["horse_number"]
+                )
+                self.assertEqual(selection["predicted_probability"], expected)
             self.assertEqual(saved["meta"]["pre_status"], "published")
 
     def test_normal_pre_flow_generates_codex_prediction_then_publishes(self) -> None:
@@ -360,14 +596,26 @@ class FlowAndCompatibilityTests(unittest.TestCase):
                 },
             }
 
+            prompts: list[str] = []
+
             class FakeClient:
                 def invoke_json(self, prompt: str, max_retries: int = 2) -> dict:
+                    prompts.append(prompt)
+                    statistical = '"method": "statistical"' in prompt
                     return {
                         "horses": [
-                            {"horse_number": 1, "win_probability": 0.65, "reason": "条件上位。"},
-                            {"horse_number": 2, "win_probability": 0.35, "reason": "相手強化。"},
+                            {
+                                "horse_number": 1,
+                                "win_probability": 0.25 if statistical else 0.65,
+                                "reason": "条件適性を評価。" if statistical else "条件上位。",
+                            },
+                            {
+                                "horse_number": 2,
+                                "win_probability": 0.75 if statistical else 0.35,
+                                "reason": "近走内容を評価。" if statistical else "相手強化。",
+                            },
                         ],
-                        "optional_summary": "1番を上位評価。",
+                        "optional_summary": "2番を上位評価。" if statistical else "1番を上位評価。",
                     }
 
             with patch.object(
@@ -390,6 +638,10 @@ class FlowAndCompatibilityTests(unittest.TestCase):
                 predict,
                 "now_jst_iso",
                 return_value="2026-08-15T15:00:00+09:00",
+            ), patch.object(
+                predict,
+                "now_jst",
+                return_value=datetime(2026, 8, 16, 12, 0, tzinfo=JST),
             ), patch.object(run_pre, "render_site") as render_site, patch.object(
                 run_pre,
                 "publish_site",
@@ -404,6 +656,16 @@ class FlowAndCompatibilityTests(unittest.TestCase):
             self.assertEqual(
                 [item["win_probability"] for item in saved["prediction"]["horses"]],
                 [0.65, 0.35],
+            )
+            self.assertEqual(len(prompts), 2)
+            self.assertEqual(len(saved["prediction"]["variants"]), 1)
+            self.assertEqual(saved["prediction"]["variants"][0]["method"], "statistical")
+            self.assertEqual(
+                [
+                    item["win_probability"]
+                    for item in saved["prediction"]["variants"][0]["horses"]
+                ],
+                [0.25, 0.75],
             )
             self.assertIsNotNone(saved["simulation"]["value"]["pre"])
             self.assertIsNotNone(saved["simulation"]["dutching"]["pre"])
@@ -429,12 +691,60 @@ class FlowAndCompatibilityTests(unittest.TestCase):
                 "run_pre_collect_flow",
                 return_value=([path], []),
             ), patch.object(run_pre, "setup_logger", return_value=logger("test.pre.input")), patch.object(
+                predict,
+                "now_jst",
+                return_value=datetime(2026, 8, 16, 12, 0, tzinfo=JST),
+            ), patch.object(
                 predict.LLMClient,
                 "from_config",
                 side_effect=AssertionError("Codex must not be called"),
             ):
                 with self.assertRaisesRegex(RuntimeError, "finalized prediction inputs"):
                     run_pre.run_pre_flow(config, None, "test-pre-input")
+
+    def test_pre_flow_stops_before_simulation_when_statistical_prediction_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "data" / "races" / "2026-08-16" / "sapporo_11r.json"
+            original_prediction = valid_prediction()
+            save_race_json(path, race_payload(copy.deepcopy(original_prediction)))
+            config = {
+                "data_dir": str(root / "data"),
+                "llm_provider": "codex",
+                "llm_model": "gpt-test",
+            }
+
+            with patch.object(
+                run_pre,
+                "run_pre_collect_flow",
+                return_value=([path], []),
+            ), patch.object(
+                run_pre,
+                "build_pending_statistical_inputs",
+                return_value={"202601010111": {"meta": {}, "race": {}, "horses": []}},
+            ), patch.object(
+                run_pre,
+                "predict_paths",
+                return_value=[path],
+            ), patch.object(
+                run_pre,
+                "predict_statistical_paths",
+                return_value=[],
+            ), patch.object(run_pre, "simulate_paths") as simulate_paths, patch.object(
+                run_pre,
+                "render_site",
+            ) as render_site, patch.object(run_pre, "publish_site") as publish_site, patch.object(
+                run_pre,
+                "setup_logger",
+                return_value=logger("test.pre.statistical.failure"),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "statistical prediction generation failed"):
+                    run_pre.run_pre_flow(config, None, "test-pre-statistical-failure")
+
+            self.assertEqual(load_race_json(path)["prediction"], original_prediction)
+            simulate_paths.assert_not_called()
+            render_site.assert_not_called()
+            publish_site.assert_not_called()
 
     def test_legacy_import_defaults_to_manual_and_cannot_overwrite(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
