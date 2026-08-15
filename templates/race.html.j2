@@ -482,9 +482,11 @@
       <h3>{{ explained_term("上位予測ダッチング方式", "dutching_method") }}</h3>
       <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
       {% if simulation_dutching_pre %}
+      {% set dutching_min_profit_rate = simulation_dutching_pre.settings.min_profit_rate | default(none) %}
       <div class="metric-grid">
         <div><strong>予算</strong><br>{{ simulation_dutching_pre.budget }}円</div>
         <div><strong>購入単位</strong><br>{{ simulation_dutching_pre.stake_unit }}円</div>
+        <div><strong>{{ explained_term("最低利益率", "minimum_profit_rate") }}</strong><br>{% if dutching_min_profit_rate is not none %}{{ "%.0f"|format(dutching_min_profit_rate * 100) }}%{% else %}-{% endif %}</div>
         <div><strong>自動選択頭数</strong><br>{{ simulation_dutching_pre.selected_count }}頭</div>
         <div><strong>{{ explained_term("カバー確率", "coverage_probability") }}</strong><br>{{ "%.2f"|format(simulation_dutching_pre.coverage_probability * 100) }}%</div>
         <div><strong>{{ explained_term("グループ期待値", "group_expected_value") }}</strong><br>{{ "%.3f"|format(simulation_dutching_pre.group_expected_value) }}</div>
@@ -609,6 +611,7 @@
     </section>
 
     {% if simulation_value_pre and simulation_dutching_pre and custom_simulation_data.horses %}
+    {% set custom_min_profit_rate = simulation_dutching_pre.settings.min_profit_rate | default(0.20) %}
     <div class="panel" id="custom-simulator">
       <h2>カスタム購入シミュレーション</h2>
       <p class="small">予算や各条件を任意に変更して、購入額や払戻額をシミュレーションできます。</p>
@@ -640,6 +643,10 @@
         <div class="simulator-field dutching-field">
           <span class="simulator-field-label"><label for="custom-min-group-ev">最低グループ期待値</label>{{ info_tooltip("グループ期待値", "group_expected_value") }}</span>
           <input id="custom-min-group-ev" name="min_group_expected_value" type="number" min="0" step="0.01" value="{{ simulation_dutching_pre.settings.min_group_expected_value }}">
+        </div>
+        <div class="simulator-field dutching-field">
+          <span class="simulator-field-label"><label for="custom-min-profit-rate">最低利益率（%）</label>{{ info_tooltip("最低利益率", "minimum_profit_rate") }}</span>
+          <input id="custom-min-profit-rate" name="min_profit_rate" type="number" min="0" step="1" value="{{ "%.0f"|format(custom_min_profit_rate * 100) }}" required>
         </div>
         <label class="simulator-field dutching-field">頭数
           <select name="fixed_selection_count">
@@ -859,6 +866,10 @@
         if (!selections.length) {
           rejectionReasons.push("insufficient_budget_units");
         }
+        const requiredMinimumProfit = totalStake * settings.min_profit_rate;
+        if (minimumProfit + SIMULATION_EPSILON < requiredMinimumProfit) {
+          rejectionReasons.push("minimum_profit_rate_below_threshold");
+        }
         if (settings.require_profit_if_hit && minimumProfit <= 0) {
           rejectionReasons.push("minimum_profit_not_positive");
         }
@@ -907,6 +918,7 @@
             max_selection_count: settings.max_selection_count,
             min_coverage_probability: settings.min_coverage_probability,
             min_group_expected_value: settings.min_group_expected_value,
+            min_profit_rate: settings.min_profit_rate,
             require_profit_if_hit: settings.require_profit_if_hit,
           },
           selected_count: 0,
@@ -996,6 +1008,8 @@
             const maxCount = Number(form.elements.max_selection_count.value);
             const coverage = Number(form.elements.min_coverage_probability.value);
             const groupEv = Number(form.elements.min_group_expected_value.value);
+            const profitRateText = String(form.elements.min_profit_rate.value ?? "").trim();
+            const profitRate = Number(profitRateText);
             const fixedCount = Number(form.elements.fixed_selection_count.value);
             if (!Number.isInteger(maxCount) || maxCount < 1 || maxCount > data.horses.length) {
               return "最大対象頭数を出走頭数以内の正の整数で入力してください。";
@@ -1005,6 +1019,9 @@
             }
             if (!Number.isFinite(groupEv) || groupEv < 0) {
               return "最低グループ期待値は0以上で入力してください。";
+            }
+            if (!profitRateText || !Number.isFinite(profitRate) || profitRate < 0) {
+              return "最低利益率は0以上で入力してください。";
             }
             if (fixedCount > maxCount) {
               return "手動指定頭数は最大対象頭数以下にしてください。";
@@ -1098,6 +1115,7 @@
               max_selection_count: Number(form.elements.max_selection_count.value),
               min_coverage_probability: Number(form.elements.min_coverage_probability.value),
               min_group_expected_value: Number(form.elements.min_group_expected_value.value),
+              min_profit_rate: Number(form.elements.min_profit_rate.value) / 100,
               require_profit_if_hit: form.elements.require_profit_if_hit.checked,
             }, Number(form.elements.fixed_selection_count.value));
             renderDutching(result);

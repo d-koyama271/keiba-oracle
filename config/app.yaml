@@ -20,6 +20,7 @@ simulation:
     max_selection_count: 5
     min_coverage_probability: 0.40
     min_group_expected_value: 0.00
+    min_profit_rate: 0.20
     require_profit_if_hit: true
 publish_mode: github_pages
 llm_provider: codex

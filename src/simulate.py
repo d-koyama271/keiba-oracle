@@ -247,6 +247,9 @@ def evaluate_dutching_count(
         rejection_reasons.append("group_expected_value_below_threshold")
     if not selections:
         rejection_reasons.append("insufficient_budget_units")
+    required_minimum_profit = total_stake * float(settings["min_profit_rate"])
+    if minimum_profit + EPSILON < required_minimum_profit:
+        rejection_reasons.append("minimum_profit_rate_below_threshold")
     if bool(settings["require_profit_if_hit"]) and minimum_profit <= 0:
         rejection_reasons.append("minimum_profit_not_positive")
 
@@ -288,6 +291,9 @@ def calculate_dutching_pre(payload: dict[str, Any], config: dict[str, Any]) -> d
     max_selection_count = int(settings["max_selection_count"])
     if max_selection_count <= 0:
         raise ValueError("simulation.dutching.max_selection_count must be positive")
+    min_profit_rate = float(settings["min_profit_rate"])
+    if not math.isfinite(min_profit_rate) or min_profit_rate < 0:
+        raise ValueError("simulation.dutching.min_profit_rate must be finite and zero or positive")
 
     rows = sorted(
         prediction_rows(payload),
@@ -306,6 +312,7 @@ def calculate_dutching_pre(payload: dict[str, Any], config: dict[str, Any]) -> d
             "max_selection_count": max_selection_count,
             "min_coverage_probability": float(settings["min_coverage_probability"]),
             "min_group_expected_value": float(settings["min_group_expected_value"]),
+            "min_profit_rate": min_profit_rate,
             "require_profit_if_hit": bool(settings["require_profit_if_hit"]),
         },
         "selected_count": 0,

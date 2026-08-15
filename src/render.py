@@ -60,12 +60,14 @@ TOOLTIPS = {
     "minimum_budget": "現在の設定条件で、購入額が初めて1購入単位以上になる予算です。",
     "minimum_payout": "選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。",
     "minimum_profit": "選択した馬のうち、最も利益が低い馬が的中した場合の利益です。",
+    "minimum_profit_rate": "選択した馬のうち最も払戻額が低い場合でも、最低利益が合計購入額に対して満たす必要がある割合です。",
     "expected_return": "各馬の予測確率を考慮した、平均的な払戻見込み額です。",
 }
 
 REJECTION_REASON_LABELS = {
     "coverage_probability_below_threshold": "カバー確率が最低基準未満",
     "group_expected_value_below_threshold": "グループ期待値が最低基準未満",
+    "minimum_profit_rate_below_threshold": "最低利益率が最低基準未満",
     "minimum_profit_not_positive": "的中時の最低利益を確保できない",
     "insufficient_budget_units": "予算が購入単位または選択頭数に対して不足",
 }

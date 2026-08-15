@@ -106,6 +106,7 @@ def load_config(config_path: str | Path | None = None) -> dict[str, Any]:
         "max_selection_count",
         "min_coverage_probability",
         "min_group_expected_value",
+        "min_profit_rate",
         "require_profit_if_hit",
     }
     missing_simulation = sorted(simulation_required - set(simulation))

@@ -72,7 +72,7 @@ codex login status
 - `simulation.stake_unit`: 両方式共通の購入金額単位
 - `simulation.value.ev_threshold`: 期待値重視方式の最低 EV（既定値 1.0）
 - `simulation.value.kelly_fraction`: 期待値重視方式の fractional Kelly 係数
-- `simulation.dutching.*`: ダッチング方式の最大頭数、最低カバー確率、最低グループ期待値、的中時利益条件
+- `simulation.dutching.*`: ダッチング方式の最大頭数、最低カバー確率、最低グループ期待値、最低利益率（既定値20%、合計購入額基準）、的中時利益条件
 - `publish_mode`: `github_pages` を想定
 - `llm_provider`: 通常運用では `codex`
 - `llm_model`: Codex で使用するモデル名

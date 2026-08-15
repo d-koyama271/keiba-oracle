@@ -27,6 +27,7 @@ from simulate import (  # noqa: E402
     calculate_value_details,
     calculate_value_post,
     calculate_value_pre,
+    evaluate_dutching_count,
     minimum_budget_for_value_stake,
     select_best_dutching,
     simulate_file,
@@ -43,6 +44,7 @@ def make_config(
     max_selection_count: int = 5,
     min_coverage_probability: float = 0.4,
     min_group_expected_value: float = 0.0,
+    min_profit_rate: float = 0.20,
     require_profit_if_hit: bool = True,
 ) -> dict:
     return {
@@ -57,6 +59,7 @@ def make_config(
                 "max_selection_count": max_selection_count,
                 "min_coverage_probability": min_coverage_probability,
                 "min_group_expected_value": min_group_expected_value,
+                "min_profit_rate": min_profit_rate,
                 "require_profit_if_hit": require_profit_if_hit,
             },
         }
@@ -298,6 +301,11 @@ class ValueSimulationTests(unittest.TestCase):
 
 
 class DutchingSimulationTests(unittest.TestCase):
+    def test_app_config_default_min_profit_rate_is_twenty_percent(self) -> None:
+        config = load_config(ROOT / "config" / "app.yaml")
+
+        self.assertEqual(float(config["simulation"]["dutching"]["min_profit_rate"]), 0.20)
+
     def test_counts_order_metrics_allocation_and_best_candidate(self) -> None:
         result = calculate_dutching_pre(
             make_payload(DUTCHING_ROWS),
@@ -312,6 +320,7 @@ class DutchingSimulationTests(unittest.TestCase):
         self.assertEqual(result["group_expected_value"], 1.22)
         self.assertEqual(result["minimum_payout"], 2000.0)
         self.assertEqual(result["minimum_profit"], 1000.0)
+        self.assertEqual(result["settings"]["min_profit_rate"], 0.20)
         self.assertEqual([(item["horse_number"], item["stake"]) for item in result["selections"]], [(1, 600), (2, 400)])
         self.assertEqual(result["total_stake"], 1000)
         self.assertTrue(all(item["stake"] >= 100 for item in result["selections"]))
@@ -319,6 +328,76 @@ class DutchingSimulationTests(unittest.TestCase):
             max(item["estimated_payout"] for item in result["selections"])
             - min(item["estimated_payout"] for item in result["selections"]),
             400,
+        )
+
+    def test_min_profit_rate_boundary_uses_actual_total_stake(self) -> None:
+        settings = make_config(
+            min_coverage_probability=0.0,
+            min_group_expected_value=0.0,
+            min_profit_rate=0.20,
+            require_profit_if_hit=False,
+        )["simulation"]["dutching"]
+        at_boundary, at_boundary_selections = evaluate_dutching_count(
+            [{"horse_number": 1, "predicted_probability": 1.0, "win_odds": 1.2}],
+            3050,
+            100,
+            settings,
+        )
+        below_boundary, _ = evaluate_dutching_count(
+            [
+                {
+                    "horse_number": 1,
+                    "predicted_probability": 1.0,
+                    "win_odds": 3599 / 3000,
+                }
+            ],
+            3050,
+            100,
+            settings,
+        )
+        smaller_purchase, smaller_selections = evaluate_dutching_count(
+            [{"horse_number": 1, "predicted_probability": 1.0, "win_odds": 1.2}],
+            1550,
+            100,
+            settings,
+        )
+        stricter_settings = dict(settings, min_profit_rate=0.2001)
+        stricter_rate, _ = evaluate_dutching_count(
+            [{"horse_number": 1, "predicted_probability": 1.0, "win_odds": 1.2}],
+            3050,
+            100,
+            stricter_settings,
+        )
+
+        self.assertEqual(sum(item["stake"] for item in at_boundary_selections), 3000)
+        self.assertEqual(at_boundary["minimum_profit"], 600.0)
+        self.assertTrue(at_boundary["eligible"])
+        self.assertEqual(below_boundary["minimum_profit"], 599.0)
+        self.assertIn(
+            "minimum_profit_rate_below_threshold",
+            below_boundary["rejection_reasons"],
+        )
+        self.assertEqual(sum(item["stake"] for item in smaller_selections), 1500)
+        self.assertEqual(smaller_purchase["minimum_profit"], 300.0)
+        self.assertTrue(smaller_purchase["eligible"])
+        self.assertIn(
+            "minimum_profit_rate_below_threshold",
+            stricter_rate["rejection_reasons"],
+        )
+
+    def test_min_profit_rate_can_exclude_every_candidate(self) -> None:
+        result = calculate_dutching_pre(
+            make_payload(DUTCHING_ROWS),
+            make_config(budget=1000, min_profit_rate=10.0),
+        )
+
+        self.assertEqual(result["selected_count"], 0)
+        self.assertEqual(result["selections"], [])
+        self.assertTrue(
+            all(
+                "minimum_profit_rate_below_threshold" in item["rejection_reasons"]
+                for item in result["evaluated_counts"]
+            )
         )
 
     def test_probability_tie_uses_horse_number(self) -> None:
@@ -574,7 +653,9 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         self.assertIn('<label class="simulator-field dutching-field">最大対象頭数', rendered)
         self.assertIn('name="budget" type="number" min="100" step="100" value="1000"', rendered)
         self.assertIn('name="ev_threshold" type="number" min="0" step="0.01" value="1.0"', rendered)
+        self.assertIn('name="min_profit_rate" type="number" min="0" step="1" value="20"', rendered)
         self.assertIn("最低EVは0以上で入力してください。", rendered)
+        self.assertIn("最低利益率は0以上で入力してください。", rendered)
         self.assertIn('<div class="page-badges">', rendered)
         self.assertIn('<span class="ai-badge">AI予想</span>', rendered)
         self.assertIn('<span class="status status-result">結果公開</span>', rendered)
@@ -609,6 +690,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
             "現在の設定条件で、購入額が初めて1購入単位以上になる予算です。",
             "選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。",
             "選択した馬のうち、最も利益が低い馬が的中した場合の利益です。",
+            "選択した馬のうち最も払戻額が低い場合でも、最低利益が合計購入額に対して満たす必要がある割合です。",
             "各馬の予測確率を考慮した、平均的な払戻見込み額です。",
         ):
             self.assertIn(description, rendered)
@@ -630,11 +712,32 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
             embedded["display"]["rejection_reason_labels"]["coverage_probability_below_threshold"],
             "カバー確率が最低基準未満",
         )
+        self.assertEqual(
+            embedded["display"]["rejection_reason_labels"]["minimum_profit_rate_below_threshold"],
+            "最低利益率が最低基準未満",
+        )
         self.assertNotIn("localStorage", rendered)
         self.assertNotIn("document.cookie", rendered)
         self.assertNotIn("fetch(", rendered)
         self.assertIn('id="custom-simulator-empty-reason"', rendered)
         self.assertIn("valueNoPurchaseReason(details, stakeUnit, settings.kelly_fraction)", rendered)
+
+    def test_legacy_dutching_settings_render_without_recalculation(self) -> None:
+        payload = self.full_payload()
+        del payload["simulation"]["dutching"]["pre"]["settings"]["min_profit_rate"]
+        simulation_before = copy.deepcopy(payload["simulation"])
+
+        rendered = build_environment(ROOT).get_template("race.html.j2").render(
+            **build_race_context(payload)
+        )
+        soup = BeautifulSoup(rendered, "html.parser")
+
+        self.assertIn("最低利益率", rendered)
+        self.assertEqual(
+            soup.select_one('input[name="min_profit_rate"]')["value"],
+            "20",
+        )
+        self.assertEqual(payload["simulation"], simulation_before)
 
     def test_dutching_relative_selection_note_is_always_displayed(self) -> None:
         note = (
@@ -842,6 +945,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
                 budget=100,
                 min_coverage_probability=1.0,
                 min_group_expected_value=10.0,
+                min_profit_rate=10.0,
             ),
         )
         rendered = build_environment(ROOT).get_template("race.html.j2").render(**build_race_context(payload))
@@ -850,6 +954,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         for label in (
             "カバー確率が最低基準未満",
             "グループ期待値が最低基準未満",
+            "最低利益率が最低基準未満",
             "的中時の最低利益を確保できない",
             "予算が購入単位または選択頭数に対して不足",
         ):
@@ -858,6 +963,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         for internal_value in (
             "coverage_probability_below_threshold",
             "group_expected_value_below_threshold",
+            "minimum_profit_rate_below_threshold",
             "minimum_profit_not_positive",
             "insufficient_budget_units",
         ):
@@ -1106,6 +1212,10 @@ process.stdout.write(JSON.stringify(output));
         python_result = {
             "value": calculate_value_pre(payload, config),
             "dutching": calculate_dutching_pre(payload, config),
+            "dutching_strict": calculate_dutching_pre(
+                payload,
+                make_config(budget=1000, min_profit_rate=10.0),
+            ),
         }
         horses = [
             {
@@ -1141,6 +1251,14 @@ const output = {{
     max_selection_count: 5,
     min_coverage_probability: 0.4,
     min_group_expected_value: 0.0,
+    min_profit_rate: 0.2,
+    require_profit_if_hit: true
+  }}),
+  dutching_strict: calculateDutchingSimulation(horses, 1000, 100, {{
+    max_selection_count: 5,
+    min_coverage_probability: 0.4,
+    min_group_expected_value: 0.0,
+    min_profit_rate: 10.0,
     require_profit_if_hit: true
   }}),
   minimum_ev_valid: ["0", "0.5", "0.99", "1.0", "1.05"].map(parseMinimumEv),
