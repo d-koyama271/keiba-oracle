@@ -291,7 +291,10 @@ class RenderTests(unittest.TestCase):
         self.assertEqual(context["statistical_evaluation"]["winner"]["predicted_rank"], 1)
         self.assertIn("<h2>総合AI予想</h2>", rendered)
         self.assertIn("<h2>統計重視予想</h2>", rendered)
-        self.assertIn("市場由来の情報を使用せず", rendered)
+        self.assertIn(
+            "オッズ等の市場由来の情報を使用せず、レース条件、過去成績、条件適性、近況、相手関係からAIが1着確率を推定しています。",
+            rendered,
+        )
         self.assertIn("客観データの比較では3番を上位評価。", rendered)
         self.assertEqual(rendered.count('class="prediction-table" data-sortable'), 2)
         self.assertIn("総合AI予想の予測評価", rendered)
