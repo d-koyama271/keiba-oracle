@@ -1,47 +1,47 @@
 {
-  "generated_at": "2026-08-15T20:31:12+09:00",
+  "generated_at": "2026-08-16T16:06:04+09:00",
   "overall": {
-    "evaluated_races": 10,
+    "evaluated_races": 12,
     "top1_hits": 3,
-    "top1_hit_rate": 0.3,
-    "top3_hits": 5,
-    "top3_hit_rate": 0.5,
-    "top5_hits": 5,
-    "top5_hit_rate": 0.5,
-    "average_winner_predicted_rank": 5.7,
-    "average_log_loss": 2.691437,
-    "average_brier_score": 0.065081
+    "top1_hit_rate": 0.25,
+    "top3_hits": 7,
+    "top3_hit_rate": 0.583333,
+    "top5_hits": 7,
+    "top5_hit_rate": 0.583333,
+    "average_winner_predicted_rank": 5.083333,
+    "average_log_loss": 2.600699,
+    "average_brier_score": 0.063131
   },
   "market_comparison": {
-    "comparable_races": 9,
-    "model_average_log_loss": 2.763449,
-    "market_average_log_loss": 2.746455,
-    "average_log_loss_difference": 0.016994,
-    "model_average_brier_score": 0.066466,
-    "market_average_brier_score": 0.066009,
-    "average_brier_score_difference": 0.000458
+    "comparable_races": 11,
+    "model_average_log_loss": 2.651369,
+    "market_average_log_loss": 2.613749,
+    "average_log_loss_difference": 0.037619,
+    "model_average_brier_score": 0.064087,
+    "market_average_brier_score": 0.063623,
+    "average_brier_score_difference": 0.000464
   },
   "calibration": [
     {
       "range": "0-5%",
-      "samples": 76,
+      "samples": 90,
       "wins": 4,
-      "average_predicted_probability": 0.020649,
-      "actual_win_rate": 0.052632
+      "average_predicted_probability": 0.020714,
+      "actual_win_rate": 0.044444
     },
     {
       "range": "5-10%",
-      "samples": 34,
+      "samples": 44,
       "wins": 1,
-      "average_predicted_probability": 0.065665,
-      "actual_win_rate": 0.029412
+      "average_predicted_probability": 0.068582,
+      "actual_win_rate": 0.022727
     },
     {
       "range": "10-20%",
-      "samples": 26,
-      "wins": 3,
-      "average_predicted_probability": 0.135889,
-      "actual_win_rate": 0.115385
+      "samples": 34,
+      "wins": 5,
+      "average_predicted_probability": 0.130974,
+      "actual_win_rate": 0.147059
     },
     {
       "range": "20-30%",
@@ -80,42 +80,42 @@
         "average_brier_score": 0.081845
       },
       "芝": {
-        "evaluated_races": 7,
+        "evaluated_races": 9,
         "top1_hits": 3,
-        "top1_hit_rate": 0.428571,
-        "top3_hits": 4,
-        "top3_hit_rate": 0.571429,
-        "top5_hits": 4,
-        "top5_hit_rate": 0.571429,
-        "average_winner_predicted_rank": 5.857143,
-        "average_log_loss": 2.694056,
-        "average_brier_score": 0.057897
+        "top1_hit_rate": 0.333333,
+        "top3_hits": 6,
+        "top3_hit_rate": 0.666667,
+        "top5_hits": 6,
+        "top5_hit_rate": 0.666667,
+        "average_winner_predicted_rank": 5.0,
+        "average_log_loss": 2.57249,
+        "average_brier_score": 0.056893
       }
     },
     "distance_band": {
       "1401～1800m": {
-        "evaluated_races": 4,
+        "evaluated_races": 5,
         "top1_hits": 2,
-        "top1_hit_rate": 0.5,
-        "top3_hits": 3,
-        "top3_hit_rate": 0.75,
-        "top5_hits": 3,
-        "top5_hit_rate": 0.75,
-        "average_winner_predicted_rank": 3.0,
-        "average_log_loss": 2.132646,
-        "average_brier_score": 0.068539
+        "top1_hit_rate": 0.4,
+        "top3_hits": 4,
+        "top3_hit_rate": 0.8,
+        "top5_hits": 4,
+        "top5_hit_rate": 0.8,
+        "average_winner_predicted_rank": 2.8,
+        "average_log_loss": 2.156876,
+        "average_brier_score": 0.065711
       },
       "1801～2200m": {
-        "evaluated_races": 2,
+        "evaluated_races": 3,
         "top1_hits": 0,
         "top1_hit_rate": 0.0,
-        "top3_hits": 1,
-        "top3_hit_rate": 0.5,
-        "top5_hits": 1,
-        "top5_hit_rate": 0.5,
-        "average_winner_predicted_rank": 6.5,
-        "average_log_loss": 2.866106,
-        "average_brier_score": 0.05626
+        "top3_hits": 2,
+        "top3_hit_rate": 0.666667,
+        "top5_hits": 2,
+        "top5_hit_rate": 0.666667,
+        "average_winner_predicted_rank": 5.0,
+        "average_log_loss": 2.590811,
+        "average_brier_score": 0.05496
       },
       "～1400m": {
         "evaluated_races": 4,
@@ -131,31 +131,43 @@
       }
     },
     "class_grade": {
+      "G2": {
+        "evaluated_races": 1,
+        "top1_hits": 0,
+        "top1_hit_rate": 0.0,
+        "top3_hits": 1,
+        "top3_hit_rate": 1.0,
+        "top5_hits": 1,
+        "top5_hit_rate": 1.0,
+        "average_winner_predicted_rank": 2.0,
+        "average_log_loss": 2.040221,
+        "average_brier_score": 0.052361
+      },
       "G3": {
-        "evaluated_races": 10,
+        "evaluated_races": 11,
         "top1_hits": 3,
-        "top1_hit_rate": 0.3,
-        "top3_hits": 5,
-        "top3_hit_rate": 0.5,
-        "top5_hits": 5,
-        "top5_hit_rate": 0.5,
-        "average_winner_predicted_rank": 5.7,
-        "average_log_loss": 2.691437,
-        "average_brier_score": 0.065081
+        "top1_hit_rate": 0.272727,
+        "top3_hits": 6,
+        "top3_hit_rate": 0.545455,
+        "top5_hits": 6,
+        "top5_hit_rate": 0.545455,
+        "average_winner_predicted_rank": 5.363636,
+        "average_log_loss": 2.651652,
+        "average_brier_score": 0.06411
       }
     },
     "track": {
       "中京": {
-        "evaluated_races": 2,
+        "evaluated_races": 3,
         "top1_hits": 0,
         "top1_hit_rate": 0.0,
-        "top3_hits": 0,
-        "top3_hit_rate": 0.0,
-        "top5_hits": 0,
-        "top5_hit_rate": 0.0,
-        "average_winner_predicted_rank": 11.0,
-        "average_log_loss": 3.701026,
-        "average_brier_score": 0.067716
+        "top3_hits": 1,
+        "top3_hit_rate": 0.333333,
+        "top5_hits": 1,
+        "top5_hit_rate": 0.333333,
+        "average_winner_predicted_rank": 8.0,
+        "average_log_loss": 3.218615,
+        "average_brier_score": 0.063277
       },
       "函館": {
         "evaluated_races": 1,
@@ -194,16 +206,16 @@
         "average_brier_score": 0.062218
       },
       "札幌": {
-        "evaluated_races": 2,
+        "evaluated_races": 3,
         "top1_hits": 1,
-        "top1_hit_rate": 0.5,
-        "top3_hits": 2,
+        "top1_hit_rate": 0.333333,
+        "top3_hits": 3,
         "top3_hit_rate": 1.0,
-        "top5_hits": 2,
+        "top5_hits": 3,
         "top5_hit_rate": 1.0,
         "average_winner_predicted_rank": 2.0,
-        "average_log_loss": 1.754948,
-        "average_brier_score": 0.064577
+        "average_log_loss": 1.850039,
+        "average_brier_score": 0.060505
       },
       "福島": {
         "evaluated_races": 1,
@@ -232,16 +244,16 @@
         "average_brier_score": 0.085843
       },
       "14～16頭": {
-        "evaluated_races": 4,
+        "evaluated_races": 6,
         "top1_hits": 2,
-        "top1_hit_rate": 0.5,
-        "top3_hits": 3,
-        "top3_hit_rate": 0.75,
-        "top5_hits": 3,
-        "top5_hit_rate": 0.75,
-        "average_winner_predicted_rank": 2.75,
-        "average_log_loss": 2.027925,
-        "average_brier_score": 0.057839
+        "top1_hit_rate": 0.333333,
+        "top3_hits": 5,
+        "top3_hit_rate": 0.833333,
+        "top5_hits": 5,
+        "top5_hit_rate": 0.833333,
+        "average_winner_predicted_rank": 2.5,
+        "average_log_loss": 2.067619,
+        "average_brier_score": 0.056352
       },
       "17頭以上": {
         "evaluated_races": 3,
@@ -258,11 +270,11 @@
     }
   },
   "market_characteristics": {
-    "race_count": 9,
-    "average_market_top1_probability": 0.251475,
-    "average_market_top3_probability": 0.552634,
-    "average_winner_market_rank": 6.555556,
-    "average_winner_market_probability": 0.102572,
+    "race_count": 11,
+    "average_market_top1_probability": 0.243334,
+    "average_market_top3_probability": 0.539508,
+    "average_winner_market_rank": 5.818182,
+    "average_winner_market_probability": 0.10824,
     "races": [
       {
         "race_id": "202602011211",
@@ -335,12 +347,28 @@
         "market_top3_probability": 0.573748,
         "winner_market_rank": 10,
         "winner_market_probability": 0.037213
+      },
+      {
+        "race_id": "202607020807",
+        "date": "2026-08-16",
+        "market_top1_probability": 0.214209,
+        "market_top3_probability": 0.463914,
+        "winner_market_rank": 2,
+        "winner_market_probability": 0.146773
+      },
+      {
+        "race_id": "202601010811",
+        "date": "2026-08-16",
+        "market_top1_probability": 0.199188,
+        "market_top3_probability": 0.496964,
+        "winner_market_rank": 3,
+        "winner_market_probability": 0.12072
       }
     ]
   },
   "simulation": {
     "value": {
-      "simulation_races": 10,
+      "simulation_races": 12,
       "purchase_races": 0,
       "hit_races": 0,
       "total_stake": 0,
@@ -349,13 +377,477 @@
       "overall_roi": null
     },
     "dutching": {
-      "simulation_races": 10,
-      "purchase_races": 10,
-      "hit_races": 5,
-      "total_stake": 30000,
-      "total_return": 16230,
-      "cumulative_profit": -13770,
-      "overall_roi": 0.541
+      "simulation_races": 12,
+      "purchase_races": 12,
+      "hit_races": 7,
+      "total_stake": 36000,
+      "total_return": 27850,
+      "cumulative_profit": -8150,
+      "overall_roi": 0.773611
+    }
+  },
+  "methods": {
+    "traditional": {
+      "overall": {
+        "evaluated_races": 12,
+        "top1_hits": 3,
+        "top1_hit_rate": 0.25,
+        "top3_hits": 7,
+        "top3_hit_rate": 0.583333,
+        "top5_hits": 7,
+        "top5_hit_rate": 0.583333,
+        "average_winner_predicted_rank": 5.083333,
+        "average_log_loss": 2.600699,
+        "average_brier_score": 0.063131
+      },
+      "calibration": [
+        {
+          "range": "0-5%",
+          "samples": 90,
+          "wins": 4,
+          "average_predicted_probability": 0.020714,
+          "actual_win_rate": 0.044444
+        },
+        {
+          "range": "5-10%",
+          "samples": 44,
+          "wins": 1,
+          "average_predicted_probability": 0.068582,
+          "actual_win_rate": 0.022727
+        },
+        {
+          "range": "10-20%",
+          "samples": 34,
+          "wins": 5,
+          "average_predicted_probability": 0.130974,
+          "actual_win_rate": 0.147059
+        },
+        {
+          "range": "20-30%",
+          "samples": 9,
+          "wins": 2,
+          "average_predicted_probability": 0.222222,
+          "actual_win_rate": 0.222222
+        },
+        {
+          "range": "30-50%",
+          "samples": 2,
+          "wins": 0,
+          "average_predicted_probability": 0.3325,
+          "actual_win_rate": 0.0
+        },
+        {
+          "range": "50-100%",
+          "samples": 0,
+          "wins": 0,
+          "average_predicted_probability": null,
+          "actual_win_rate": null
+        }
+      ],
+      "segments": {
+        "surface": {
+          "ダート": {
+            "evaluated_races": 3,
+            "top1_hits": 0,
+            "top1_hit_rate": 0.0,
+            "top3_hits": 1,
+            "top3_hit_rate": 0.333333,
+            "top5_hits": 1,
+            "top5_hit_rate": 0.333333,
+            "average_winner_predicted_rank": 5.333333,
+            "average_log_loss": 2.685326,
+            "average_brier_score": 0.081845
+          },
+          "芝": {
+            "evaluated_races": 9,
+            "top1_hits": 3,
+            "top1_hit_rate": 0.333333,
+            "top3_hits": 6,
+            "top3_hit_rate": 0.666667,
+            "top5_hits": 6,
+            "top5_hit_rate": 0.666667,
+            "average_winner_predicted_rank": 5.0,
+            "average_log_loss": 2.57249,
+            "average_brier_score": 0.056893
+          }
+        },
+        "distance_band": {
+          "1401～1800m": {
+            "evaluated_races": 5,
+            "top1_hits": 2,
+            "top1_hit_rate": 0.4,
+            "top3_hits": 4,
+            "top3_hit_rate": 0.8,
+            "top5_hits": 4,
+            "top5_hit_rate": 0.8,
+            "average_winner_predicted_rank": 2.8,
+            "average_log_loss": 2.156876,
+            "average_brier_score": 0.065711
+          },
+          "1801～2200m": {
+            "evaluated_races": 3,
+            "top1_hits": 0,
+            "top1_hit_rate": 0.0,
+            "top3_hits": 2,
+            "top3_hit_rate": 0.666667,
+            "top5_hits": 2,
+            "top5_hit_rate": 0.666667,
+            "average_winner_predicted_rank": 5.0,
+            "average_log_loss": 2.590811,
+            "average_brier_score": 0.05496
+          },
+          "～1400m": {
+            "evaluated_races": 4,
+            "top1_hits": 1,
+            "top1_hit_rate": 0.25,
+            "top3_hits": 1,
+            "top3_hit_rate": 0.25,
+            "top5_hits": 1,
+            "top5_hit_rate": 0.25,
+            "average_winner_predicted_rank": 8.0,
+            "average_log_loss": 3.162895,
+            "average_brier_score": 0.066034
+          }
+        },
+        "class_grade": {
+          "G2": {
+            "evaluated_races": 1,
+            "top1_hits": 0,
+            "top1_hit_rate": 0.0,
+            "top3_hits": 1,
+            "top3_hit_rate": 1.0,
+            "top5_hits": 1,
+            "top5_hit_rate": 1.0,
+            "average_winner_predicted_rank": 2.0,
+            "average_log_loss": 2.040221,
+            "average_brier_score": 0.052361
+          },
+          "G3": {
+            "evaluated_races": 11,
+            "top1_hits": 3,
+            "top1_hit_rate": 0.272727,
+            "top3_hits": 6,
+            "top3_hit_rate": 0.545455,
+            "top5_hits": 6,
+            "top5_hit_rate": 0.545455,
+            "average_winner_predicted_rank": 5.363636,
+            "average_log_loss": 2.651652,
+            "average_brier_score": 0.06411
+          }
+        },
+        "track": {
+          "中京": {
+            "evaluated_races": 3,
+            "top1_hits": 0,
+            "top1_hit_rate": 0.0,
+            "top3_hits": 1,
+            "top3_hit_rate": 0.333333,
+            "top5_hits": 1,
+            "top5_hit_rate": 0.333333,
+            "average_winner_predicted_rank": 8.0,
+            "average_log_loss": 3.218615,
+            "average_brier_score": 0.063277
+          },
+          "函館": {
+            "evaluated_races": 1,
+            "top1_hits": 0,
+            "top1_hit_rate": 0.0,
+            "top3_hits": 0,
+            "top3_hit_rate": 0.0,
+            "top5_hits": 0,
+            "top5_hit_rate": 0.0,
+            "average_winner_predicted_rank": 9.0,
+            "average_log_loss": 3.688879,
+            "average_brier_score": 0.087053
+          },
+          "小倉": {
+            "evaluated_races": 1,
+            "top1_hits": 0,
+            "top1_hit_rate": 0.0,
+            "top3_hits": 0,
+            "top3_hit_rate": 0.0,
+            "top5_hits": 0,
+            "top5_hit_rate": 0.0,
+            "average_winner_predicted_rank": 10.0,
+            "average_log_loss": 3.688879,
+            "average_brier_score": 0.059905
+          },
+          "新潟": {
+            "evaluated_races": 3,
+            "top1_hits": 2,
+            "top1_hit_rate": 0.666667,
+            "top3_hits": 2,
+            "top3_hit_rate": 0.666667,
+            "top5_hits": 2,
+            "top5_hit_rate": 0.666667,
+            "average_winner_predicted_rank": 3.0,
+            "average_log_loss": 2.193778,
+            "average_brier_score": 0.062218
+          },
+          "札幌": {
+            "evaluated_races": 3,
+            "top1_hits": 1,
+            "top1_hit_rate": 0.333333,
+            "top3_hits": 3,
+            "top3_hit_rate": 1.0,
+            "top5_hits": 3,
+            "top5_hit_rate": 1.0,
+            "average_winner_predicted_rank": 2.0,
+            "average_log_loss": 1.850039,
+            "average_brier_score": 0.060505
+          },
+          "福島": {
+            "evaluated_races": 1,
+            "top1_hits": 0,
+            "top1_hit_rate": 0.0,
+            "top3_hits": 1,
+            "top3_hit_rate": 1.0,
+            "top5_hits": 1,
+            "top5_hit_rate": 1.0,
+            "average_winner_predicted_rank": 3.0,
+            "average_log_loss": 2.043333,
+            "average_brier_score": 0.052615
+          }
+        },
+        "field_size_band": {
+          "10～13頭": {
+            "evaluated_races": 3,
+            "top1_hits": 0,
+            "top1_hit_rate": 0.0,
+            "top3_hits": 1,
+            "top3_hit_rate": 0.333333,
+            "top5_hits": 1,
+            "top5_hit_rate": 0.333333,
+            "average_winner_predicted_rank": 6.333333,
+            "average_log_loss": 2.982659,
+            "average_brier_score": 0.085843
+          },
+          "14～16頭": {
+            "evaluated_races": 6,
+            "top1_hits": 2,
+            "top1_hit_rate": 0.333333,
+            "top3_hits": 5,
+            "top3_hit_rate": 0.833333,
+            "top5_hits": 5,
+            "top5_hit_rate": 0.833333,
+            "average_winner_predicted_rank": 2.5,
+            "average_log_loss": 2.067619,
+            "average_brier_score": 0.056352
+          },
+          "17頭以上": {
+            "evaluated_races": 3,
+            "top1_hits": 1,
+            "top1_hit_rate": 0.333333,
+            "top3_hits": 1,
+            "top3_hit_rate": 0.333333,
+            "top5_hits": 1,
+            "top5_hit_rate": 0.333333,
+            "average_winner_predicted_rank": 9.0,
+            "average_log_loss": 3.284899,
+            "average_brier_score": 0.053977
+          }
+        }
+      }
+    },
+    "statistical": {
+      "overall": {
+        "evaluated_races": 2,
+        "top1_hits": 0,
+        "top1_hit_rate": 0.0,
+        "top3_hits": 1,
+        "top3_hit_rate": 0.5,
+        "top5_hits": 1,
+        "top5_hit_rate": 0.5,
+        "average_winner_predicted_rank": 4.0,
+        "average_log_loss": 2.436525,
+        "average_brier_score": 0.057061
+      },
+      "calibration": [
+        {
+          "range": "0-5%",
+          "samples": 12,
+          "wins": 0,
+          "average_predicted_probability": 0.021667,
+          "actual_win_rate": 0.0
+        },
+        {
+          "range": "5-10%",
+          "samples": 16,
+          "wins": 2,
+          "average_predicted_probability": 0.074688,
+          "actual_win_rate": 0.125
+        },
+        {
+          "range": "10-20%",
+          "samples": 4,
+          "wins": 0,
+          "average_predicted_probability": 0.13625,
+          "actual_win_rate": 0.0
+        },
+        {
+          "range": "20-30%",
+          "samples": 0,
+          "wins": 0,
+          "average_predicted_probability": null,
+          "actual_win_rate": null
+        },
+        {
+          "range": "30-50%",
+          "samples": 0,
+          "wins": 0,
+          "average_predicted_probability": null,
+          "actual_win_rate": null
+        },
+        {
+          "range": "50-100%",
+          "samples": 0,
+          "wins": 0,
+          "average_predicted_probability": null,
+          "actual_win_rate": null
+        }
+      ],
+      "segments": {
+        "surface": {
+          "芝": {
+            "evaluated_races": 2,
+            "top1_hits": 0,
+            "top1_hit_rate": 0.0,
+            "top3_hits": 1,
+            "top3_hit_rate": 0.5,
+            "top5_hits": 1,
+            "top5_hit_rate": 0.5,
+            "average_winner_predicted_rank": 4.0,
+            "average_log_loss": 2.436525,
+            "average_brier_score": 0.057061
+          }
+        },
+        "distance_band": {
+          "1401～1800m": {
+            "evaluated_races": 1,
+            "top1_hits": 0,
+            "top1_hit_rate": 0.0,
+            "top3_hits": 1,
+            "top3_hit_rate": 1.0,
+            "top5_hits": 1,
+            "top5_hit_rate": 1.0,
+            "average_winner_predicted_rank": 2.0,
+            "average_log_loss": 2.407946,
+            "average_brier_score": 0.0559
+          },
+          "1801～2200m": {
+            "evaluated_races": 1,
+            "top1_hits": 0,
+            "top1_hit_rate": 0.0,
+            "top3_hits": 0,
+            "top3_hit_rate": 0.0,
+            "top5_hits": 0,
+            "top5_hit_rate": 0.0,
+            "average_winner_predicted_rank": 6.0,
+            "average_log_loss": 2.465104,
+            "average_brier_score": 0.058222
+          }
+        },
+        "class_grade": {
+          "G2": {
+            "evaluated_races": 1,
+            "top1_hits": 0,
+            "top1_hit_rate": 0.0,
+            "top3_hits": 0,
+            "top3_hit_rate": 0.0,
+            "top5_hits": 0,
+            "top5_hit_rate": 0.0,
+            "average_winner_predicted_rank": 6.0,
+            "average_log_loss": 2.465104,
+            "average_brier_score": 0.058222
+          },
+          "G3": {
+            "evaluated_races": 1,
+            "top1_hits": 0,
+            "top1_hit_rate": 0.0,
+            "top3_hits": 1,
+            "top3_hit_rate": 1.0,
+            "top5_hits": 1,
+            "top5_hit_rate": 1.0,
+            "average_winner_predicted_rank": 2.0,
+            "average_log_loss": 2.407946,
+            "average_brier_score": 0.0559
+          }
+        },
+        "track": {
+          "中京": {
+            "evaluated_races": 1,
+            "top1_hits": 0,
+            "top1_hit_rate": 0.0,
+            "top3_hits": 1,
+            "top3_hit_rate": 1.0,
+            "top5_hits": 1,
+            "top5_hit_rate": 1.0,
+            "average_winner_predicted_rank": 2.0,
+            "average_log_loss": 2.407946,
+            "average_brier_score": 0.0559
+          },
+          "札幌": {
+            "evaluated_races": 1,
+            "top1_hits": 0,
+            "top1_hit_rate": 0.0,
+            "top3_hits": 0,
+            "top3_hit_rate": 0.0,
+            "top5_hits": 0,
+            "top5_hit_rate": 0.0,
+            "average_winner_predicted_rank": 6.0,
+            "average_log_loss": 2.465104,
+            "average_brier_score": 0.058222
+          }
+        },
+        "field_size_band": {
+          "14～16頭": {
+            "evaluated_races": 2,
+            "top1_hits": 0,
+            "top1_hit_rate": 0.0,
+            "top3_hits": 1,
+            "top3_hit_rate": 0.5,
+            "top5_hits": 1,
+            "top5_hit_rate": 0.5,
+            "average_winner_predicted_rank": 4.0,
+            "average_log_loss": 2.436525,
+            "average_brier_score": 0.057061
+          }
+        }
+      }
+    }
+  },
+  "paired_comparison": {
+    "compared_races": 2,
+    "methods": {
+      "traditional": {
+        "evaluated_races": 2,
+        "top1_hits": 0,
+        "top1_hit_rate": 0.0,
+        "top3_hits": 2,
+        "top3_hit_rate": 1.0,
+        "top5_hits": 2,
+        "top5_hit_rate": 1.0,
+        "average_winner_predicted_rank": 2.0,
+        "average_log_loss": 2.147008,
+        "average_brier_score": 0.05338
+      },
+      "statistical": {
+        "evaluated_races": 2,
+        "top1_hits": 0,
+        "top1_hit_rate": 0.0,
+        "top3_hits": 1,
+        "top3_hit_rate": 0.5,
+        "top5_hits": 1,
+        "top5_hit_rate": 0.5,
+        "average_winner_predicted_rank": 4.0,
+        "average_log_loss": 2.436525,
+        "average_brier_score": 0.057061
+      }
+    },
+    "differences": {
+      "definition": "statistical minus traditional; negative values favor statistical",
+      "average_log_loss": 0.289517,
+      "average_brier_score": 0.003681
     }
   }
 }
