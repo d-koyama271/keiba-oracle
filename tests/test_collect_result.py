@@ -3,14 +3,33 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import Mock
+
+import requests
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from collect import parse_result  # noqa: E402
+from collect import MOBILE_RESULT_URL, RESULT_URL, fetch_html, parse_result  # noqa: E402
 
 
 class ResultParsingTests(unittest.TestCase):
+    def test_desktop_result_failure_uses_mobile_result_page(self) -> None:
+        failed = Mock()
+        failed.raise_for_status.side_effect = requests.HTTPError("blocked")
+        mobile = Mock(text="<html>mobile result</html>", apparent_encoding="utf-8", encoding=None)
+        mobile.raise_for_status.return_value = None
+        session = Mock()
+        session.get.side_effect = [failed, mobile]
+
+        html = fetch_html(session, RESULT_URL.format(race_id="202604030207"))
+
+        self.assertEqual(html, "<html>mobile result</html>")
+        self.assertEqual(
+            session.get.call_args_list[1].args[0],
+            MOBILE_RESULT_URL.format(race_id="202604030207"),
+        )
+
     def test_special_finish_status_is_preserved_without_entering_finish_order(self) -> None:
         html = """
         <html><body>

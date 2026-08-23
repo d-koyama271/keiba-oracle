@@ -38,6 +38,7 @@ MOBILE_RACE_LIST_URL = "https://race.sp.netkeiba.com/?pid=race_top&kaisai_date={
 MOBILE_SHUTUBA_URL = "https://race.sp.netkeiba.com/race/shutuba.html?race_id={race_id}"
 MOBILE_HORSE_URL = "https://db.sp.netkeiba.com/horse/{horse_id}/"
 RESULT_URL = "https://race.netkeiba.com/race/result.html?race_id={race_id}"
+MOBILE_RESULT_URL = "https://race.sp.netkeiba.com/?pid=race_result&race_id={race_id}"
 NETKEIBA_ODDS_URL = "https://race.netkeiba.com/api/api_get_jra_odds.html"
 JRA_HOME_URL = "https://www.jra.go.jp/"
 JRA_RACE_URL_PATTERN = re.compile(
@@ -59,14 +60,22 @@ def fetch_html(session: requests.Session, url: str) -> str:
         response = session.get(url, headers=REQUEST_HEADERS, timeout=30)
         response.raise_for_status()
     except requests.RequestException:
-        match = re.fullmatch(
+        shutuba_match = re.fullmatch(
             r"https://race\.netkeiba\.com/race/shutuba\.html\?race_id=(\d{12})",
             url,
         )
-        if not match:
+        result_match = re.fullmatch(
+            r"https://race\.netkeiba\.com/race/result\.html\?race_id=(\d{12})",
+            url,
+        )
+        if shutuba_match:
+            fallback_url = MOBILE_SHUTUBA_URL.format(race_id=shutuba_match.group(1))
+        elif result_match:
+            fallback_url = MOBILE_RESULT_URL.format(race_id=result_match.group(1))
+        else:
             raise
         response = session.get(
-            MOBILE_SHUTUBA_URL.format(race_id=match.group(1)),
+            fallback_url,
             headers=REQUEST_HEADERS,
             timeout=30,
         )
