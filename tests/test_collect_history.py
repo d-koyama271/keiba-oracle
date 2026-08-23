@@ -7,6 +7,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from bs4 import BeautifulSoup
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
@@ -16,6 +18,7 @@ from collect import (  # noqa: E402
     normalize_class_grade,
     normalize_going,
     normalize_weather,
+    mobile_history_rows,
     parse_body_weight,
     parse_horse_history,
     parse_race_overview,
@@ -160,6 +163,50 @@ class HistoryParsingTests(unittest.TestCase):
         self.assertEqual(race["weather"], "晴")
         self.assertEqual(race["going"], "稍重")
         self.assertEqual(race["class_grade"], "G3")
+
+    def test_mobile_race_overview_and_history_rows(self) -> None:
+        race = parse_race_overview(
+            """
+            <div class="RaceList_NameBox">
+              <span class="Icon_GradeType3">GIII</span>
+              <h1 class="Race_Name">新潟2歳S</h1>
+              <div class="Race_Data">
+                15:25 <span class="Turf">芝</span><span>1600m</span>
+                <span class="WeatherData">曇</span><span class="Item03">良</span>
+              </div>
+            </div>
+            <table class="Shutuba_Table"><tr class="HorseList"><td>1</td></tr></table>
+            """,
+            "202604030207",
+            "2026-08-23",
+            60,
+        )
+        self.assertEqual(
+            (race["race_name"], race["start_time"], race["surface"], race["distance"]),
+            ("新潟2歳S", "15:25", "芝", 1600),
+        )
+        self.assertEqual((race["weather"], race["going"], race["class_grade"]), ("曇", "良", "G3"))
+
+        soup = BeautifulSoup(
+            """
+            <table class="table_slide_body">
+              <thead><tr>
+                <th>レース名</th><th>人気</th><th>着順</th><th>騎手</th><th>斤量</th>
+              </tr></thead>
+              <tbody><tr>
+                <td><div class="race_info">26/06/13 東京 5R</div>
+                    <div class="Set_RaceName"><a href="https://db.sp.netkeiba.com/race/202605030305/">2歳新馬</a></div></td>
+                <td>1</td><td>1</td><td>津村明秀</td><td>55</td>
+              </tr></tbody>
+            </table>
+            """,
+            "html.parser",
+        )
+        row = mobile_history_rows(soup)[0]
+        self.assertEqual(
+            (row["日付"], row["開催"], row["R"], row["レース名"]),
+            ("2026/06/13", "東京", "5", "2歳新馬"),
+        )
 
     def test_target_is_removed_before_full_history_summary_and_five_run_slice(self) -> None:
         target_race_id = "202610020811"

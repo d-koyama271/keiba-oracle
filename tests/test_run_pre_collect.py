@@ -43,6 +43,43 @@ def race(track: str, name: str, start_time: str, race_number: int = 11) -> dict:
 
 
 class DefaultRaceSelectionTests(unittest.TestCase):
+    def test_mobile_race_list_is_used_when_desktop_endpoint_fails(self) -> None:
+        mobile_html = """
+        <ul class="Tab">
+          <li><a data-date="20260822">8/22</a></li>
+          <li><a class="Tab_Active" data-date="20260823">8/23</a></li>
+        </ul>
+        <div class="RaceList_Slide">
+          <div class="RaceList_Main_Box">
+            <a href="?race_id=202604030111"><span class="Race_Num">11R</span></a>
+          </div>
+        </div>
+        <div class="RaceList_Slide">
+          <div class="RaceList_Main_Box">
+            <a href="?race_id=202604030207">
+              <span class="Race_Num">7R</span>
+              <span class="Icon_GradeType3">GIII</span>
+            </a>
+          </div>
+          <div class="RaceList_Main_Box">
+            <a href="?race_id=202607030211"><span class="Race_Num">11R</span></a>
+          </div>
+        </div>
+        """
+        with patch.object(
+            collect_module,
+            "fetch_html",
+            side_effect=[collect_module.requests.HTTPError("blocked"), mobile_html],
+        ):
+            race_ids = collect_module.discover_race_ids(
+                None,
+                "2026-08-23",
+                race_number=None,
+                graded_only=True,
+            )
+
+        self.assertEqual(race_ids, ["202604030207"])
+
     def test_grade_icon_is_used_when_race_name_has_no_grade_text(self) -> None:
         soup = BeautifulSoup(
             '<h1 class="RaceName">小倉記念<span class="Icon_GradeType Icon_GradeType3"></span></h1>',

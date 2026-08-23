@@ -34,6 +34,9 @@ from utils import (
 RACE_LIST_DATE_URL = "https://race.netkeiba.com/top/race_list_get_date_list.html?kaisai_date={date_key}"
 RACE_LIST_SUB_URL = "https://race.netkeiba.com/top/race_list_sub.html?kaisai_date={date_key}&current_group={current_group}#racelist_top_a"
 SHUTUBA_URL = "https://race.netkeiba.com/race/shutuba.html?race_id={race_id}"
+MOBILE_RACE_LIST_URL = "https://race.sp.netkeiba.com/?pid=race_top&kaisai_date={date_key}"
+MOBILE_SHUTUBA_URL = "https://race.sp.netkeiba.com/race/shutuba.html?race_id={race_id}"
+MOBILE_HORSE_URL = "https://db.sp.netkeiba.com/horse/{horse_id}/"
 RESULT_URL = "https://race.netkeiba.com/race/result.html?race_id={race_id}"
 NETKEIBA_ODDS_URL = "https://race.netkeiba.com/api/api_get_jra_odds.html"
 JRA_HOME_URL = "https://www.jra.go.jp/"
@@ -52,8 +55,22 @@ REQUEST_HEADERS = {
 
 
 def fetch_html(session: requests.Session, url: str) -> str:
-    response = session.get(url, headers=REQUEST_HEADERS, timeout=30)
-    response.raise_for_status()
+    try:
+        response = session.get(url, headers=REQUEST_HEADERS, timeout=30)
+        response.raise_for_status()
+    except requests.RequestException:
+        match = re.fullmatch(
+            r"https://race\.netkeiba\.com/race/shutuba\.html\?race_id=(\d{12})",
+            url,
+        )
+        if not match:
+            raise
+        response = session.get(
+            MOBILE_SHUTUBA_URL.format(race_id=match.group(1)),
+            headers=REQUEST_HEADERS,
+            timeout=30,
+        )
+        response.raise_for_status()
     response.encoding = response.apparent_encoding or response.encoding
     return response.text
 
@@ -72,17 +89,33 @@ def discover_race_ids(
     graded_only: bool = False,
 ) -> list[str]:
     date_key = target_date.replace("-", "")
-    html = fetch_html(session, RACE_LIST_DATE_URL.format(date_key=date_key))
-    soup = BeautifulSoup(html, "html.parser")
-    active_node = soup.select_one("li.Active[date]") or soup.select_one("li[date]")
-    current_group = active_node.get("group") if active_node else None
-    if not current_group:
-        return []
+    try:
+        html = fetch_html(session, RACE_LIST_DATE_URL.format(date_key=date_key))
+        soup = BeautifulSoup(html, "html.parser")
+        active_node = soup.select_one("li.Active[date]") or soup.select_one("li[date]")
+        current_group = active_node.get("group") if active_node else None
+        if not current_group:
+            return []
+        sub_html = fetch_html(
+            session,
+            RACE_LIST_SUB_URL.format(date_key=date_key, current_group=current_group),
+        )
+        items = BeautifulSoup(sub_html, "html.parser").select("li.RaceList_DataItem")
+    except requests.RequestException:
+        mobile_html = fetch_html(session, MOBILE_RACE_LIST_URL.format(date_key=date_key))
+        mobile_soup = BeautifulSoup(mobile_html, "html.parser")
+        tabs = mobile_soup.select("ul.Tab a[data-date]")
+        active_index = next(
+            (index for index, tab in enumerate(tabs) if tab.get("data-date") == date_key),
+            None,
+        )
+        slides = mobile_soup.select("div.RaceList_Slide")
+        if active_index is None or active_index >= len(slides):
+            return []
+        items = slides[active_index].select("div.RaceList_Main_Box")
 
-    sub_html = fetch_html(session, RACE_LIST_SUB_URL.format(date_key=date_key, current_group=current_group))
-    sub_soup = BeautifulSoup(sub_html, "html.parser")
     race_ids = set()
-    for item in sub_soup.select("li.RaceList_DataItem"):
+    for item in items:
         link = item.select_one('a[href*="race_id="]')
         match = re.search(r"race_id=(\d{12})", link.get("href", "") if link else "")
         if not match:
@@ -143,10 +176,56 @@ def normalize_horse_name(value: str | None) -> str:
     return normalize_space(value).replace(" ", "")
 
 
+def mobile_entry_rows(table: Any) -> list[dict[str, Any]]:
+    entries = []
+    for row in table.select("tr.HorseList"):
+        number_cell = row.find("td", class_=re.compile(r"^Waku\d+$"))
+        horse_link = row.select_one("td.Horse_Info dt.Horse a")
+        jockey_node = row.select_one("td.Horse_Info dd.Jockey")
+        if number_cell is None or horse_link is None:
+            continue
+        frame_match = next(
+            (
+                re.fullmatch(r"Waku(\d+)", class_name)
+                for class_name in number_cell.get("class", [])
+                if re.fullmatch(r"Waku\d+", class_name)
+            ),
+            None,
+        )
+        jockey_name = jockey_node.select_one("em") if jockey_node else None
+        horse_db_link = row.select_one('a[href*="db.sp.netkeiba.com/horse/"]')
+        entries.append(
+            {
+                "horse_number": parse_int(number_cell.get_text(" ", strip=True)),
+                "frame_number": int(frame_match.group(1)) if frame_match else None,
+                "horse_name": normalize_space(horse_link.get_text(" ", strip=True)),
+                "jockey": (
+                    normalize_space(jockey_name.get_text(" ", strip=True))
+                    if jockey_name
+                    else None
+                ),
+                "weight_carried": (
+                    parse_float(jockey_node.get_text(" ", strip=True))
+                    if jockey_node
+                    else None
+                ),
+                "horse_url": horse_db_link.get("href") if horse_db_link else None,
+            }
+        )
+    return entries
+
+
 def parse_entry_horse_identities(html: str) -> dict[int, str]:
     table = find_entry_table(BeautifulSoup(html, "html.parser"))
     if table is None:
         return {}
+
+    if "Shutuba_Table" in table.get("class", []):
+        return {
+            entry["horse_number"]: entry["horse_name"]
+            for entry in mobile_entry_rows(table)
+            if entry["horse_number"] is not None and entry["horse_name"]
+        }
 
     horses: dict[int, str] = {}
     for row in rows_from_table(table):
@@ -259,6 +338,16 @@ def discover_jra_race_url(session: requests.Session, race_id: str, race: dict[st
     for url in page_links:
         if jra_race_url_identity(url) == expected:
             return url
+
+    target_track_links = []
+    for url in page_links:
+        identity = jra_race_url_identity(url)
+        if identity is not None and identity[:4] == expected[:4] and identity[-1] == target_date_key:
+            target_track_links.append(url)
+    for track_url in dict.fromkeys(target_track_links):
+        for url in jra_race_links(fetch_html(session, track_url), track_url):
+            if jra_race_url_identity(url) == expected:
+                return url
     raise ValueError(f"JRA official race page was not identified for race_id={race_id}")
 
 
@@ -442,6 +531,9 @@ def find_entry_table(soup: BeautifulSoup) -> Any | None:
         headers = set(extract_headers(table))
         if required.issubset(headers):
             return table
+    mobile_table = soup.select_one("table.Shutuba_Table")
+    if mobile_table and mobile_table.select_one("tr.HorseList"):
+        return mobile_table
     return None
 
 
@@ -517,7 +609,9 @@ def normalize_class_grade(value: Any, soup: BeautifulSoup | None = None) -> str:
             "Icon_GradeType5": "Open",
         }
         for class_name, grade in icon_grades.items():
-            if soup.select_one(f".RaceName .{class_name}"):
+            if soup.select_one(
+                f".RaceName .{class_name}, .RaceList_NameBox .{class_name}"
+            ):
                 return grade
 
     text = normalize_space(value).upper()
@@ -771,7 +865,7 @@ def build_horse_summaries(
 
 def parse_race_overview(html: str, race_id: str, target_date: str, odds_reference_minutes: int) -> dict[str, Any]:
     soup = BeautifulSoup(html, "html.parser")
-    race_name_node = soup.select_one(".RaceName")
+    race_name_node = soup.select_one(".RaceName, .Race_Name")
     title_node = race_name_node or soup.select_one("title")
     race_name = normalize_space(title_node.get_text(" ", strip=True)) if title_node else race_id
     if race_name_node is None and title_node:
@@ -779,7 +873,9 @@ def parse_race_overview(html: str, race_id: str, target_date: str, odds_referenc
 
     detail_text = " ".join(
         normalize_space(node.get_text(" ", strip=True))
-        for node in soup.select(".RaceData01, .RaceData02, .RaceData03")
+        for node in soup.select(
+            ".RaceData01, .RaceData02, .RaceData03, .RaceList_NameBox .Race_Data"
+        )
     )
     start_time_match = re.search(r"(\d{1,2}:\d{2})", detail_text)
     distance_match = re.search(r"(芝|ダ|障)\s*([0-9]{3,4})m", detail_text)
@@ -792,6 +888,15 @@ def parse_race_overview(html: str, race_id: str, target_date: str, odds_referenc
         surface = "ダート" if distance_match.group(1) == "ダ" else ("障害" if distance_match.group(1) == "障" else "芝")
         distance = int(distance_match.group(2))
 
+    weather = weather_match.group(1) if weather_match else None
+    going = normalize_going(going_match.group(1)) if going_match else None
+    mobile_detail = soup.select_one(".RaceList_NameBox .Race_Data")
+    if mobile_detail:
+        weather_node = mobile_detail.select_one(".WeatherData")
+        going_node = mobile_detail.select_one(".Item03")
+        weather = normalize_space(weather_node.get_text(" ", strip=True)) if weather_node else weather
+        going = normalize_going(going_node.get_text(" ", strip=True)) if going_node else going
+
     return {
         "date": target_date,
         "track": track_name_from_race_id(race_id),
@@ -800,15 +905,41 @@ def parse_race_overview(html: str, race_id: str, target_date: str, odds_referenc
         "start_time": start_time_match.group(1) if start_time_match else None,
         "distance": distance,
         "surface": surface,
-        "going": normalize_going(going_match.group(1)) if going_match else None,
-        "weather": weather_match.group(1) if weather_match else None,
+        "going": going,
+        "weather": weather,
         "class_grade": normalize_class_grade(f"{race_name} {detail_text}", soup),
-        "source_url": SHUTUBA_URL.format(race_id=race_id),
+        "source_url": (
+            MOBILE_SHUTUBA_URL.format(race_id=race_id)
+            if soup.select_one("table.Shutuba_Table")
+            else SHUTUBA_URL.format(race_id=race_id)
+        ),
         "odds_captured_at": None,
         "odds_source": None,
         "odds_source_url": None,
         "odds_reference_minutes_before_start": odds_reference_minutes,
     }
+
+
+def mobile_history_rows(soup: BeautifulSoup) -> list[dict[str, Any]]:
+    table = soup.select_one("table.table_slide_body")
+    if table is None:
+        return []
+
+    rows = rows_from_table(table)
+    for row in rows:
+        row_node = row["_row"]
+        race_info = normalize_space(
+            (row_node.select_one(".race_info") or row_node).get_text(" ", strip=True)
+        )
+        match = re.search(r"(\d{2})/(\d{2})/(\d{2})\s+([^\s]+)\s+(\d+)R", race_info)
+        if match:
+            row["日付"] = f"20{match.group(1)}/{match.group(2)}/{match.group(3)}"
+            row["開催"] = match.group(4)
+            row["R"] = match.group(5)
+        race_name_node = row_node.select_one(".Set_RaceName")
+        if race_name_node:
+            row["レース名"] = normalize_space(race_name_node.get_text(" ", strip=True))
+    return rows
 
 
 def parse_horse_history(
@@ -823,25 +954,38 @@ def parse_horse_history(
     if not horse_id_match:
         return [], empty_summaries, None
 
-    response = session.get(
-        "https://db.netkeiba.com/horse/ajax_horse_results.html",
-        headers=REQUEST_HEADERS,
-        params={
-            "input": "UTF-8",
-            "output": "json",
-            "id": horse_id_match.group(1),
-        },
-        timeout=30,
-    )
-    response.raise_for_status()
-    payload = response.json()
-    soup = BeautifulSoup(payload.get("data", ""), "html.parser")
-    table = find_history_table(soup)
-    if table is None:
+    horse_id = horse_id_match.group(1)
+    try:
+        response = session.get(
+            "https://db.netkeiba.com/horse/ajax_horse_results.html",
+            headers=REQUEST_HEADERS,
+            params={
+                "input": "UTF-8",
+                "output": "json",
+                "id": horse_id,
+            },
+            timeout=30,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        soup = BeautifulSoup(payload.get("data", ""), "html.parser")
+        table = find_history_table(soup)
+        history_rows = rows_from_table(table) if table is not None else []
+    except requests.RequestException:
+        response = session.get(
+            MOBILE_HORSE_URL.format(horse_id=horse_id),
+            headers=REQUEST_HEADERS,
+            timeout=30,
+        )
+        response.raise_for_status()
+        response.encoding = response.apparent_encoding or response.encoding
+        history_rows = mobile_history_rows(BeautifulSoup(response.text, "html.parser"))
+
+    if not history_rows:
         return [], empty_summaries, None
 
     all_runs: list[dict[str, Any]] = []
-    for row in rows_from_table(table):
+    for row in history_rows:
         run = parse_history_run(row)
         if run["race_id"] == current_race_id:
             continue
@@ -869,6 +1013,48 @@ def parse_horses(
     table = find_entry_table(soup)
     if table is None:
         return []
+
+    if "Shutuba_Table" in table.get("class", []):
+        horses = []
+        for entry in mobile_entry_rows(table):
+            horse_number = entry["horse_number"]
+            if horse_number is None:
+                continue
+            odds = odds_map.get(horse_number, {})
+            horse = {
+                "horse_number": horse_number,
+                "frame_number": entry["frame_number"],
+                "horse_name": entry["horse_name"],
+                "jockey": entry["jockey"],
+                "weight_carried": entry["weight_carried"],
+                "popularity": odds.get("popularity"),
+                "win_odds": odds.get("win_odds"),
+            }
+            past_runs = []
+            career_summaries = build_career_summaries(
+                [], current_race, horse.get("jockey")
+            )
+            last_run_jockey = None
+            if entry["horse_url"]:
+                try:
+                    past_runs, career_summaries, last_run_jockey = parse_horse_history(
+                        session,
+                        entry["horse_url"],
+                        current_race_id,
+                        current_race,
+                        horse.get("jockey"),
+                    )
+                except Exception:  # noqa: BLE001
+                    past_runs, last_run_jockey = [], None
+            build_horse_summaries(
+                horse,
+                current_race,
+                past_runs,
+                career_summaries,
+                last_run_jockey,
+            )
+            horses.append(horse)
+        return sorted(horses, key=lambda item: item["horse_number"])
 
     horses: list[dict[str, Any]] = []
     for row in rows_from_table(table):

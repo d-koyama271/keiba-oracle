@@ -256,6 +256,17 @@ class OddsFallbackTests(TestCase):
 
         self.assertEqual(actual, JRA_URL)
 
+    def test_jra_url_is_discovered_through_target_track_link(self) -> None:
+        anchor_url = "https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde0103202602080720260719/D1"
+        target_track_url = "https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde0102202601120720260719/A1"
+        home_html = f'<a href="{anchor_url}">anchor</a>'
+        anchor_html = f'<a href="{target_track_url}">target track</a>'
+        target_track_html = f'<a href="{JRA_URL}">target race</a>'
+        with patch("collect.fetch_html", side_effect=[home_html, anchor_html, target_track_html]):
+            actual = discover_jra_race_url(None, RACE_ID, race())
+
+        self.assertEqual(actual, JRA_URL)
+
 
 if __name__ == "__main__":
     import unittest
