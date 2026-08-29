@@ -383,14 +383,14 @@ class MultipleRaceGenerationTests(unittest.TestCase):
         race_ids = [NIIGATA_7R, CHUKYO_7R]
         tracks = {NIIGATA_7R: "新潟", CHUKYO_7R: "中京"}
 
-        def overview(_html, race_id, target_date, reference_minutes):
+        def overview(_html, race_id, target_date, reference_minutes, **_kwargs):
             value = race(tracks[race_id], f"{tracks[race_id]}重賞 (G3)", "15:35", 7)
             value["date"] = target_date
             value["odds_reference_minutes_before_start"] = reference_minutes
             value["source_url"] = f"https://example.invalid/{race_id}"
             return value
 
-        def horses(_session, _html, _race, race_id, _odds, _existing):
+        def horses(_session, _html, _race, race_id, _odds, _existing, **_kwargs):
             return [
                 {
                     "horse_number": 1,
@@ -399,6 +399,9 @@ class MultipleRaceGenerationTests(unittest.TestCase):
                     "past_runs": [],
                 }
             ]
+
+        def fetched(_session, url, *, return_source_url=False):
+            return ("<html></html>", url) if return_source_url else "<html></html>"
 
         logger = logging.getLogger("test.multiple-race-generation")
         logger.handlers.clear()
@@ -414,7 +417,7 @@ class MultipleRaceGenerationTests(unittest.TestCase):
             with ExitStack() as stack:
                 stack.enter_context(patch.object(collect_module, "setup_logger", return_value=logger))
                 stack.enter_context(patch.object(collect_module, "track_name_from_race_id", side_effect=tracks.get))
-                stack.enter_context(patch.object(collect_module, "fetch_html", return_value="<html></html>"))
+                stack.enter_context(patch.object(collect_module, "fetch_html", side_effect=fetched))
                 stack.enter_context(patch.object(collect_module, "parse_race_overview", side_effect=overview))
                 stack.enter_context(patch.object(
                     collect_module,

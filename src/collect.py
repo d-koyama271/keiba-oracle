@@ -55,7 +55,13 @@ REQUEST_HEADERS = {
 }
 
 
-def fetch_html(session: requests.Session, url: str) -> str:
+def fetch_html(
+    session: requests.Session,
+    url: str,
+    *,
+    return_source_url: bool = False,
+) -> str | tuple[str, str]:
+    source_url = url
     try:
         response = session.get(url, headers=REQUEST_HEADERS, timeout=30)
         response.raise_for_status()
@@ -74,14 +80,17 @@ def fetch_html(session: requests.Session, url: str) -> str:
             fallback_url = MOBILE_RESULT_URL.format(race_id=result_match.group(1))
         else:
             raise
+        source_url = fallback_url
         response = session.get(
             fallback_url,
             headers=REQUEST_HEADERS,
             timeout=30,
         )
         response.raise_for_status()
+    if isinstance(getattr(response, "url", None), str):
+        source_url = response.url
     response.encoding = response.apparent_encoding or response.encoding
-    return response.text
+    return (response.text, source_url) if return_source_url else response.text
 
 
 def parse_jsonp_body(raw: str) -> dict[str, Any]:
@@ -224,12 +233,16 @@ def mobile_entry_rows(table: Any) -> list[dict[str, Any]]:
     return entries
 
 
-def parse_entry_horse_identities(html: str) -> dict[int, str]:
+def is_mobile_race_url(url: str) -> bool:
+    return urlparse(url).netloc == urlparse(MOBILE_SHUTUBA_URL).netloc
+
+
+def parse_entry_horse_identities(html: str, *, mobile: bool = False) -> dict[int, str]:
     table = find_entry_table(BeautifulSoup(html, "html.parser"))
     if table is None:
         return {}
 
-    if "Shutuba_Table" in table.get("class", []):
+    if mobile:
         return {
             entry["horse_number"]: entry["horse_name"]
             for entry in mobile_entry_rows(table)
@@ -872,7 +885,14 @@ def build_horse_summaries(
     horse["condition_change_summary"] = " / ".join(bit for bit in change_bits if bit and bit != "不明")
 
 
-def parse_race_overview(html: str, race_id: str, target_date: str, odds_reference_minutes: int) -> dict[str, Any]:
+def parse_race_overview(
+    html: str,
+    race_id: str,
+    target_date: str,
+    odds_reference_minutes: int,
+    *,
+    source_url: str | None = None,
+) -> dict[str, Any]:
     soup = BeautifulSoup(html, "html.parser")
     race_name_node = soup.select_one(".RaceName, .Race_Name")
     title_node = race_name_node or soup.select_one("title")
@@ -917,11 +937,7 @@ def parse_race_overview(html: str, race_id: str, target_date: str, odds_referenc
         "going": going,
         "weather": weather,
         "class_grade": normalize_class_grade(f"{race_name} {detail_text}", soup),
-        "source_url": (
-            MOBILE_SHUTUBA_URL.format(race_id=race_id)
-            if soup.select_one("table.Shutuba_Table")
-            else SHUTUBA_URL.format(race_id=race_id)
-        ),
+        "source_url": source_url or SHUTUBA_URL.format(race_id=race_id),
         "odds_captured_at": None,
         "odds_source": None,
         "odds_source_url": None,
@@ -1017,13 +1033,15 @@ def parse_horses(
     current_race_id: str,
     odds_map: dict[int, dict[str, Any]],
     _existing_horses: list[dict[str, Any]] | None = None,
+    *,
+    mobile: bool = False,
 ) -> list[dict[str, Any]]:
     soup = BeautifulSoup(html, "html.parser")
     table = find_entry_table(soup)
     if table is None:
         return []
 
-    if "Shutuba_Table" in table.get("class", []):
+    if mobile:
         horses = []
         for entry in mobile_entry_rows(table):
             horse_number = entry["horse_number"]
@@ -1263,17 +1281,23 @@ def collect_races(
             continue
 
         try:
-            entry_html = fetch_html(session, SHUTUBA_URL.format(race_id=race_id))
+            entry_html, entry_source_url = fetch_html(
+                session,
+                SHUTUBA_URL.format(race_id=race_id),
+                return_source_url=True,
+            )
+            mobile_entry = is_mobile_race_url(entry_source_url)
             race = parse_race_overview(
                 entry_html,
                 race_id,
                 target_date,
                 int(config["odds_reference_minutes_before_start"]),
+                source_url=entry_source_url,
             )
             race_number = int(race.get("race_number") or race_id[-2:])
             path = race_json_path(config, target_date, track_name, race_number, root)
             existing = load_race_json(path)
-            expected_horses = parse_entry_horse_identities(entry_html)
+            expected_horses = parse_entry_horse_identities(entry_html, mobile=mobile_entry)
             odds_map, odds_captured_at, odds_source, odds_source_url = fetch_validated_win_odds(
                 session,
                 race_id,
@@ -1292,6 +1316,7 @@ def collect_races(
                 race_id,
                 odds_map,
                 (existing or {}).get("horses"),
+                mobile=mobile_entry,
             )
 
             payload = ensure_race_payload(existing, race_id)
