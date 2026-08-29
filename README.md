@@ -75,7 +75,7 @@ codex login status
 - `simulation.stake_unit`: 両方式共通の購入金額単位
 - `simulation.value.ev_threshold`: 期待値重視方式の最低 EV（既定値 1.0）
 - `simulation.value.kelly_fraction`: 期待値重視方式の fractional Kelly 係数
-- `simulation.dutching.*`: ダッチング方式の最大頭数、最低カバー確率、最低グループ期待値、最低利益率（既定値20%、合計購入額基準）、的中時利益条件
+- `simulation.dutching.*`: 単勝分配方式（内部キー `dutching`）の最大頭数、最低カバー確率、最低グループ期待値、最低利益率（既定値20%、合計購入額基準）、的中時利益条件
 - `publish_mode`: `github_pages` を想定
 - `llm_provider`: 通常運用では `codex`
 - `llm_model`: Codex で使用するモデル名
@@ -145,7 +145,7 @@ python src/run_post.py --date 2026-04-14
 1. `collect.py` で対象レース情報を取得
 2. 予想開始時点の `meta` / `race` / `horses` を確定し、総合AI予想入力と、市場情報を除いた統計重視予想入力を独立して作成
 3. `predict.py` から Codex を実行し、総合AI予想と統計重視予想の各馬の 1 着確率・理由・総括を検証して保存
-4. 両AI予想を個別に入力として、`simulate.py` で期待値重視方式と上位予測ダッチング方式のpreを生成
+4. 両AI予想を個別に入力として、`simulate.py` で期待値重視方式と単勝分配方式のpreを生成
 5. `render.py` で予想ページと index を生成
 6. `publish.py` で `public/` を更新
 
@@ -169,9 +169,9 @@ Codex は一時作業ディレクトリ内の読み取り専用・構造化出�
 正式な購入シミュレーションは次の2方式です。総合AI予想のレース前想定と収支は従来どおり `simulation.*.pre/post`、統計重視予想分は `simulation.variants` に保存します。レース結果を取得しても各 `pre` は変更しません。
 
 - `value`: 予測勝率と単勝オッズから EV と fractional Kelly を計算します。理論購入額が予算を超える場合だけ比例縮小し、余った予算の強制配分は行いません。
-- `dutching`: 予測勝率上位を1頭から設定上限まで評価し、逆オッズ配分を購入単位へ丸めます。カバー確率、グループ期待値、的中時最低利益を満たす候補からグループ期待値が最大の頭数を採用します。
+- `dutching`（画面表示: 単勝分配方式）: 予測勝率上位を1頭から設定上限まで評価し、逆オッズ配分を購入単位へ丸めます。カバー確率、グループ期待値、的中時最低利益を満たす候補からグループ期待値が最大の頭数を採用します。
 
-予想ページではAI予想と正式シミュレーションを総合AI予想／統計重視予想のタブで切り替えます。カスタムシミュレーターも選択中タブの予測確率を使い、両購入方式の条件をブラウザ内で変更できます。ダッチングは自動選択に加え、確認用の固定頭数も選べます。入力値と計算結果はrace JSON、正式な収支、localStorage、Cookieへ保存されません。HTMLへ埋め込む計算データは馬番、予測勝率、単勝オッズ、購入単位だけです。
+予想ページではAI予想と正式シミュレーションを総合AI予想／統計重視予想のタブで切り替えます。カスタムシミュレーターも選択中タブの予測確率を使い、両購入方式の条件をブラウザ内で変更できます。単勝分配方式は自動選択に加え、確認用の固定頭数も選べます。入力値と計算結果はrace JSON、正式な収支、localStorage、Cookieへ保存されません。HTMLへ埋め込む計算データは馬番、予測勝率、単勝オッズ、購入単位だけです。
 
 ## 予測評価
 
@@ -188,13 +188,13 @@ Codex は一時作業ディレクトリ内の読み取り専用・構造化出�
 
 有効な単勝オッズが全馬分そろわない場合、`market_baseline.available` は `false` です。発走後に記録されたオッズを使用した比較には `odds_recorded_after_start: true` と注記を保存します。購入なしの評価用ROIは `null` です。
 
-`data/evaluation_summary.json` は正常な `evaluation` があるrace JSONだけから再生成する派生データです。既存のトップレベル集計は総合AI予想の意味を維持します。`methods.traditional` と `methods.statistical` に方式別のTop1・Top3・Top5成績、Log Loss・Brier Score、確率校正、条件別精度を保存します。`paired_comparison` は両方式の評価がそろう同一レースだけを母数とし、Log Loss・Brier Score差は `statistical - traditional`（負なら統計重視予想が優位）です。市場比較と両購入シミュレーションの累積成績は総合AI予想のままです。race JSONへは書き戻さず、発走後オッズのレースは正式な市場比較から除外します。任意に再集計する場合は次を実行します。
+`data/evaluation_summary.json` は正常な `evaluation` があるrace JSONだけから再生成する派生データです。既存のトップレベル集計と `simulation` は総合AI予想の意味を維持します。`methods.traditional` と `methods.statistical` に方式別のTop1・Top3・Top5成績、Log Loss・Brier Score、確率校正、条件別精度を保存し、各方式の `simulation` は保存済みpostだけを集計します。`paired_comparison` は両方式の評価がそろう同一レースだけを母数とし、Log Loss・Brier Score差は `statistical - traditional`（負なら統計重視予想が優位）です。race JSONへは書き戻さず、発走後オッズのレースは正式な市場比較から除外します。任意に再集計する場合は次を実行します。
 
 ```bash
 python src/evaluation_summary.py
 ```
 
-トップページの「総合AI予想の予測成績」はこの集計ファイルを読み込みます。ファイルがない場合は未算出として `-` を表示し、予想入力にはこの集計を含めません。
+トップページの「総合AI予想の予測成績」と「統計重視予想の予測成績」はこの集計ファイルを読み込みます。統計重視予想の累計収支は、保存済みのsimulation postだけを集計します。ファイルがない場合は未算出として `-` を表示し、予想入力にはこの集計を含めません。
 
 状態はレース前入力生成後が `pre_status: awaiting_prediction`、予想公開後が `pre_status: published` です。`post_status` は結果待ちの `awaiting_result` から、結果・保存済み全simulationのpost・evaluation・結果HTML公開完了後に `published` となります。
 

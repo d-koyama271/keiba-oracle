@@ -387,7 +387,10 @@ class RenderTests(unittest.TestCase):
                 index,
             )
             self.assertIn("<h2>総合AI予想の予測成績</h2>", index)
-            self.assertIn("現在の的中率", index)
+            self.assertIn("<h2>統計重視予想の予測成績</h2>", index)
+            self.assertIn("1位的中率", index)
+            self.assertIn("勝ち馬の予想3位内率", index)
+            self.assertNotIn("Top5的中率", index)
             self.assertIn("評価済みレースなし", index)
             self.assertLess(index.index('class="panel performance-panel"'), index.index('<table class="index-table">'))
             self.assertIn("grid-template-columns: repeat(2, minmax(0, 1fr))", index)
@@ -440,7 +443,7 @@ class RenderTests(unittest.TestCase):
             self.assertIn("<h3>総合AI予想</h3>", race_html)
             self.assertNotIn("統計重視予想", race_html)
             self.assertIn(
-                '<meta name="description" content="予想済みのAI予想。各馬の1着確率、予想理由、上位予測ダッチング方式と期待値重視方式による購入シミュレーションを掲載します。">',
+                '<meta name="description" content="予想済みのAI予想。各馬の1着確率、予想理由、単勝分配方式と期待値重視方式による購入シミュレーションを掲載します。">',
                 race_html,
             )
             self.assertIn("background: #eee8f6", race_html)
@@ -537,8 +540,9 @@ class RenderTests(unittest.TestCase):
             self.assertNotIn('<section class="result-section">', prediction_html)
             self.assertIn('<section class="result-section">', result_html)
             self.assertIn("予測評価", result_html)
-            self.assertIn("実着順一覧", result_html)
-            self.assertGreaterEqual(result_html.count("確定単勝オッズ"), 3)
+            self.assertNotIn("実着順一覧", result_html)
+            self.assertGreaterEqual(result_html.count("確定オッズ"), 2)
+            self.assertNotIn("確定単勝オッズ", result_html)
             self.assertIn(">5.0</td><td class=\"nowrap\">的中</td>", result_html)
             self.assertNotIn(">yes<", result_html)
             self.assertNotIn(">no<", result_html)
@@ -587,7 +591,41 @@ class RenderTests(unittest.TestCase):
                             "top5_hits": 4,
                             "top5_hit_rate": 0.8,
                             "average_winner_predicted_rank": 3.4,
-                        }
+                        },
+                        "simulation": {
+                            "value": {"simulation_races": 5, "cumulative_profit": 0},
+                            "dutching": {"simulation_races": 5, "cumulative_profit": -9670},
+                        },
+                        "methods": {
+                            "traditional": {
+                                "overall": {
+                                    "evaluated_races": 5,
+                                    "top1_hits": 1,
+                                    "top1_hit_rate": 0.2,
+                                    "top3_hits": 3,
+                                    "top3_hit_rate": 0.6,
+                                    "top5_hits": 4,
+                                    "top5_hit_rate": 0.8,
+                                    "average_winner_predicted_rank": 3.4,
+                                }
+                            },
+                            "statistical": {
+                                "overall": {
+                                    "evaluated_races": 2,
+                                    "top1_hits": 1,
+                                    "top1_hit_rate": 0.5,
+                                    "top3_hits": 2,
+                                    "top3_hit_rate": 1.0,
+                                    "top5_hits": 2,
+                                    "top5_hit_rate": 1.0,
+                                    "average_winner_predicted_rank": 1.5,
+                                },
+                                "simulation": {
+                                    "value": {"simulation_races": 1, "cumulative_profit": 300},
+                                    "dutching": {"simulation_races": 1, "cumulative_profit": -100},
+                                },
+                            },
+                        },
                     },
                     ensure_ascii=False,
                 ),
@@ -604,8 +642,18 @@ class RenderTests(unittest.TestCase):
             self.assertIn("20.0%", index)
             self.assertIn("1 / 5レース", index)
             self.assertIn("60.0%", index)
-            self.assertIn("80.0%", index)
+            self.assertIn("3 / 5レース", index)
             self.assertIn("3.4位", index)
+            self.assertIn("50.0%", index)
+            self.assertIn("1 / 2レース", index)
+            self.assertIn("100.0%", index)
+            self.assertIn("2 / 2レース", index)
+            self.assertIn("単勝分配方式</strong> -9,670円", index)
+            self.assertIn("期待値重視方式</strong> 0円", index)
+            self.assertIn("単勝分配方式</strong> -100円", index)
+            self.assertIn("期待値重視方式</strong> 300円", index)
+            self.assertNotIn("Top5的中率", index)
+            self.assertNotIn("80.0%", index)
             self.assertIn("予想済み", index)
             self.assertLess(index.index("予測成績"), index.index("予想済み"))
 

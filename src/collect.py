@@ -1146,7 +1146,7 @@ def parse_result(html: str) -> dict[str, Any] | None:
         finish_position = parse_finish_position(finish_text)
         if horse_number is None:
             continue
-        odds = parse_float(row.get("単勝オッズ"))
+        odds = parse_float(row.get("単勝オッズ") or row.get("オッズ"))
         if (
             odds is None
             or not math.isfinite(odds)

@@ -351,14 +351,42 @@
     }
     .prediction-section.has-ai-tabs .prediction-method-tabs,
     .simulation-section.has-ai-tabs .simulation-method-tabs {
+      position: relative;
+      z-index: 2;
+      align-items: flex-end;
+      margin-bottom: -1px;
+      border-bottom: 0;
+    }
+    .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab,
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab {
+      position: relative;
       margin-bottom: 0;
+      border-color: var(--line);
+      background: #f4f2ed;
+    }
+    .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab[aria-selected="true"],
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab[aria-selected="true"] {
+      z-index: 3;
+      border-bottom-color: var(--panel);
+      background: var(--panel);
+    }
+    .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab[aria-selected="true"]::after,
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab[aria-selected="true"]::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: -2px;
+      left: 0;
+      height: 3px;
+      background: var(--panel);
     }
     .prediction-section.has-ai-tabs .prediction-method-content,
     .simulation-section.has-ai-tabs .simulation-method-content {
+      position: relative;
+      z-index: 1;
       margin-top: 0;
       padding: 20px;
       border: 1px solid var(--line);
-      border-top: 0;
       border-radius: 0 14px 14px 14px;
       background: var(--panel);
     }
@@ -514,147 +542,6 @@
     <section class="result-section">
       <h2 class="result-section-title">レース結果</h2>
       
-      <div class="panel result-panel">
-        <h3>実着順一覧</h3>
-        <p class="small">確定単勝オッズは記録されていません。</p>
-        <p class="table-scroll-hint">表は横にスクロールできます</p>
-        <div class="table-scroll">
-          <table class="result-table">
-            <thead><tr><th class="nowrap">実着順</th><th class="nowrap">馬番</th><th class="horse-name">馬名</th><th class="nowrap">確定単勝オッズ</th></tr></thead>
-            <tbody>
-              
-              <tr class="result-winner">
-                <td class="nowrap" data-sort-value="1">1着</td>
-                <td class="nowrap" data-sort-value="2">2</td>
-                <td class="horse-name">フロムダスク</td>
-                <td class="nowrap" data-sort-value="">-</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="2">2着</td>
-                <td class="nowrap" data-sort-value="3">3</td>
-                <td class="horse-name">レイピア</td>
-                <td class="nowrap" data-sort-value="">-</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="3">3着</td>
-                <td class="nowrap" data-sort-value="6">6</td>
-                <td class="horse-name">レッドエヴァンス</td>
-                <td class="nowrap" data-sort-value="">-</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="4">4着</td>
-                <td class="nowrap" data-sort-value="4">4</td>
-                <td class="horse-name">プロトポロス</td>
-                <td class="nowrap" data-sort-value="">-</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="5">5着</td>
-                <td class="nowrap" data-sort-value="5">5</td>
-                <td class="horse-name">ジェニファー</td>
-                <td class="nowrap" data-sort-value="">-</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="6">6着</td>
-                <td class="nowrap" data-sort-value="17">17</td>
-                <td class="horse-name">タマモイカロス</td>
-                <td class="nowrap" data-sort-value="">-</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="7">7着</td>
-                <td class="nowrap" data-sort-value="13">13</td>
-                <td class="horse-name">サンアントワーヌ</td>
-                <td class="nowrap" data-sort-value="">-</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="8">8着</td>
-                <td class="nowrap" data-sort-value="16">16</td>
-                <td class="horse-name">アブキールベイ</td>
-                <td class="nowrap" data-sort-value="">-</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="9">9着</td>
-                <td class="nowrap" data-sort-value="7">7</td>
-                <td class="horse-name">ディアナザール</td>
-                <td class="nowrap" data-sort-value="">-</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="10">10着</td>
-                <td class="nowrap" data-sort-value="1">1</td>
-                <td class="horse-name">イツモニコニコ</td>
-                <td class="nowrap" data-sort-value="">-</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="11">11着</td>
-                <td class="nowrap" data-sort-value="9">9</td>
-                <td class="horse-name">クラスペディア</td>
-                <td class="nowrap" data-sort-value="">-</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="12">12着</td>
-                <td class="nowrap" data-sort-value="10">10</td>
-                <td class="horse-name">ナムラローズマリー</td>
-                <td class="nowrap" data-sort-value="">-</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="13">13着</td>
-                <td class="nowrap" data-sort-value="8">8</td>
-                <td class="horse-name">フィオライア</td>
-                <td class="nowrap" data-sort-value="">-</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="14">14着</td>
-                <td class="nowrap" data-sort-value="15">15</td>
-                <td class="horse-name">アンクルクロス</td>
-                <td class="nowrap" data-sort-value="">-</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="15">15着</td>
-                <td class="nowrap" data-sort-value="18">18</td>
-                <td class="horse-name">ペプチドヤマト</td>
-                <td class="nowrap" data-sort-value="">-</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="16">16着</td>
-                <td class="nowrap" data-sort-value="11">11</td>
-                <td class="horse-name">タマモブラックタイ</td>
-                <td class="nowrap" data-sort-value="">-</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="17">17着</td>
-                <td class="nowrap" data-sort-value="12">12</td>
-                <td class="horse-name">インビンシブルパパ</td>
-                <td class="nowrap" data-sort-value="">-</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="18">18着</td>
-                <td class="nowrap" data-sort-value="14">14</td>
-                <td class="horse-name">コウセキ</td>
-                <td class="nowrap" data-sort-value="">-</td>
-              </tr>
-              
-            </tbody>
-          </table>
-        </div>
-      </div>
-      
-      
       
       
       
@@ -693,7 +580,7 @@
   </button>
 </th><th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="ascending">
-    確定単勝オッズ <span class="sort-indicator" aria-hidden="true">↕</span>
+    確定オッズ <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="7" data-sort-type="number" data-sort-first="descending">
@@ -709,7 +596,7 @@
                   <td class="nowrap" data-sort-value="0.03">3.0%</td>
                   <td class="nowrap" data-sort-value="10">10着</td>
                   <td class="comparison-cell nowrap" data-sort-value="-1"><span class="comparison-up">1着上</span></td>
-                  <td class="nowrap" data-sort-value="">-</td>
+                  <td class="nowrap" data-sort-value="38.5">38.5</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
@@ -720,7 +607,7 @@
                   <td class="nowrap" data-sort-value="0.01">1.0%</td>
                   <td class="nowrap" data-sort-value="1">1着</td>
                   <td class="comparison-cell nowrap" data-sort-value="-15"><span class="comparison-up">15着上</span></td>
-                  <td class="nowrap" data-sort-value="">-</td>
+                  <td class="nowrap" data-sort-value="35.1">35.1</td>
                   <td class="nowrap" data-sort-value="3510">3510円</td>
                 </tr>
                 
@@ -731,7 +618,7 @@
                   <td class="nowrap" data-sort-value="0.19">19.0%</td>
                   <td class="nowrap" data-sort-value="2">2着</td>
                   <td class="comparison-cell nowrap" data-sort-value="1"><span class="comparison-down">1着下</span></td>
-                  <td class="nowrap" data-sort-value="">-</td>
+                  <td class="nowrap" data-sort-value="4.9">4.9</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
@@ -742,7 +629,7 @@
                   <td class="nowrap" data-sort-value="0.003">0.3%</td>
                   <td class="nowrap" data-sort-value="4">4着</td>
                   <td class="comparison-cell nowrap" data-sort-value="-13"><span class="comparison-up">13着上</span></td>
-                  <td class="nowrap" data-sort-value="">-</td>
+                  <td class="nowrap" data-sort-value="138.1">138.1</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
@@ -753,7 +640,7 @@
                   <td class="nowrap" data-sort-value="0.08">8.0%</td>
                   <td class="nowrap" data-sort-value="5">5着</td>
                   <td class="comparison-cell nowrap" data-sort-value="2"><span class="comparison-down">2着下</span></td>
-                  <td class="nowrap" data-sort-value="">-</td>
+                  <td class="nowrap" data-sort-value="21.4">21.4</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
@@ -764,7 +651,7 @@
                   <td class="nowrap" data-sort-value="0.07">7.0%</td>
                   <td class="nowrap" data-sort-value="3">3着</td>
                   <td class="comparison-cell nowrap" data-sort-value="-3"><span class="comparison-up">3着上</span></td>
-                  <td class="nowrap" data-sort-value="">-</td>
+                  <td class="nowrap" data-sort-value="7.1">7.1</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
@@ -775,7 +662,7 @@
                   <td class="nowrap" data-sort-value="0.185">18.5%</td>
                   <td class="nowrap" data-sort-value="9">9着</td>
                   <td class="comparison-cell nowrap" data-sort-value="7"><span class="comparison-down">7着下</span></td>
-                  <td class="nowrap" data-sort-value="">-</td>
+                  <td class="nowrap" data-sort-value="3.9">3.9</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
@@ -786,7 +673,7 @@
                   <td class="nowrap" data-sort-value="0.035">3.5%</td>
                   <td class="nowrap" data-sort-value="13">13着</td>
                   <td class="comparison-cell nowrap" data-sort-value="3"><span class="comparison-down">3着下</span></td>
-                  <td class="nowrap" data-sort-value="">-</td>
+                  <td class="nowrap" data-sort-value="63.0">63.0</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
@@ -797,7 +684,7 @@
                   <td class="nowrap" data-sort-value="0.02">2.0%</td>
                   <td class="nowrap" data-sort-value="11">11着</td>
                   <td class="comparison-cell nowrap" data-sort-value="-2"><span class="comparison-up">2着上</span></td>
-                  <td class="nowrap" data-sort-value="">-</td>
+                  <td class="nowrap" data-sort-value="31.0">31.0</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
@@ -808,7 +695,7 @@
                   <td class="nowrap" data-sort-value="0.025">2.5%</td>
                   <td class="nowrap" data-sort-value="12">12着</td>
                   <td class="comparison-cell nowrap" data-sort-value="0"><span class="comparison-neutral">差なし</span></td>
-                  <td class="nowrap" data-sort-value="">-</td>
+                  <td class="nowrap" data-sort-value="33.8">33.8</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
@@ -819,7 +706,7 @@
                   <td class="nowrap" data-sort-value="0.015">1.5%</td>
                   <td class="nowrap" data-sort-value="16">16着</td>
                   <td class="comparison-cell nowrap" data-sort-value="2"><span class="comparison-down">2着下</span></td>
-                  <td class="nowrap" data-sort-value="">-</td>
+                  <td class="nowrap" data-sort-value="78.1">78.1</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
@@ -830,7 +717,7 @@
                   <td class="nowrap" data-sort-value="0.055">5.5%</td>
                   <td class="nowrap" data-sort-value="17">17着</td>
                   <td class="comparison-cell nowrap" data-sort-value="10"><span class="comparison-down">10着下</span></td>
-                  <td class="nowrap" data-sort-value="">-</td>
+                  <td class="nowrap" data-sort-value="8.4">8.4</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
@@ -841,7 +728,7 @@
                   <td class="nowrap" data-sort-value="0.055">5.5%</td>
                   <td class="nowrap" data-sort-value="7">7着</td>
                   <td class="comparison-cell nowrap" data-sort-value="-1"><span class="comparison-up">1着上</span></td>
-                  <td class="nowrap" data-sort-value="">-</td>
+                  <td class="nowrap" data-sort-value="15.5">15.5</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
@@ -852,7 +739,7 @@
                   <td class="nowrap" data-sort-value="0.05">5.0%</td>
                   <td class="nowrap" data-sort-value="18">18着</td>
                   <td class="comparison-cell nowrap" data-sort-value="9"><span class="comparison-down">9着下</span></td>
-                  <td class="nowrap" data-sort-value="">-</td>
+                  <td class="nowrap" data-sort-value="15.7">15.7</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
@@ -863,7 +750,7 @@
                   <td class="nowrap" data-sort-value="0.08">8.0%</td>
                   <td class="nowrap" data-sort-value="14">14着</td>
                   <td class="comparison-cell nowrap" data-sort-value="10"><span class="comparison-down">10着下</span></td>
-                  <td class="nowrap" data-sort-value="">-</td>
+                  <td class="nowrap" data-sort-value="8.0">8.0</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
@@ -874,7 +761,7 @@
                   <td class="nowrap" data-sort-value="0.015">1.5%</td>
                   <td class="nowrap" data-sort-value="8">8着</td>
                   <td class="comparison-cell nowrap" data-sort-value="-7"><span class="comparison-up">7着上</span></td>
-                  <td class="nowrap" data-sort-value="">-</td>
+                  <td class="nowrap" data-sort-value="63.1">63.1</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
@@ -885,7 +772,7 @@
                   <td class="nowrap" data-sort-value="0.08">8.0%</td>
                   <td class="nowrap" data-sort-value="6">6着</td>
                   <td class="comparison-cell nowrap" data-sort-value="1"><span class="comparison-down">1着下</span></td>
-                  <td class="nowrap" data-sort-value="">-</td>
+                  <td class="nowrap" data-sort-value="14.2">14.2</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
@@ -896,7 +783,7 @@
                   <td class="nowrap" data-sort-value="0.002">0.2%</td>
                   <td class="nowrap" data-sort-value="15">15着</td>
                   <td class="comparison-cell nowrap" data-sort-value="-3"><span class="comparison-up">3着上</span></td>
-                  <td class="nowrap" data-sort-value="">-</td>
+                  <td class="nowrap" data-sort-value="284.6">284.6</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
@@ -941,10 +828,10 @@
 
         
         <div class="panel result-panel">
-          <h3>上位予測ダッチング方式のシミュレーション結果</h3>
+          <h3>単勝分配方式のシミュレーション結果</h3>
           
           <p><strong>投資:</strong> 3000円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> -3000円 / <strong>ROI:</strong> -100.00%</p>
-          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定単勝オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">3</td><td class="nowrap">600円</td><td class="nowrap">-</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">7</td><td class="nowrap">1300円</td><td class="nowrap">-</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">5</td><td class="nowrap">400円</td><td class="nowrap">-</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">15</td><td class="nowrap">400円</td><td class="nowrap">-</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">17</td><td class="nowrap">300円</td><td class="nowrap">-</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
+          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">3</td><td class="nowrap">600円</td><td class="nowrap">4.9</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">7</td><td class="nowrap">1300円</td><td class="nowrap">3.9</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">5</td><td class="nowrap">400円</td><td class="nowrap">21.4</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">15</td><td class="nowrap">400円</td><td class="nowrap">8.0</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">17</td><td class="nowrap">300円</td><td class="nowrap">14.2</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
           
         </div>
         

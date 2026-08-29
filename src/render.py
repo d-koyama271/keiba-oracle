@@ -63,7 +63,7 @@ PREDICTION_METHOD_DESCRIPTIONS = {
 }
 
 TOOLTIPS = {
-    "dutching_method": "AIの予測上位馬を複数選び、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。",
+    "dutching_method": "AI予想上位の複数馬を対象に、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。",
     "value_method": "AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。",
     "coverage_probability": "選択した馬の1着確率を合計した値です。",
     "group_expected_value": "選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。",
@@ -322,41 +322,6 @@ def result_final_win_odds(
     return odds_by_horse if set(odds_by_horse) == expected_numbers else {}
 
 
-def build_actual_result_rows(
-    payload: dict[str, Any],
-    result: dict[str, Any] | None,
-    final_win_odds: dict[int, float],
-) -> list[dict[str, Any]]:
-    horse_names = {
-        int(horse["horse_number"]): horse.get("horse_name") or "-"
-        for horse in payload.get("horses", [])
-    }
-    rows = []
-    for item in (result or {}).get("horses", []):
-        horse_number = int(item["horse_number"])
-        finish_position = item.get("finish_position")
-        numeric_finish = comparable_finish_position(finish_position)
-        rows.append(
-            {
-                "horse_number": horse_number,
-                "horse_name": horse_names.get(horse_number, "-"),
-                "finish_position_label": (
-                    f"{numeric_finish}着" if numeric_finish is not None else (finish_position or "-")
-                ),
-                "finish_position_sort_value": numeric_finish,
-                "final_win_odds": final_win_odds.get(horse_number),
-            }
-        )
-    rows.sort(
-        key=lambda item: (
-            item["finish_position_sort_value"] is None,
-            item["finish_position_sort_value"] or math.inf,
-            item["horse_number"],
-        )
-    )
-    return rows
-
-
 def build_prediction_horse_rows(
     payload: dict[str, Any],
     prediction: dict[str, Any] | None,
@@ -582,9 +547,7 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         "simulation_dutching_pre": traditional_view["dutching_pre"],
         "simulation_dutching_post": traditional_view["dutching_post"],
         "result": result,
-        "actual_result_rows": build_actual_result_rows(payload, result, final_win_odds),
         "final_win_odds_by_horse": final_win_odds,
-        "has_final_win_odds": bool(final_win_odds),
         "evaluation": evaluation,
         "statistical_evaluation": statistical_evaluation,
         "horse_rows": traditional_view["horse_rows"],

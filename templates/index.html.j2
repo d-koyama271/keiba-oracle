@@ -55,6 +55,13 @@
       font-size: 24px;
       font-weight: 700;
     }
+    .performance-breakdown {
+      display: grid;
+      gap: 6px;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+    .performance-breakdown div { white-space: nowrap; }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -129,35 +136,51 @@
   </style>
 </head>
 <body>
+{% macro performance_panel(title, overall, simulation) -%}
+{% set evaluated_races = overall.get("evaluated_races", 0) if overall else 0 %}
+{% set value_simulation = simulation.get("value") if simulation else none %}
+{% set dutching_simulation = simulation.get("dutching") if simulation else none %}
+    <section class="panel performance-panel">
+      <h2>{{ title }}</h2>
+      <div class="performance-grid">
+        <div class="performance-item">
+          <strong>1位的中率</strong>
+          <div class="performance-value">{% if evaluated_races and overall.get("top1_hit_rate") is not none %}{{ "%.1f"|format(overall.top1_hit_rate * 100) }}%{% else %}-{% endif %}</div>
+          <div class="small">{% if evaluated_races %}{{ overall.get("top1_hits", 0) }} / {{ evaluated_races }}レース{% else %}評価済みレースなし{% endif %}</div>
+        </div>
+        <div class="performance-item">
+          <strong>勝ち馬の予想3位内率</strong>
+          <div class="performance-value">{% if evaluated_races and overall.get("top3_hit_rate") is not none %}{{ "%.1f"|format(overall.top3_hit_rate * 100) }}%{% else %}-{% endif %}</div>
+          <div class="small">{% if evaluated_races %}{{ overall.get("top3_hits", 0) }} / {{ evaluated_races }}レース{% else %}評価済みレースなし{% endif %}</div>
+        </div>
+        <div class="performance-item">
+          <strong>勝ち馬の平均予想順位</strong>
+          <div class="performance-value">{% if evaluated_races and overall.get("average_winner_predicted_rank") is not none %}{{ "%.1f"|format(overall.average_winner_predicted_rank) }}位{% else %}-{% endif %}</div>
+        </div>
+        <div class="performance-item">
+          <strong>累計収支</strong>
+          <div class="performance-breakdown">
+            <div><strong>単勝分配方式</strong> {% if dutching_simulation and dutching_simulation.get("simulation_races", 0) %}{{ "{:,}".format(dutching_simulation.get("cumulative_profit", 0)|int) }}円{% else %}-{% endif %}</div>
+            <div><strong>期待値重視方式</strong> {% if value_simulation and value_simulation.get("simulation_races", 0) %}{{ "{:,}".format(value_simulation.get("cumulative_profit", 0)|int) }}円{% else %}-{% endif %}</div>
+          </div>
+        </div>
+      </div>
+    </section>
+{%- endmacro %}
   <main>
     <div class="panel">
       <h1>中央競馬 AI予想レース一覧</h1>
       <p class="small">AIが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。</p>
     </div>
-{% set overall = evaluation_summary.overall if evaluation_summary and evaluation_summary.overall else none %}
-{% set evaluated_races = overall.evaluated_races if overall else 0 %}
-    <section class="panel performance-panel">
-      <h2>総合AI予想の予測成績</h2>
-      <div class="performance-grid">
-        <div class="performance-item">
-          <strong>現在の的中率</strong>
-          <div class="performance-value">{% if evaluated_races and overall.top1_hit_rate is not none %}{{ "%.1f"|format(overall.top1_hit_rate * 100) }}%{% else %}-{% endif %}</div>
-          <div class="small">{% if evaluated_races %}{{ overall.top1_hits }} / {{ evaluated_races }}レース{% else %}評価済みレースなし{% endif %}</div>
-        </div>
-        <div class="performance-item">
-          <strong>Top3的中率</strong>
-          <div class="performance-value">{% if evaluated_races and overall.top3_hit_rate is not none %}{{ "%.1f"|format(overall.top3_hit_rate * 100) }}%{% else %}-{% endif %}</div>
-        </div>
-        <div class="performance-item">
-          <strong>Top5的中率</strong>
-          <div class="performance-value">{% if evaluated_races and overall.top5_hit_rate is not none %}{{ "%.1f"|format(overall.top5_hit_rate * 100) }}%{% else %}-{% endif %}</div>
-        </div>
-        <div class="performance-item">
-          <strong>勝ち馬の平均予想順位</strong>
-          <div class="performance-value">{% if evaluated_races and overall.average_winner_predicted_rank is not none %}{{ "%.1f"|format(overall.average_winner_predicted_rank) }}位{% else %}-{% endif %}</div>
-        </div>
-      </div>
-    </section>
+{% set method_summaries = evaluation_summary.get("methods", {}) if evaluation_summary else {} %}
+{% set traditional_summary = method_summaries.get("traditional") %}
+{% set statistical_summary = method_summaries.get("statistical") %}
+{% set traditional_overall = traditional_summary.get("overall") if traditional_summary else (evaluation_summary.get("overall") if evaluation_summary else none) %}
+{% set traditional_simulation = evaluation_summary.get("simulation") if evaluation_summary else none %}
+{% set statistical_overall = statistical_summary.get("overall") if statistical_summary else none %}
+{% set statistical_simulation = statistical_summary.get("simulation") if statistical_summary else none %}
+{{ performance_panel("総合AI予想の予測成績", traditional_overall, traditional_simulation) }}
+{{ performance_panel("統計重視予想の予測成績", statistical_overall, statistical_simulation) }}
     <div class="panel">
       <div class="table-scroll">
       <table class="index-table">

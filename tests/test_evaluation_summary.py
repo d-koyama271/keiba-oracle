@@ -184,6 +184,24 @@ def add_statistical_evaluation(
     return payload
 
 
+def add_statistical_simulation(
+    payload: dict,
+    *,
+    value_post: dict | None = None,
+    dutching_post: dict | None = None,
+) -> dict:
+    payload.setdefault("simulation", {}).setdefault("variants", []).append(
+        {
+            "method": "statistical",
+            "model_provider": "codex",
+            "model_name": "gpt-test",
+            "value": {"pre": None, "post": value_post},
+            "dutching": {"pre": None, "post": dutching_post},
+        }
+    )
+    return payload
+
+
 class EvaluationSummaryTests(unittest.TestCase):
     def test_zero_evaluations_are_not_reported_as_zero_accuracy(self) -> None:
         summary = build_evaluation_summary(
@@ -462,6 +480,43 @@ class EvaluationSummaryTests(unittest.TestCase):
         self.assertEqual(summary["simulation"]["dutching"]["total_stake"], 300)
         self.assertEqual(summary["simulation"]["dutching"]["total_return"], 600)
         self.assertEqual(summary["simulation"]["dutching"]["overall_roi"], 2.0)
+
+    def test_statistical_simulation_totals_use_only_saved_variant_posts(self) -> None:
+        with_post = add_statistical_simulation(
+            add_statistical_evaluation(
+                evaluated_payload(
+                    "with-post",
+                    field_size=3,
+                    value_result=simulation_result(100, 300, 200, True),
+                    dutching_result=simulation_result(200, 0, -200, False),
+                ),
+                [0.6, 0.3, 0.1],
+                log_loss=0.2,
+                brier_score=0.02,
+            ),
+            value_post=simulation_result(300, 900, 600, True),
+            dutching_post=simulation_result(400, 0, -400, False),
+        )
+        without_post = add_statistical_evaluation(
+            evaluated_payload("without-post", field_size=3),
+            [0.5, 0.3, 0.2],
+            log_loss=0.3,
+            brier_score=0.03,
+        )
+
+        summary = build_evaluation_summary([with_post, without_post])
+
+        self.assertEqual(summary["overall"]["top5_hits"], 2)
+        self.assertEqual(summary["simulation"]["value"]["cumulative_profit"], 200)
+        statistical = summary["methods"]["statistical"]["simulation"]
+        self.assertEqual(statistical["value"]["simulation_races"], 1)
+        self.assertEqual(statistical["value"]["cumulative_profit"], 600)
+        self.assertEqual(statistical["dutching"]["simulation_races"], 1)
+        self.assertEqual(statistical["dutching"]["cumulative_profit"], -400)
+        self.assertEqual(
+            summary["methods"]["traditional"]["simulation"]["value"]["simulation_races"],
+            0,
+        )
 
     def test_summary_file_is_regenerated_without_changing_race_json(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

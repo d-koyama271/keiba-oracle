@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-23T16:56:23+09:00",
+  "generated_at": "2026-08-30T05:47:58+09:00",
   "overall": {
     "evaluated_races": 14,
     "top1_hits": 4,
@@ -663,6 +663,26 @@
             "average_brier_score": 0.053977
           }
         }
+      },
+      "simulation": {
+        "value": {
+          "simulation_races": 14,
+          "purchase_races": 0,
+          "hit_races": 0,
+          "total_stake": 0,
+          "total_return": 0,
+          "cumulative_profit": 0,
+          "overall_roi": null
+        },
+        "dutching": {
+          "simulation_races": 14,
+          "purchase_races": 14,
+          "hit_races": 8,
+          "total_stake": 42000,
+          "total_return": 32330,
+          "cumulative_profit": -9670,
+          "overall_roi": 0.769762
+        }
       }
     },
     "statistical": {
@@ -864,6 +884,26 @@
             "average_log_loss": 2.256723,
             "average_brier_score": 0.055165
           }
+        }
+      },
+      "simulation": {
+        "value": {
+          "simulation_races": 0,
+          "purchase_races": 0,
+          "hit_races": 0,
+          "total_stake": 0,
+          "total_return": 0,
+          "cumulative_profit": 0,
+          "overall_roi": null
+        },
+        "dutching": {
+          "simulation_races": 0,
+          "purchase_races": 0,
+          "hit_races": 0,
+          "total_stake": 0,
+          "total_return": 0,
+          "cumulative_profit": 0,
+          "overall_roi": null
         }
       }
     }

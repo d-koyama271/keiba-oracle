@@ -55,6 +55,13 @@
       font-size: 24px;
       font-weight: 700;
     }
+    .performance-breakdown {
+      display: grid;
+      gap: 6px;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+    .performance-breakdown div { white-space: nowrap; }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -129,6 +136,7 @@
   </style>
 </head>
 <body>
+
   <main>
     <div class="panel">
       <h1>中央競馬 AI予想レース一覧</h1>
@@ -136,25 +144,66 @@
     </div>
 
 
+
+
+
+
+
+
+
+
     <section class="panel performance-panel">
       <h2>総合AI予想の予測成績</h2>
       <div class="performance-grid">
         <div class="performance-item">
-          <strong>現在の的中率</strong>
+          <strong>1位的中率</strong>
           <div class="performance-value">28.6%</div>
           <div class="small">4 / 14レース</div>
         </div>
         <div class="performance-item">
-          <strong>Top3的中率</strong>
+          <strong>勝ち馬の予想3位内率</strong>
           <div class="performance-value">57.1%</div>
-        </div>
-        <div class="performance-item">
-          <strong>Top5的中率</strong>
-          <div class="performance-value">64.3%</div>
+          <div class="small">8 / 14レース</div>
         </div>
         <div class="performance-item">
           <strong>勝ち馬の平均予想順位</strong>
           <div class="performance-value">4.7位</div>
+        </div>
+        <div class="performance-item">
+          <strong>累計収支</strong>
+          <div class="performance-breakdown">
+            <div><strong>単勝分配方式</strong> -9,670円</div>
+            <div><strong>期待値重視方式</strong> 0円</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+
+    <section class="panel performance-panel">
+      <h2>統計重視予想の予測成績</h2>
+      <div class="performance-grid">
+        <div class="performance-item">
+          <strong>1位的中率</strong>
+          <div class="performance-value">0.0%</div>
+          <div class="small">0 / 4レース</div>
+        </div>
+        <div class="performance-item">
+          <strong>勝ち馬の予想3位内率</strong>
+          <div class="performance-value">50.0%</div>
+          <div class="small">2 / 4レース</div>
+        </div>
+        <div class="performance-item">
+          <strong>勝ち馬の平均予想順位</strong>
+          <div class="performance-value">3.8位</div>
+        </div>
+        <div class="performance-item">
+          <strong>累計収支</strong>
+          <div class="performance-breakdown">
+            <div><strong>単勝分配方式</strong> -</div>
+            <div><strong>期待値重視方式</strong> -</div>
+          </div>
         </div>
       </div>
     </section>

@@ -725,6 +725,16 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
             ".prediction-section.has-ai-tabs .prediction-method-content",
             rendered,
         )
+        self.assertIn("margin-bottom: -1px", rendered)
+        self.assertIn("border-bottom: 0", rendered)
+        self.assertIn(
+            '.prediction-method-tabs .ai-method-tab[aria-selected="true"]::after',
+            rendered,
+        )
+        self.assertIn(
+            '.simulation-method-tabs .ai-method-tab[aria-selected="true"]::after',
+            rendered,
+        )
 
         embedded = json.loads(soup.select_one("#custom-simulator-data").string)
         self.assertEqual(set(embedded["methods"]), {"traditional", "statistical"})
@@ -746,7 +756,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         for text in (
             "購入シミュレーション",
             "期待値重視方式",
-            "上位予測ダッチング方式",
+            "単勝分配方式",
             "頭数別比較",
             "カスタム購入シミュレーション",
             "予想順位",
@@ -754,7 +764,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
             self.assertIn(text, rendered)
         for text in (
             "期待値重視方式のシミュレーション結果",
-            "上位予測ダッチング方式のシミュレーション結果",
+            "単勝分配方式のシミュレーション結果",
             "予測評価",
             "レース結果",
         ):
@@ -775,20 +785,22 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
             recursive=False,
         )
         self.assertEqual(len(simulation_panels), 2)
-        self.assertIn("上位予測ダッチング方式", simulation_panels[0].find("h3").get_text())
+        self.assertIn("単勝分配方式", simulation_panels[0].find("h3").get_text())
         self.assertIn("期待値重視方式", simulation_panels[1].find("h3").get_text())
         self.assertIsNone(simulation_section.select_one("#custom-simulator"))
         self.assertIsNone(
             soup.select_one("#custom-simulator").find_parent("section", class_="simulation-section")
         )
         value_heading = '<span>期待値重視方式</span>'
-        dutching_heading = '<span>上位予測ダッチング方式</span>'
+        dutching_heading = '<span>単勝分配方式</span>'
         self.assertLess(rendered.index(dutching_heading), rendered.index(value_heading))
         self.assertLess(
             rendered.index(value_heading),
             rendered.index("<h2>カスタム購入シミュレーション</h2>"),
         )
-        self.assertIn('<option value="dutching" selected>上位予測ダッチング</option>', rendered)
+        self.assertIn('<option value="dutching" selected>単勝分配方式</option>', rendered)
+        self.assertNotIn("ダッチング", rendered)
+        self.assertIn('value="dutching"', rendered)
         self.assertNotIn("方式：", rendered)
         self.assertIn(
             "設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。",
@@ -834,7 +846,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         self.assertNotIn("result_published", rendered)
         self.assertNotIn("フィードバック要約", rendered)
         for description in (
-            "AIの予測上位馬を複数選び、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。",
+            "AI予想上位の複数馬を対象に、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。",
             "AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。",
             "選択した馬の1着確率を合計した値です。",
             "選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。",
@@ -1019,7 +1031,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
                 ("1着確率", "number", "descending", 3, "none"),
                 ("実着順", "number", "ascending", 4, "none"),
                 ("予想との差", "number", "ascending", 5, "none"),
-                ("確定単勝オッズ", "number", "ascending", 6, "none"),
+                ("確定オッズ", "number", "ascending", 6, "none"),
                 ("単勝払戻", "number", "descending", 7, "none"),
             ],
         )
@@ -1161,7 +1173,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
                 "1着確率",
                 "実着順",
                 "予想との差",
-                "確定単勝オッズ",
+                "確定オッズ",
                 "単勝払戻",
             ],
         )
@@ -1247,7 +1259,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         value_section = rendered.split("<h3>期待値重視方式のシミュレーション結果</h3>", 1)[1].split(
             '<div class="panel result-panel">', 1
         )[0]
-        dutching_section = rendered.split("<h3>上位予測ダッチング方式のシミュレーション結果</h3>", 1)[1].split(
+        dutching_section = rendered.split("<h3>単勝分配方式のシミュレーション結果</h3>", 1)[1].split(
             "</section>", 1
         )[0]
         for section in (value_section, dutching_section):

@@ -36,6 +36,31 @@ class ResultParsingTests(unittest.TestCase):
             MOBILE_RESULT_URL.format(race_id="202604030207"),
         )
 
+    def test_mobile_result_odds_column_is_saved_only_when_complete(self) -> None:
+        html = """
+        <html><body>
+          <table>
+            <thead><tr><th>着順</th><th>枠番</th><th>馬番</th><th>馬名</th><th>タイム</th><th>オッズ</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>1</td><td>1</td><td>Winner</td><td>1:08.0</td><td>12.9倍 5人気</td></tr>
+              <tr><td>2</td><td>2</td><td>2</td><td>Runner-up</td><td>1:08.1</td><td>4.4倍 2人気</td></tr>
+            </tbody>
+          </table>
+          <table><tbody><tr><th>単勝</th><td>1</td><td>1,290円</td></tr></tbody></table>
+        </body></html>
+        """
+
+        result = parse_result(html)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(
+            result["final_win_odds"],
+            [
+                {"horse_number": 1, "win_odds": 12.9},
+                {"horse_number": 2, "win_odds": 4.4},
+            ],
+        )
+
     def test_special_finish_status_is_preserved_without_entering_finish_order(self) -> None:
         html = """
         <html><body>

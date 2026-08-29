@@ -19,6 +19,7 @@ from utils import (
     now_jst_iso,
     prediction_variants,
     setup_logger,
+    simulation_variants,
     STATISTICAL_PREDICTION_METHOD,
     TRADITIONAL_PREDICTION_METHOD,
 )
@@ -247,11 +248,16 @@ def collect_method_evaluations(
 
 def build_method_summary(
     evaluated: list[tuple[dict[str, Any], dict[str, Any], dict[str, Any]]],
+    method: str,
 ) -> dict[str, Any]:
     return {
         "overall": aggregate_prediction_metrics([record for _, record, _ in evaluated]),
         "calibration": aggregate_calibration(evaluated),
         "segments": aggregate_segments([(payload, record) for payload, record, _ in evaluated]),
+        "simulation": {
+            "value": aggregate_method_simulation(evaluated, method, "value"),
+            "dutching": aggregate_method_simulation(evaluated, method, "dutching"),
+        },
     }
 
 
@@ -462,6 +468,69 @@ def aggregate_simulation(
     }
 
 
+def aggregate_method_simulation(
+    evaluated: list[tuple[dict[str, Any], dict[str, Any], dict[str, Any]]],
+    prediction_method: str,
+    simulation_method: str,
+) -> dict[str, Any]:
+    records = []
+    for payload, _, prediction in evaluated:
+        if prediction_method == TRADITIONAL_PREDICTION_METHOD:
+            simulation = payload.get("simulation")
+        else:
+            simulation = find_variant(
+                simulation_variants(payload),
+                prediction_method,
+                prediction.get("model_provider"),
+                prediction.get("model_name"),
+            )
+        if not isinstance(simulation, dict):
+            continue
+        post = (simulation.get(simulation_method) or {}).get("post")
+        if not isinstance(post, dict):
+            continue
+        stake = finite_number(post.get("total_stake"))
+        returned = finite_number(post.get("total_return"))
+        profit = finite_number(post.get("profit"))
+        if (
+            stake is None
+            or returned is None
+            or profit is None
+            or stake < 0
+            or returned < 0
+        ):
+            continue
+        selections = post.get("selections")
+        hit = (
+            any(
+                isinstance(selection, dict) and selection.get("hit") is True
+                for selection in selections
+            )
+            if isinstance(selections, list)
+            else returned > 0
+        )
+        records.append(
+            {
+                "stake": int(stake),
+                "return": int(returned),
+                "profit": int(profit),
+                "hit": hit,
+            }
+        )
+
+    total_stake = sum(record["stake"] for record in records)
+    total_return = sum(record["return"] for record in records)
+    return {
+        "simulation_races": len(records),
+        "purchase_races": sum(record["stake"] > 0 for record in records),
+        "hit_races": sum(record["hit"] for record in records),
+        "total_stake": total_stake,
+        "total_return": total_return,
+        "cumulative_profit": sum(record["profit"] for record in records),
+        "overall_roi": round_metric(total_return / total_stake) if total_stake else None,
+    }
+
+
 def build_evaluation_summary(
     payloads: list[dict[str, Any]],
     generated_at: str | None = None,
@@ -482,8 +551,14 @@ def build_evaluation_summary(
             "dutching": aggregate_simulation(evaluated, "dutching"),
         },
         "methods": {
-            TRADITIONAL_PREDICTION_METHOD: build_method_summary(traditional),
-            STATISTICAL_PREDICTION_METHOD: build_method_summary(statistical),
+            TRADITIONAL_PREDICTION_METHOD: build_method_summary(
+                traditional,
+                TRADITIONAL_PREDICTION_METHOD,
+            ),
+            STATISTICAL_PREDICTION_METHOD: build_method_summary(
+                statistical,
+                STATISTICAL_PREDICTION_METHOD,
+            ),
         },
         "paired_comparison": build_paired_comparison(payloads),
     }

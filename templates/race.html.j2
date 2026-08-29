@@ -21,7 +21,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% if page_kind == "result" %}{{ race.race_name|e }} 結果{% else %}{{ race.race_name|e }}{% if "AI予想" not in race.race_name %} AI予想{% endif %}{% endif %} | keiba-oracle</title>
-  <meta name="description" content="{% if page_kind == "result" %}{{ race.race_name|e }}のレース結果、AI予想との比較、予測評価、購入シミュレーション結果を掲載します。{% else %}{{ race.race_name|e }}のAI予想。各馬の1着確率、予想理由、上位予測ダッチング方式と期待値重視方式による購入シミュレーションを掲載します。{% endif %}">
+  <meta name="description" content="{% if page_kind == "result" %}{{ race.race_name|e }}のレース結果、AI予想との比較、予測評価、購入シミュレーション結果を掲載します。{% else %}{{ race.race_name|e }}のAI予想。各馬の1着確率、予想理由、単勝分配方式と期待値重視方式による購入シミュレーションを掲載します。{% endif %}">
   <style>
     :root {
       color-scheme: light;
@@ -364,14 +364,42 @@
     }
     .prediction-section.has-ai-tabs .prediction-method-tabs,
     .simulation-section.has-ai-tabs .simulation-method-tabs {
+      position: relative;
+      z-index: 2;
+      align-items: flex-end;
+      margin-bottom: -1px;
+      border-bottom: 0;
+    }
+    .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab,
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab {
+      position: relative;
       margin-bottom: 0;
+      border-color: var(--line);
+      background: #f4f2ed;
+    }
+    .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab[aria-selected="true"],
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab[aria-selected="true"] {
+      z-index: 3;
+      border-bottom-color: var(--panel);
+      background: var(--panel);
+    }
+    .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab[aria-selected="true"]::after,
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab[aria-selected="true"]::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: -2px;
+      left: 0;
+      height: 3px;
+      background: var(--panel);
     }
     .prediction-section.has-ai-tabs .prediction-method-content,
     .simulation-section.has-ai-tabs .simulation-method-content {
+      position: relative;
+      z-index: 1;
       margin-top: 0;
       padding: 20px;
       border: 1px solid var(--line);
-      border-top: 0;
       border-radius: 0 14px 14px 14px;
       background: var(--panel);
     }
@@ -609,7 +637,7 @@
       <div class="ai-method-panel simulation-method-content" id="simulation-{{ view.method }}" role="tabpanel" data-ai-panel data-ai-method="{{ view.method }}"{% if not loop.first %} hidden{% endif %}>
 
     <div class="panel simulation-panel">
-      <h3>{{ explained_term("上位予測ダッチング方式", "dutching_method") }}</h3>
+      <h3>{{ explained_term("単勝分配方式", "dutching_method") }}</h3>
       <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
       {% if simulation_dutching_pre %}
       {% set dutching_min_profit_rate = simulation_dutching_pre.settings.min_profit_rate | default(none) %}
@@ -756,7 +784,7 @@
       <form class="simulator-form" id="custom-simulator-form">
         <label class="simulator-field">方式
           <select name="method">
-            <option value="dutching" selected>上位予測ダッチング</option>
+            <option value="dutching" selected>単勝分配方式</option>
             <option value="value">期待値重視</option>
           </select>
         </label>
@@ -1261,7 +1289,7 @@
             renderDutching(result);
           }
 
-          document.getElementById("custom-simulator-method").textContent = method === "value" ? "期待値重視" : "上位予測ダッチング";
+          document.getElementById("custom-simulator-method").textContent = method === "value" ? "期待値重視" : "単勝分配方式";
           document.getElementById("custom-simulator-budget").textContent = `${yen.format(result.budget)}円`;
           document.getElementById("custom-simulator-total").textContent = `${yen.format(result.total_stake)}円`;
           document.getElementById("custom-simulator-unused").textContent = `${yen.format(result.unused_budget)}円`;
@@ -1301,28 +1329,6 @@
     {% if page_kind == "result" and (result or evaluation or simulation_value_post or simulation_dutching_post) %}
     <section class="result-section">
       <h2 class="result-section-title">レース結果</h2>
-      {% if result %}
-      <div class="panel result-panel">
-        <h3>実着順一覧</h3>
-        {% if not has_final_win_odds %}<p class="small">確定単勝オッズは記録されていません。</p>{% endif %}
-        <p class="table-scroll-hint">表は横にスクロールできます</p>
-        <div class="table-scroll">
-          <table class="result-table">
-            <thead><tr><th class="nowrap">実着順</th><th class="nowrap">馬番</th><th class="horse-name">馬名</th><th class="nowrap">確定単勝オッズ</th></tr></thead>
-            <tbody>
-              {% for item in actual_result_rows %}
-              <tr{% if item.finish_position_sort_value == 1 %} class="result-winner"{% endif %}>
-                <td class="nowrap" data-sort-value="{{ item.finish_position_sort_value if item.finish_position_sort_value is not none else '' }}">{{ item.finish_position_label }}</td>
-                <td class="nowrap" data-sort-value="{{ item.horse_number }}">{{ item.horse_number }}</td>
-                <td class="horse-name">{{ item.horse_name }}</td>
-                <td class="nowrap" data-sort-value="{{ item.final_win_odds if item.final_win_odds is not none else '' }}">{{ item.final_win_odds if item.final_win_odds is not none else "-" }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      {% endif %}
       {% if ai_views | length > 1 %}
       <div class="ai-method-tabs" role="tablist" aria-label="結果を比較するAI予想方式">
         {% for view in ai_views %}
@@ -1342,7 +1348,7 @@
           <p class="table-scroll-hint">表は横にスクロールできます</p>
           <div class="table-scroll">
             <table class="result-table" data-sortable>
-              <thead><tr>{{ sortable_header("馬番", 0, "number", "ascending") }}{{ sortable_header("馬名", 1, "text", "ascending", "horse-name") }}{{ sortable_header("予測順位", 2, "number", "ascending") }}{{ sortable_header("1着確率", 3, "number", "descending") }}{{ sortable_header("実着順", 4, "number", "ascending") }}{{ sortable_header("予想との差", 5, "number", "ascending") }}{{ sortable_header("確定単勝オッズ", 6, "number", "ascending") }}{{ sortable_header("単勝払戻", 7, "number", "descending") }}</tr></thead>
+              <thead><tr>{{ sortable_header("馬番", 0, "number", "ascending") }}{{ sortable_header("馬名", 1, "text", "ascending", "horse-name") }}{{ sortable_header("予測順位", 2, "number", "ascending") }}{{ sortable_header("1着確率", 3, "number", "descending") }}{{ sortable_header("実着順", 4, "number", "ascending") }}{{ sortable_header("予想との差", 5, "number", "ascending") }}{{ sortable_header("確定オッズ", 6, "number", "ascending") }}{{ sortable_header("単勝払戻", 7, "number", "descending") }}</tr></thead>
               <tbody>
                 {% for item in result_rows %}
                 <tr{% if item.row_class %} class="{{ item.row_class }}"{% endif %}>
@@ -1400,19 +1406,19 @@
           <p><strong>購入なし</strong></p><p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
           {% else %}
           <p><strong>投資:</strong> {{ simulation_value_post.total_stake }}円 / <strong>回収:</strong> {{ simulation_value_post.total_return }}円 / <strong>損益:</strong> {{ simulation_value_post.profit }}円 / <strong>ROI:</strong> {{ "%.2f"|format(simulation_value_post.roi * 100) }}%</p>
-          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定単勝オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody>{% for item in simulation_value_post.selections %}{% set final_odds = final_win_odds_by_horse.get(item.horse_number) %}<tr><td class="nowrap">{{ item.horse_number }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ final_odds if final_odds is not none else "-" }}</td><td class="nowrap">{{ "的中" if item.hit else "不的中" }}</td><td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
+          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody>{% for item in simulation_value_post.selections %}{% set final_odds = final_win_odds_by_horse.get(item.horse_number) %}<tr><td class="nowrap">{{ item.horse_number }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ final_odds if final_odds is not none else "-" }}</td><td class="nowrap">{{ "的中" if item.hit else "不的中" }}</td><td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
           {% endif %}
         </div>
         {% endif %}
 
         {% if simulation_dutching_post %}
         <div class="panel result-panel">
-          <h3>上位予測ダッチング方式のシミュレーション結果</h3>
+          <h3>単勝分配方式のシミュレーション結果</h3>
           {% if simulation_dutching_post.total_stake == 0 %}
           <p><strong>購入なし</strong></p><p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
           {% else %}
           <p><strong>投資:</strong> {{ simulation_dutching_post.total_stake }}円 / <strong>回収:</strong> {{ simulation_dutching_post.total_return }}円 / <strong>損益:</strong> {{ simulation_dutching_post.profit }}円 / <strong>ROI:</strong> {{ "%.2f"|format(simulation_dutching_post.roi * 100) }}%</p>
-          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定単勝オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody>{% for item in simulation_dutching_post.selections %}{% set final_odds = final_win_odds_by_horse.get(item.horse_number) %}<tr><td class="nowrap">{{ item.horse_number }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ final_odds if final_odds is not none else "-" }}</td><td class="nowrap">{{ "的中" if item.hit else "不的中" }}</td><td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
+          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody>{% for item in simulation_dutching_post.selections %}{% set final_odds = final_win_odds_by_horse.get(item.horse_number) %}<tr><td class="nowrap">{{ item.horse_number }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ final_odds if final_odds is not none else "-" }}</td><td class="nowrap">{{ "的中" if item.hit else "不的中" }}</td><td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
           {% endif %}
         </div>
         {% endif %}

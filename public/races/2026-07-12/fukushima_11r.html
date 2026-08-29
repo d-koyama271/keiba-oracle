@@ -8,7 +8,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>七夕賞 AI予想 | keiba-oracle</title>
-  <meta name="description" content="七夕賞のAI予想。各馬の1着確率、予想理由、上位予測ダッチング方式と期待値重視方式による購入シミュレーションを掲載します。">
+  <meta name="description" content="七夕賞のAI予想。各馬の1着確率、予想理由、単勝分配方式と期待値重視方式による購入シミュレーションを掲載します。">
   <style>
     :root {
       color-scheme: light;
@@ -351,14 +351,42 @@
     }
     .prediction-section.has-ai-tabs .prediction-method-tabs,
     .simulation-section.has-ai-tabs .simulation-method-tabs {
+      position: relative;
+      z-index: 2;
+      align-items: flex-end;
+      margin-bottom: -1px;
+      border-bottom: 0;
+    }
+    .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab,
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab {
+      position: relative;
       margin-bottom: 0;
+      border-color: var(--line);
+      background: #f4f2ed;
+    }
+    .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab[aria-selected="true"],
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab[aria-selected="true"] {
+      z-index: 3;
+      border-bottom-color: var(--panel);
+      background: var(--panel);
+    }
+    .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab[aria-selected="true"]::after,
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab[aria-selected="true"]::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: -2px;
+      left: 0;
+      height: 3px;
+      background: var(--panel);
     }
     .prediction-section.has-ai-tabs .prediction-method-content,
     .simulation-section.has-ai-tabs .simulation-method-content {
+      position: relative;
+      z-index: 1;
       margin-top: 0;
       padding: 20px;
       border: 1px solid var(--line);
-      border-top: 0;
       border-radius: 0 14px 14px 14px;
       background: var(--panel);
     }
@@ -802,9 +830,9 @@
       <div class="ai-method-panel simulation-method-content" id="simulation-traditional" role="tabpanel" data-ai-panel data-ai-method="traditional">
 
     <div class="panel simulation-panel">
-      <h3><span class="term-with-tooltip"><span>上位予測ダッチング方式</span><span class="term-tooltip">
-  <button type="button" class="tooltip-trigger" aria-label="上位予測ダッチング方式: AIの予測上位馬を複数選び、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">AIの予測上位馬を複数選び、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。</span>
+      <h3><span class="term-with-tooltip"><span>単勝分配方式</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="単勝分配方式: AI予想上位の複数馬を対象に、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">AI予想上位の複数馬を対象に、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。</span>
 </span></span></h3>
       <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
       
@@ -1285,7 +1313,7 @@
       <form class="simulator-form" id="custom-simulator-form">
         <label class="simulator-field">方式
           <select name="method">
-            <option value="dutching" selected>上位予測ダッチング</option>
+            <option value="dutching" selected>単勝分配方式</option>
             <option value="value">期待値重視</option>
           </select>
         </label>
@@ -1841,7 +1869,7 @@
             renderDutching(result);
           }
 
-          document.getElementById("custom-simulator-method").textContent = method === "value" ? "期待値重視" : "上位予測ダッチング";
+          document.getElementById("custom-simulator-method").textContent = method === "value" ? "期待値重視" : "単勝分配方式";
           document.getElementById("custom-simulator-budget").textContent = `${yen.format(result.budget)}円`;
           document.getElementById("custom-simulator-total").textContent = `${yen.format(result.total_stake)}円`;
           document.getElementById("custom-simulator-unused").textContent = `${yen.format(result.unused_budget)}円`;
