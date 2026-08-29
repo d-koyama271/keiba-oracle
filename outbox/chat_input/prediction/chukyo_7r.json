@@ -1,0 +1,1008 @@
+{
+  "meta": {
+    "race_id": "202607030407",
+    "kind": "prediction",
+    "generated_at": "2026-08-29T22:12:43+09:00"
+  },
+  "race": {
+    "date": "2026-08-30",
+    "track": "中京",
+    "race_number": 7,
+    "race_name": "中京2歳S",
+    "start_time": "15:35",
+    "distance": 1400,
+    "surface": "芝",
+    "going": "良",
+    "weather": "曇",
+    "class_grade": "G3",
+    "source_url": "https://race.netkeiba.com/race/shutuba.html?race_id=202607030407",
+    "odds_captured_at": "2026-08-29T22:12:42+09:00",
+    "odds_source": "netkeiba",
+    "odds_source_url": "https://race.netkeiba.com/api/api_get_jra_odds.html?race_id=202607030407",
+    "odds_reference_minutes_before_start": 60
+  },
+  "horses": [
+    {
+      "horse_number": 1,
+      "frame_number": 1,
+      "horse_name": "ピコキング",
+      "jockey": "田口",
+      "weight_carried": 55.0,
+      "popularity": 9,
+      "win_odds": 60.1,
+      "past_runs": [
+        {
+          "race_id": "202607020703",
+          "date": "2026-08-15",
+          "track": "中京",
+          "race_number": 3,
+          "weather": "曇",
+          "distance": 1200,
+          "surface": "芝",
+          "going": "良",
+          "field_size": 7,
+          "frame_number": 4,
+          "horse_number": 4,
+          "win_odds": 3.5,
+          "popularity": 3,
+          "finish_position": 7,
+          "jockey": "団野大成",
+          "weight_carried": 55.0,
+          "race_time": "1:11.8",
+          "race_time_seconds": 71.8,
+          "margin": 3.2,
+          "passing_order": "5-5",
+          "pace": "35.1-33.5",
+          "last3f": 36.2,
+          "body_weight": 472,
+          "body_weight_change": 0,
+          "class_name": "2歳新馬",
+          "class_grade": "Newcomer"
+        }
+      ],
+      "career_summaries": {
+        "overall_record": {
+          "runs": 1,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": 7.0
+        },
+        "current_track_record": {
+          "runs": 1,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": 7.0
+        },
+        "current_surface_record": {
+          "runs": 1,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": 7.0
+        },
+        "current_distance_band_record": {
+          "surface": "芝",
+          "distance_min": 1200,
+          "distance_max": 1600,
+          "runs": 1,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": 7.0
+        },
+        "current_going_record": {
+          "runs": 1,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": 7.0
+        },
+        "current_weather_record": {
+          "runs": 1,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": 7.0
+        },
+        "current_class_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_jockey_combo_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        }
+      },
+      "distance_change": "+200m",
+      "surface_change": "同じ",
+      "days_since_last_run": 15,
+      "weight_change_from_last_run": 0.0,
+      "jockey_change": "団野大成から替わり",
+      "running_style_summary": "先行型",
+      "recent_form_summary": "7着",
+      "condition_change_summary": "+200m / 同じ"
+    },
+    {
+      "horse_number": 2,
+      "frame_number": 2,
+      "horse_name": "バクソウシャチョウ",
+      "jockey": "松若",
+      "weight_carried": 55.0,
+      "popularity": 6,
+      "win_odds": 15.1,
+      "past_runs": [
+        {
+          "race_id": "202607020801",
+          "date": "2026-08-16",
+          "track": "中京",
+          "race_number": 1,
+          "weather": "晴",
+          "distance": 1200,
+          "surface": "芝",
+          "going": "良",
+          "field_size": 10,
+          "frame_number": 5,
+          "horse_number": 5,
+          "win_odds": 4.3,
+          "popularity": 3,
+          "finish_position": 2,
+          "jockey": "団野大成",
+          "weight_carried": 55.0,
+          "race_time": "1:08.4",
+          "race_time_seconds": 68.4,
+          "margin": 0.0,
+          "passing_order": "5-5",
+          "pace": "34.8-33.6",
+          "last3f": 33.2,
+          "body_weight": 470,
+          "body_weight_change": 2,
+          "class_name": "2歳未勝利",
+          "class_grade": "Maiden"
+        },
+        {
+          "race_id": "202610020501",
+          "date": "2026-07-11",
+          "track": "小倉",
+          "race_number": 1,
+          "weather": "晴",
+          "distance": 1200,
+          "surface": "芝",
+          "going": "良",
+          "field_size": 12,
+          "frame_number": 8,
+          "horse_number": 12,
+          "win_odds": 10.5,
+          "popularity": 3,
+          "finish_position": 2,
+          "jockey": "川田将雅",
+          "weight_carried": 55.0,
+          "race_time": "1:08.8",
+          "race_time_seconds": 68.8,
+          "margin": 0.2,
+          "passing_order": "1-1",
+          "pace": "32.7-35.9",
+          "last3f": 36.1,
+          "body_weight": 468,
+          "body_weight_change": -6,
+          "class_name": "2歳未勝利",
+          "class_grade": "Maiden"
+        },
+        {
+          "race_id": "202609030605",
+          "date": "2026-06-21",
+          "track": "阪神",
+          "race_number": 5,
+          "weather": "晴",
+          "distance": 1600,
+          "surface": "芝",
+          "going": "稍重",
+          "field_size": 9,
+          "frame_number": 8,
+          "horse_number": 8,
+          "win_odds": 8.1,
+          "popularity": 4,
+          "finish_position": 6,
+          "jockey": "川田将雅",
+          "weight_carried": 55.0,
+          "race_time": "1:37.8",
+          "race_time_seconds": 97.8,
+          "margin": 0.7,
+          "passing_order": "2-2",
+          "pace": "37.1-34.6",
+          "last3f": 35.2,
+          "body_weight": 474,
+          "body_weight_change": 0,
+          "class_name": "2歳新馬",
+          "class_grade": "Newcomer"
+        }
+      ],
+      "career_summaries": {
+        "overall_record": {
+          "runs": 3,
+          "wins": 0,
+          "top3": 2,
+          "average_finish_position": 3.3333
+        },
+        "current_track_record": {
+          "runs": 1,
+          "wins": 0,
+          "top3": 1,
+          "average_finish_position": 2.0
+        },
+        "current_surface_record": {
+          "runs": 3,
+          "wins": 0,
+          "top3": 2,
+          "average_finish_position": 3.3333
+        },
+        "current_distance_band_record": {
+          "surface": "芝",
+          "distance_min": 1200,
+          "distance_max": 1600,
+          "runs": 3,
+          "wins": 0,
+          "top3": 2,
+          "average_finish_position": 3.3333
+        },
+        "current_going_record": {
+          "runs": 2,
+          "wins": 0,
+          "top3": 2,
+          "average_finish_position": 2.0
+        },
+        "current_weather_record": null,
+        "current_class_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_jockey_combo_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        }
+      },
+      "distance_change": "+200m",
+      "surface_change": "同じ",
+      "days_since_last_run": 14,
+      "weight_change_from_last_run": 0.0,
+      "jockey_change": "団野大成から替わり",
+      "running_style_summary": "先行型",
+      "recent_form_summary": "2着 / 2着 / 6着",
+      "condition_change_summary": "+200m / 同じ"
+    },
+    {
+      "horse_number": 3,
+      "frame_number": 3,
+      "horse_name": "サンタンジェロ",
+      "jockey": "西村淳",
+      "weight_carried": 55.0,
+      "popularity": 3,
+      "win_odds": 4.6,
+      "past_runs": [
+        {
+          "race_id": "202607020201",
+          "date": "2026-07-26",
+          "track": "中京",
+          "race_number": 1,
+          "weather": "曇",
+          "distance": 1400,
+          "surface": "芝",
+          "going": "良",
+          "field_size": 9,
+          "frame_number": 8,
+          "horse_number": 8,
+          "win_odds": 8.0,
+          "popularity": 4,
+          "finish_position": 1,
+          "jockey": "横山武史",
+          "weight_carried": 55.0,
+          "race_time": "1:20.7",
+          "race_time_seconds": 80.7,
+          "margin": -0.3,
+          "passing_order": "8-8",
+          "pace": "34.5-34.5",
+          "last3f": 33.7,
+          "body_weight": 460,
+          "body_weight_change": 10,
+          "class_name": "2歳未勝利",
+          "class_grade": "Maiden"
+        },
+        {
+          "race_id": "202609030505",
+          "date": "2026-06-20",
+          "track": "阪神",
+          "race_number": 5,
+          "weather": "雨",
+          "distance": 1400,
+          "surface": "芝",
+          "going": "稍重",
+          "field_size": 9,
+          "frame_number": 1,
+          "horse_number": 1,
+          "win_odds": 3.5,
+          "popularity": 2,
+          "finish_position": 6,
+          "jockey": "西村淳也",
+          "weight_carried": 55.0,
+          "race_time": "1:22.9",
+          "race_time_seconds": 82.9,
+          "margin": 0.5,
+          "passing_order": "5-3",
+          "pace": "34.2-36.6",
+          "last3f": 36.7,
+          "body_weight": 450,
+          "body_weight_change": 0,
+          "class_name": "2歳新馬",
+          "class_grade": "Newcomer"
+        }
+      ],
+      "career_summaries": {
+        "overall_record": {
+          "runs": 2,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 3.5
+        },
+        "current_track_record": {
+          "runs": 1,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 1.0
+        },
+        "current_surface_record": {
+          "runs": 2,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 3.5
+        },
+        "current_distance_band_record": {
+          "surface": "芝",
+          "distance_min": 1200,
+          "distance_max": 1600,
+          "runs": 2,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 3.5
+        },
+        "current_going_record": {
+          "runs": 1,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 1.0
+        },
+        "current_weather_record": {
+          "runs": 1,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 1.0
+        },
+        "current_class_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_jockey_combo_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        }
+      },
+      "distance_change": "+0m",
+      "surface_change": "同じ",
+      "days_since_last_run": 35,
+      "weight_change_from_last_run": 0.0,
+      "jockey_change": "横山武史から替わり",
+      "running_style_summary": "差し型",
+      "recent_form_summary": "1着 / 6着",
+      "condition_change_summary": "+0m / 同じ"
+    },
+    {
+      "horse_number": 4,
+      "frame_number": 4,
+      "horse_name": "シスキンブルーム",
+      "jockey": "団野",
+      "weight_carried": 55.0,
+      "popularity": 4,
+      "win_odds": 8.9,
+      "past_runs": [
+        {
+          "race_id": "202610020101",
+          "date": "2026-06-27",
+          "track": "小倉",
+          "race_number": 1,
+          "weather": "曇",
+          "distance": 1200,
+          "surface": "芝",
+          "going": "重",
+          "field_size": 6,
+          "frame_number": 1,
+          "horse_number": 1,
+          "win_odds": 1.1,
+          "popularity": 1,
+          "finish_position": 1,
+          "jockey": "団野大成",
+          "weight_carried": 55.0,
+          "race_time": "1:09.0",
+          "race_time_seconds": 69.0,
+          "margin": -0.6,
+          "passing_order": "1-1",
+          "pace": "35.0-34.0",
+          "last3f": 34.0,
+          "body_weight": 454,
+          "body_weight_change": -6,
+          "class_name": "2歳未勝利",
+          "class_grade": "Maiden"
+        },
+        {
+          "race_id": "202609030205",
+          "date": "2026-06-07",
+          "track": "阪神",
+          "race_number": 5,
+          "weather": "雨",
+          "distance": 1400,
+          "surface": "芝",
+          "going": "稍重",
+          "field_size": 11,
+          "frame_number": 8,
+          "horse_number": 10,
+          "win_odds": 4.4,
+          "popularity": 3,
+          "finish_position": 2,
+          "jockey": "団野大成",
+          "weight_carried": 55.0,
+          "race_time": "1:22.1",
+          "race_time_seconds": 82.1,
+          "margin": 0.2,
+          "passing_order": "3-3",
+          "pace": "34.9-35.2",
+          "last3f": 35.0,
+          "body_weight": 460,
+          "body_weight_change": 0,
+          "class_name": "2歳新馬",
+          "class_grade": "Newcomer"
+        }
+      ],
+      "career_summaries": {
+        "overall_record": {
+          "runs": 2,
+          "wins": 1,
+          "top3": 2,
+          "average_finish_position": 1.5
+        },
+        "current_track_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_surface_record": {
+          "runs": 2,
+          "wins": 1,
+          "top3": 2,
+          "average_finish_position": 1.5
+        },
+        "current_distance_band_record": {
+          "surface": "芝",
+          "distance_min": 1200,
+          "distance_max": 1600,
+          "runs": 2,
+          "wins": 1,
+          "top3": 2,
+          "average_finish_position": 1.5
+        },
+        "current_going_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_weather_record": {
+          "runs": 1,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 1.0
+        },
+        "current_class_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_jockey_combo_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        }
+      },
+      "distance_change": "+200m",
+      "surface_change": "同じ",
+      "days_since_last_run": 64,
+      "weight_change_from_last_run": 0.0,
+      "jockey_change": "団野大成から替わり",
+      "running_style_summary": "先手型",
+      "recent_form_summary": "1着 / 2着",
+      "condition_change_summary": "+200m / 同じ"
+    },
+    {
+      "horse_number": 5,
+      "frame_number": 5,
+      "horse_name": "マルモリムソウ",
+      "jockey": "泉谷",
+      "weight_carried": 55.0,
+      "popularity": 5,
+      "win_odds": 11.4,
+      "past_runs": [
+        {
+          "race_id": "202610020606",
+          "date": "2026-07-12",
+          "track": "小倉",
+          "race_number": 6,
+          "weather": "晴",
+          "distance": 1200,
+          "surface": "芝",
+          "going": "良",
+          "field_size": 9,
+          "frame_number": 4,
+          "horse_number": 4,
+          "win_odds": 5.4,
+          "popularity": 3,
+          "finish_position": 1,
+          "jockey": "泉谷楓真",
+          "weight_carried": 55.0,
+          "race_time": "1:09.4",
+          "race_time_seconds": 69.4,
+          "margin": -0.3,
+          "passing_order": "1-1",
+          "pace": "33.4-36.0",
+          "last3f": 36.0,
+          "body_weight": 458,
+          "body_weight_change": 0,
+          "class_name": "2歳新馬",
+          "class_grade": "Newcomer"
+        }
+      ],
+      "career_summaries": {
+        "overall_record": {
+          "runs": 1,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 1.0
+        },
+        "current_track_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_surface_record": {
+          "runs": 1,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 1.0
+        },
+        "current_distance_band_record": {
+          "surface": "芝",
+          "distance_min": 1200,
+          "distance_max": 1600,
+          "runs": 1,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 1.0
+        },
+        "current_going_record": {
+          "runs": 1,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 1.0
+        },
+        "current_weather_record": null,
+        "current_class_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_jockey_combo_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        }
+      },
+      "distance_change": "+200m",
+      "surface_change": "同じ",
+      "days_since_last_run": 49,
+      "weight_change_from_last_run": 0.0,
+      "jockey_change": "泉谷楓真から替わり",
+      "running_style_summary": "先手型",
+      "recent_form_summary": "1着",
+      "condition_change_summary": "+200m / 同じ"
+    },
+    {
+      "horse_number": 6,
+      "frame_number": 6,
+      "horse_name": "ジャスパートレノ",
+      "jockey": "中井",
+      "weight_carried": 55.0,
+      "popularity": 7,
+      "win_odds": 15.7,
+      "past_runs": [
+        {
+          "race_id": "202604020502",
+          "date": "2026-08-08",
+          "track": "新潟",
+          "race_number": 2,
+          "weather": "晴",
+          "distance": 1200,
+          "surface": "ダート",
+          "going": "良",
+          "field_size": 10,
+          "frame_number": 3,
+          "horse_number": 3,
+          "win_odds": 2.0,
+          "popularity": 1,
+          "finish_position": 1,
+          "jockey": "荻野極",
+          "weight_carried": 55.0,
+          "race_time": "1:13.1",
+          "race_time_seconds": 73.1,
+          "margin": -0.2,
+          "passing_order": "1-1",
+          "pace": "35.9-37.2",
+          "last3f": 37.2,
+          "body_weight": 484,
+          "body_weight_change": 0,
+          "class_name": "2歳新馬",
+          "class_grade": "Newcomer"
+        }
+      ],
+      "career_summaries": {
+        "overall_record": {
+          "runs": 1,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 1.0
+        },
+        "current_track_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_surface_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_distance_band_record": {
+          "surface": "芝",
+          "distance_min": 1200,
+          "distance_max": 1600,
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_going_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_weather_record": null,
+        "current_class_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_jockey_combo_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        }
+      },
+      "distance_change": "+200m",
+      "surface_change": "ダート->芝",
+      "days_since_last_run": 22,
+      "weight_change_from_last_run": 0.0,
+      "jockey_change": "荻野極から替わり",
+      "running_style_summary": "先手型",
+      "recent_form_summary": "1着",
+      "condition_change_summary": "+200m / ダート->芝"
+    },
+    {
+      "horse_number": 7,
+      "frame_number": 7,
+      "horse_name": "ビスケットサンド",
+      "jockey": "北村友",
+      "weight_carried": 55.0,
+      "popularity": 2,
+      "win_odds": 4.0,
+      "past_runs": [
+        {
+          "race_id": "202609030205",
+          "date": "2026-06-07",
+          "track": "阪神",
+          "race_number": 5,
+          "weather": "雨",
+          "distance": 1400,
+          "surface": "芝",
+          "going": "稍重",
+          "field_size": 11,
+          "frame_number": 5,
+          "horse_number": 5,
+          "win_odds": 7.0,
+          "popularity": 4,
+          "finish_position": 1,
+          "jockey": "北村友一",
+          "weight_carried": 55.0,
+          "race_time": "1:21.9",
+          "race_time_seconds": 81.9,
+          "margin": -0.2,
+          "passing_order": "6-6",
+          "pace": "34.9-35.2",
+          "last3f": 34.4,
+          "body_weight": 454,
+          "body_weight_change": 0,
+          "class_name": "2歳新馬",
+          "class_grade": "Newcomer"
+        }
+      ],
+      "career_summaries": {
+        "overall_record": {
+          "runs": 1,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 1.0
+        },
+        "current_track_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_surface_record": {
+          "runs": 1,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 1.0
+        },
+        "current_distance_band_record": {
+          "surface": "芝",
+          "distance_min": 1200,
+          "distance_max": 1600,
+          "runs": 1,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 1.0
+        },
+        "current_going_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_weather_record": null,
+        "current_class_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_jockey_combo_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        }
+      },
+      "distance_change": "+0m",
+      "surface_change": "同じ",
+      "days_since_last_run": 84,
+      "weight_change_from_last_run": 0.0,
+      "jockey_change": "北村友一から替わり",
+      "running_style_summary": "差し型",
+      "recent_form_summary": "1着",
+      "condition_change_summary": "+0m / 同じ"
+    },
+    {
+      "horse_number": 8,
+      "frame_number": 8,
+      "horse_name": "ピコジャック",
+      "jockey": "吉村",
+      "weight_carried": 55.0,
+      "popularity": 8,
+      "win_odds": 26.9,
+      "past_runs": [
+        {
+          "race_id": "202607020802",
+          "date": "2026-08-16",
+          "track": "中京",
+          "race_number": 2,
+          "weather": "晴",
+          "distance": 1400,
+          "surface": "ダート",
+          "going": "良",
+          "field_size": 12,
+          "frame_number": 6,
+          "horse_number": 7,
+          "win_odds": 5.2,
+          "popularity": 3,
+          "finish_position": 8,
+          "jockey": "団野大成",
+          "weight_carried": 55.0,
+          "race_time": "1:28.5",
+          "race_time_seconds": 88.5,
+          "margin": 2.6,
+          "passing_order": "3-5",
+          "pace": "35.4-37.5",
+          "last3f": 39.8,
+          "body_weight": 446,
+          "body_weight_change": 0,
+          "class_name": "2歳新馬",
+          "class_grade": "Newcomer"
+        }
+      ],
+      "career_summaries": {
+        "overall_record": {
+          "runs": 1,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": 8.0
+        },
+        "current_track_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_surface_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_distance_band_record": {
+          "surface": "芝",
+          "distance_min": 1200,
+          "distance_max": 1600,
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_going_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_weather_record": null,
+        "current_class_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_jockey_combo_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        }
+      },
+      "distance_change": "+0m",
+      "surface_change": "ダート->芝",
+      "days_since_last_run": 14,
+      "weight_change_from_last_run": 0.0,
+      "jockey_change": "団野大成から替わり",
+      "running_style_summary": "先行型",
+      "recent_form_summary": "8着",
+      "condition_change_summary": "+0m / ダート->芝"
+    },
+    {
+      "horse_number": 9,
+      "frame_number": 8,
+      "horse_name": "ジーティーマイカ",
+      "jockey": "松山",
+      "weight_carried": 55.0,
+      "popularity": 1,
+      "win_odds": 2.4,
+      "past_runs": [
+        {
+          "race_id": "202603020204",
+          "date": "2026-06-28",
+          "track": "福島",
+          "race_number": 4,
+          "weather": "晴",
+          "distance": 1200,
+          "surface": "芝",
+          "going": "良",
+          "field_size": 14,
+          "frame_number": 5,
+          "horse_number": 8,
+          "win_odds": 2.3,
+          "popularity": 1,
+          "finish_position": 1,
+          "jockey": "松山弘平",
+          "weight_carried": 55.0,
+          "race_time": "1:08.4",
+          "race_time_seconds": 68.4,
+          "margin": -1.1,
+          "passing_order": "3-3",
+          "pace": "34.5-33.9",
+          "last3f": 33.6,
+          "body_weight": 446,
+          "body_weight_change": 0,
+          "class_name": "2歳新馬",
+          "class_grade": "Newcomer"
+        }
+      ],
+      "career_summaries": {
+        "overall_record": {
+          "runs": 1,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 1.0
+        },
+        "current_track_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_surface_record": {
+          "runs": 1,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 1.0
+        },
+        "current_distance_band_record": {
+          "surface": "芝",
+          "distance_min": 1200,
+          "distance_max": 1600,
+          "runs": 1,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 1.0
+        },
+        "current_going_record": {
+          "runs": 1,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 1.0
+        },
+        "current_weather_record": null,
+        "current_class_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        },
+        "current_jockey_combo_record": {
+          "runs": 0,
+          "wins": 0,
+          "top3": 0,
+          "average_finish_position": null
+        }
+      },
+      "distance_change": "+200m",
+      "surface_change": "同じ",
+      "days_since_last_run": 63,
+      "weight_change_from_last_run": 0.0,
+      "jockey_change": "松山弘平から替わり",
+      "running_style_summary": "先行型",
+      "recent_form_summary": "1着",
+      "condition_change_summary": "+200m / 同じ"
+    }
+  ]
+}
