@@ -29,6 +29,7 @@ def race_payload(race_id: str, horse_count: int = 14) -> dict:
         "simulation": {
             "value": {"pre": {"selections": []}, "post": None},
             "dutching": {"pre": {"selections": []}, "post": None},
+            "variants": [],
         },
         "result": None,
         "evaluation": None,
@@ -55,6 +56,10 @@ class ResultCollectionTests(unittest.TestCase):
                     for number in range(1, 15)
                 ],
                 "payouts": {"win": [{"horse_number": 1, "payout_per_100": 480}]},
+                "final_win_odds": [
+                    {"horse_number": number, "win_odds": 4.0 + number}
+                    for number in range(1, 15)
+                ],
             }
 
             with ExitStack() as stack:

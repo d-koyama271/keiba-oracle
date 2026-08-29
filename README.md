@@ -101,7 +101,8 @@ python src/run_post.py --date 2026-04-14
 ## 生成物
 
 - レース JSON: `data/races/YYYY-MM-DD/track_Nr.json`
-- レースページ: `public/races/YYYY-MM-DD/track_Nr.html`
+- 予想ページ: `public/races/YYYY-MM-DD/track_Nr.html`
+- 結果ページ: `public/races/YYYY-MM-DD/track_Nr_result.html`（結果公開後のみ）
 - 一覧ページ: `public/index.html`
 - 全体評価集計: `data/evaluation_summary.json`
 
@@ -121,14 +122,15 @@ python src/run_post.py --date 2026-04-14
     "dutching": {
       "pre": null,
       "post": null
-    }
+    },
+    "variants": []
   },
   "result": null,
   "evaluation": null
 }
 ```
 
-`schema_version` は `6` です。既存の `prediction` 本体は総合AI予想（内部識別子 `traditional`）のまま維持し、追加方式は `prediction.variants` に保存します。統計重視予想は `method: statistical` と `model_provider` / `model_name` で識別します。既存predictionに `method` がない場合は総合AI予想として扱い、過去JSONへのバックフィルは行いません。追加方式の結果評価も同様に `evaluation.variants` へ保存します。
+`schema_version` は `8` です。既存の `prediction` 本体は総合AI予想（内部識別子 `traditional`）のまま維持し、追加方式は `prediction.variants` に保存します。統計重視予想は `method: statistical` と `model_provider` / `model_name` で識別します。既存predictionに `method` がない場合は総合AI予想として扱い、過去JSONへのバックフィルは行いません。追加方式の購入シミュレーションは `simulation.variants`、結果評価は `evaluation.variants` へ同じ識別情報とともに保存します。結果取得時に全出走馬の確定単勝オッズが揃った場合のみ、予想時点の `horses[].win_odds` を変更せず `result.final_win_odds` へ保存します。
 
 `race` には取得時点の `weather` と正規化した `class_grade` を保存します。各馬の `past_runs` は対象レース自身を除外した直近5走で、走破タイム、ペース、馬体重、当時の人気・オッズなどの詳細を含みます。
 
@@ -143,8 +145,8 @@ python src/run_post.py --date 2026-04-14
 1. `collect.py` で対象レース情報を取得
 2. 予想開始時点の `meta` / `race` / `horses` を確定し、総合AI予想入力と、市場情報を除いた統計重視予想入力を独立して作成
 3. `predict.py` から Codex を実行し、総合AI予想と統計重視予想の各馬の 1 着確率・理由・総括を検証して保存
-4. 総合AI予想だけを入力として、`simulate.py` で `simulation.value.pre` と `simulation.dutching.pre` を生成
-5. `render.py` で静的 HTML と index を生成
+4. 両AI予想を個別に入力として、`simulate.py` で期待値重視方式と上位予測ダッチング方式のpreを生成
+5. `render.py` で予想ページと index を生成
 6. `publish.py` で `public/` を更新
 
 Codex は一時作業ディレクトリ内の読み取り専用・構造化出力モードで実行され、プロンプトに埋め込んだ確定済み予想入力 JSON だけを予想材料にします。Web、リポジトリ内ファイル、公開済み HTML、結果、過去の別予想、評価データは参照させません。
@@ -156,20 +158,20 @@ Codex は一時作業ディレクトリ内の読み取り専用・構造化出�
 `run_post.py`
 
 1. `collect.py` で結果と払戻を取得
-2. `simulate.py` で両方式の `post` を確定
+2. `simulate.py` で保存済みの各AI予想・両購入方式の `post` を確定
 3. `evaluation.py` で総合AI予想と統計重視予想へ同じ予測評価指標を生成
 4. `evaluation_summary.py` で総合AI予想の集計、方式別集計、同一レース比較を更新
-5. `render.py` で同じページと index を更新
+5. `render.py` で予想ページを維持し、結果ページと index を生成・更新
 6. `publish.py` で `public/` を更新
 
 ## 購入シミュレーション
 
-正式な購入シミュレーションは次の2方式です。両方式のレース前想定を `simulation.*.pre`、結果確定後の収支を `simulation.*.post` に保存します。レース結果を取得しても `pre` は変更しません。
+正式な購入シミュレーションは次の2方式です。総合AI予想のレース前想定と収支は従来どおり `simulation.*.pre/post`、統計重視予想分は `simulation.variants` に保存します。レース結果を取得しても各 `pre` は変更しません。
 
 - `value`: 予測勝率と単勝オッズから EV と fractional Kelly を計算します。理論購入額が予算を超える場合だけ比例縮小し、余った予算の強制配分は行いません。
 - `dutching`: 予測勝率上位を1頭から設定上限まで評価し、逆オッズ配分を購入単位へ丸めます。カバー確率、グループ期待値、的中時最低利益を満たす候補からグループ期待値が最大の頭数を採用します。
 
-レースページのカスタムシミュレーターでは、両方式の条件をブラウザ内で変更できます。ダッチングは自動選択に加え、確認用の固定頭数も選べます。入力値と計算結果はrace JSON、正式な収支、localStorage、Cookieへ保存されません。HTMLへ埋め込む計算データは馬番、予測勝率、単勝オッズ、購入単位だけです。
+予想ページではAI予想と正式シミュレーションを総合AI予想／統計重視予想のタブで切り替えます。カスタムシミュレーターも選択中タブの予測確率を使い、両購入方式の条件をブラウザ内で変更できます。ダッチングは自動選択に加え、確認用の固定頭数も選べます。入力値と計算結果はrace JSON、正式な収支、localStorage、Cookieへ保存されません。HTMLへ埋め込む計算データは馬番、予測勝率、単勝オッズ、購入単位だけです。
 
 ## 予測評価
 
@@ -192,9 +194,9 @@ Codex は一時作業ディレクトリ内の読み取り専用・構造化出�
 python src/evaluation_summary.py
 ```
 
-トップページの「予測成績」はこの集計ファイルを読み込みます。ファイルがない場合は未算出として `-` を表示し、予想入力にはこの集計を含めません。
+トップページの「総合AI予想の予測成績」はこの集計ファイルを読み込みます。ファイルがない場合は未算出として `-` を表示し、予想入力にはこの集計を含めません。
 
-状態はレース前入力生成後が `pre_status: awaiting_prediction`、予想公開後が `pre_status: published` です。`post_status` は結果待ちの `awaiting_result` から、結果・両post・evaluation・HTML公開完了後に `published` となります。
+状態はレース前入力生成後が `pre_status: awaiting_prediction`、予想公開後が `pre_status: published` です。`post_status` は結果待ちの `awaiting_result` から、結果・保存済み全simulationのpost・evaluation・結果HTML公開完了後に `published` となります。
 
 ## Codex 予想フロー
 
@@ -220,7 +222,7 @@ python src/run_post_collect.py --date 2026-04-12
 
 1. `run_post_collect.py` が予想済みrace JSONの `meta.race_id` から結果だけを取得して `result` を反映し、既存の決定的な計算で両方式の `post` を確定します。
 2. `evaluation` を決定的に生成します。
-3. 結果HTMLを生成し、`public/` を更新します。レース後のAI予想処理や追加の `watcher.py` 実行は不要です。
+3. 既存予想ページを維持したまま結果HTML（`*_result.html`）を生成し、`public/` と index の結果リンクを更新します。レース後のAI予想処理や追加の `watcher.py` 実行は不要です。
 
 後方互換用の inbox response JSON の想定:
 

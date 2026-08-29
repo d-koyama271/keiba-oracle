@@ -166,6 +166,7 @@ def export_prediction_chat_input(paths: list[Path], config: dict, job_name: str)
         payload["simulation"] = {
             "value": {"pre": None, "post": None},
             "dutching": {"pre": None, "post": None},
+            "variants": [],
         }
         payload["result"] = None
         payload["evaluation"] = None

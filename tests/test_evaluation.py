@@ -265,9 +265,17 @@ class EvaluationFlowTests(unittest.TestCase):
         payload["evaluation"] = build_evaluation(payload)
         payload["simulation"]["value"]["pre"] = None
         payload["simulation"]["dutching"]["pre"] = None
-        rendered = build_environment(ROOT).get_template("race.html.j2").render(
-            **build_race_context(payload)
+        context = build_race_context(payload)
+        context.update(
+            {
+                "page_kind": "result",
+                "prediction_page_name": "race.html",
+                "result_page_name": "race_result.html",
+                "status_label": "結果公開",
+                "status_class": "status-result",
+            }
         )
+        rendered = build_environment(ROOT).get_template("race.html.j2").render(**context)
 
         for text in (
             "予測評価",

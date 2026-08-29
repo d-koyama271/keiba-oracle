@@ -11,7 +11,7 @@ from typing import Any
 import yaml
 
 JST = timezone(timedelta(hours=9), name="Asia/Tokyo")
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 8
 REQUIRED_TOP_LEVEL_KEYS = ("meta", "race", "horses", "prediction", "simulation", "result", "evaluation")
 TRADITIONAL_PREDICTION_METHOD = "traditional"
 STATISTICAL_PREDICTION_METHOD = "statistical"
@@ -182,6 +182,7 @@ def default_race_payload(race_id: str) -> dict[str, Any]:
         "simulation": {
             "value": {"pre": None, "post": None},
             "dutching": {"pre": None, "post": None},
+            "variants": [],
         },
         "result": None,
         "evaluation": None,
@@ -206,9 +207,11 @@ def ensure_race_payload(payload: dict[str, Any] | None, race_id: str | None = No
     simulation = merged.get("simulation") if isinstance(merged.get("simulation"), dict) else {}
     value = simulation.get("value") if isinstance(simulation.get("value"), dict) else {}
     dutching = simulation.get("dutching") if isinstance(simulation.get("dutching"), dict) else {}
+    variants = simulation.get("variants") if isinstance(simulation.get("variants"), list) else []
     merged["simulation"] = {
         "value": {"pre": value.get("pre"), "post": value.get("post")},
         "dutching": {"pre": dutching.get("pre"), "post": dutching.get("post")},
+        "variants": [item for item in variants if isinstance(item, dict)],
     }
     for key in REQUIRED_TOP_LEVEL_KEYS:
         merged.setdefault(key, base.get(key))
@@ -261,6 +264,12 @@ def evaluation_variants(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return [item for item in variants if isinstance(item, dict)] if isinstance(variants, list) else []
 
 
+def simulation_variants(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    simulation = payload.get("simulation")
+    variants = simulation.get("variants") if isinstance(simulation, dict) else None
+    return [item for item in variants if isinstance(item, dict)] if isinstance(variants, list) else []
+
+
 def find_variant(
     variants: list[dict[str, Any]],
     method: str,
@@ -295,6 +304,15 @@ def race_html_path(
     race_number: int = 11,
 ) -> Path:
     file_name = f"{slugify_track(track_name)}_{race_number}r.html"
+    return Path("races") / race_date / file_name
+
+
+def race_result_html_path(
+    race_date: str,
+    track_name: str,
+    race_number: int = 11,
+) -> Path:
+    file_name = f"{slugify_track(track_name)}_{race_number}r_result.html"
     return Path("races") / race_date / file_name
 
 

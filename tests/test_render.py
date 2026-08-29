@@ -282,24 +282,57 @@ class RenderTests(unittest.TestCase):
         }
 
         context = build_race_context(payload)
-        rendered = build_environment(ROOT).get_template("race.html.j2").render(**context)
+        prediction_context = {
+            **context,
+            "page_kind": "prediction",
+            "prediction_page_name": "nakayama_11r.html",
+            "result_page_name": "nakayama_11r_result.html",
+            "status_label": "予想公開",
+            "status_class": "status-prediction",
+        }
+        result_context = {
+            **context,
+            "page_kind": "result",
+            "prediction_page_name": "nakayama_11r.html",
+            "result_page_name": "nakayama_11r_result.html",
+            "status_label": "結果公開",
+            "status_class": "status-result",
+        }
+        template = build_environment(ROOT).get_template("race.html.j2")
+        rendered = template.render(**prediction_context)
+        result_rendered = template.render(**result_context)
 
         self.assertEqual(
             [row["prediction_rank"] for row in context["statistical_horse_rows"]],
             [3, 2, 1],
         )
         self.assertEqual(context["statistical_evaluation"]["winner"]["predicted_rank"], 1)
-        self.assertIn("<h2>総合AI予想</h2>", rendered)
-        self.assertIn("<h2>統計重視予想</h2>", rendered)
+        self.assertIn("<h2>予想比較</h2>", rendered)
+        self.assertIn('data-ai-method="traditional"', rendered)
+        self.assertIn('data-ai-method="statistical"', rendered)
+        self.assertNotIn("<h3>総合AI予想</h3>", rendered)
+        self.assertNotIn("<h3>統計重視予想</h3>", rendered)
+        self.assertIn('id="prediction-statistical" role="tabpanel" data-ai-panel data-ai-method="statistical" hidden', rendered)
         self.assertIn(
             "オッズ等の市場由来の情報を使用せず、レース条件、過去成績、条件適性、近況、相手関係からAIが1着確率を推定しています。",
             rendered,
         )
         self.assertIn("客観データの比較では3番を上位評価。", rendered)
         self.assertEqual(rendered.count('class="prediction-table" data-sortable'), 2)
-        self.assertIn("総合AI予想の予測評価", rendered)
-        self.assertIn("統計重視予想の予測評価", rendered)
-        self.assertEqual(rendered.count("シミュレーション収支"), 1)
+        self.assertNotIn("レース結果", rendered)
+        self.assertEqual(result_rendered.count('class="result-table" data-sortable'), 2)
+        self.assertIn("総合AI予想の予測評価", result_rendered)
+        self.assertIn("統計重視予想の予測評価", result_rendered)
+        self.assertNotIn("シミュレーション収支", result_rendered)
+        self.assertIn(
+            "市場情報は予想には使用せず、結果評価の比較基準としてのみ使用しています。",
+            result_rendered,
+        )
+        self.assertIn(
+            "このレースでは統計重視予想の購入シミュレーションは記録されていません。",
+            result_rendered,
+        )
+        self.assertNotIn("カスタム購入シミュレーション", result_rendered)
 
     def test_render_only_prediction_races_and_remove_stale_managed_html(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -353,7 +386,7 @@ class RenderTests(unittest.TestCase):
                 "AIが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。",
                 index,
             )
-            self.assertIn("<h2>予測成績</h2>", index)
+            self.assertIn("<h2>総合AI予想の予測成績</h2>", index)
             self.assertIn("現在の的中率", index)
             self.assertIn("評価済みレースなし", index)
             self.assertLess(index.index('class="panel performance-panel"'), index.index('<table class="index-table">'))
@@ -369,17 +402,20 @@ class RenderTests(unittest.TestCase):
             self.assertIn('<table class="index-table">', index)
             self.assertIn("overscroll-behavior-inline: contain", index)
             self.assertIn("-webkit-overflow-scrolling: touch", index)
-            self.assertIn(".index-table { min-width: 700px; }", index)
+            self.assertIn(".index-table { min-width: 760px; }", index)
             self.assertIn("table { font-size: 13px; }", index)
             self.assertIn('class="nowrap">2026-01-01</td>', index)
             self.assertIn('<th class="nowrap">発走</th>', index)
             self.assertIn('<td class="nowrap">15:30</td>', index)
-            self.assertIn('<th class="nowrap">ページ</th>', index)
+            self.assertIn('<th class="nowrap">予想</th>', index)
+            self.assertIn('<th class="nowrap">結果</th>', index)
             self.assertIn("<td>予想済み</td>", index)
             self.assertIn(
                 '<a class="page-link" href="races/2026-01-01/nakayama_11r.html">開く</a>',
                 index,
             )
+            self.assertIn('<td class="nowrap unavailable-link">-</td>', index)
+            self.assertIn(".unavailable-link { text-align: center; }", index)
             page_link_css = index.split(".page-link {", 1)[1].split("}", 1)[0]
             self.assertIn("text-decoration: underline", page_link_css)
             self.assertIn("text-underline-offset: 2px", page_link_css)
@@ -395,11 +431,13 @@ class RenderTests(unittest.TestCase):
             self.assertTrue((output / "assets" / "site.css").exists())
             self.assertFalse((output / stale.relative_to(public)).exists())
             self.assertFalse((output / "races" / "2026-01-02" / "tokyo_11r.html").exists())
+            self.assertFalse((output / "races" / "2026-01-01" / "nakayama_11r_result.html").exists())
             self.assertIn('<div class="page-badges">', race_html)
             self.assertIn('<span class="ai-badge">AI予想</span>', race_html)
             self.assertIn('<span class="status status-prediction">予想公開</span>', race_html)
             self.assertIn("<title>予想済み AI予想 | keiba-oracle</title>", race_html)
-            self.assertIn("<h2>予想</h2>", race_html)
+            self.assertIn("<h2>予想比較</h2>", race_html)
+            self.assertIn("<h3>総合AI予想</h3>", race_html)
             self.assertNotIn("統計重視予想", race_html)
             self.assertIn(
                 '<meta name="description" content="予想済みのAI予想。各馬の1着確率、予想理由、上位予測ダッチング方式と期待値重視方式による購入シミュレーションを掲載します。">',
@@ -423,6 +461,104 @@ class RenderTests(unittest.TestCase):
                     "本ページはAIによる確率推定と購入シミュレーションを掲載するもので、的中や利益を保証するものではありません。投票はご自身の判断で行ってください。"
                 ),
                 1,
+            )
+
+    def test_result_race_generates_separate_prediction_and_result_pages_and_index_links(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(ROOT / "templates", root / "templates")
+            race_path = root / "data" / "races" / "2026-01-01" / "nakayama_11r.json"
+            race_path.parent.mkdir(parents=True)
+            payload = make_payload(
+                predicted=True,
+                track="中山",
+                date="2026-01-01",
+                name="結果確認レース",
+            )
+            payload["result"] = {
+                "finish_order": [2, 1, 3],
+                "horses": [
+                    {"horse_number": 2, "finish_position": 1},
+                    {"horse_number": 1, "finish_position": 2},
+                    {"horse_number": 3, "finish_position": 3},
+                ],
+                "payouts": {"win": [{"horse_number": 2, "payout_per_100": 500}]},
+                "final_win_odds": [
+                    {"horse_number": 1, "win_odds": 4.4},
+                    {"horse_number": 2, "win_odds": 5.0},
+                    {"horse_number": 3, "win_odds": 6.2},
+                ],
+            }
+            payload["simulation"]["value"]["post"] = {
+                "total_stake": 100,
+                "total_return": 500,
+                "profit": 400,
+                "roi": 5.0,
+                "selections": [
+                    {"horse_number": 2, "stake": 100, "hit": True, "return": 500}
+                ],
+            }
+            payload["evaluation"] = {
+                "winner": {"horse_number": 2, "predicted_probability": 0.4, "predicted_rank": 2},
+                "metrics": {
+                    "top1_hit": False,
+                    "top3_hit": True,
+                    "top5_hit": True,
+                    "log_loss": 0.916291,
+                    "brier_score": 0.24,
+                },
+                "market_baseline": {"available": False},
+                "simulation_results": {
+                    "value": {"total_stake": 0, "total_return": 0, "profit": 0, "roi": None},
+                    "dutching": {"total_stake": 0, "total_return": 0, "profit": 0, "roi": None},
+                },
+            }
+            race_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+            output = render_site(
+                {"data_dir": "data", "public_dir": "public"},
+                "test-render-result",
+                root=root,
+            )
+            prediction_odds_before = [horse["win_odds"] for horse in payload["horses"]]
+            prediction_html = (output / "races" / "2026-01-01" / "nakayama_11r.html").read_text(encoding="utf-8")
+            result_html = (output / "races" / "2026-01-01" / "nakayama_11r_result.html").read_text(encoding="utf-8")
+            index = (output / "index.html").read_text(encoding="utf-8")
+
+            for html_path in (
+                output / "index.html",
+                output / "races" / "2026-01-01" / "nakayama_11r.html",
+                output / "races" / "2026-01-01" / "nakayama_11r_result.html",
+            ):
+                content = html_path.read_bytes()
+                self.assertNotIn(b"\r\n", content)
+
+            self.assertIn("購入シミュレーション", prediction_html)
+            self.assertNotIn('<section class="result-section">', prediction_html)
+            self.assertIn('<section class="result-section">', result_html)
+            self.assertIn("予測評価", result_html)
+            self.assertIn("実着順一覧", result_html)
+            self.assertGreaterEqual(result_html.count("確定単勝オッズ"), 3)
+            self.assertIn(">5.0</td><td class=\"nowrap\">的中</td>", result_html)
+            self.assertNotIn(">yes<", result_html)
+            self.assertNotIn(">no<", result_html)
+            self.assertNotIn('class="stats"', result_html)
+            self.assertIn('class="metric-grid"', result_html)
+            self.assertNotIn("シミュレーション収支", result_html)
+            self.assertEqual(
+                [horse["win_odds"] for horse in payload["horses"]],
+                prediction_odds_before,
+            )
+            self.assertNotIn('class="prediction-table"', result_html)
+            self.assertNotIn("カスタム購入シミュレーション", result_html)
+            self.assertIn("<title>結果確認レース 結果 | keiba-oracle</title>", result_html)
+            self.assertIn(
+                '<a class="page-link" href="races/2026-01-01/nakayama_11r.html">開く</a>',
+                index,
+            )
+            self.assertIn(
+                '<a class="page-link" href="races/2026-01-01/nakayama_11r_result.html">開く</a>',
+                index,
             )
 
     def test_index_renders_generated_evaluation_summary(self) -> None:

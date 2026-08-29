@@ -1,6 +1,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -322,12 +323,85 @@
       color: var(--accent);
       margin-bottom: 18px;
     }
-    .simulation-panel h4,
+    .ai-method-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .ai-method-tab {
+      margin: 0 0 -1px;
+      padding: 9px 14px;
+      border: 1px solid transparent;
+      border-bottom-color: var(--line);
+      border-radius: 10px 10px 0 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .ai-method-tab[aria-selected="true"] {
+      border-color: var(--line);
+      border-bottom-color: var(--panel);
+      border-radius: 10px 10px 0 0;
+      background: var(--panel);
+      color: var(--accent);
+    }
+    .prediction-section.has-ai-tabs .prediction-method-tabs,
+    .simulation-section.has-ai-tabs .simulation-method-tabs {
+      margin-bottom: 0;
+    }
+    .prediction-section.has-ai-tabs .prediction-method-content,
+    .simulation-section.has-ai-tabs .simulation-method-content {
+      margin-top: 0;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-top: 0;
+      border-radius: 0 14px 14px 14px;
+      background: var(--panel);
+    }
+    .prediction-method-content > .prediction-description {
+      margin-top: 0;
+    }
+    .simulation-method-content > .simulation-panel {
+      margin-bottom: 0;
+    }
+    .simulation-method-content > .simulation-panel + .simulation-panel {
+      margin-top: 24px;
+    }
+    #custom-simulator {
+      margin-top: 30px;
+    }
+    .result-section .ai-method-tab[aria-selected="true"] {
+      border-bottom-color: var(--result-bg);
+      background: var(--result-bg);
+      color: var(--result-accent);
+    }
+    .ai-method-tab:focus-visible {
+      outline: 2px solid #9bb8ae;
+      outline-offset: 2px;
+    }
+    .simulation-panel h4 {
+      margin: 30px 0 10px;
+    }
     .result-panel h4 {
       margin: 28px 0 10px;
     }
     #custom-dutching-evaluations h3 {
       margin: 28px 0 10px;
+    }
+    .simulation-details {
+      margin-top: 24px;
+    }
+    .simulation-details h4 {
+      margin-top: 20px;
+    }
+    .simulation-details summary {
+      color: var(--accent);
+      font-weight: 700;
+      cursor: pointer;
     }
     .result-section {
       margin-top: 40px;
@@ -392,6 +466,16 @@
         margin-top: 24px;
         margin-bottom: 8px;
       }
+      .prediction-section.has-ai-tabs .prediction-method-content,
+      .simulation-section.has-ai-tabs .simulation-method-content {
+        padding: 12px;
+      }
+      .simulation-method-content > .simulation-panel + .simulation-panel {
+        margin-top: 20px;
+      }
+      #custom-simulator {
+        margin-top: 24px;
+      }
       .tooltip-content {
         bottom: 12px;
         width: calc(100vw - 24px);
@@ -404,7 +488,7 @@
     <div class="panel">
       <div class="page-badges">
         <span class="ai-badge">AI予想</span>
-        <span class="status status-result">結果公開</span>
+        <span class="status status-prediction">予想公開</span>
       </div>
       <h1>新潟 7R 新潟2歳S</h1>
       <h2>レース基本情報</h2>
@@ -413,303 +497,378 @@
         <div><strong>発走</strong><br>15:25</div>
         <div><strong>距離</strong><br>芝 1600m</div>
         <div><strong>馬場</strong><br>良</div>
+        
         <div><strong>オッズ記録時刻</strong><br>2026-08-23 12:42:09</div>
         <div><strong>発走時点との差</strong><br>発走163分前</div>
+        
       </div>
+      
       <p class="small">単勝オッズと人気は記録時点の値です。現在のオッズとは異なる場合があります。</p>
       
-      <p class="small"><a href="../../index.html">一覧へ戻る</a> / <a href="https://race.sp.netkeiba.com/race/shutuba.html?race_id=202604030207">netkeiba</a></p>
+      
+      <p class="small">
+        <a href="../../index.html">一覧へ戻る</a>
+         / <a href="niigata_7r_result.html">結果ページ</a>
+        
+         / <a href="https://race.sp.netkeiba.com/race/shutuba.html?race_id=202604030207">netkeiba</a>
+      </p>
     </div>
 
-    <div class="panel">
-      <h2>総合AI予想</h2>
-      <p class="small prediction-description">AIが各馬の過去成績、コース・距離適性、斤量、脚質、市場オッズなどから1着確率を推定しています。</p>
+    
+    <div class="panel prediction-section has-ai-tabs">
+      <h2>予想比較</h2>
       
-      <p class="table-scroll-hint">表は横にスクロールできます</p>
-      <div class="table-scroll">
-        <table class="prediction-table" data-sortable>
-          <thead>
-            <tr>
-              <th class="nowrap" aria-sort="none">
+      <div class="ai-method-tabs prediction-method-tabs" role="tablist" aria-label="AI予想方式">
+        
+        <button type="button" class="ai-method-tab" role="tab" data-ai-tab data-ai-method="traditional" aria-controls="prediction-traditional" aria-selected="true" tabindex="0">総合AI予想</button>
+        
+        <button type="button" class="ai-method-tab" role="tab" data-ai-tab data-ai-method="statistical" aria-controls="prediction-statistical" aria-selected="false" tabindex="-1">統計重視予想</button>
+        
+      </div>
+      
+      
+      <div class="ai-method-panel prediction-method-content" id="prediction-traditional" role="tabpanel" data-ai-panel data-ai-method="traditional">
+        
+        <p class="small prediction-description">AIが各馬の過去成績、コース・距離適性、斤量、脚質、市場オッズなどから1着確率を推定しています。</p>
+        
+        <p class="table-scroll-hint">表は横にスクロールできます</p>
+        <div class="table-scroll">
+          <table class="prediction-table" data-sortable>
+            <thead>
+              <tr>
+                <th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="0" data-sort-type="number" data-sort-first="ascending">
     馬番 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th>
-              <th class="horse-name" aria-sort="none">
+                <th class="horse-name" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="1" data-sort-type="text" data-sort-first="ascending">
     馬名 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th>
-              <th class="nowrap" aria-sort="none">
+                
+                <th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="2" data-sort-type="text" data-sort-first="ascending">
     騎手 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th>
-              <th class="nowrap" aria-sort="none">
+                <th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="ascending">
     単勝オッズ <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th>
-              <th class="nowrap" aria-sort="none">
+                <th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
     人気 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th>
-              <th class="nowrap" aria-sort="none">
+                <th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="descending">
     1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th>
-              <th class="nowrap" aria-sort="none">
+                <th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="ascending">
     予想順位 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th>
-              <th class="reason-cell">理由</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="1">1</td>
-              <td class="horse-name">シャンデヴァーグ</td>
-              <td class="nowrap">津村</td>
-              <td class="nowrap" data-sort-value="3.8">3.8</td>
-              <td class="nowrap" data-sort-value="2">2</td>
-              <td class="nowrap" data-sort-value="0.21">21.0%</td>
-              <td class="nowrap" data-sort-value="2">2位</td>
-              <td class="reason-cell">市場上位で相手関係は有利だが、実績データが乏しく芝1600m適性と能力比較は未確定。</td>
-            </tr>
-            
-            <tr class="prediction-top">
-              <td class="nowrap" data-sort-value="2">2</td>
-              <td class="horse-name">レッチュベルク</td>
-              <td class="nowrap">田辺</td>
-              <td class="nowrap" data-sort-value="3.5">3.5</td>
-              <td class="nowrap" data-sort-value="1">1</td>
-              <td class="nowrap" data-sort-value="0.23">23.0%</td>
-              <td class="nowrap" data-sort-value="1">1位</td>
-              <td class="reason-cell">最上位評価で枠も悪くないが、近走内容が確認できず、同世代重賞での裏付けを欠く。</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="3">3</td>
-              <td class="horse-name">トップチェッカー</td>
-              <td class="nowrap">北村友</td>
-              <td class="nowrap" data-sort-value="7.4">7.4</td>
-              <td class="nowrap" data-sort-value="5">5</td>
-              <td class="nowrap" data-sort-value="0.06">6.0%</td>
-              <td class="nowrap" data-sort-value="6">6位</td>
-              <td class="reason-cell">人気上位馬に次ぐ評価だが、戦績と今回条件への適性材料がほぼなく、上位2頭より不確実。</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="4">4</td>
-              <td class="horse-name">アイデアルカット</td>
-              <td class="nowrap">嶋田</td>
-              <td class="nowrap" data-sort-value="97.4">97.4</td>
-              <td class="nowrap" data-sort-value="9">9</td>
-              <td class="nowrap" data-sort-value="0.025">2.5%</td>
-              <td class="nowrap" data-sort-value="8">8位</td>
-              <td class="reason-cell">戦績は2走あるものの内容不明で、人気・オッズとも低く、同組での強調材料に乏しい。</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="5">5</td>
-              <td class="horse-name">エレスレイプニル</td>
-              <td class="nowrap">木幡育</td>
-              <td class="nowrap" data-sort-value="76.2">76.2</td>
-              <td class="nowrap" data-sort-value="8">8</td>
-              <td class="nowrap" data-sort-value="0.015">1.5%</td>
-              <td class="nowrap" data-sort-value="10">10位</td>
-              <td class="reason-cell">新潟芝1600mを経験済みだが8着、全体でも未勝利で、上位人気馬との能力差を埋める材料が少ない。</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="6">6</td>
-              <td class="horse-name">マインドフルネス</td>
-              <td class="nowrap">菊沢</td>
-              <td class="nowrap" data-sort-value="34.9">34.9</td>
-              <td class="nowrap" data-sort-value="7">7</td>
-              <td class="nowrap" data-sort-value="0.04">4.0%</td>
-              <td class="nowrap" data-sort-value="7">7位</td>
-              <td class="reason-cell">キャリアがなく比較材料は最少だが、未知の上積みを残す一方、重賞での信頼度は低い。</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="7">7</td>
-              <td class="horse-name">トウシンマジック</td>
-              <td class="nowrap">コレット</td>
-              <td class="nowrap" data-sort-value="4.2">4.2</td>
-              <td class="nowrap" data-sort-value="3">3</td>
-              <td class="nowrap" data-sort-value="0.14">14.0%</td>
-              <td class="nowrap" data-sort-value="4">4位</td>
-              <td class="reason-cell">市場上位で能力期待は高いが、実績詳細がなく、1・2・10番より条件適性の裏付けが弱い。</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="8">8</td>
-              <td class="horse-name">マイホームパパ</td>
-              <td class="nowrap">江田照</td>
-              <td class="nowrap" data-sort-value="101.3">101.3</td>
-              <td class="nowrap" data-sort-value="10">10</td>
-              <td class="nowrap" data-sort-value="0.02">2.0%</td>
-              <td class="nowrap" data-sort-value="9">9位</td>
-              <td class="reason-cell">戦績内容が確認できず、低人気で相手関係の優位性も見出しにくい。</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="9">9</td>
-              <td class="horse-name">スイートアリッサム</td>
-              <td class="nowrap">杉原</td>
-              <td class="nowrap" data-sort-value="14.6">14.6</td>
-              <td class="nowrap" data-sort-value="6">6</td>
-              <td class="nowrap" data-sort-value="0.09">9.0%</td>
-              <td class="nowrap" data-sort-value="5">5位</td>
-              <td class="reason-cell">新潟芝1600mで0.2秒差の4着、上がり32.8秒は有力だが、勝ち切り実績がなく上位人気馬に一歩劣る。</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="10">10</td>
-              <td class="horse-name">インカルナータ</td>
-              <td class="nowrap">坂井</td>
-              <td class="nowrap" data-sort-value="4.7">4.7</td>
-              <td class="nowrap" data-sort-value="4">4</td>
-              <td class="nowrap" data-sort-value="0.17">17.0%</td>
-              <td class="nowrap" data-sort-value="3">3位</td>
-              <td class="reason-cell">市場上位で能力は評価されるが、実績詳細が欠けており、同条件実績のある9番との差は不確実。</td>
-            </tr>
-            
-          </tbody>
-        </table>
+                
+                <th class="reason-cell">理由</th>
+              </tr>
+            </thead>
+            <tbody>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="1">1</td>
+                <td class="horse-name">シャンデヴァーグ</td>
+                
+                <td class="nowrap">津村</td>
+                <td class="nowrap" data-sort-value="3.8">3.8</td>
+                <td class="nowrap" data-sort-value="2">2</td>
+                
+                <td class="nowrap" data-sort-value="0.21">21.0%</td>
+                <td class="nowrap" data-sort-value="2">2位</td>
+                <td class="reason-cell">市場上位で相手関係は有利だが、実績データが乏しく芝1600m適性と能力比較は未確定。</td>
+              </tr>
+              
+              <tr class="prediction-top">
+                <td class="nowrap" data-sort-value="2">2</td>
+                <td class="horse-name">レッチュベルク</td>
+                
+                <td class="nowrap">田辺</td>
+                <td class="nowrap" data-sort-value="3.5">3.5</td>
+                <td class="nowrap" data-sort-value="1">1</td>
+                
+                <td class="nowrap" data-sort-value="0.23">23.0%</td>
+                <td class="nowrap" data-sort-value="1">1位</td>
+                <td class="reason-cell">最上位評価で枠も悪くないが、近走内容が確認できず、同世代重賞での裏付けを欠く。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="3">3</td>
+                <td class="horse-name">トップチェッカー</td>
+                
+                <td class="nowrap">北村友</td>
+                <td class="nowrap" data-sort-value="7.4">7.4</td>
+                <td class="nowrap" data-sort-value="5">5</td>
+                
+                <td class="nowrap" data-sort-value="0.06">6.0%</td>
+                <td class="nowrap" data-sort-value="6">6位</td>
+                <td class="reason-cell">人気上位馬に次ぐ評価だが、戦績と今回条件への適性材料がほぼなく、上位2頭より不確実。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="4">4</td>
+                <td class="horse-name">アイデアルカット</td>
+                
+                <td class="nowrap">嶋田</td>
+                <td class="nowrap" data-sort-value="97.4">97.4</td>
+                <td class="nowrap" data-sort-value="9">9</td>
+                
+                <td class="nowrap" data-sort-value="0.025">2.5%</td>
+                <td class="nowrap" data-sort-value="8">8位</td>
+                <td class="reason-cell">戦績は2走あるものの内容不明で、人気・オッズとも低く、同組での強調材料に乏しい。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="5">5</td>
+                <td class="horse-name">エレスレイプニル</td>
+                
+                <td class="nowrap">木幡育</td>
+                <td class="nowrap" data-sort-value="76.2">76.2</td>
+                <td class="nowrap" data-sort-value="8">8</td>
+                
+                <td class="nowrap" data-sort-value="0.015">1.5%</td>
+                <td class="nowrap" data-sort-value="10">10位</td>
+                <td class="reason-cell">新潟芝1600mを経験済みだが8着、全体でも未勝利で、上位人気馬との能力差を埋める材料が少ない。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="6">6</td>
+                <td class="horse-name">マインドフルネス</td>
+                
+                <td class="nowrap">菊沢</td>
+                <td class="nowrap" data-sort-value="34.9">34.9</td>
+                <td class="nowrap" data-sort-value="7">7</td>
+                
+                <td class="nowrap" data-sort-value="0.04">4.0%</td>
+                <td class="nowrap" data-sort-value="7">7位</td>
+                <td class="reason-cell">キャリアがなく比較材料は最少だが、未知の上積みを残す一方、重賞での信頼度は低い。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="7">7</td>
+                <td class="horse-name">トウシンマジック</td>
+                
+                <td class="nowrap">コレット</td>
+                <td class="nowrap" data-sort-value="4.2">4.2</td>
+                <td class="nowrap" data-sort-value="3">3</td>
+                
+                <td class="nowrap" data-sort-value="0.14">14.0%</td>
+                <td class="nowrap" data-sort-value="4">4位</td>
+                <td class="reason-cell">市場上位で能力期待は高いが、実績詳細がなく、1・2・10番より条件適性の裏付けが弱い。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="8">8</td>
+                <td class="horse-name">マイホームパパ</td>
+                
+                <td class="nowrap">江田照</td>
+                <td class="nowrap" data-sort-value="101.3">101.3</td>
+                <td class="nowrap" data-sort-value="10">10</td>
+                
+                <td class="nowrap" data-sort-value="0.02">2.0%</td>
+                <td class="nowrap" data-sort-value="9">9位</td>
+                <td class="reason-cell">戦績内容が確認できず、低人気で相手関係の優位性も見出しにくい。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="9">9</td>
+                <td class="horse-name">スイートアリッサム</td>
+                
+                <td class="nowrap">杉原</td>
+                <td class="nowrap" data-sort-value="14.6">14.6</td>
+                <td class="nowrap" data-sort-value="6">6</td>
+                
+                <td class="nowrap" data-sort-value="0.09">9.0%</td>
+                <td class="nowrap" data-sort-value="5">5位</td>
+                <td class="reason-cell">新潟芝1600mで0.2秒差の4着、上がり32.8秒は有力だが、勝ち切り実績がなく上位人気馬に一歩劣る。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="10">10</td>
+                <td class="horse-name">インカルナータ</td>
+                
+                <td class="nowrap">坂井</td>
+                <td class="nowrap" data-sort-value="4.7">4.7</td>
+                <td class="nowrap" data-sort-value="4">4</td>
+                
+                <td class="nowrap" data-sort-value="0.17">17.0%</td>
+                <td class="nowrap" data-sort-value="3">3位</td>
+                <td class="reason-cell">市場上位で能力は評価されるが、実績詳細が欠けており、同条件実績のある9番との差は不確実。</td>
+              </tr>
+              
+            </tbody>
+          </table>
+        </div>
+        <p><strong>総括:</strong> 実績詳細が欠ける馬が多く不確実性の高い2歳重賞。市場上位の1・2番を中心に、同条件で内容を示した9番を次位候補と評価。</p>
+        
       </div>
-      <p><strong>総括:</strong> 実績詳細が欠ける馬が多く不確実性の高い2歳重賞。市場上位の1・2番を中心に、同条件で内容を示した9番を次位候補と評価。</p>
       
-    </div>
-
-    
-    <div class="panel">
-      <h2>統計重視予想</h2>
-      <p class="small prediction-description">オッズ等の市場由来の情報を使用せず、レース条件、過去成績、条件適性、近況、相手関係からAIが1着確率を推定しています。</p>
-      <p class="table-scroll-hint">表は横にスクロールできます</p>
-      <div class="table-scroll">
-        <table class="prediction-table" data-sortable>
-          <thead>
-            <tr>
-              <th class="nowrap" aria-sort="none">
+      <div class="ai-method-panel prediction-method-content" id="prediction-statistical" role="tabpanel" data-ai-panel data-ai-method="statistical" hidden>
+        
+        <p class="small prediction-description">オッズ等の市場由来の情報を使用せず、レース条件、過去成績、条件適性、近況、相手関係からAIが1着確率を推定しています。</p>
+        
+        <p class="table-scroll-hint">表は横にスクロールできます</p>
+        <div class="table-scroll">
+          <table class="prediction-table" data-sortable>
+            <thead>
+              <tr>
+                <th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="0" data-sort-type="number" data-sort-first="ascending">
     馬番 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th>
-              <th class="horse-name" aria-sort="none">
+                <th class="horse-name" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="1" data-sort-type="text" data-sort-first="ascending">
     馬名 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th>
-              <th class="nowrap" aria-sort="none">
+                
+                <th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="2" data-sort-type="number" data-sort-first="descending">
     1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th>
-              <th class="nowrap" aria-sort="none">
+                <th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="ascending">
     予想順位 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th>
-              <th class="reason-cell">理由</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="1">1</td>
-              <td class="horse-name">シャンデヴァーグ</td>
-              <td class="nowrap" data-sort-value="0.11">11.0%</td>
-              <td class="nowrap" data-sort-value="3">3位</td>
-              <td class="reason-cell">過去1走のみで着順・内容が欠落し、芝1600m・新潟・G3への適性と基礎能力を判断する材料が不足。</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="2">2</td>
-              <td class="horse-name">レッチュベルク</td>
-              <td class="nowrap" data-sort-value="0.11">11.0%</td>
-              <td class="nowrap" data-sort-value="4">4位</td>
-              <td class="reason-cell">過去1走のみで結果や走破内容が欠落。今回と同じ芝1600m条件の実績がなく、評価の不確実性が高い。</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="3">3</td>
-              <td class="horse-name">トップチェッカー</td>
-              <td class="nowrap" data-sort-value="0.1">10.0%</td>
-              <td class="nowrap" data-sort-value="5">5位</td>
-              <td class="reason-cell">過去1走の着順・ペース・上がりなどが欠落し、芝1600mや新潟への適性比較が困難。</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="4">4</td>
-              <td class="horse-name">アイデアルカット</td>
-              <td class="nowrap" data-sort-value="0.1">10.0%</td>
-              <td class="nowrap" data-sort-value="6">6位</td>
-              <td class="reason-cell">2走の履歴はあるが着順・着差・内容が欠落。出走経験は他の材料不足馬より多いものの、G3での能力評価は不確実。</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="5">5</td>
-              <td class="horse-name">エレスレイプニル</td>
-              <td class="nowrap" data-sort-value="0.02">2.0%</td>
-              <td class="nowrap" data-sort-value="10">10位</td>
-              <td class="reason-cell">新潟芝1600m良で8着、0.7秒差。条件経験はあるが、通算2戦9.0着・同条件8着で、今回の相手関係では評価を下げる。</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="6">6</td>
-              <td class="horse-name">マインドフルネス</td>
-              <td class="nowrap" data-sort-value="0.13">13.0%</td>
-              <td class="nowrap" data-sort-value="2">2位</td>
-              <td class="reason-cell">未出走で基礎能力、芝1600m適性、近況、脚質の情報が全くなく不確実性は最大。ただし比較材料不足のため極端には下げない。</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="7">7</td>
-              <td class="horse-name">トウシンマジック</td>
-              <td class="nowrap" data-sort-value="0.08">8.0%</td>
-              <td class="nowrap" data-sort-value="7">7位</td>
-              <td class="reason-cell">過去1走の着順・内容が欠落し、芝1600mへの延長とG3昇級相当の相手関係に対する裏付けがない。</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="8">8</td>
-              <td class="horse-name">マイホームパパ</td>
-              <td class="nowrap" data-sort-value="0.06">6.0%</td>
-              <td class="nowrap" data-sort-value="9">9位</td>
-              <td class="reason-cell">2走の履歴はあるが着順や走破内容が欠落。芝1600m・新潟・良馬場の適性を示す客観実績がなく、判断材料が少ない。</td>
-            </tr>
-            
-            <tr class="prediction-top">
-              <td class="nowrap" data-sort-value="9">9</td>
-              <td class="horse-name">スイートアリッサム</td>
-              <td class="nowrap" data-sort-value="0.22">22.0%</td>
-              <td class="nowrap" data-sort-value="1">1位</td>
-              <td class="reason-cell">新潟芝1600m良の新馬戦で4着、0.2秒差。通過5-5から上がり32.8秒で条件適性と末脚は今回メンバー中で明確な材料だが、未勝利かつG3で相手強化。</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="10">10</td>
-              <td class="horse-name">インカルナータ</td>
-              <td class="nowrap" data-sort-value="0.07">7.0%</td>
-              <td class="nowrap" data-sort-value="8">8位</td>
-              <td class="reason-cell">過去1走のみで着順・内容が欠落。芝1600m・新潟・良馬場への適性、近況、脚質の裏付けがなく不確実。</td>
-            </tr>
-            
-          </tbody>
-        </table>
+                
+                <th class="reason-cell">理由</th>
+              </tr>
+            </thead>
+            <tbody>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="1">1</td>
+                <td class="horse-name">シャンデヴァーグ</td>
+                
+                <td class="nowrap" data-sort-value="0.11">11.0%</td>
+                <td class="nowrap" data-sort-value="3">3位</td>
+                <td class="reason-cell">過去1走のみで着順・内容が欠落し、芝1600m・新潟・G3への適性と基礎能力を判断する材料が不足。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="2">2</td>
+                <td class="horse-name">レッチュベルク</td>
+                
+                <td class="nowrap" data-sort-value="0.11">11.0%</td>
+                <td class="nowrap" data-sort-value="4">4位</td>
+                <td class="reason-cell">過去1走のみで結果や走破内容が欠落。今回と同じ芝1600m条件の実績がなく、評価の不確実性が高い。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="3">3</td>
+                <td class="horse-name">トップチェッカー</td>
+                
+                <td class="nowrap" data-sort-value="0.1">10.0%</td>
+                <td class="nowrap" data-sort-value="5">5位</td>
+                <td class="reason-cell">過去1走の着順・ペース・上がりなどが欠落し、芝1600mや新潟への適性比較が困難。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="4">4</td>
+                <td class="horse-name">アイデアルカット</td>
+                
+                <td class="nowrap" data-sort-value="0.1">10.0%</td>
+                <td class="nowrap" data-sort-value="6">6位</td>
+                <td class="reason-cell">2走の履歴はあるが着順・着差・内容が欠落。出走経験は他の材料不足馬より多いものの、G3での能力評価は不確実。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="5">5</td>
+                <td class="horse-name">エレスレイプニル</td>
+                
+                <td class="nowrap" data-sort-value="0.02">2.0%</td>
+                <td class="nowrap" data-sort-value="10">10位</td>
+                <td class="reason-cell">新潟芝1600m良で8着、0.7秒差。条件経験はあるが、通算2戦9.0着・同条件8着で、今回の相手関係では評価を下げる。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="6">6</td>
+                <td class="horse-name">マインドフルネス</td>
+                
+                <td class="nowrap" data-sort-value="0.13">13.0%</td>
+                <td class="nowrap" data-sort-value="2">2位</td>
+                <td class="reason-cell">未出走で基礎能力、芝1600m適性、近況、脚質の情報が全くなく不確実性は最大。ただし比較材料不足のため極端には下げない。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="7">7</td>
+                <td class="horse-name">トウシンマジック</td>
+                
+                <td class="nowrap" data-sort-value="0.08">8.0%</td>
+                <td class="nowrap" data-sort-value="7">7位</td>
+                <td class="reason-cell">過去1走の着順・内容が欠落し、芝1600mへの延長とG3昇級相当の相手関係に対する裏付けがない。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="8">8</td>
+                <td class="horse-name">マイホームパパ</td>
+                
+                <td class="nowrap" data-sort-value="0.06">6.0%</td>
+                <td class="nowrap" data-sort-value="9">9位</td>
+                <td class="reason-cell">2走の履歴はあるが着順や走破内容が欠落。芝1600m・新潟・良馬場の適性を示す客観実績がなく、判断材料が少ない。</td>
+              </tr>
+              
+              <tr class="prediction-top">
+                <td class="nowrap" data-sort-value="9">9</td>
+                <td class="horse-name">スイートアリッサム</td>
+                
+                <td class="nowrap" data-sort-value="0.22">22.0%</td>
+                <td class="nowrap" data-sort-value="1">1位</td>
+                <td class="reason-cell">新潟芝1600m良の新馬戦で4着、0.2秒差。通過5-5から上がり32.8秒で条件適性と末脚は今回メンバー中で明確な材料だが、未勝利かつG3で相手強化。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="10">10</td>
+                <td class="horse-name">インカルナータ</td>
+                
+                <td class="nowrap" data-sort-value="0.07">7.0%</td>
+                <td class="nowrap" data-sort-value="8">8位</td>
+                <td class="reason-cell">過去1走のみで着順・内容が欠落。芝1600m・新潟・良馬場への適性、近況、脚質の裏付けがなく不確実。</td>
+              </tr>
+              
+            </tbody>
+          </table>
+        </div>
+        <p><strong>総括:</strong> 新潟芝1600m・良馬場の実績と上がり32.8秒、0.2秒差の4着が確認できる9番を最上位評価。5番は同条件8着で下位評価。残る馬は履歴の着順や内容が欠落、または未出走で能力差を明確にできず、不確実性が非常に高いため確率を分散した。</p>
+        
       </div>
-      <p><strong>総括:</strong> 新潟芝1600m・良馬場の実績と上がり32.8秒、0.2秒差の4着が確認できる9番を最上位評価。5番は同条件8着で下位評価。残る馬は履歴の着順や内容が欠落、または未出走で能力差を明確にできず、不確実性が非常に高いため確率を分散した。</p>
+      
     </div>
-    
 
-    <section class="simulation-section">
+    <section class="simulation-section has-ai-tabs">
       <h2 class="simulation-section-title">購入シミュレーション</h2>
+
+      
+      <div class="ai-method-tabs simulation-method-tabs" role="tablist" aria-label="購入シミュレーションのAI予想方式">
+        
+        <button type="button" class="ai-method-tab" role="tab" data-ai-tab data-ai-method="traditional" aria-controls="simulation-traditional" aria-selected="true" tabindex="0">総合AI予想</button>
+        
+        <button type="button" class="ai-method-tab" role="tab" data-ai-tab data-ai-method="statistical" aria-controls="simulation-statistical" aria-selected="false" tabindex="-1">統計重視予想</button>
+        
+      </div>
+      
+      
+      
+      
+      
+      
+      
+      <div class="ai-method-panel simulation-method-content" id="simulation-traditional" role="tabpanel" data-ai-panel data-ai-method="traditional">
 
     <div class="panel simulation-panel">
       <h3><span class="term-with-tooltip"><span>上位予測ダッチング方式</span><span class="term-tooltip">
@@ -778,10 +937,12 @@
         </table>
       </div>
       
-      <h4>頭数別比較</h4>
-      <p class="table-scroll-hint">表は横にスクロールできます</p>
-      <div class="table-scroll">
-        <table class="evaluation-table">
+      <details class="simulation-details">
+        <summary>頭数別比較の詳細を見る</summary>
+        <h4>頭数別比較</h4>
+        <p class="table-scroll-hint">表は横にスクロールできます</p>
+        <div class="table-scroll">
+          <table class="evaluation-table">
           <thead><tr><th class="nowrap">頭数</th><th class="nowrap">対象馬番</th><th class="nowrap"><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip">
   <button type="button" class="tooltip-trigger" aria-label="カバー確率: 選択した馬の1着確率を合計した値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択した馬の1着確率を合計した値です。</span>
@@ -863,8 +1024,9 @@
             </tr>
             
           </tbody>
-        </table>
-      </div>
+          </table>
+        </div>
+      </details>
       
     </div>
 
@@ -888,10 +1050,12 @@
         <div><strong>合計購入額</strong><br>0円</div>
         <div><strong>未使用予算</strong><br>3000円</div>
       </div>
-      <h4>全馬期待値一覧</h4>
-      <p class="table-scroll-hint">表は横にスクロールできます</p>
-      <div class="table-scroll">
-        <table class="value-detail-table">
+      <details class="simulation-details">
+        <summary>全馬期待値の詳細を見る</summary>
+        <h4>全馬期待値一覧</h4>
+        <p class="table-scroll-hint">表は横にスクロールできます</p>
+        <div class="table-scroll">
+          <table class="value-detail-table">
           <thead><tr><th class="nowrap">EV順位</th><th class="nowrap">馬番</th><th class="horse-name">馬名</th><th class="nowrap">1着確率</th><th class="nowrap">単勝オッズ</th><th class="nowrap"><span class="term-with-tooltip"><span>EV</span><span class="term-tooltip">
   <button type="button" class="tooltip-trigger" aria-label="EV: 1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。</span>
@@ -1061,14 +1225,46 @@
             </tr>
             
           </tbody>
-        </table>
-      </div>
+          </table>
+        </div>
+      </details>
       <h4>購入対象</h4>
       
       <p><strong>購入なし</strong><br><span class="small">EV基準以上の馬はありますが、現在の予算ではKelly基準の購入額が100円未満となるため、購入対象はありません。</span></p>
       
       
     </div>
+      </div>
+      
+      
+      
+      
+      
+      
+      <div class="ai-method-panel simulation-method-content" id="simulation-statistical" role="tabpanel" data-ai-panel data-ai-method="statistical" hidden>
+
+    <div class="panel simulation-panel">
+      <h3><span class="term-with-tooltip"><span>上位予測ダッチング方式</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="上位予測ダッチング方式: AIの予測上位馬を複数選び、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">AIの予測上位馬を複数選び、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。</span>
+</span></span></h3>
+      <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
+      
+      <p>このレースでは統計重視予想の購入シミュレーションは記録されていません。</p>
+      
+    </div>
+
+    <div class="panel simulation-panel">
+      <h3><span class="term-with-tooltip"><span>期待値重視方式</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="期待値重視方式: AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。</span>
+</span></span></h3>
+      
+      <p>このレースでは統計重視予想の購入シミュレーションは記録されていません。</p>
+      
+    </div>
+      </div>
+      
     </section>
 
     
@@ -1203,7 +1399,7 @@
         </div>
       </div>
     </div>
-    <script type="application/json" id="custom-simulator-data">{"display": {"rejection_reason_labels": {"coverage_probability_below_threshold": "\u30ab\u30d0\u30fc\u78ba\u7387\u304c\u6700\u4f4e\u57fa\u6e96\u672a\u6e80", "group_expected_value_below_threshold": "\u30b0\u30eb\u30fc\u30d7\u671f\u5f85\u5024\u304c\u6700\u4f4e\u57fa\u6e96\u672a\u6e80", "insufficient_budget_units": "\u4e88\u7b97\u304c\u8cfc\u5165\u5358\u4f4d\u307e\u305f\u306f\u9078\u629e\u982d\u6570\u306b\u5bfe\u3057\u3066\u4e0d\u8db3", "minimum_profit_not_positive": "\u7684\u4e2d\u6642\u306e\u6700\u4f4e\u5229\u76ca\u3092\u78ba\u4fdd\u3067\u304d\u306a\u3044", "minimum_profit_rate_below_threshold": "\u6700\u4f4e\u5229\u76ca\u7387\u304c\u6700\u4f4e\u57fa\u6e96\u672a\u6e80"}, "unknown_rejection_reason_label": "\u6761\u4ef6\u3092\u6e80\u305f\u3057\u3066\u3044\u307e\u305b\u3093"}, "horses": [{"horse_number": 1, "win_odds": 3.8, "win_probability": 0.21}, {"horse_number": 2, "win_odds": 3.5, "win_probability": 0.23}, {"horse_number": 3, "win_odds": 7.4, "win_probability": 0.06}, {"horse_number": 4, "win_odds": 97.4, "win_probability": 0.025}, {"horse_number": 5, "win_odds": 76.2, "win_probability": 0.015}, {"horse_number": 6, "win_odds": 34.9, "win_probability": 0.04}, {"horse_number": 7, "win_odds": 4.2, "win_probability": 0.14}, {"horse_number": 8, "win_odds": 101.3, "win_probability": 0.02}, {"horse_number": 9, "win_odds": 14.6, "win_probability": 0.09}, {"horse_number": 10, "win_odds": 4.7, "win_probability": 0.17}], "stake_unit": 100}</script>
+    <script type="application/json" id="custom-simulator-data">{"display": {"rejection_reason_labels": {"coverage_probability_below_threshold": "\u30ab\u30d0\u30fc\u78ba\u7387\u304c\u6700\u4f4e\u57fa\u6e96\u672a\u6e80", "group_expected_value_below_threshold": "\u30b0\u30eb\u30fc\u30d7\u671f\u5f85\u5024\u304c\u6700\u4f4e\u57fa\u6e96\u672a\u6e80", "insufficient_budget_units": "\u4e88\u7b97\u304c\u8cfc\u5165\u5358\u4f4d\u307e\u305f\u306f\u9078\u629e\u982d\u6570\u306b\u5bfe\u3057\u3066\u4e0d\u8db3", "minimum_profit_not_positive": "\u7684\u4e2d\u6642\u306e\u6700\u4f4e\u5229\u76ca\u3092\u78ba\u4fdd\u3067\u304d\u306a\u3044", "minimum_profit_rate_below_threshold": "\u6700\u4f4e\u5229\u76ca\u7387\u304c\u6700\u4f4e\u57fa\u6e96\u672a\u6e80"}, "unknown_rejection_reason_label": "\u6761\u4ef6\u3092\u6e80\u305f\u3057\u3066\u3044\u307e\u305b\u3093"}, "horses": [{"horse_number": 1, "win_odds": 3.8, "win_probability": 0.21}, {"horse_number": 2, "win_odds": 3.5, "win_probability": 0.23}, {"horse_number": 3, "win_odds": 7.4, "win_probability": 0.06}, {"horse_number": 4, "win_odds": 97.4, "win_probability": 0.025}, {"horse_number": 5, "win_odds": 76.2, "win_probability": 0.015}, {"horse_number": 6, "win_odds": 34.9, "win_probability": 0.04}, {"horse_number": 7, "win_odds": 4.2, "win_probability": 0.14}, {"horse_number": 8, "win_odds": 101.3, "win_probability": 0.02}, {"horse_number": 9, "win_odds": 14.6, "win_probability": 0.09}, {"horse_number": 10, "win_odds": 4.7, "win_probability": 0.17}], "methods": {"statistical": {"horses": [{"horse_number": 1, "win_odds": 3.8, "win_probability": 0.11}, {"horse_number": 2, "win_odds": 3.5, "win_probability": 0.11}, {"horse_number": 3, "win_odds": 7.4, "win_probability": 0.1}, {"horse_number": 4, "win_odds": 97.4, "win_probability": 0.1}, {"horse_number": 5, "win_odds": 76.2, "win_probability": 0.02}, {"horse_number": 6, "win_odds": 34.9, "win_probability": 0.13}, {"horse_number": 7, "win_odds": 4.2, "win_probability": 0.08}, {"horse_number": 8, "win_odds": 101.3, "win_probability": 0.06}, {"horse_number": 9, "win_odds": 14.6, "win_probability": 0.22}, {"horse_number": 10, "win_odds": 4.7, "win_probability": 0.07}]}, "traditional": {"horses": [{"horse_number": 1, "win_odds": 3.8, "win_probability": 0.21}, {"horse_number": 2, "win_odds": 3.5, "win_probability": 0.23}, {"horse_number": 3, "win_odds": 7.4, "win_probability": 0.06}, {"horse_number": 4, "win_odds": 97.4, "win_probability": 0.025}, {"horse_number": 5, "win_odds": 76.2, "win_probability": 0.015}, {"horse_number": 6, "win_odds": 34.9, "win_probability": 0.04}, {"horse_number": 7, "win_odds": 4.2, "win_probability": 0.14}, {"horse_number": 8, "win_odds": 101.3, "win_probability": 0.02}, {"horse_number": 9, "win_odds": 14.6, "win_probability": 0.09}, {"horse_number": 10, "win_odds": 4.7, "win_probability": 0.17}]}}, "stake_unit": 100}</script>
     <script>
       const SIMULATION_EPSILON = 1e-12;
 
@@ -1466,6 +1662,8 @@
           return;
         }
         const data = JSON.parse(document.getElementById("custom-simulator-data").textContent);
+        let activeAiMethod = "traditional";
+        const activeHorses = () => data.methods?.[activeAiMethod]?.horses || data.horses;
         const rejectionReasonText = (reasons) => reasons.length
           ? reasons.map((reason) => data.display.rejection_reason_labels[reason] || data.display.unknown_rejection_reason_label).join("、")
           : "-";
@@ -1523,7 +1721,7 @@
             const profitRateText = String(form.elements.min_profit_rate.value ?? "").trim();
             const profitRate = Number(profitRateText);
             const fixedCount = Number(form.elements.fixed_selection_count.value);
-            if (!Number.isInteger(maxCount) || maxCount < 1 || maxCount > data.horses.length) {
+            if (!Number.isInteger(maxCount) || maxCount < 1 || maxCount > activeHorses().length) {
               return "最大対象頭数を出走頭数以内の正の整数で入力してください。";
             }
             if (!Number.isFinite(coverage) || coverage < 0 || coverage > 1) {
@@ -1618,12 +1816,12 @@
               ev_threshold: parseMinimumEv(form.elements.ev_threshold.value),
               kelly_fraction: Number(form.elements.kelly_fraction.value),
             };
-            const details = calculateValueDetails(data.horses, budget, stakeUnit, settings);
+            const details = calculateValueDetails(activeHorses(), budget, stakeUnit, settings);
             result = valueSimulationResult(details, budget, stakeUnit, settings);
             noPurchaseReason = valueNoPurchaseReason(details, stakeUnit, settings.kelly_fraction);
             renderValue(result);
           } else {
-            result = calculateDutchingSimulation(data.horses, budget, stakeUnit, {
+            result = calculateDutchingSimulation(activeHorses(), budget, stakeUnit, {
               max_selection_count: Number(form.elements.max_selection_count.value),
               min_coverage_probability: Number(form.elements.min_coverage_probability.value),
               min_group_expected_value: Number(form.elements.min_group_expected_value.value),
@@ -1647,6 +1845,19 @@
         };
 
         form.elements.method.addEventListener("change", recalculate);
+        document.addEventListener("ai-method-change", (event) => {
+          const method = event.detail?.method;
+          if (!method || !data.methods?.[method]) {
+            return;
+          }
+          activeAiMethod = method;
+          const maxCountInput = form.elements.max_selection_count;
+          maxCountInput.max = String(activeHorses().length);
+          if (Number(maxCountInput.value) > activeHorses().length) {
+            maxCountInput.value = String(activeHorses().length);
+          }
+          recalculate();
+        });
         form.addEventListener("submit", (event) => {
           event.preventDefault();
           recalculate();
@@ -1655,221 +1866,8 @@
       })();
     </script>
     
-
-    
-    <section class="result-section">
-      <h2 class="result-section-title">レース結果</h2>
-
-    
-    <div class="panel result-panel">
-      <h3>実結果</h3>
-      <p><strong>着順:</strong> 2 - 7 - 3 - 9 - 1 - 6 - 5 - 4 - 10 - 8</p>
-      <p class="table-scroll-hint">表は横にスクロールできます</p>
-      <div class="table-scroll">
-        <table class="result-table" data-sortable>
-          <thead><tr><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="0" data-sort-type="number" data-sort-first="ascending">
-    馬番 <span class="sort-indicator" aria-hidden="true">↕</span>
-  </button>
-</th><th class="horse-name" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="1" data-sort-type="text" data-sort-first="ascending">
-    馬名 <span class="sort-indicator" aria-hidden="true">↕</span>
-  </button>
-</th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="number" data-sort-first="ascending">
-    予測順位 <span class="sort-indicator" aria-hidden="true">↕</span>
-  </button>
-</th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="descending">
-    1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
-  </button>
-</th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
-    実着順 <span class="sort-indicator" aria-hidden="true">↕</span>
-  </button>
-</th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="ascending">
-    予想との差 <span class="sort-indicator" aria-hidden="true">↕</span>
-  </button>
-</th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="descending">
-    単勝払戻 <span class="sort-indicator" aria-hidden="true">↕</span>
-  </button>
-</th></tr></thead>
-          <tbody>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="1">1</td>
-              <td class="horse-name">シャンデヴァーグ</td>
-              <td class="nowrap" data-sort-value="2">2位</td>
-              <td class="nowrap" data-sort-value="0.21">21.0%</td>
-              <td class="nowrap" data-sort-value="5">5着</td>
-              <td class="comparison-cell nowrap" data-sort-value="3"><span class="comparison-down">3着下</span></td>
-              <td class="nowrap" data-sort-value="">-</td>
-            </tr>
-            
-            <tr class="prediction-hit">
-              <td class="nowrap" data-sort-value="2">2</td>
-              <td class="horse-name">レッチュベルク</td>
-              <td class="nowrap" data-sort-value="1">1位</td>
-              <td class="nowrap" data-sort-value="0.23">23.0%</td>
-              <td class="nowrap" data-sort-value="1">1着</td>
-              <td class="comparison-cell nowrap" data-sort-value="0"><span class="comparison-neutral">差なし</span></td>
-              <td class="nowrap" data-sort-value="280">280円</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="3">3</td>
-              <td class="horse-name">トップチェッカー</td>
-              <td class="nowrap" data-sort-value="6">6位</td>
-              <td class="nowrap" data-sort-value="0.06">6.0%</td>
-              <td class="nowrap" data-sort-value="3">3着</td>
-              <td class="comparison-cell nowrap" data-sort-value="-3"><span class="comparison-up">3着上</span></td>
-              <td class="nowrap" data-sort-value="">-</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="4">4</td>
-              <td class="horse-name">アイデアルカット</td>
-              <td class="nowrap" data-sort-value="8">8位</td>
-              <td class="nowrap" data-sort-value="0.025">2.5%</td>
-              <td class="nowrap" data-sort-value="8">8着</td>
-              <td class="comparison-cell nowrap" data-sort-value="0"><span class="comparison-neutral">差なし</span></td>
-              <td class="nowrap" data-sort-value="">-</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="5">5</td>
-              <td class="horse-name">エレスレイプニル</td>
-              <td class="nowrap" data-sort-value="10">10位</td>
-              <td class="nowrap" data-sort-value="0.015">1.5%</td>
-              <td class="nowrap" data-sort-value="7">7着</td>
-              <td class="comparison-cell nowrap" data-sort-value="-3"><span class="comparison-up">3着上</span></td>
-              <td class="nowrap" data-sort-value="">-</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="6">6</td>
-              <td class="horse-name">マインドフルネス</td>
-              <td class="nowrap" data-sort-value="7">7位</td>
-              <td class="nowrap" data-sort-value="0.04">4.0%</td>
-              <td class="nowrap" data-sort-value="6">6着</td>
-              <td class="comparison-cell nowrap" data-sort-value="-1"><span class="comparison-up">1着上</span></td>
-              <td class="nowrap" data-sort-value="">-</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="7">7</td>
-              <td class="horse-name">トウシンマジック</td>
-              <td class="nowrap" data-sort-value="4">4位</td>
-              <td class="nowrap" data-sort-value="0.14">14.0%</td>
-              <td class="nowrap" data-sort-value="2">2着</td>
-              <td class="comparison-cell nowrap" data-sort-value="-2"><span class="comparison-up">2着上</span></td>
-              <td class="nowrap" data-sort-value="">-</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="8">8</td>
-              <td class="horse-name">マイホームパパ</td>
-              <td class="nowrap" data-sort-value="9">9位</td>
-              <td class="nowrap" data-sort-value="0.02">2.0%</td>
-              <td class="nowrap" data-sort-value="10">10着</td>
-              <td class="comparison-cell nowrap" data-sort-value="1"><span class="comparison-down">1着下</span></td>
-              <td class="nowrap" data-sort-value="">-</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="9">9</td>
-              <td class="horse-name">スイートアリッサム</td>
-              <td class="nowrap" data-sort-value="5">5位</td>
-              <td class="nowrap" data-sort-value="0.09">9.0%</td>
-              <td class="nowrap" data-sort-value="4">4着</td>
-              <td class="comparison-cell nowrap" data-sort-value="-1"><span class="comparison-up">1着上</span></td>
-              <td class="nowrap" data-sort-value="">-</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap" data-sort-value="10">10</td>
-              <td class="horse-name">インカルナータ</td>
-              <td class="nowrap" data-sort-value="3">3位</td>
-              <td class="nowrap" data-sort-value="0.17">17.0%</td>
-              <td class="nowrap" data-sort-value="9">9着</td>
-              <td class="comparison-cell nowrap" data-sort-value="6"><span class="comparison-down">6着下</span></td>
-              <td class="nowrap" data-sort-value="">-</td>
-            </tr>
-            
-          </tbody>
-        </table>
-      </div>
-    </div>
     
 
-    
-    <div class="panel result-panel">
-      <h3>総合AI予想の予測評価</h3>
-      <div class="stats">
-        <div><strong>勝ち馬の予測順位</strong><br>1位</div>
-        <div><strong>勝ち馬の予測確率</strong><br>23.00%</div>
-        <div><strong>Top1</strong><br>的中</div>
-        <div><strong>Top3</strong><br>的中</div>
-        <div><strong>Top5</strong><br>的中</div>
-        <div><strong>Log Loss</strong><br>1.469676</div>
-        <div><strong>Brier Score</strong><br>0.070005</div>
-      </div>
-      
-      <h4>市場ベースライン比較</h4>
-      <p>市場の勝ち馬確率 22.58% / 順位 1位</p>
-      <p>Log Loss差 -0.018378 / Brier Score差 -0.002135</p>
-      
-      
-      <h4>シミュレーション収支</h4>
-      <p><strong>期待値重視:</strong> 投資 0円 / 回収 0円 / 損益 0円</p>
-      <p><strong>上位予測ダッチング:</strong> 投資 3000円 / 回収 4480円 / 損益 1480円 / ROI 49.33%</p>
-    </div>
-    
-
-    
-    <div class="panel result-panel">
-      <h3>統計重視予想の予測評価</h3>
-      <div class="stats">
-        <div><strong>勝ち馬の予測順位</strong><br>4位</div>
-        <div><strong>勝ち馬の予測確率</strong><br>11.00%</div>
-        <div><strong>Top1</strong><br>不的中</div>
-        <div><strong>Top3</strong><br>不的中</div>
-        <div><strong>Top5</strong><br>的中</div>
-        <div><strong>Log Loss</strong><br>2.207275</div>
-        <div><strong>Brier Score</strong><br>0.090480</div>
-      </div>
-      
-      <h4>市場ベースライン比較</h4>
-      <p>市場の勝ち馬確率 22.58% / 順位 1位</p>
-      <p>Log Loss差 +0.719221 / Brier Score差 +0.018340</p>
-      
-      
-    </div>
-    
-
-    
-    <div class="panel result-panel">
-      <h3>期待値重視方式のシミュレーション結果</h3>
-      
-      <p><strong>購入なし</strong></p>
-      <p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
-      
-    </div>
-    
-
-    
-    <div class="panel result-panel">
-      <h3>上位予測ダッチング方式のシミュレーション結果</h3>
-      
-      <p><strong>投資:</strong> 3000円 / <strong>回収:</strong> 4480円 / <strong>損益:</strong> 1480円 / <strong>ROI:</strong> 49.33%</p>
-      <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">2</td><td class="nowrap">1600円</td><td class="nowrap">yes</td><td class="nowrap">4480円</td></tr><tr><td class="nowrap">1</td><td class="nowrap">1400円</td><td class="nowrap">no</td><td class="nowrap">0円</td></tr></tbody></table>
-      
-    </div>
-    
-
-    </section>
     
 
     <p class="small">本ページはAIによる確率推定と購入シミュレーションを掲載するもので、的中や利益を保証するものではありません。投票はご自身の判断で行ってください。</p>
@@ -1940,6 +1938,34 @@
     };
 
     (() => {
+      const aiMethodTabs = Array.from(document.querySelectorAll("[data-ai-tab]"));
+      const activateAiMethod = (method) => {
+        for (const tab of aiMethodTabs) {
+          const selected = tab.dataset.aiMethod === method;
+          tab.setAttribute("aria-selected", selected ? "true" : "false");
+          tab.tabIndex = selected ? 0 : -1;
+        }
+        document.querySelectorAll("[data-ai-panel]").forEach((panel) => {
+          panel.hidden = panel.dataset.aiMethod !== method;
+        });
+        document.dispatchEvent(new CustomEvent("ai-method-change", { detail: { method } }));
+      };
+      for (const tab of aiMethodTabs) {
+        tab.addEventListener("click", () => activateAiMethod(tab.dataset.aiMethod));
+        tab.addEventListener("keydown", (event) => {
+          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+          const tabs = Array.from(tab.closest('[role="tablist"]').querySelectorAll("[data-ai-tab]"));
+          const offset = event.key === "ArrowRight" ? 1 : -1;
+          const target = tabs[(tabs.indexOf(tab) + offset + tabs.length) % tabs.length];
+          activateAiMethod(target.dataset.aiMethod);
+          target.focus();
+          event.preventDefault();
+        });
+      }
+      if (aiMethodTabs.length) {
+        activateAiMethod("traditional");
+      }
+
       const tooltipTriggers = Array.from(document.querySelectorAll(".tooltip-trigger"));
       const closeTooltips = () => {
         for (const trigger of tooltipTriggers) {

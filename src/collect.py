@@ -1138,12 +1138,24 @@ def parse_result(html: str) -> dict[str, Any] | None:
 
     horses = []
     finish_order = []
+    final_win_odds: dict[int, float] = {}
+    final_win_odds_complete = True
     for row in rows_from_table(result_table):
         horse_number = parse_int(row.get("馬番"))
         finish_text = normalize_space(row.get("着順"))
         finish_position = parse_finish_position(finish_text)
         if horse_number is None:
             continue
+        odds = parse_float(row.get("単勝オッズ"))
+        if (
+            odds is None
+            or not math.isfinite(odds)
+            or odds <= 0
+            or horse_number in final_win_odds
+        ):
+            final_win_odds_complete = False
+        else:
+            final_win_odds[horse_number] = odds
         if finish_position is None:
             status = next(
                 (flag for flag in ("中止", "除外", "取消", "失格") if flag in finish_text),
@@ -1180,7 +1192,7 @@ def parse_result(html: str) -> dict[str, Any] | None:
         if payouts:
             break
 
-    return {
+    result = {
         "fetched_at": now_jst_iso(),
         "finish_order": finish_order,
         "horses": horses,
@@ -1188,6 +1200,12 @@ def parse_result(html: str) -> dict[str, Any] | None:
             "win": payouts,
         },
     }
+    if horses and final_win_odds_complete and len(final_win_odds) == len(horses):
+        result["final_win_odds"] = [
+            {"horse_number": horse_number, "win_odds": final_win_odds[horse_number]}
+            for horse_number in sorted(final_win_odds)
+        ]
+    return result
 
 
 def validate_complete_result(
@@ -1205,6 +1223,29 @@ def validate_complete_result(
         raise ValueError(
             f"result is incomplete: expected={len(expected_numbers)} actual={len(result_numbers)}"
         )
+
+    final_win_odds = result.get("final_win_odds")
+    if final_win_odds is not None:
+        if not isinstance(final_win_odds, list) or any(
+            not isinstance(item, dict) for item in final_win_odds
+        ):
+            raise ValueError("final win odds must be a list of horse odds")
+        try:
+            final_odds_numbers = [int(item["horse_number"]) for item in final_win_odds]
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("final win odds contain invalid horse numbers") from exc
+        if len(final_odds_numbers) != len(set(final_odds_numbers)):
+            raise ValueError("final win odds contain duplicate horse numbers")
+        if set(final_odds_numbers) != set(expected_numbers):
+            raise ValueError("final win odds are incomplete")
+        if any(
+            isinstance(item.get("win_odds"), bool)
+            or not isinstance(item.get("win_odds"), (int, float))
+            or not math.isfinite(float(item["win_odds"]))
+            or float(item["win_odds"]) <= 0
+            for item in final_win_odds
+        ):
+            raise ValueError("final win odds contain invalid values")
 
     winner_numbers = {
         int(horse["horse_number"])
@@ -1245,7 +1286,13 @@ def collect_results(
             payload["result"] = result
             save_race_json(path, payload)
             processed.append(path)
-            log_job(logger, job_name, race_id, f"result collected -> {path}")
+            final_odds_status = "captured" if result.get("final_win_odds") else "unavailable"
+            log_job(
+                logger,
+                job_name,
+                race_id,
+                f"result collected (final_win_odds={final_odds_status}) -> {path}",
+            )
         except Exception as exc:  # noqa: BLE001
             log_job(logger, job_name, race_id, f"result scraping skipped: {exc}")
 

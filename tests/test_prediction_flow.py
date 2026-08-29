@@ -357,7 +357,7 @@ class PredictionValidationTests(unittest.TestCase):
                 )
 
             saved = load_race_json(path)
-            self.assertEqual(saved["meta"]["schema_version"], 6)
+            self.assertEqual(saved["meta"]["schema_version"], 8)
             self.assertEqual(
                 set(saved),
                 {"meta", "race", "horses", "prediction", "simulation", "result", "evaluation"},

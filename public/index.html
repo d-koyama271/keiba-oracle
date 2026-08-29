@@ -66,7 +66,7 @@
       overscroll-behavior-inline: contain;
       -webkit-overflow-scrolling: touch;
     }
-    .index-table { min-width: 700px; }
+    .index-table { min-width: 760px; }
     .nowrap {
       white-space: nowrap;
       word-break: keep-all;
@@ -89,6 +89,7 @@
       text-underline-offset: 2px;
       white-space: nowrap;
     }
+    .unavailable-link { text-align: center; }
     .status {
       display: inline-block;
       padding: 4px 10px;
@@ -136,7 +137,7 @@
 
 
     <section class="panel performance-panel">
-      <h2>予測成績</h2>
+      <h2>総合AI予想の予測成績</h2>
       <div class="performance-grid">
         <div class="performance-item">
           <strong>現在の的中率</strong>
@@ -167,7 +168,8 @@
             <th class="nowrap">開催場</th>
             <th>レース名</th>
             <th class="nowrap">状態</th>
-            <th class="nowrap">ページ</th>
+            <th class="nowrap">予想</th>
+            <th class="nowrap">結果</th>
           </tr>
         </thead>
         <tbody>
@@ -179,6 +181,7 @@
             <td>新潟記念</td>
             <td class="nowrap"><span class="status status-prediction">予想公開</span></td>
             <td class="nowrap"><a class="page-link" href="races/2026-08-30/niigata_8r.html">開く</a></td>
+            <td class="nowrap unavailable-link">-</td>
           </tr>
 
           <tr>
@@ -188,6 +191,7 @@
             <td>中京2歳S</td>
             <td class="nowrap"><span class="status status-prediction">予想公開</span></td>
             <td class="nowrap"><a class="page-link" href="races/2026-08-30/chukyo_7r.html">開く</a></td>
+            <td class="nowrap unavailable-link">-</td>
           </tr>
 
           <tr>
@@ -197,6 +201,7 @@
             <td>キーンランドC</td>
             <td class="nowrap"><span class="status status-result">結果公開</span></td>
             <td class="nowrap"><a class="page-link" href="races/2026-08-23/sapporo_11r.html">開く</a></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-08-23/sapporo_11r_result.html">開く</a></td>
           </tr>
 
           <tr>
@@ -206,6 +211,7 @@
             <td>新潟2歳S</td>
             <td class="nowrap"><span class="status status-result">結果公開</span></td>
             <td class="nowrap"><a class="page-link" href="races/2026-08-23/niigata_7r.html">開く</a></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-08-23/niigata_7r_result.html">開く</a></td>
           </tr>
 
           <tr>
@@ -215,6 +221,7 @@
             <td>札幌記念</td>
             <td class="nowrap"><span class="status status-result">結果公開</span></td>
             <td class="nowrap"><a class="page-link" href="races/2026-08-16/sapporo_11r.html">開く</a></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-08-16/sapporo_11r_result.html">開く</a></td>
           </tr>
 
           <tr>
@@ -224,6 +231,7 @@
             <td>中京記念</td>
             <td class="nowrap"><span class="status status-result">結果公開</span></td>
             <td class="nowrap"><a class="page-link" href="races/2026-08-16/chukyo_7r.html">開く</a></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-08-16/chukyo_7r_result.html">開く</a></td>
           </tr>
 
           <tr>
@@ -233,6 +241,7 @@
             <td>CBC賞</td>
             <td class="nowrap"><span class="status status-result">結果公開</span></td>
             <td class="nowrap"><a class="page-link" href="races/2026-08-09/chukyo_7r.html">開く</a></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-08-09/chukyo_7r_result.html">開く</a></td>
           </tr>
 
           <tr>
@@ -242,6 +251,7 @@
             <td>レパードS</td>
             <td class="nowrap"><span class="status status-result">結果公開</span></td>
             <td class="nowrap"><a class="page-link" href="races/2026-08-09/niigata_7r.html">開く</a></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-08-09/niigata_7r_result.html">開く</a></td>
           </tr>
 
           <tr>
@@ -251,6 +261,7 @@
             <td>エルムS</td>
             <td class="nowrap"><span class="status status-result">結果公開</span></td>
             <td class="nowrap"><a class="page-link" href="races/2026-08-08/sapporo_11r.html">開く</a></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-08-08/sapporo_11r_result.html">開く</a></td>
           </tr>
 
           <tr>
@@ -260,6 +271,7 @@
             <td>アイビスSD</td>
             <td class="nowrap"><span class="status status-result">結果公開</span></td>
             <td class="nowrap"><a class="page-link" href="races/2026-08-02/niigata_7r.html">開く</a></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-08-02/niigata_7r_result.html">開く</a></td>
           </tr>
 
           <tr>
@@ -269,6 +281,7 @@
             <td>クイーンS</td>
             <td class="nowrap"><span class="status status-result">結果公開</span></td>
             <td class="nowrap"><a class="page-link" href="races/2026-08-02/sapporo_11r.html">開く</a></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-08-02/sapporo_11r_result.html">開く</a></td>
           </tr>
 
           <tr>
@@ -278,6 +291,7 @@
             <td>関屋記念</td>
             <td class="nowrap"><span class="status status-result">結果公開</span></td>
             <td class="nowrap"><a class="page-link" href="races/2026-07-26/niigata_7r.html">開く</a></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-07-26/niigata_7r_result.html">開く</a></td>
           </tr>
 
           <tr>
@@ -287,6 +301,7 @@
             <td>東海S</td>
             <td class="nowrap"><span class="status status-result">結果公開</span></td>
             <td class="nowrap"><a class="page-link" href="races/2026-07-26/chukyo_7r.html">開く</a></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-07-26/chukyo_7r_result.html">開く</a></td>
           </tr>
 
           <tr>
@@ -296,6 +311,7 @@
             <td>小倉記念</td>
             <td class="nowrap"><span class="status status-result">結果公開</span></td>
             <td class="nowrap"><a class="page-link" href="races/2026-07-19/kokura_11r.html">開く</a></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-07-19/kokura_11r_result.html">開く</a></td>
           </tr>
 
           <tr>
@@ -305,6 +321,7 @@
             <td>函館2歳S</td>
             <td class="nowrap"><span class="status status-result">結果公開</span></td>
             <td class="nowrap"><a class="page-link" href="races/2026-07-19/hakodate_11r.html">開く</a></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-07-19/hakodate_11r_result.html">開く</a></td>
           </tr>
 
           <tr>
@@ -314,6 +331,7 @@
             <td>七夕賞</td>
             <td class="nowrap"><span class="status status-result">結果公開</span></td>
             <td class="nowrap"><a class="page-link" href="races/2026-07-12/fukushima_11r.html">開く</a></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-07-12/fukushima_11r_result.html">開く</a></td>
           </tr>
 
         </tbody>

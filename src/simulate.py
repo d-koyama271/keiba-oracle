@@ -11,11 +11,21 @@ from utils import (
     load_race_json,
     log_job,
     parse_target_date,
+    prediction_variants,
     save_race_json,
+    simulation_variants,
     setup_logger,
 )
 
 EPSILON = 1e-12
+SIMULATION_VARIANT_IDENTITY_KEYS = (
+    "method",
+    "model_provider",
+    "model_name",
+    "predicted_at",
+    "prompt_sha256",
+    "prediction_input_sha256",
+)
 
 
 def round_ratio(value: float) -> float:
@@ -41,8 +51,11 @@ def simulation_settings(config: dict[str, Any]) -> tuple[int, int, dict[str, Any
     return budget, stake_unit, simulation["value"], simulation["dutching"]
 
 
-def prediction_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    prediction = payload.get("prediction") or {}
+def prediction_rows(
+    payload: dict[str, Any],
+    prediction: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    prediction = prediction if prediction is not None else (payload.get("prediction") or {})
     horse_lookup = {horse["horse_number"]: horse for horse in payload.get("horses", [])}
     rows = []
     for item in prediction.get("horses", []):
@@ -67,12 +80,13 @@ def calculate_value_details(
     budget: int,
     stake_unit: int,
     settings: dict[str, Any],
+    prediction: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     ev_threshold = float(settings["ev_threshold"])
     kelly_fraction = float(settings["kelly_fraction"])
     details = []
 
-    for row in prediction_rows(payload):
+    for row in prediction_rows(payload, prediction):
         probability = row["predicted_probability"]
         odds = row["win_odds"]
         expected_value = calculate_expected_value(probability, odds)
@@ -115,12 +129,19 @@ def minimum_budget_for_value_stake(
     stake_unit: int,
     settings: dict[str, Any],
     horse_number: int,
+    prediction: dict[str, Any] | None = None,
 ) -> int | None:
     def target_detail(budget: int) -> dict[str, Any] | None:
         return next(
             (
                 item
-                for item in calculate_value_details(payload, budget, stake_unit, settings)
+                for item in calculate_value_details(
+                    payload,
+                    budget,
+                    stake_unit,
+                    settings,
+                    prediction,
+                )
                 if item["horse_number"] == horse_number
             ),
             None,
@@ -145,14 +166,19 @@ def minimum_budget_for_value_stake(
     return high
 
 
-def calculate_value_pre(payload: dict[str, Any], config: dict[str, Any]) -> dict[str, Any] | None:
-    if not payload.get("prediction"):
+def calculate_value_pre(
+    payload: dict[str, Any],
+    config: dict[str, Any],
+    prediction: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    prediction = prediction if prediction is not None else payload.get("prediction")
+    if not prediction:
         return None
 
     budget, stake_unit, settings, _ = simulation_settings(config)
     ev_threshold = float(settings["ev_threshold"])
     kelly_fraction = float(settings["kelly_fraction"])
-    details = calculate_value_details(payload, budget, stake_unit, settings)
+    details = calculate_value_details(payload, budget, stake_unit, settings, prediction)
     selections = []
     for item in sorted(
         details,
@@ -283,8 +309,13 @@ def select_best_dutching(
     )
 
 
-def calculate_dutching_pre(payload: dict[str, Any], config: dict[str, Any]) -> dict[str, Any] | None:
-    if not payload.get("prediction"):
+def calculate_dutching_pre(
+    payload: dict[str, Any],
+    config: dict[str, Any],
+    prediction: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    prediction = prediction if prediction is not None else payload.get("prediction")
+    if not prediction:
         return None
 
     budget, stake_unit, _, settings = simulation_settings(config)
@@ -296,7 +327,7 @@ def calculate_dutching_pre(payload: dict[str, Any], config: dict[str, Any]) -> d
         raise ValueError("simulation.dutching.min_profit_rate must be finite and zero or positive")
 
     rows = sorted(
-        prediction_rows(payload),
+        prediction_rows(payload, prediction),
         key=lambda item: (-item["predicted_probability"], item["horse_number"]),
     )
     evaluations = [
@@ -389,24 +420,52 @@ def calculate_post(pre: dict[str, Any] | None, result: dict[str, Any] | None) ->
     }
 
 
-def calculate_value_post(payload: dict[str, Any]) -> dict[str, Any] | None:
-    value = ((payload.get("simulation") or {}).get("value") or {})
+def calculate_value_post(
+    payload: dict[str, Any],
+    simulation: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    simulation = simulation if simulation is not None else (payload.get("simulation") or {})
+    value = simulation.get("value") or {}
     return calculate_post(value.get("pre"), payload.get("result"))
 
 
-def calculate_dutching_post(payload: dict[str, Any]) -> dict[str, Any] | None:
-    dutching = ((payload.get("simulation") or {}).get("dutching") or {})
+def calculate_dutching_post(
+    payload: dict[str, Any],
+    simulation: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    simulation = simulation if simulation is not None else (payload.get("simulation") or {})
+    dutching = simulation.get("dutching") or {}
     return calculate_post(dutching.get("pre"), payload.get("result"))
 
 
 def calculate_pre_simulation(payload: dict[str, Any], config: dict[str, Any]) -> dict[str, Any] | None:
-    value_pre = calculate_value_pre(payload, config)
-    dutching_pre = calculate_dutching_pre(payload, config)
+    prediction = payload.get("prediction")
+    value_pre = calculate_value_pre(payload, config, prediction)
+    dutching_pre = calculate_dutching_pre(payload, config, prediction)
     if value_pre is None or dutching_pre is None:
         return None
+    variants = []
+    for variant_prediction in prediction_variants(payload):
+        variant_value_pre = calculate_value_pre(payload, config, variant_prediction)
+        variant_dutching_pre = calculate_dutching_pre(payload, config, variant_prediction)
+        if variant_value_pre is None or variant_dutching_pre is None:
+            continue
+        variant = {
+            key: variant_prediction[key]
+            for key in SIMULATION_VARIANT_IDENTITY_KEYS
+            if variant_prediction.get(key) is not None
+        }
+        variant.update(
+            {
+                "value": {"pre": variant_value_pre, "post": None},
+                "dutching": {"pre": variant_dutching_pre, "post": None},
+            }
+        )
+        variants.append(variant)
     return {
         "value": {"pre": value_pre, "post": None},
         "dutching": {"pre": dutching_pre, "post": None},
+        "variants": variants,
     }
 
 
@@ -424,7 +483,12 @@ def simulate_file(path: Path, config: dict[str, Any], mode: str, job_name: str, 
             return False
         payload["simulation"] = simulation
         save_race_json(path, payload)
-        log_job(logger, job_name, race_id, "simulation value/dutching pre updated")
+        log_job(
+            logger,
+            job_name,
+            race_id,
+            f"simulation value/dutching pre updated ({len(simulation['variants']) + 1} predictions)",
+        )
         return True
 
     value_post = calculate_value_post(payload)
@@ -434,8 +498,22 @@ def simulate_file(path: Path, config: dict[str, Any], mode: str, job_name: str, 
         return False
     payload["simulation"]["value"]["post"] = value_post
     payload["simulation"]["dutching"]["post"] = dutching_post
+    updated_variants = 0
+    for variant in simulation_variants(payload):
+        variant_value_post = calculate_value_post(payload, variant)
+        variant_dutching_post = calculate_dutching_post(payload, variant)
+        if variant_value_post is None or variant_dutching_post is None:
+            continue
+        variant["value"]["post"] = variant_value_post
+        variant["dutching"]["post"] = variant_dutching_post
+        updated_variants += 1
     save_race_json(path, payload)
-    log_job(logger, job_name, race_id, "simulation value/dutching post updated")
+    log_job(
+        logger,
+        job_name,
+        race_id,
+        f"simulation value/dutching post updated ({updated_variants + 1} predictions)",
+    )
     return True
 
 

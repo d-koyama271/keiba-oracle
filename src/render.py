@@ -12,6 +12,7 @@ from evaluation_summary import load_evaluation_summary
 from simulate import calculate_value_details, minimum_budget_for_value_stake
 from utils import (
     STATISTICAL_PREDICTION_METHOD,
+    TRADITIONAL_PREDICTION_METHOD,
     evaluation_variants,
     ensure_dir,
     find_variant,
@@ -24,9 +25,11 @@ from utils import (
     prediction_variants,
     public_dir,
     race_html_path,
+    race_result_html_path,
     race_start_datetime,
     repo_root,
     stage_dir,
+    simulation_variants,
     track_name_from_race_id,
 )
 
@@ -49,6 +52,15 @@ STATUS_COLORS = {
     "pending": {"background": "#ececeb", "color": "#5f625f", "border": "#d0d1cf"},
 }
 SITE_BACKGROUND = "#f2f2f0"
+
+PREDICTION_METHOD_LABELS = {
+    TRADITIONAL_PREDICTION_METHOD: "総合AI予想",
+    STATISTICAL_PREDICTION_METHOD: "統計重視予想",
+}
+PREDICTION_METHOD_DESCRIPTIONS = {
+    TRADITIONAL_PREDICTION_METHOD: "AIが各馬の過去成績、コース・距離適性、斤量、脚質、市場オッズなどから1着確率を推定しています。",
+    STATISTICAL_PREDICTION_METHOD: "オッズ等の市場由来の情報を使用せず、レース条件、過去成績、条件適性、近況、相手関係からAIが1着確率を推定しています。",
+}
 
 TOOLTIPS = {
     "dutching_method": "AIの予測上位馬を複数選び、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。",
@@ -94,7 +106,7 @@ def index_row_sort_key(row: dict[str, Any]) -> tuple[int, float, str, str]:
         INDEX_STATUS_PRIORITIES.get(row.get("status"), 1),
         -timestamp,
         row.get("track") or "",
-        row.get("href") or "",
+        row.get("prediction_href") or row.get("href") or "",
     )
 
 
@@ -173,11 +185,12 @@ def build_expected_value_rows(
     payload: dict[str, Any],
     horse_rows: list[dict[str, Any]],
     value_pre: dict[str, Any],
+    prediction: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     budget = int(value_pre["budget"])
     stake_unit = int(value_pre["stake_unit"])
     settings = value_pre["settings"]
-    details = calculate_value_details(payload, budget, stake_unit, settings)
+    details = calculate_value_details(payload, budget, stake_unit, settings, prediction)
     detail_lookup = {item["horse_number"]: item for item in details}
     selection_lookup = {
         item["horse_number"]: item
@@ -222,6 +235,7 @@ def build_expected_value_rows(
                         stake_unit,
                         settings,
                         horse["horse_number"],
+                        prediction,
                     )
                     if detail and detail["eligible"]
                     else None
@@ -276,6 +290,150 @@ def build_environment(root: Path | None = None) -> Environment:
     )
 
 
+def rendered_html_bytes(content: str) -> bytes:
+    return content.encode("utf-8")
+
+
+def result_final_win_odds(
+    payload: dict[str, Any],
+    result: dict[str, Any] | None,
+) -> dict[int, float]:
+    expected_numbers = {
+        int(horse["horse_number"])
+        for horse in payload.get("horses", [])
+    }
+    entries = (result or {}).get("final_win_odds")
+    if not expected_numbers or not isinstance(entries, list) or len(entries) != len(expected_numbers):
+        return {}
+
+    odds_by_horse: dict[int, float] = {}
+    for entry in entries:
+        if not isinstance(entry, dict) or isinstance(entry.get("horse_number"), bool):
+            return {}
+        try:
+            horse_number = int(entry["horse_number"])
+        except (KeyError, TypeError, ValueError):
+            return {}
+        odds = finite_float(entry.get("win_odds"))
+        if odds is None or odds <= 0 or horse_number in odds_by_horse:
+            return {}
+        odds_by_horse[horse_number] = odds
+
+    return odds_by_horse if set(odds_by_horse) == expected_numbers else {}
+
+
+def build_actual_result_rows(
+    payload: dict[str, Any],
+    result: dict[str, Any] | None,
+    final_win_odds: dict[int, float],
+) -> list[dict[str, Any]]:
+    horse_names = {
+        int(horse["horse_number"]): horse.get("horse_name") or "-"
+        for horse in payload.get("horses", [])
+    }
+    rows = []
+    for item in (result or {}).get("horses", []):
+        horse_number = int(item["horse_number"])
+        finish_position = item.get("finish_position")
+        numeric_finish = comparable_finish_position(finish_position)
+        rows.append(
+            {
+                "horse_number": horse_number,
+                "horse_name": horse_names.get(horse_number, "-"),
+                "finish_position_label": (
+                    f"{numeric_finish}着" if numeric_finish is not None else (finish_position or "-")
+                ),
+                "finish_position_sort_value": numeric_finish,
+                "final_win_odds": final_win_odds.get(horse_number),
+            }
+        )
+    rows.sort(
+        key=lambda item: (
+            item["finish_position_sort_value"] is None,
+            item["finish_position_sort_value"] or math.inf,
+            item["horse_number"],
+        )
+    )
+    return rows
+
+
+def build_prediction_horse_rows(
+    payload: dict[str, Any],
+    prediction: dict[str, Any] | None,
+    result: dict[str, Any] | None,
+    final_win_odds: dict[int, float],
+) -> list[dict[str, Any]]:
+    prediction_horses = (prediction or {}).get("horses", [])
+    prediction_lookup = {item["horse_number"]: item for item in prediction_horses}
+    prediction_ranks = {
+        item["horse_number"]: rank
+        for rank, item in enumerate(
+            sorted(
+                prediction_horses,
+                key=lambda item: (-float(item["win_probability"]), item["horse_number"]),
+            ),
+            start=1,
+        )
+    }
+    result_lookup = {
+        item["horse_number"]: item["finish_position"]
+        for item in (result or {}).get("horses", [])
+    }
+    payout_lookup = {
+        item["horse_number"]: item["payout_per_100"]
+        for item in (result or {}).get("payouts", {}).get("win", [])
+    }
+    return [
+        {
+            **horse,
+            "prediction": prediction_lookup.get(horse["horse_number"]),
+            "prediction_rank": prediction_ranks.get(horse["horse_number"]),
+            "finish_position": result_lookup.get(horse["horse_number"]),
+            "payout_per_100": payout_lookup.get(horse["horse_number"]),
+            "final_win_odds": final_win_odds.get(horse["horse_number"]),
+        }
+        for horse in sorted(payload.get("horses", []), key=lambda item: item["horse_number"])
+    ]
+
+
+def build_result_rows(horse_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = []
+    for horse in horse_rows:
+        if horse.get("finish_position") is None:
+            continue
+        finish_position = horse["finish_position"]
+        numeric_finish = comparable_finish_position(finish_position)
+        comparison_text, comparison_class = rank_comparison(
+            horse["prediction_rank"],
+            finish_position,
+        )
+        comparison_sort_value = (
+            numeric_finish - horse["prediction_rank"]
+            if numeric_finish is not None and horse["prediction_rank"] is not None
+            else None
+        )
+        rows.append(
+            {
+                "horse_number": horse["horse_number"],
+                "horse_name": horse["horse_name"],
+                "prediction_rank": horse["prediction_rank"],
+                "win_probability": (horse.get("prediction") or {}).get("win_probability"),
+                "finish_position": finish_position,
+                "finish_position_label": (
+                    f"{numeric_finish}着" if numeric_finish is not None else (finish_position or "-")
+                ),
+                "finish_position_sort_value": numeric_finish,
+                "comparison_text": comparison_text,
+                "comparison_class": comparison_class,
+                "comparison_sort_value": comparison_sort_value,
+                "row_class": result_highlight_class(horse["prediction_rank"], finish_position),
+                "payout_per_100": horse.get("payout_per_100"),
+                "final_win_odds": horse.get("final_win_odds"),
+            }
+        )
+    return rows
+
+
 def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
     race = payload.get("race", {})
     prediction = payload.get("prediction")
@@ -285,6 +443,7 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
     )
     simulation = payload.get("simulation") or {}
     result = payload.get("result")
+    final_win_odds = result_final_win_odds(payload, result)
     evaluation = payload.get("evaluation")
     statistical_evaluation = None
     if statistical_prediction is not None:
@@ -303,135 +462,138 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         )
     )
 
-    prediction_horses = (prediction or {}).get("horses", [])
-    prediction_lookup = {item["horse_number"]: item for item in prediction_horses}
-    prediction_ranks = {
-        item["horse_number"]: rank
-        for rank, item in enumerate(
-            sorted(
-                prediction_horses,
-                key=lambda item: (-float(item["win_probability"]), item["horse_number"]),
-            ),
-            start=1,
-        )
-    }
-    statistical_horses = (statistical_prediction or {}).get("horses", [])
-    statistical_lookup = {item["horse_number"]: item for item in statistical_horses}
-    statistical_ranks = {
-        item["horse_number"]: rank
-        for rank, item in enumerate(
-            sorted(
-                statistical_horses,
-                key=lambda item: (-float(item["win_probability"]), item["horse_number"]),
-            ),
-            start=1,
-        )
-    }
-    result_lookup = {item["horse_number"]: item["finish_position"] for item in (result or {}).get("horses", [])}
-    payout_lookup = {item["horse_number"]: item["payout_per_100"] for item in (result or {}).get("payouts", {}).get("win", [])}
-
-    horse_rows = []
-    statistical_horse_rows = []
-    for horse in sorted(payload.get("horses", []), key=lambda item: item["horse_number"]):
-        horse_rows.append(
-            {
-                **horse,
-                "prediction": prediction_lookup.get(horse["horse_number"]),
-                "prediction_rank": prediction_ranks.get(horse["horse_number"]),
-                "finish_position": result_lookup.get(horse["horse_number"]),
-                "payout_per_100": payout_lookup.get(horse["horse_number"]),
-            }
-        )
-        statistical_horse_rows.append(
-            {
-                **horse,
-                "prediction": statistical_lookup.get(horse["horse_number"]),
-                "prediction_rank": statistical_ranks.get(horse["horse_number"]),
-            }
+    statistical_simulation = None
+    if statistical_prediction is not None:
+        statistical_simulation = find_variant(
+            simulation_variants(payload),
+            STATISTICAL_PREDICTION_METHOD,
+            statistical_prediction.get("model_provider"),
+            statistical_prediction.get("model_name"),
         )
 
-    value_simulation = simulation.get("value") or {}
-    dutching_simulation = simulation.get("dutching") or {}
-    value_pre = value_simulation.get("pre")
-    dutching_pre = dutching_simulation.get("pre")
+    prediction_specs = [
+        (
+            TRADITIONAL_PREDICTION_METHOD,
+            prediction,
+            simulation,
+            evaluation,
+        )
+    ]
+    if statistical_prediction is not None:
+        prediction_specs.append(
+            (
+                STATISTICAL_PREDICTION_METHOD,
+                statistical_prediction,
+                statistical_simulation or {},
+                statistical_evaluation,
+            )
+        )
 
-    result_rows = []
-    for horse in horse_rows:
-        if horse["horse_number"] not in result_lookup:
-            continue
-        finish_position = horse["finish_position"]
-        numeric_finish = comparable_finish_position(finish_position)
-        comparison_text, comparison_class = rank_comparison(
-            horse["prediction_rank"],
-            finish_position,
+    ai_views = []
+    custom_simulation_methods = {}
+    for method, method_prediction, method_simulation, method_evaluation in prediction_specs:
+        horse_rows = build_prediction_horse_rows(
+            payload,
+            method_prediction,
+            result,
+            final_win_odds,
         )
-        comparison_sort_value = (
-            numeric_finish - horse["prediction_rank"]
-            if numeric_finish is not None and horse["prediction_rank"] is not None
-            else None
+        value_simulation = method_simulation.get("value") or {}
+        dutching_simulation = method_simulation.get("dutching") or {}
+        value_pre = value_simulation.get("pre")
+        dutching_pre = dutching_simulation.get("pre")
+        expected_value_rows = (
+            build_expected_value_rows(
+                payload,
+                horse_rows,
+                value_pre,
+                method_prediction,
+            )
+            if value_pre
+            else []
         )
-        result_rows.append(
+        value_no_purchase_reason = (
+            value_no_purchase_message(
+                expected_value_rows,
+                int(value_pre["stake_unit"]),
+                float(value_pre["settings"]["kelly_fraction"]),
+            )
+            if value_pre and not value_pre.get("selections")
+            else ""
+        )
+        custom_horses = [
             {
                 "horse_number": horse["horse_number"],
-                "horse_name": horse["horse_name"],
-                "prediction_rank": horse["prediction_rank"],
-                "win_probability": (horse["prediction"] or {}).get("win_probability"),
-                "finish_position": finish_position,
-                "finish_position_label": f"{numeric_finish}着" if numeric_finish is not None else (finish_position or "-"),
-                "finish_position_sort_value": numeric_finish,
-                "comparison_text": comparison_text,
-                "comparison_class": comparison_class,
-                "comparison_sort_value": comparison_sort_value,
-                "row_class": result_highlight_class(horse["prediction_rank"], finish_position),
-                "payout_per_100": horse["payout_per_100"],
+                "win_probability": float(horse["prediction"]["win_probability"]),
+                "win_odds": float(horse["win_odds"]),
+            }
+            for horse in horse_rows
+            if horse.get("prediction") and horse.get("win_odds") is not None
+        ]
+        custom_simulation_methods[method] = {"horses": custom_horses}
+        ai_views.append(
+            {
+                "method": method,
+                "label": PREDICTION_METHOD_LABELS[method],
+                "description": PREDICTION_METHOD_DESCRIPTIONS[method],
+                "prediction": method_prediction,
+                "horse_rows": horse_rows,
+                "result_rows": build_result_rows(horse_rows),
+                "evaluation": method_evaluation,
+                "value_pre": value_pre,
+                "value_post": value_simulation.get("post"),
+                "dutching_pre": dutching_pre,
+                "dutching_post": dutching_simulation.get("post"),
+                "expected_value_rows": expected_value_rows,
+                "value_no_purchase_reason": value_no_purchase_reason,
             }
         )
 
-    expected_value_rows = build_expected_value_rows(payload, horse_rows, value_pre) if value_pre else []
-    value_no_purchase_reason = (
-        value_no_purchase_message(
-            expected_value_rows,
-            int(value_pre["stake_unit"]),
-            float(value_pre["settings"]["kelly_fraction"]),
-        )
-        if value_pre and not value_pre.get("selections")
-        else ""
+    traditional_view = ai_views[0]
+    statistical_view = next(
+        (view for view in ai_views if view["method"] == STATISTICAL_PREDICTION_METHOD),
+        None,
     )
-    custom_simulation_horses = [
-        {
-            "horse_number": horse["horse_number"],
-            "win_probability": float(horse["prediction"]["win_probability"]),
-            "win_odds": float(horse["win_odds"]),
-        }
-        for horse in horse_rows
-        if horse.get("prediction") and horse.get("win_odds") is not None
-    ]
+    value_pre = traditional_view["value_pre"]
+    dutching_pre = traditional_view["dutching_pre"]
+    custom_simulation_horses = custom_simulation_methods.get(
+        TRADITIONAL_PREDICTION_METHOD,
+        {"horses": []},
+    )["horses"]
     custom_simulation_data = {
         "stake_unit": int((value_pre or dutching_pre or {}).get("stake_unit") or 100),
         "horses": custom_simulation_horses,
+        "methods": custom_simulation_methods,
         "display": {
             "rejection_reason_labels": REJECTION_REASON_LABELS,
             "unknown_rejection_reason_label": UNKNOWN_REJECTION_REASON_LABEL,
         },
     }
 
-    status = "result_published" if result and evaluation else "prediction_only"
+    has_result_page = bool(result and evaluation)
+    status = "result_published" if has_result_page else "prediction_only"
     return {
         "race": race,
         "prediction": prediction,
         "statistical_prediction": statistical_prediction,
-        "simulation_value_pre": value_pre,
-        "simulation_value_post": value_simulation.get("post"),
-        "simulation_dutching_pre": dutching_pre,
-        "simulation_dutching_post": dutching_simulation.get("post"),
+        "ai_views": ai_views,
+        "simulation_value_pre": traditional_view["value_pre"],
+        "simulation_value_post": traditional_view["value_post"],
+        "simulation_dutching_pre": traditional_view["dutching_pre"],
+        "simulation_dutching_post": traditional_view["dutching_post"],
         "result": result,
+        "actual_result_rows": build_actual_result_rows(payload, result, final_win_odds),
+        "final_win_odds_by_horse": final_win_odds,
+        "has_final_win_odds": bool(final_win_odds),
         "evaluation": evaluation,
         "statistical_evaluation": statistical_evaluation,
-        "horse_rows": horse_rows,
-        "statistical_horse_rows": statistical_horse_rows,
-        "result_rows": result_rows,
-        "expected_value_rows": expected_value_rows,
-        "value_no_purchase_reason": value_no_purchase_reason,
+        "horse_rows": traditional_view["horse_rows"],
+        "statistical_horse_rows": statistical_view["horse_rows"] if statistical_view else [],
+        "result_rows": traditional_view["result_rows"],
+        "statistical_result_rows": statistical_view["result_rows"] if statistical_view else [],
+        "expected_value_rows": traditional_view["expected_value_rows"],
+        "value_no_purchase_reason": traditional_view["value_no_purchase_reason"],
+        "has_result_page": has_result_page,
         "status": status,
         "status_label": status_label(status),
         "status_class": status_class(status),
@@ -481,11 +643,35 @@ def render_site(
             continue
         context = build_race_context(payload)
         race = payload["race"]
-        html = race_template.render(**context)
-        relative_path = race_html_path(race["date"], race["track"], race["race_number"])
-        target_path = output_dir / relative_path
-        ensure_dir(target_path.parent)
-        target_path.write_text(html, encoding="utf-8")
+        prediction_path = race_html_path(race["date"], race["track"], race["race_number"])
+        result_path = race_result_html_path(race["date"], race["track"], race["race_number"])
+        page_links = {
+            "prediction_page_name": prediction_path.name,
+            "result_page_name": result_path.name if context["has_result_page"] else None,
+        }
+        prediction_context = {
+            **context,
+            **page_links,
+            "page_kind": "prediction",
+            "status": "prediction_only",
+            "status_label": status_label("prediction_only"),
+            "status_class": status_class("prediction_only"),
+        }
+        prediction_target = output_dir / prediction_path
+        ensure_dir(prediction_target.parent)
+        prediction_target.write_bytes(rendered_html_bytes(race_template.render(**prediction_context)))
+        if context["has_result_page"]:
+            result_context = {
+                **context,
+                **page_links,
+                "page_kind": "result",
+                "status": "result_published",
+                "status_label": status_label("result_published"),
+                "status_class": status_class("result_published"),
+            }
+            result_target = output_dir / result_path
+            ensure_dir(result_target.parent)
+            result_target.write_bytes(rendered_html_bytes(race_template.render(**result_context)))
         index_rows.append(
             {
                 "date": race["date"],
@@ -495,7 +681,9 @@ def render_site(
                 "status": context["status"],
                 "status_label": context["status_label"],
                 "status_class": context["status_class"],
-                "href": relative_path.as_posix(),
+                "href": prediction_path.as_posix(),
+                "prediction_href": prediction_path.as_posix(),
+                "result_href": result_path.as_posix() if context["has_result_page"] else None,
             }
         )
 
@@ -506,7 +694,7 @@ def render_site(
         site_background=SITE_BACKGROUND,
         status_colors=STATUS_COLORS,
     )
-    (output_dir / "index.html").write_text(index_html, encoding="utf-8")
+    (output_dir / "index.html").write_bytes(rendered_html_bytes(index_html))
     return output_dir
 
 

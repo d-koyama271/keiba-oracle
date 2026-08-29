@@ -66,7 +66,7 @@
       overscroll-behavior-inline: contain;
       -webkit-overflow-scrolling: touch;
     }
-    .index-table { min-width: 700px; }
+    .index-table { min-width: 760px; }
     .nowrap {
       white-space: nowrap;
       word-break: keep-all;
@@ -89,6 +89,7 @@
       text-underline-offset: 2px;
       white-space: nowrap;
     }
+    .unavailable-link { text-align: center; }
     .status {
       display: inline-block;
       padding: 4px 10px;
@@ -136,7 +137,7 @@
 {% set overall = evaluation_summary.overall if evaluation_summary and evaluation_summary.overall else none %}
 {% set evaluated_races = overall.evaluated_races if overall else 0 %}
     <section class="panel performance-panel">
-      <h2>予測成績</h2>
+      <h2>総合AI予想の予測成績</h2>
       <div class="performance-grid">
         <div class="performance-item">
           <strong>現在の的中率</strong>
@@ -167,7 +168,8 @@
             <th class="nowrap">開催場</th>
             <th>レース名</th>
             <th class="nowrap">状態</th>
-            <th class="nowrap">ページ</th>
+            <th class="nowrap">予想</th>
+            <th class="nowrap">結果</th>
           </tr>
         </thead>
         <tbody>
@@ -178,11 +180,12 @@
             <td class="nowrap">{{ race.track }}</td>
             <td>{{ race.race_name|e }}</td>
             <td class="nowrap"><span class="status {{ race.status_class }}">{{ race.status_label }}</span></td>
-            <td class="nowrap"><a class="page-link" href="{{ race.href }}">開く</a></td>
+            <td class="nowrap"><a class="page-link" href="{{ race.prediction_href }}">開く</a></td>
+            <td class="nowrap{% if not race.result_href %} unavailable-link{% endif %}">{% if race.result_href %}<a class="page-link" href="{{ race.result_href }}">開く</a>{% else %}-{% endif %}</td>
           </tr>
 {% else %}
           <tr>
-            <td colspan="6">公開済みレースはまだありません。</td>
+            <td colspan="7">公開済みレースはまだありません。</td>
           </tr>
 {% endfor %}
         </tbody>
