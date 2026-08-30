@@ -913,6 +913,40 @@ def build_horse_summaries(
     horse["condition_change_summary"] = " / ".join(bit for bit in change_bits if bit and bit != "不明")
 
 
+def race_detail_text(soup: BeautifulSoup) -> str:
+    return " ".join(
+        normalize_space(node.get_text(" ", strip=True))
+        for node in soup.select(
+            ".RaceData01, .RaceData02, .RaceData03, .RaceList_NameBox .Race_Data"
+        )
+    )
+
+
+def parse_race_conditions(
+    soup: BeautifulSoup,
+    detail_text: str | None = None,
+) -> dict[str, str | None]:
+    detail_text = detail_text if detail_text is not None else race_detail_text(soup)
+    going_match = re.search(r"(?:馬場|芝|ダート|ダ)\s*[:：]\s*([^\s/]+)", detail_text)
+    weather_match = re.search(r"(?:天候|天気)\s*[:：]\s*([^\s/]+)", detail_text)
+    weather = weather_match.group(1) if weather_match else None
+    going = normalize_going(going_match.group(1)) if going_match else None
+
+    mobile_detail = soup.select_one(".RaceList_NameBox .Race_Data")
+    if mobile_detail:
+        weather_node = mobile_detail.select_one(".WeatherData")
+        going_node = mobile_detail.select_one(".Item03")
+        if weather_node:
+            weather_text = normalize_space(weather_node.get_text(" ", strip=True))
+            mobile_weather_match = re.search(
+                r"(?:天候|天気)\s*[:：]?\s*([^\s/]+)", weather_text
+            )
+            weather = mobile_weather_match.group(1) if mobile_weather_match else weather_text
+        if going_node:
+            going = normalize_going(going_node.get_text(" ", strip=True))
+    return {"going": going, "weather": weather}
+
+
 def parse_race_overview(
     html: str,
     race_id: str,
@@ -928,16 +962,9 @@ def parse_race_overview(
     if race_name_node is None and title_node:
         race_name = race_name.split("|")[0].replace("出馬表", "").strip()
 
-    detail_text = " ".join(
-        normalize_space(node.get_text(" ", strip=True))
-        for node in soup.select(
-            ".RaceData01, .RaceData02, .RaceData03, .RaceList_NameBox .Race_Data"
-        )
-    )
+    detail_text = race_detail_text(soup)
     start_time_match = re.search(r"(\d{1,2}:\d{2})", detail_text)
     distance_match = re.search(r"(芝|ダ|障)\s*([0-9]{3,4})m", detail_text)
-    going_match = re.search(r"馬場[:：]\s*([^\s/]+)", detail_text)
-    weather_match = re.search(r"(?:天候|天気)[:：]\s*([^\s/]+)", detail_text)
 
     surface = None
     distance = None
@@ -945,14 +972,7 @@ def parse_race_overview(
         surface = "ダート" if distance_match.group(1) == "ダ" else ("障害" if distance_match.group(1) == "障" else "芝")
         distance = int(distance_match.group(2))
 
-    weather = weather_match.group(1) if weather_match else None
-    going = normalize_going(going_match.group(1)) if going_match else None
-    mobile_detail = soup.select_one(".RaceList_NameBox .Race_Data")
-    if mobile_detail:
-        weather_node = mobile_detail.select_one(".WeatherData")
-        going_node = mobile_detail.select_one(".Item03")
-        weather = normalize_space(weather_node.get_text(" ", strip=True)) if weather_node else weather
-        going = normalize_going(going_node.get_text(" ", strip=True)) if going_node else going
+    conditions = parse_race_conditions(soup, detail_text)
 
     return {
         "date": target_date,
@@ -962,8 +982,8 @@ def parse_race_overview(
         "start_time": start_time_match.group(1) if start_time_match else None,
         "distance": distance,
         "surface": surface,
-        "going": going,
-        "weather": weather,
+        "going": conditions["going"],
+        "weather": conditions["weather"],
         "class_grade": normalize_class_grade(f"{race_name} {detail_text}", soup),
         "source_url": source_url or SHUTUBA_URL.format(race_id=race_id),
         "odds_captured_at": None,
@@ -1155,6 +1175,7 @@ def parse_horses(
 
 def parse_result(html: str) -> dict[str, Any] | None:
     soup = BeautifulSoup(html, "html.parser")
+    conditions = parse_race_conditions(soup)
     result_table = None
     for table in soup.find_all("table"):
         headers = set(extract_headers(table))
@@ -1222,6 +1243,8 @@ def parse_result(html: str) -> dict[str, Any] | None:
 
     result = {
         "fetched_at": now_jst_iso(),
+        "going": conditions["going"],
+        "weather": conditions["weather"],
         "finish_order": finish_order,
         "horses": horses,
         "payouts": {

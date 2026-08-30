@@ -5,6 +5,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,8 +15,10 @@ from render import (  # noqa: E402
     build_environment,
     build_expected_value_rows,
     build_race_context,
+    build_value_selection_rows,
     format_jst_datetime,
     index_row_sort_key,
+    is_created_this_week,
     rank_comparison,
     rejection_reason_text,
     result_highlight_class,
@@ -108,6 +111,17 @@ class RenderTests(unittest.TestCase):
         self.assertEqual(context["odds_captured_at_label"], "2026-07-18 18:07:48")
         self.assertEqual(payload["race"]["odds_captured_at"], saved_value)
 
+    def test_created_this_week_uses_jst_monday_to_sunday(self) -> None:
+        jst = timezone(timedelta(hours=9))
+        reference = datetime(2026, 8, 30, 12, 0, tzinfo=jst)
+
+        self.assertTrue(is_created_this_week("2026-08-24T00:00:00+09:00", reference))
+        self.assertTrue(is_created_this_week("2026-08-30T23:59:59+09:00", reference))
+        self.assertTrue(is_created_this_week("2026-08-23T15:00:00+00:00", reference))
+        self.assertFalse(is_created_this_week("2026-08-23T23:59:59+09:00", reference))
+        self.assertFalse(is_created_this_week("2026-08-31T00:00:00+09:00", reference))
+        self.assertFalse(is_created_this_week(None, reference))
+
     def test_odds_note_requires_timestamp_and_at_least_one_odds_value(self) -> None:
         note = "単勝オッズと人気は記録時点の値です。現在のオッズとは異なる場合があります。"
         payload = make_payload(predicted=True, track="中山", date="2026-01-01", name="検証レース")
@@ -185,6 +199,22 @@ class RenderTests(unittest.TestCase):
         self.assertEqual([row["ev_rank"] for row in rows], [1, 2, 3, None])
         self.assertEqual(rows[0]["expected_value"], 0.3333334 * 3.0)
         self.assertEqual([row["meets_threshold"] for row in rows], [True, True, True, None])
+
+    def test_value_selection_rows_derive_expected_return_without_mutating_simulation(self) -> None:
+        value_pre = {
+            "selections": [
+                {
+                    "horse_number": 3,
+                    "stake": 200,
+                    "expected_value": 1.234567,
+                }
+            ]
+        }
+
+        rows = build_value_selection_rows(value_pre)
+
+        self.assertEqual(rows[0]["expected_return"], 246.9134)
+        self.assertNotIn("expected_return", value_pre["selections"][0])
 
     def test_rejection_reason_labels_do_not_expose_internal_values(self) -> None:
         self.assertEqual(
@@ -385,11 +415,20 @@ class RenderTests(unittest.TestCase):
             )
             self.assertIn("<h1>中央競馬 AI予想レース一覧</h1>", index)
             self.assertIn(
-                "AIが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。",
+                "ChatGPTが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。",
                 index,
             )
             self.assertIn("<h2>総合AI予想の予測成績</h2>", index)
             self.assertIn("<h2>統計重視予想の予測成績</h2>", index)
+            self.assertIn(
+                "AIが各馬の過去成績、コース・距離適性、斤量、脚質、市場オッズなどから1着確率を推定しています。",
+                index,
+            )
+            self.assertIn(
+                "オッズ等の市場由来の情報を使用せず、レース条件、過去成績、条件適性、近況、相手関係からAIが1着確率を推定しています。",
+                index,
+            )
+            self.assertIn(".performance-panel h2 { margin-top: 0; }", index)
             self.assertIn("1位的中率", index)
             self.assertIn("勝ち馬の予想3位内率", index)
             self.assertNotIn("Top5的中率", index)
@@ -407,7 +446,9 @@ class RenderTests(unittest.TestCase):
             self.assertIn('<table class="index-table">', index)
             self.assertIn("overscroll-behavior-inline: contain", index)
             self.assertIn("-webkit-overflow-scrolling: touch", index)
-            self.assertIn(".index-table { min-width: 760px; }", index)
+            self.assertIn(".index-table { min-width: 700px; }", index)
+            self.assertIn("表は横にスクロールできます", index)
+            self.assertIn(".index-table tbody tr:nth-child(even) { background: #faf6ee; }", index)
             self.assertIn("table { font-size: 13px; }", index)
             self.assertIn('class="nowrap">2026-01-01</td>', index)
             self.assertIn('<th class="nowrap">発走</th>', index)
@@ -415,6 +456,7 @@ class RenderTests(unittest.TestCase):
             self.assertIn('<th class="nowrap">予想</th>', index)
             self.assertIn('<th class="nowrap result-link-column">結果</th>', index)
             self.assertIn("<td>予想済み</td>", index)
+            self.assertNotIn('<span class="new-badge">NEW!</span>', index)
             self.assertIn(
                 '<a class="page-link" href="races/2026-01-01/nakayama_11r.html">開く</a>',
                 index,
@@ -651,10 +693,11 @@ class RenderTests(unittest.TestCase):
             self.assertIn("1 / 2レース", index)
             self.assertIn("100.0%", index)
             self.assertIn("2 / 2レース", index)
-            self.assertIn("単勝分配方式</strong> -9,670円", index)
-            self.assertIn("期待値重視方式</strong> 0円", index)
-            self.assertIn("単勝分配方式</strong> -100円", index)
-            self.assertIn("期待値重視方式</strong> 300円", index)
+            self.assertIn("<span>単勝分配方式</span>", index)
+            self.assertIn('<strong class="profit-amount profit-negative">-9,670円</strong>', index)
+            self.assertIn('<strong class="profit-amount profit-neutral">0円</strong>', index)
+            self.assertIn('<strong class="profit-amount profit-negative">-100円</strong>', index)
+            self.assertIn('<strong class="profit-amount profit-positive">300円</strong>', index)
             self.assertNotIn("Top5的中率", index)
             self.assertNotIn("80.0%", index)
             self.assertIn("予想済み", index)

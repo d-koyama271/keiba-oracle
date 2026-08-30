@@ -407,6 +407,45 @@
       background: var(--result-bg);
       color: var(--result-accent);
     }
+    .result-section.has-ai-tabs .result-method-tabs {
+      position: relative;
+      z-index: 2;
+      align-items: flex-end;
+      margin-bottom: -1px;
+      border-bottom: 0;
+    }
+    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab {
+      position: relative;
+      margin-bottom: 0;
+      border-color: var(--result-line);
+      background: var(--result-bg);
+    }
+    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab[aria-selected="true"] {
+      z-index: 3;
+      border-bottom-color: var(--result-panel);
+      background: var(--result-panel);
+      color: var(--result-accent);
+    }
+    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab[aria-selected="true"]::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: -2px;
+      left: 0;
+      height: 3px;
+      background: var(--result-panel);
+    }
+    .result-section.has-ai-tabs .result-method-content {
+      position: relative;
+      z-index: 1;
+      margin-top: 0;
+      padding: 20px;
+      border: 1px solid var(--result-line);
+      border-radius: 0 14px 14px 14px;
+      background: var(--result-panel);
+    }
+    .result-method-content > .result-panel { margin-bottom: 0; }
+    .result-method-content > .result-panel + .result-panel { margin-top: 18px; }
     .ai-method-tab:focus-visible {
       outline: 2px solid #9bb8ae;
       outline-offset: 2px;
@@ -457,6 +496,18 @@
     .simulation-selected { background: #fff6dc; }
     .result-winner { background: #e4eef3; }
     .prediction-hit { background: #e3f0e7; }
+    .rank-prediction-top {
+      color: #604879;
+      font-weight: 700;
+    }
+    .rank-result-winner {
+      color: #315b78;
+      font-weight: 700;
+    }
+    .rank-prediction-hit {
+      color: #2f6b63;
+      font-weight: 700;
+    }
     .comparison-up {
       color: #2f6b63;
       font-weight: 700;
@@ -498,6 +549,7 @@
       .simulation-section.has-ai-tabs .simulation-method-content {
         padding: 12px;
       }
+      .result-section.has-ai-tabs .result-method-content { padding: 12px; }
       .simulation-method-content > .simulation-panel + .simulation-panel {
         margin-top: 20px;
       }
@@ -524,8 +576,8 @@
         <div><strong>日付</strong><br>2026-08-23</div>
         <div><strong>発走</strong><br>15:25</div>
         <div><strong>距離</strong><br>芝 1600m</div>
-        <div><strong>馬場</strong><br>良</div>
         
+        <div><strong>馬場</strong><br>良</div>
         <div><strong>オッズ記録時刻</strong><br>2026-08-23 12:42:09</div>
         <div><strong>発走時点との差</strong><br>発走163分前</div>
         
@@ -951,6 +1003,7 @@
       
       
       
+      
       <div class="ai-method-panel simulation-method-content" id="simulation-traditional" role="tabpanel" data-ai-panel data-ai-method="traditional">
 
     <div class="panel simulation-panel">
@@ -963,10 +1016,9 @@
       
       <div class="metric-grid">
         <div><strong>予算</strong><br>3000円</div>
-        <div><strong>購入単位</strong><br>100円</div>
         <div><strong><span class="term-with-tooltip"><span>最低利益率</span><span class="term-tooltip">
-  <button type="button" class="tooltip-trigger" aria-label="最低利益率: 選択した馬のうち最も払戻額が低い場合でも、最低利益が合計購入額に対して満たす必要がある割合です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">選択した馬のうち最も払戻額が低い場合でも、最低利益が合計購入額に対して満たす必要がある割合です。</span>
+  <button type="button" class="tooltip-trigger" aria-label="最低利益率: 購入金額に対する最低限の利益率を設定します。20%なら合計3,000円購入時に最低600円以上の利益が必要です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">購入金額に対する最低限の利益率を設定します。20%なら合計3,000円購入時に最低600円以上の利益が必要です。</span>
 </span></span></strong><br>20%</div>
         <div><strong>自動選択頭数</strong><br>2頭</div>
         <div><strong><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip">
@@ -977,10 +1029,6 @@
   <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。</span>
 </span></span></strong><br>0.802</div>
-        <div><strong><span class="term-with-tooltip"><span>期待払戻額</span><span class="term-tooltip">
-  <button type="button" class="tooltip-trigger" aria-label="期待払戻額: 各馬の予測確率を考慮した、平均的な払戻見込み額です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">各馬の予測確率を考慮した、平均的な払戻見込み額です。</span>
-</span></span></strong><br>2405円</div>
         <div><strong><span class="term-with-tooltip"><span>最低払戻額</span><span class="term-tooltip">
   <button type="button" class="tooltip-trigger" aria-label="最低払戻額: 選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。</span>
@@ -1129,7 +1177,6 @@
   <button type="button" class="tooltip-trigger" aria-label="Kelly係数: Kelly基準は、予測確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">Kelly基準は、予測確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。</span>
 </span></span></strong><br>0.5</div>
-        <div><strong>購入単位</strong><br>100円</div>
         <div><strong>合計購入額</strong><br>0円</div>
         <div><strong>未使用予算</strong><br>3000円</div>
       </div>
@@ -1324,6 +1371,7 @@
       
       
       
+      
       <div class="ai-method-panel simulation-method-content" id="simulation-statistical" role="tabpanel" data-ai-panel data-ai-method="statistical" hidden>
 
     <div class="panel simulation-panel">
@@ -1398,8 +1446,8 @@
         </div>
         <div class="simulator-field dutching-field">
           <span class="simulator-field-label"><label for="custom-min-profit-rate">最低利益率（%）</label><span class="term-tooltip">
-  <button type="button" class="tooltip-trigger" aria-label="最低利益率: 選択した馬のうち最も払戻額が低い場合でも、最低利益が合計購入額に対して満たす必要がある割合です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">選択した馬のうち最も払戻額が低い場合でも、最低利益が合計購入額に対して満たす必要がある割合です。</span>
+  <button type="button" class="tooltip-trigger" aria-label="最低利益率: 購入金額に対する最低限の利益率を設定します。20%なら合計3,000円購入時に最低600円以上の利益が必要です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">購入金額に対する最低限の利益率を設定します。20%なら合計3,000円購入時に最低600円以上の利益が必要です。</span>
 </span></span>
           <input id="custom-min-profit-rate" name="min_profit_rate" type="number" min="0" step="1" value="20" required>
         </div>
@@ -1435,10 +1483,6 @@
   <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択馬全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。</span>
 </span></span></strong><br><span id="custom-dutching-ev">0</span></div>
-          <div><strong><span class="term-with-tooltip"><span>期待払戻額</span><span class="term-tooltip">
-  <button type="button" class="tooltip-trigger" aria-label="期待払戻額: 各馬の予測確率を考慮した、平均的な払戻見込み額です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">各馬の予測確率を考慮した、平均的な払戻見込み額です。</span>
-</span></span></strong><br><span id="custom-dutching-return">0円</span></div>
           <div><strong><span class="term-with-tooltip"><span>最低払戻額</span><span class="term-tooltip">
   <button type="button" class="tooltip-trigger" aria-label="最低払戻額: 選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。</span>
@@ -1458,7 +1502,10 @@
 </span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>Fractional Kelly</span><span class="term-tooltip">
   <button type="button" class="tooltip-trigger" aria-label="Fractional Kelly: Full KellyにKelly係数を掛けて抑制した購入割合です。係数0.5ならハーフケリーとなります。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">Full KellyにKelly係数を掛けて抑制した購入割合です。係数0.5ならハーフケリーとなります。</span>
-</span></span></th><th class="nowrap">購入額</th></tr></thead><tbody id="custom-value-rows"></tbody></table>
+</span></span></th><th class="nowrap">購入額</th><th class="nowrap"><span class="term-with-tooltip"><span>期待払戻額</span><span class="term-tooltip">
+  <button type="button" class="tooltip-trigger" aria-label="期待払戻額: 各馬の予測確率を考慮した、平均的な払戻見込み額です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">各馬の予測確率を考慮した、平均的な払戻見込み額です。</span>
+</span></span></th></tr></thead><tbody id="custom-value-rows"></tbody></table>
         </div>
         <div class="table-scroll" id="custom-dutching-table" hidden>
           <table class="simulation-table"><thead><tr><th class="nowrap">馬番</th><th class="nowrap">予測勝率</th><th class="nowrap">単勝オッズ</th><th class="nowrap">購入額</th><th class="nowrap">的中時払戻額</th><th class="nowrap">的中時利益</th></tr></thead><tbody id="custom-dutching-rows"></tbody></table>
@@ -1563,6 +1610,7 @@
             full_kelly: roundSimulationValue(detail.full_kelly),
             fractional_kelly: roundSimulationValue(detail.fractional_kelly),
             stake: detail.stake,
+            expected_return: roundSimulationValue(detail.stake * detail.expected_value),
           });
         }
         const totalStake = selections.reduce((total, item) => total + item.stake, 0);
@@ -1834,6 +1882,7 @@
             addCell(row, item.full_kelly.toFixed(4));
             addCell(row, item.fractional_kelly.toFixed(4));
             addCell(row, `${yen.format(item.stake)}円`);
+            addCell(row, `${yen.format(item.expected_return)}円`);
             valueRows.appendChild(row);
           }
         };
@@ -1842,7 +1891,6 @@
           document.getElementById("custom-dutching-count").textContent = `${result.selected_count}頭`;
           document.getElementById("custom-dutching-coverage").textContent = `${(result.coverage_probability * 100).toFixed(2)}%`;
           document.getElementById("custom-dutching-ev").textContent = result.group_expected_value.toFixed(3);
-          document.getElementById("custom-dutching-return").textContent = `${yen.format(result.expected_return)}円`;
           document.getElementById("custom-dutching-min-payout").textContent = `${yen.format(result.minimum_payout)}円`;
           document.getElementById("custom-dutching-min-profit").textContent = `${yen.format(result.minimum_profit)}円`;
           dutchingRows.replaceChildren();

@@ -141,7 +141,7 @@ class ValueSimulationTests(unittest.TestCase):
         config = load_config(ROOT / "config" / "app.yaml")
 
         self.assertEqual(float(config["simulation"]["value"]["ev_threshold"]), 1.0)
-        self.assertEqual(float(config["simulation"]["value"]["kelly_fraction"]), 0.85)
+        self.assertEqual(float(config["simulation"]["value"]["kelly_fraction"]), 0.75)
 
         payload = make_payload(DUTCHING_ROWS)
         payload["prediction"]["variants"] = [
@@ -163,11 +163,11 @@ class ValueSimulationTests(unittest.TestCase):
 
         self.assertEqual(
             payload["simulation"]["value"]["pre"]["settings"]["kelly_fraction"],
-            0.85,
+            0.75,
         )
         self.assertEqual(
             payload["simulation"]["variants"][0]["value"]["pre"]["settings"]["kelly_fraction"],
-            0.85,
+            0.75,
         )
 
         context = build_race_context(payload)
@@ -184,7 +184,7 @@ class ValueSimulationTests(unittest.TestCase):
         custom_kelly = BeautifulSoup(rendered, "html.parser").select_one(
             '#custom-kelly-fraction'
         )
-        self.assertEqual(custom_kelly["value"], "0.85")
+        self.assertEqual(custom_kelly["value"], "0.75")
 
     def test_ev_boundary_and_single_candidate_are_included(self) -> None:
         payload = make_payload([(1, 0.35, 3.0), (2, 0.10, 2.0)])
@@ -810,6 +810,22 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
             rendered,
         )
 
+        payload["result"] = make_result(1, 400, [1, 2, 3, 4, 5])
+        result_rendered = self.render_page(payload, "result")
+        result_soup = BeautifulSoup(result_rendered, "html.parser")
+        result_section = result_soup.select_one("section.result-section.has-ai-tabs")
+        result_panels = result_section.select(".result-method-content[data-ai-panel]")
+        self.assertIsNotNone(result_section.select_one(".result-method-tabs"))
+        self.assertEqual(
+            [panel["data-ai-method"] for panel in result_panels],
+            ["traditional", "statistical"],
+        )
+        self.assertIn(
+            ".result-section.has-ai-tabs .result-method-content",
+            result_rendered,
+        )
+        self.assertIn("background: var(--result-panel)", result_rendered)
+
         embedded = json.loads(soup.select_one("#custom-simulator-data").string)
         self.assertEqual(set(embedded["methods"]), {"traditional", "statistical"})
         self.assertEqual(
@@ -861,6 +877,21 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         self.assertEqual(len(simulation_panels), 2)
         self.assertIn("単勝分配方式", simulation_panels[0].find("h3").get_text())
         self.assertIn("期待値重視方式", simulation_panels[1].find("h3").get_text())
+        dutching_metric_labels = [
+            card.find("strong", recursive=False).get_text(" ", strip=True)
+            for card in simulation_panels[0].select_one(".metric-grid").find_all(
+                "div", recursive=False
+            )
+        ]
+        value_metric_labels = [
+            card.find("strong", recursive=False).get_text(" ", strip=True)
+            for card in simulation_panels[1].select_one(".metric-grid").find_all(
+                "div", recursive=False
+            )
+        ]
+        self.assertFalse(any(label.startswith("購入単位") for label in dutching_metric_labels))
+        self.assertFalse(any(label.startswith("購入単位") for label in value_metric_labels))
+        self.assertFalse(any(label.startswith("期待払戻額") for label in dutching_metric_labels))
         self.assertIsNone(simulation_section.select_one("#custom-simulator"))
         self.assertIsNone(
             soup.select_one("#custom-simulator").find_parent("section", class_="simulation-section")
@@ -934,7 +965,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
             "現在の設定条件で、購入額が初めて1購入単位以上になる予算です。",
             "選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。",
             "選択した馬のうち、最も利益が低い馬が的中した場合の利益です。",
-            "選択した馬のうち最も払戻額が低い場合でも、最低利益が合計購入額に対して満たす必要がある割合です。",
+            "購入金額に対する最低限の利益率を設定します。20%なら合計3,000円購入時に最低600円以上の利益が必要です。",
             "各馬の予測確率を考慮した、平均的な払戻見込み額です。",
         ):
             self.assertIn(description, rendered)
@@ -966,6 +997,62 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         self.assertNotIn("fetch(", rendered)
         self.assertIn('id="custom-simulator-empty-reason"', rendered)
         self.assertIn("valueNoPurchaseReason(details, stakeUnit, settings.kelly_fraction)", rendered)
+        self.assertNotIn('id="custom-dutching-return"', rendered)
+        custom_value_headers = [
+            header.get_text(" ", strip=True)
+            for header in soup.select_one("#custom-value-table thead").select("th")
+        ]
+        self.assertTrue(any(header.startswith("期待払戻額") for header in custom_value_headers))
+        self.assertIn(
+            "expected_return: roundSimulationValue(detail.stake * detail.expected_value)",
+            rendered,
+        )
+
+    def test_value_purchase_table_displays_expected_return_from_saved_selection(self) -> None:
+        payload = make_payload([(1, 0.40, 3.0), (2, 0.60, 1.0)])
+        payload["simulation"] = calculate_pre_simulation(
+            payload,
+            make_config(budget=10000, kelly_fraction=0.5),
+        )
+        rendered = self.render_page(payload)
+        soup = BeautifulSoup(rendered, "html.parser")
+        value_panel = next(
+            panel
+            for panel in soup.select(".simulation-panel")
+            if "期待値重視方式" in panel.find("h3").get_text()
+        )
+        purchase_table = value_panel.find("h4", string="購入対象").find_next("table")
+        headers = [header.get_text(" ", strip=True) for header in purchase_table.select("thead th")]
+        cells = [cell.get_text(" ", strip=True) for cell in purchase_table.select_one("tbody tr").select("td")]
+
+        self.assertTrue(headers[-1].startswith("期待払戻額 ⓘ"))
+        self.assertEqual(cells[-2:], ["500円", "600円"])
+        self.assertNotIn(
+            "expected_return",
+            payload["simulation"]["value"]["pre"]["selections"][0],
+        )
+
+    def test_result_page_uses_result_conditions_and_jst_fetch_time(self) -> None:
+        payload = self.full_payload()
+        payload["race"].update({"going": "良", "weather": "晴"})
+        payload["result"].update(
+            {
+                "going": "重",
+                "weather": "雨",
+                "fetched_at": "2026-08-30T07:10:11+00:00",
+            }
+        )
+
+        rendered = self.render_page(payload, "result")
+        basic_info = BeautifulSoup(rendered, "html.parser").select_one(".meta").get_text(
+            " ", strip=True
+        )
+
+        self.assertIn("馬場 重", basic_info)
+        self.assertIn("天候 雨", basic_info)
+        self.assertIn("結果取得日時 2026-08-30 16:10:11", basic_info)
+        self.assertNotIn("馬場 良", basic_info)
+        self.assertNotIn("天候 晴", basic_info)
 
     def test_legacy_dutching_settings_render_without_recalculation(self) -> None:
         payload = self.full_payload()
@@ -1269,6 +1356,12 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         self.assertIn("background: #f2f2f0", rendered)
         self.assertIn(".prediction-top { background: #f1ecf7; }", rendered)
         self.assertIn(".result-winner { background: #e4eef3; }", rendered)
+        self.assertIn("rank-prediction-top", rows[1][0].select("td")[2].get("class", []))
+        self.assertIn("rank-result-winner", rows[2][0].select("td")[4].get("class", []))
+        self.assertIn(".rank-prediction-top", rendered)
+        self.assertIn("color: #604879", rendered)
+        self.assertIn(".rank-result-winner", rendered)
+        self.assertIn("color: #315b78", rendered)
         self.assertIn(".simulation-selected { background: #fff6dc; }", rendered)
         self.assertNotIn("simulation-hit", rendered)
         self.assertIn('class="table-scroll"', str(table.parent))
@@ -1287,6 +1380,9 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         self.assertEqual(prediction_row.get("class"), ["prediction-top"])
         self.assertEqual(result_row.get("class"), ["prediction-hit"])
         self.assertNotIn("result-winner", result_row.get("class", []))
+        self.assertIn("rank-prediction-hit", result_row.select("td")[2].get("class", []))
+        self.assertIn("rank-prediction-hit", result_row.select("td")[4].get("class", []))
+        self.assertIn("color: #2f6b63", result_rendered)
         self.assertIn(".prediction-top { background: #f1ecf7; }", rendered)
         self.assertIn(".prediction-hit { background: #e3f0e7; }", rendered)
 

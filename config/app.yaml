@@ -15,7 +15,7 @@ simulation:
   stake_unit: 100
   value:
     ev_threshold: 1.0
-    kelly_fraction: 0.85
+    kelly_fraction: 0.75
   dutching:
     max_selection_count: 5
     min_coverage_probability: 0.40

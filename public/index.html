@@ -39,12 +39,14 @@
       min-width: 0;
     }
     .panel + .panel { margin-top: 20px; }
+    .performance-panel h2 { margin-top: 0; }
     .performance-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
     }
     .performance-item {
+      min-width: 0;
       padding: 14px;
       border: 1px solid #ded6ca;
       border-radius: 10px;
@@ -61,7 +63,15 @@
       margin-top: 8px;
       line-height: 1.5;
     }
-    .performance-breakdown div { white-space: nowrap; }
+    .performance-breakdown > div {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0 0.4em;
+    }
+    .profit-amount { font-weight: 700; }
+    .profit-positive { color: #2f6b63; }
+    .profit-negative { color: #9b352b; }
+    .profit-neutral { color: inherit; }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -73,7 +83,11 @@
       overscroll-behavior-inline: contain;
       -webkit-overflow-scrolling: touch;
     }
-    .index-table { min-width: 760px; }
+    .table-scroll-hint { display: none; }
+    .index-table { min-width: 700px; }
+    .index-table th,
+    .index-table td { padding: 10px 6px; }
+    .index-table tbody tr:nth-child(even) { background: #faf6ee; }
     .nowrap {
       white-space: nowrap;
       word-break: keep-all;
@@ -97,6 +111,20 @@
       white-space: nowrap;
     }
     .result-link-column { text-align: center; }
+    .new-badge {
+      display: inline-block;
+      margin-left: 5px;
+      padding: 1px 5px;
+      border: 1px solid #d9c7a3;
+      border-radius: 999px;
+      background: #fff7df;
+      color: #7a5b22;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.4;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
     .status {
       display: inline-block;
       padding: 4px 10px;
@@ -132,15 +160,25 @@
       .performance-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       table { font-size: 13px; }
       th, td { padding: 8px 7px; }
+      .index-table th,
+      .index-table td { padding: 8px 6px; }
+      .table-scroll-hint {
+        display: block;
+        margin: 0 0 6px;
+        color: #6f766c;
+        font-size: 12px;
+        text-align: right;
+      }
     }
   </style>
 </head>
 <body>
 
+
   <main>
     <div class="panel">
       <h1>中央競馬 AI予想レース一覧</h1>
-      <p class="small">AIが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。</p>
+      <p class="small">ChatGPTが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。</p>
     </div>
 
 
@@ -154,6 +192,7 @@
 
     <section class="panel performance-panel">
       <h2>総合AI予想の予測成績</h2>
+      <p class="small performance-description">AIが各馬の過去成績、コース・距離適性、斤量、脚質、市場オッズなどから1着確率を推定しています。</p>
       <div class="performance-grid">
         <div class="performance-item">
           <strong>1位的中率</strong>
@@ -172,8 +211,18 @@
         <div class="performance-item">
           <strong>累計収支</strong>
           <div class="performance-breakdown">
-            <div><strong>単勝分配方式</strong> -7,020円</div>
-            <div><strong>期待値重視方式</strong> -300円</div>
+
+
+            <div>
+              <span>単勝分配方式</span>
+              <strong class="profit-amount profit-negative">-7,020円</strong>
+            </div>
+
+
+            <div>
+              <span>期待値重視方式</span>
+              <strong class="profit-amount profit-negative">-300円</strong>
+            </div>
           </div>
         </div>
       </div>
@@ -183,6 +232,7 @@
 
     <section class="panel performance-panel">
       <h2>統計重視予想の予測成績</h2>
+      <p class="small performance-description">オッズ等の市場由来の情報を使用せず、レース条件、過去成績、条件適性、近況、相手関係からAIが1着確率を推定しています。</p>
       <div class="performance-grid">
         <div class="performance-item">
           <strong>1位的中率</strong>
@@ -201,13 +251,24 @@
         <div class="performance-item">
           <strong>累計収支</strong>
           <div class="performance-breakdown">
-            <div><strong>単勝分配方式</strong> -2,940円</div>
-            <div><strong>期待値重視方式</strong> -300円</div>
+
+
+            <div>
+              <span>単勝分配方式</span>
+              <strong class="profit-amount profit-negative">-2,940円</strong>
+            </div>
+
+
+            <div>
+              <span>期待値重視方式</span>
+              <strong class="profit-amount profit-negative">-300円</strong>
+            </div>
           </div>
         </div>
       </div>
     </section>
     <div class="panel">
+      <p class="table-scroll-hint">表は横にスクロールできます</p>
       <div class="table-scroll">
       <table class="index-table">
         <thead>
@@ -227,7 +288,7 @@
             <td class="nowrap">2026-08-30</td>
             <td class="nowrap">15:45</td>
             <td class="nowrap">新潟</td>
-            <td>新潟記念</td>
+            <td>新潟記念<span class="new-badge">NEW!</span></td>
             <td class="nowrap"><span class="status status-result">結果公開</span></td>
             <td class="nowrap"><a class="page-link" href="races/2026-08-30/niigata_8r.html">開く</a></td>
             <td class="nowrap result-link-column"><a class="page-link" href="races/2026-08-30/niigata_8r_result.html">開く</a></td>
@@ -237,7 +298,7 @@
             <td class="nowrap">2026-08-30</td>
             <td class="nowrap">15:35</td>
             <td class="nowrap">中京</td>
-            <td>中京2歳S</td>
+            <td>中京2歳S<span class="new-badge">NEW!</span></td>
             <td class="nowrap"><span class="status status-result">結果公開</span></td>
             <td class="nowrap"><a class="page-link" href="races/2026-08-30/chukyo_7r.html">開く</a></td>
             <td class="nowrap result-link-column"><a class="page-link" href="races/2026-08-30/chukyo_7r_result.html">開く</a></td>

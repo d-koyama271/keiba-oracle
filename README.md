@@ -74,7 +74,7 @@ codex login status
 - `simulation.budget`: 両方式共通の 1 レース予算上限
 - `simulation.stake_unit`: 両方式共通の購入金額単位
 - `simulation.value.ev_threshold`: 期待値重視方式の最低 EV（既定値 1.0）
-- `simulation.value.kelly_fraction`: 期待値重視方式の fractional Kelly 係数（既定値 0.85）
+- `simulation.value.kelly_fraction`: 期待値重視方式の fractional Kelly 係数（既定値 0.75）
 - `simulation.dutching.*`: 単勝分配方式（内部キー `dutching`）の最大頭数、最低カバー確率、最低グループ期待値、最低利益率（既定値20%、合計購入額基準）、的中時利益条件
 - `publish_mode`: `github_pages` を想定
 - `llm_provider`: 通常運用では `codex`

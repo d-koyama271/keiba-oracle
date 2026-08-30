@@ -407,6 +407,45 @@
       background: var(--result-bg);
       color: var(--result-accent);
     }
+    .result-section.has-ai-tabs .result-method-tabs {
+      position: relative;
+      z-index: 2;
+      align-items: flex-end;
+      margin-bottom: -1px;
+      border-bottom: 0;
+    }
+    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab {
+      position: relative;
+      margin-bottom: 0;
+      border-color: var(--result-line);
+      background: var(--result-bg);
+    }
+    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab[aria-selected="true"] {
+      z-index: 3;
+      border-bottom-color: var(--result-panel);
+      background: var(--result-panel);
+      color: var(--result-accent);
+    }
+    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab[aria-selected="true"]::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: -2px;
+      left: 0;
+      height: 3px;
+      background: var(--result-panel);
+    }
+    .result-section.has-ai-tabs .result-method-content {
+      position: relative;
+      z-index: 1;
+      margin-top: 0;
+      padding: 20px;
+      border: 1px solid var(--result-line);
+      border-radius: 0 14px 14px 14px;
+      background: var(--result-panel);
+    }
+    .result-method-content > .result-panel { margin-bottom: 0; }
+    .result-method-content > .result-panel + .result-panel { margin-top: 18px; }
     .ai-method-tab:focus-visible {
       outline: 2px solid #9bb8ae;
       outline-offset: 2px;
@@ -457,6 +496,18 @@
     .simulation-selected { background: #fff6dc; }
     .result-winner { background: #e4eef3; }
     .prediction-hit { background: #e3f0e7; }
+    .rank-prediction-top {
+      color: #604879;
+      font-weight: 700;
+    }
+    .rank-result-winner {
+      color: #315b78;
+      font-weight: 700;
+    }
+    .rank-prediction-hit {
+      color: #2f6b63;
+      font-weight: 700;
+    }
     .comparison-up {
       color: #2f6b63;
       font-weight: 700;
@@ -498,6 +549,7 @@
       .simulation-section.has-ai-tabs .simulation-method-content {
         padding: 12px;
       }
+      .result-section.has-ai-tabs .result-method-content { padding: 12px; }
       .simulation-method-content > .simulation-panel + .simulation-panel {
         margin-top: 20px;
       }
@@ -524,7 +576,10 @@
         <div><strong>日付</strong><br>2026-08-02</div>
         <div><strong>発走</strong><br>15:45</div>
         <div><strong>距離</strong><br>芝 1000m</div>
-        <div><strong>馬場</strong><br>良</div>
+        
+        <div><strong>馬場</strong><br>-</div>
+        <div><strong>天候</strong><br>-</div>
+        <div><strong>結果取得日時</strong><br>2026-08-30 05:42:06</div>
         
       </div>
       
@@ -547,7 +602,7 @@
       
       
       
-      <div class="ai-method-panel" id="result-traditional" role="tabpanel" data-ai-panel data-ai-method="traditional">
+      <div class="ai-method-panel result-method-content" id="result-traditional" role="tabpanel" data-ai-panel data-ai-method="traditional">
         
         <div class="panel result-panel">
           <h3>総合AI予想と実結果の比較</h3>
@@ -647,9 +702,9 @@
                 <tr class="prediction-hit">
                   <td class="nowrap" data-sort-value="6">6</td>
                   <td class="horse-name">ピューロマジック</td>
-                  <td class="nowrap" data-sort-value="1">1位</td>
+                  <td class="nowrap rank-prediction-hit" data-sort-value="1">1位</td>
                   <td class="nowrap" data-sort-value="0.21">21.0%</td>
-                  <td class="nowrap" data-sort-value="1">1着</td>
+                  <td class="nowrap rank-prediction-hit" data-sort-value="1">1着</td>
                   <td class="comparison-cell nowrap" data-sort-value="0"><span class="comparison-neutral">差なし</span></td>
                   <td class="nowrap" data-sort-value="2.7">2.7</td>
                   <td class="nowrap" data-sort-value="270">270円</td>

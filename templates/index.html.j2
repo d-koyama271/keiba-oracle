@@ -39,12 +39,14 @@
       min-width: 0;
     }
     .panel + .panel { margin-top: 20px; }
+    .performance-panel h2 { margin-top: 0; }
     .performance-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
     }
     .performance-item {
+      min-width: 0;
       padding: 14px;
       border: 1px solid #ded6ca;
       border-radius: 10px;
@@ -61,7 +63,15 @@
       margin-top: 8px;
       line-height: 1.5;
     }
-    .performance-breakdown div { white-space: nowrap; }
+    .performance-breakdown > div {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0 0.4em;
+    }
+    .profit-amount { font-weight: 700; }
+    .profit-positive { color: #2f6b63; }
+    .profit-negative { color: #9b352b; }
+    .profit-neutral { color: inherit; }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -73,7 +83,11 @@
       overscroll-behavior-inline: contain;
       -webkit-overflow-scrolling: touch;
     }
-    .index-table { min-width: 760px; }
+    .table-scroll-hint { display: none; }
+    .index-table { min-width: 700px; }
+    .index-table th,
+    .index-table td { padding: 10px 6px; }
+    .index-table tbody tr:nth-child(even) { background: #faf6ee; }
     .nowrap {
       white-space: nowrap;
       word-break: keep-all;
@@ -97,6 +111,20 @@
       white-space: nowrap;
     }
     .result-link-column { text-align: center; }
+    .new-badge {
+      display: inline-block;
+      margin-left: 5px;
+      padding: 1px 5px;
+      border: 1px solid #d9c7a3;
+      border-radius: 999px;
+      background: #fff7df;
+      color: #7a5b22;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.4;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
     .status {
       display: inline-block;
       padding: 4px 10px;
@@ -132,16 +160,34 @@
       .performance-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       table { font-size: 13px; }
       th, td { padding: 8px 7px; }
+      .index-table th,
+      .index-table td { padding: 8px 6px; }
+      .table-scroll-hint {
+        display: block;
+        margin: 0 0 6px;
+        color: #6f766c;
+        font-size: 12px;
+        text-align: right;
+      }
     }
   </style>
 </head>
 <body>
-{% macro performance_panel(title, overall, simulation) -%}
+{% macro profit_line(label, simulation) -%}
+{% set available = simulation and simulation.get("simulation_races", 0) %}
+{% set profit = simulation.get("cumulative_profit", 0)|int if available else none %}
+            <div>
+              <span>{{ label }}</span>
+              <strong class="profit-amount {% if profit is none or profit == 0 %}profit-neutral{% elif profit > 0 %}profit-positive{% else %}profit-negative{% endif %}">{% if profit is not none %}{{ "{:,}".format(profit) }}円{% else %}-{% endif %}</strong>
+            </div>
+{%- endmacro %}
+{% macro performance_panel(title, description, overall, simulation) -%}
 {% set evaluated_races = overall.get("evaluated_races", 0) if overall else 0 %}
 {% set value_simulation = simulation.get("value") if simulation else none %}
 {% set dutching_simulation = simulation.get("dutching") if simulation else none %}
     <section class="panel performance-panel">
       <h2>{{ title }}</h2>
+      <p class="small performance-description">{{ description }}</p>
       <div class="performance-grid">
         <div class="performance-item">
           <strong>1位的中率</strong>
@@ -160,8 +206,8 @@
         <div class="performance-item">
           <strong>累計収支</strong>
           <div class="performance-breakdown">
-            <div><strong>単勝分配方式</strong> {% if dutching_simulation and dutching_simulation.get("simulation_races", 0) %}{{ "{:,}".format(dutching_simulation.get("cumulative_profit", 0)|int) }}円{% else %}-{% endif %}</div>
-            <div><strong>期待値重視方式</strong> {% if value_simulation and value_simulation.get("simulation_races", 0) %}{{ "{:,}".format(value_simulation.get("cumulative_profit", 0)|int) }}円{% else %}-{% endif %}</div>
+{{ profit_line("単勝分配方式", dutching_simulation) }}
+{{ profit_line("期待値重視方式", value_simulation) }}
           </div>
         </div>
       </div>
@@ -170,7 +216,7 @@
   <main>
     <div class="panel">
       <h1>中央競馬 AI予想レース一覧</h1>
-      <p class="small">AIが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。</p>
+      <p class="small">ChatGPTが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。</p>
     </div>
 {% set method_summaries = evaluation_summary.get("methods", {}) if evaluation_summary else {} %}
 {% set traditional_summary = method_summaries.get("traditional") %}
@@ -179,9 +225,10 @@
 {% set traditional_simulation = evaluation_summary.get("simulation") if evaluation_summary else none %}
 {% set statistical_overall = statistical_summary.get("overall") if statistical_summary else none %}
 {% set statistical_simulation = statistical_summary.get("simulation") if statistical_summary else none %}
-{{ performance_panel("総合AI予想の予測成績", traditional_overall, traditional_simulation) }}
-{{ performance_panel("統計重視予想の予測成績", statistical_overall, statistical_simulation) }}
+{{ performance_panel("総合AI予想の予測成績", prediction_method_descriptions.get("traditional", ""), traditional_overall, traditional_simulation) }}
+{{ performance_panel("統計重視予想の予測成績", prediction_method_descriptions.get("statistical", ""), statistical_overall, statistical_simulation) }}
     <div class="panel">
+      <p class="table-scroll-hint">表は横にスクロールできます</p>
       <div class="table-scroll">
       <table class="index-table">
         <thead>
@@ -201,7 +248,7 @@
             <td class="nowrap">{{ race.date }}</td>
             <td class="nowrap">{{ race.start_time or "-" }}</td>
             <td class="nowrap">{{ race.track }}</td>
-            <td>{{ race.race_name|e }}</td>
+            <td>{{ race.race_name|e }}{% if race.is_new %}<span class="new-badge">NEW!</span>{% endif %}</td>
             <td class="nowrap"><span class="status {{ race.status_class }}">{{ race.status_label }}</span></td>
             <td class="nowrap"><a class="page-link" href="{{ race.prediction_href }}">開く</a></td>
             <td class="nowrap result-link-column">{% if race.result_href %}<a class="page-link" href="{{ race.result_href }}">開く</a>{% else %}-{% endif %}</td>

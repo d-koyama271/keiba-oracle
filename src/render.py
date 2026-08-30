@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import shutil
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from evaluation_summary import load_evaluation_summary
-from simulate import calculate_value_details, minimum_budget_for_value_stake
+from simulate import calculate_value_details, minimum_budget_for_value_stake, round_ratio
 from utils import (
     STATISTICAL_PREDICTION_METHOD,
     TRADITIONAL_PREDICTION_METHOD,
@@ -20,6 +22,7 @@ from utils import (
     load_config,
     load_race_json,
     log_job,
+    now_jst,
     parse_jst_datetime,
     parse_target_date,
     prediction_variants,
@@ -77,7 +80,7 @@ TOOLTIPS = {
     "minimum_budget": "現在の設定条件で、購入額が初めて1購入単位以上になる予算です。",
     "minimum_payout": "選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。",
     "minimum_profit": "選択した馬のうち、最も利益が低い馬が的中した場合の利益です。",
-    "minimum_profit_rate": "選択した馬のうち最も払戻額が低い場合でも、最低利益が合計購入額に対して満たす必要がある割合です。",
+    "minimum_profit_rate": "購入金額に対する最低限の利益率を設定します。20%なら合計3,000円購入時に最低600円以上の利益が必要です。",
     "expected_return": "各馬の予測確率を考慮した、平均的な払戻見込み額です。",
 }
 
@@ -113,6 +116,20 @@ def index_row_sort_key(row: dict[str, Any]) -> tuple[int, float, str, str]:
 def format_jst_datetime(value: str | None) -> str:
     parsed = parse_jst_datetime(value)
     return parsed.strftime("%Y-%m-%d %H:%M:%S") if parsed else "-"
+
+
+def is_created_this_week(
+    created_at: str | None,
+    reference: datetime | None = None,
+) -> bool:
+    created = parse_jst_datetime(created_at)
+    current = parse_jst_datetime(reference.isoformat()) if reference else now_jst()
+    if created is None or current is None:
+        return False
+    week_start = current.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(
+        days=current.weekday()
+    )
+    return week_start <= created < week_start + timedelta(days=7)
 
 
 def rejection_reason_text(reasons: list[str]) -> str:
@@ -259,6 +276,22 @@ def build_expected_value_rows(
     return rows
 
 
+def build_value_selection_rows(value_pre: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not value_pre:
+        return []
+    rows = []
+    for selection in value_pre.get("selections", []):
+        stake = finite_float(selection.get("stake"))
+        expected_value = finite_float(selection.get("expected_value"))
+        expected_return = (
+            round_ratio(stake * expected_value)
+            if stake is not None and expected_value is not None
+            else None
+        )
+        rows.append({**selection, "expected_return": expected_return})
+    return rows
+
+
 def value_no_purchase_message(
     rows: list[dict[str, Any]],
     stake_unit: int,
@@ -392,6 +425,16 @@ def build_result_rows(horse_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "comparison_class": comparison_class,
                 "comparison_sort_value": comparison_sort_value,
                 "row_class": result_highlight_class(horse["prediction_rank"], finish_position),
+                "prediction_rank_class": (
+                    "rank-prediction-hit"
+                    if horse["prediction_rank"] == 1 and numeric_finish == 1
+                    else ("rank-prediction-top" if horse["prediction_rank"] == 1 else "")
+                ),
+                "finish_rank_class": (
+                    "rank-prediction-hit"
+                    if horse["prediction_rank"] == 1 and numeric_finish == 1
+                    else ("rank-result-winner" if numeric_finish == 1 else "")
+                ),
                 "payout_per_100": horse.get("payout_per_100"),
                 "final_win_odds": horse.get("final_win_odds"),
             }
@@ -510,6 +553,7 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
                 "dutching_pre": dutching_pre,
                 "dutching_post": dutching_simulation.get("post"),
                 "expected_value_rows": expected_value_rows,
+                "value_selection_rows": build_value_selection_rows(value_pre),
                 "value_no_purchase_reason": value_no_purchase_reason,
             }
         )
@@ -565,6 +609,7 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         "tooltips": TOOLTIPS,
         "rejection_reason_text": rejection_reason_text,
         "odds_captured_at_label": format_jst_datetime(race.get("odds_captured_at")),
+        "result_fetched_at_label": format_jst_datetime((result or {}).get("fetched_at")),
         "odds_timing_label": odds_timing_label,
         "odds_recorded_after_start": odds_recorded_after_start,
         "has_recorded_odds": has_recorded_odds,
@@ -601,6 +646,8 @@ def render_site(
     race_files = list_race_files(config, race_date, root)
     index_rows = []
     for path in race_files:
+        persisted_payload = json.loads(path.read_text(encoding="utf-8"))
+        persisted_created_at = (persisted_payload.get("meta") or {}).get("created_at")
         payload = load_race_json(path)
         if not payload or not payload.get("prediction"):
             continue
@@ -641,6 +688,7 @@ def render_site(
                 "start_time": race.get("start_time"),
                 "track": race["track"],
                 "race_name": race["race_name"],
+                "is_new": is_created_this_week(persisted_created_at),
                 "status": context["status"],
                 "status_label": context["status_label"],
                 "status_class": context["status_class"],
@@ -656,6 +704,7 @@ def render_site(
         evaluation_summary=load_evaluation_summary(config, root),
         site_background=SITE_BACKGROUND,
         status_colors=STATUS_COLORS,
+        prediction_method_descriptions=PREDICTION_METHOD_DESCRIPTIONS,
     )
     (output_dir / "index.html").write_bytes(rendered_html_bytes(index_html))
     return output_dir

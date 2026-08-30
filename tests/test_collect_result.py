@@ -39,6 +39,12 @@ class ResultParsingTests(unittest.TestCase):
     def test_mobile_result_odds_column_is_saved_only_when_complete(self) -> None:
         html = """
         <html><body>
+          <div class="RaceList_NameBox">
+            <div class="Race_Data">
+              <span class="WeatherData">天候：曇</span>
+              <span class="Item03">芝 稍重</span>
+            </div>
+          </div>
           <table>
             <thead><tr><th>着順</th><th>枠番</th><th>馬番</th><th>馬名</th><th>タイム</th><th>オッズ</th></tr></thead>
             <tbody>
@@ -60,6 +66,47 @@ class ResultParsingTests(unittest.TestCase):
                 {"horse_number": 2, "win_odds": 4.4},
             ],
         )
+        self.assertEqual(result["weather"], "曇")
+        self.assertEqual(result["going"], "稍重")
+        self.assertIsNotNone(result["fetched_at"])
+
+    def test_desktop_result_conditions_are_saved_from_result_page(self) -> None:
+        html = """
+        <html><body>
+          <div class="RaceData01">15:45発走 / 天候 : 晴 / 芝 : 良</div>
+          <table>
+            <thead><tr><th>着順</th><th>馬番</th><th>馬名</th><th>単勝オッズ</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>1</td><td>Winner</td><td>3.2</td></tr>
+              <tr><td>2</td><td>2</td><td>Runner-up</td><td>5.8</td></tr>
+            </tbody>
+          </table>
+          <table><tbody><tr><th>単勝</th><td>1</td><td>320円</td></tr></tbody></table>
+        </body></html>
+        """
+
+        result = parse_result(html)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["weather"], "晴")
+        self.assertEqual(result["going"], "良")
+        validate_complete_result(result, [{"horse_number": 1}, {"horse_number": 2}])
+
+    def test_missing_result_conditions_are_not_filled_from_prediction_data(self) -> None:
+        html = """
+        <html><body>
+          <table>
+            <thead><tr><th>着順</th><th>馬番</th><th>馬名</th><th>単勝オッズ</th></tr></thead>
+            <tbody><tr><td>1</td><td>1</td><td>Winner</td><td>3.2</td></tr></tbody>
+          </table>
+          <table><tbody><tr><th>単勝</th><td>1</td><td>320円</td></tr></tbody></table>
+        </body></html>
+        """
+
+        result = parse_result(html)
+
+        self.assertIsNone(result["weather"])
+        self.assertIsNone(result["going"])
 
     def test_special_finish_status_is_preserved_without_entering_finish_order(self) -> None:
         html = """
