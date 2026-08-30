@@ -122,6 +122,75 @@ class RenderTests(unittest.TestCase):
         self.assertFalse(is_created_this_week("2026-08-31T00:00:00+09:00", reference))
         self.assertFalse(is_created_this_week(None, reference))
 
+    def test_new_badge_only_marks_current_week_prediction_pages(self) -> None:
+        jst = timezone(timedelta(hours=9))
+        now = datetime.now(jst)
+        race_date = now.date().isoformat()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(ROOT / "templates", root / "templates")
+            race_dir = root / "data" / "races" / race_date
+            race_dir.mkdir(parents=True)
+
+            prediction_payload = make_payload(
+                predicted=True,
+                track="中山",
+                date=race_date,
+                name="今週予想レース",
+            )
+            result_payload = make_payload(
+                predicted=True,
+                track="東京",
+                date=race_date,
+                name="今週結果レース",
+            )
+            for payload in (prediction_payload, result_payload):
+                payload["meta"]["created_at"] = now.isoformat(timespec="seconds")
+            result_payload["result"] = {
+                "finish_order": [1, 2, 3],
+                "horses": [
+                    {"horse_number": 1, "finish_position": 1},
+                    {"horse_number": 2, "finish_position": 2},
+                    {"horse_number": 3, "finish_position": 3},
+                ],
+                "payouts": {"win": [{"horse_number": 1, "payout_per_100": 400}]},
+            }
+            result_payload["evaluation"] = {
+                "winner": {
+                    "horse_number": 1,
+                    "predicted_probability": 0.4,
+                    "predicted_rank": 1,
+                },
+                "metrics": {
+                    "top1_hit": True,
+                    "top3_hit": True,
+                    "top5_hit": True,
+                    "log_loss": 0.916291,
+                    "brier_score": 0.24,
+                },
+                "market_baseline": {"available": False},
+            }
+            (race_dir / "nakayama_11r.json").write_text(
+                json.dumps(prediction_payload, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            (race_dir / "tokyo_11r.json").write_text(
+                json.dumps(result_payload, ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+            output = render_site(
+                {"data_dir": "data", "public_dir": "public"},
+                "test-new-badge",
+                root=root,
+            )
+            index = (output / "index.html").read_text(encoding="utf-8")
+            prediction_row = index.split("今週予想レース", 1)[1].split("</tr>", 1)[0]
+            result_row = index.split("今週結果レース", 1)[1].split("</tr>", 1)[0]
+
+            self.assertIn("NEW!", prediction_row)
+            self.assertNotIn("NEW!", result_row)
+
     def test_prediction_method_descriptions_match_fixed_spec(self) -> None:
         self.assertEqual(
             PREDICTION_METHOD_DESCRIPTIONS,
@@ -391,11 +460,13 @@ class RenderTests(unittest.TestCase):
                 encoding="utf-8"
             )
             self.assertIn("予想済み", index)
+            self.assertIn("<h2>レース一覧</h2>", index)
             self.assertIn('<table class="index-table">', index)
             self.assertIn('<th class="nowrap">発走</th>', index)
             self.assertIn('<td class="nowrap">15:30</td>', index)
             self.assertIn('<th class="nowrap">予想</th>', index)
             self.assertIn('<th class="nowrap result-link-column">結果</th>', index)
+            self.assertNotIn(">状態</th>", index)
             self.assertIn(
                 '<a class="page-link" href="races/2026-01-01/nakayama_11r.html">開く</a>',
                 index,

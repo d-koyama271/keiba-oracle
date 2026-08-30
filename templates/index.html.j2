@@ -83,8 +83,7 @@
       overscroll-behavior-inline: contain;
       -webkit-overflow-scrolling: touch;
     }
-    .table-scroll-hint { display: none; }
-    .index-table { min-width: 700px; }
+    .index-table { table-layout: auto; }
     .index-table th,
     .index-table td { padding: 10px 6px; }
     .index-table tbody tr:nth-child(even) { background: #faf6ee; }
@@ -162,12 +161,10 @@
       th, td { padding: 8px 7px; }
       .index-table th,
       .index-table td { padding: 8px 6px; }
-      .table-scroll-hint {
-        display: block;
-        margin: 0 0 6px;
-        color: #6f766c;
-        font-size: 12px;
-        text-align: right;
+      .index-table th:not(:nth-child(4)),
+      .index-table td:not(:nth-child(4)) {
+        width: 1%;
+        white-space: nowrap;
       }
     }
   </style>
@@ -215,7 +212,7 @@
 {%- endmacro %}
   <main>
     <div class="panel">
-      <h1>中央競馬 AI予想レース一覧</h1>
+      <h1>中央競馬 AI予想</h1>
       <p class="small">ChatGPTが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。</p>
     </div>
 {% set method_summaries = evaluation_summary.get("methods", {}) if evaluation_summary else {} %}
@@ -228,7 +225,7 @@
 {{ performance_panel("総合AI予想の予測成績", prediction_method_descriptions.get("traditional", ""), traditional_overall, traditional_simulation) }}
 {{ performance_panel("統計重視予想の予測成績", prediction_method_descriptions.get("statistical", ""), statistical_overall, statistical_simulation) }}
     <div class="panel">
-      <p class="table-scroll-hint">表は横にスクロールできます</p>
+      <h2>レース一覧</h2>
       <div class="table-scroll">
       <table class="index-table">
         <thead>
@@ -237,7 +234,6 @@
             <th class="nowrap">発走</th>
             <th class="nowrap">開催場</th>
             <th>レース名</th>
-            <th class="nowrap">状態</th>
             <th class="nowrap">予想</th>
             <th class="nowrap result-link-column">結果</th>
           </tr>
@@ -249,13 +245,12 @@
             <td class="nowrap">{{ race.start_time or "-" }}</td>
             <td class="nowrap">{{ race.track }}</td>
             <td>{{ race.race_name|e }}{% if race.is_new %}<span class="new-badge">NEW!</span>{% endif %}</td>
-            <td class="nowrap"><span class="status {{ race.status_class }}">{{ race.status_label }}</span></td>
             <td class="nowrap"><a class="page-link" href="{{ race.prediction_href }}">開く</a></td>
             <td class="nowrap result-link-column">{% if race.result_href %}<a class="page-link" href="{{ race.result_href }}">開く</a>{% else %}-{% endif %}</td>
           </tr>
 {% else %}
           <tr>
-            <td colspan="7">公開済みレースはまだありません。</td>
+            <td colspan="6">公開済みレースはまだありません。</td>
           </tr>
 {% endfor %}
         </tbody>

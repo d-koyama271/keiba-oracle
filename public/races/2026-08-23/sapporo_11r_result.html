@@ -449,14 +449,28 @@
       color: #2f6b63;
       font-weight: 700;
     }
+    .result-comparison-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .hit-badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border: 1px solid #b8d1c0;
+      border-radius: 999px;
+      background: #e3f0e7;
+      color: #2f6b63;
+      font-size: 11px;
+      font-weight: 700;
+    }
     .comparison-up {
       color: #2f6b63;
-      font-weight: 700;
     }
     .comparison-neutral { color: #5f6870; }
     .comparison-down {
       color: #8a5148;
-      font-weight: 700;
     }
     .result-table .comparison-cell { white-space: nowrap; }
     [hidden] { display: none !important; }
@@ -553,7 +567,10 @@
       <div class="ai-method-panel result-method-content" id="result-traditional" role="tabpanel" data-ai-panel data-ai-method="traditional">
         
         <div class="panel result-panel">
-          <h3>総合AI予想と実結果の比較</h3>
+          <h3 class="result-comparison-title">
+            <span>総合AI予想と実結果の比較</span>
+            
+          </h3>
           <p class="table-scroll-hint">表は横にスクロールできます</p>
           <div class="table-scroll">
             <table class="result-table" data-sortable>
@@ -726,7 +743,7 @@
                 
                 <tr>
                   <td class="nowrap" data-sort-value="13">13</td>
-                  <td class="horse-name">ロジケープ</td>
+                  <td class="horse-name rank-prediction-top">ロジケープ</td>
                   <td class="nowrap" data-sort-value="0.205">20.5%</td>
                   <td class="nowrap rank-prediction-top" data-sort-value="1">1位</td>
                   <td class="nowrap" data-sort-value="6">6着</td>
@@ -737,7 +754,7 @@
                 
                 <tr>
                   <td class="nowrap" data-sort-value="14">14</td>
-                  <td class="horse-name">サウンドモリアーナ</td>
+                  <td class="horse-name rank-result-winner">サウンドモリアーナ</td>
                   <td class="nowrap" data-sort-value="0.1">10.0%</td>
                   <td class="nowrap" data-sort-value="4">4位</td>
                   <td class="nowrap rank-result-winner" data-sort-value="1">1着</td>
@@ -825,7 +842,10 @@
       <div class="ai-method-panel result-method-content" id="result-statistical" role="tabpanel" data-ai-panel data-ai-method="statistical" hidden>
         
         <div class="panel result-panel">
-          <h3>統計重視予想と実結果の比較</h3>
+          <h3 class="result-comparison-title">
+            <span>統計重視予想と実結果の比較</span>
+            
+          </h3>
           <p class="table-scroll-hint">表は横にスクロールできます</p>
           <div class="table-scroll">
             <table class="result-table" data-sortable>
@@ -998,7 +1018,7 @@
                 
                 <tr>
                   <td class="nowrap" data-sort-value="13">13</td>
-                  <td class="horse-name">ロジケープ</td>
+                  <td class="horse-name rank-prediction-top">ロジケープ</td>
                   <td class="nowrap" data-sort-value="0.18">18.0%</td>
                   <td class="nowrap rank-prediction-top" data-sort-value="1">1位</td>
                   <td class="nowrap" data-sort-value="6">6着</td>
@@ -1009,7 +1029,7 @@
                 
                 <tr>
                   <td class="nowrap" data-sort-value="14">14</td>
-                  <td class="horse-name">サウンドモリアーナ</td>
+                  <td class="horse-name rank-result-winner">サウンドモリアーナ</td>
                   <td class="nowrap" data-sort-value="0.15">15.0%</td>
                   <td class="nowrap" data-sort-value="3">3位</td>
                   <td class="nowrap rank-result-winner" data-sort-value="1">1着</td>

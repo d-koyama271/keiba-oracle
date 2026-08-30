@@ -449,14 +449,28 @@
       color: #2f6b63;
       font-weight: 700;
     }
+    .result-comparison-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .hit-badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border: 1px solid #b8d1c0;
+      border-radius: 999px;
+      background: #e3f0e7;
+      color: #2f6b63;
+      font-size: 11px;
+      font-weight: 700;
+    }
     .comparison-up {
       color: #2f6b63;
-      font-weight: 700;
     }
     .comparison-neutral { color: #5f6870; }
     .comparison-down {
       color: #8a5148;
-      font-weight: 700;
     }
     .result-table .comparison-cell { white-space: nowrap; }
     [hidden] { display: none !important; }
@@ -614,7 +628,7 @@
               <tr>
                 <td class="nowrap" data-sort-value="2">2</td>
 
-                <td class="horse-name">レッチュベルク</td>
+                <td class="horse-name rank-prediction-top">レッチュベルク</td>
                 <td class="nowrap">田辺</td>
                 <td class="nowrap" data-sort-value="3.5">3.5</td>
                 <td class="nowrap" data-sort-value="1">1</td>
@@ -867,7 +881,7 @@
               <tr>
                 <td class="nowrap" data-sort-value="9">9</td>
 
-                <td class="horse-name">スイートアリッサム</td>
+                <td class="horse-name rank-prediction-top">スイートアリッサム</td>
                 <td class="nowrap">杉原</td>
 
                 <td class="nowrap" data-sort-value="0.22">22.0%</td>

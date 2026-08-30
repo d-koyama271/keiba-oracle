@@ -527,6 +527,7 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
             if horse.get("prediction") and horse.get("win_odds") is not None
         ]
         custom_simulation_methods[method] = {"horses": custom_horses}
+        result_rows = build_result_rows(horse_rows)
         ai_views.append(
             {
                 "method": method,
@@ -534,7 +535,12 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
                 "description": PREDICTION_METHOD_DESCRIPTIONS[method],
                 "prediction": method_prediction,
                 "horse_rows": horse_rows,
-                "result_rows": build_result_rows(horse_rows),
+                "result_rows": result_rows,
+                "prediction_top_hit": any(
+                    row["prediction_rank"] == 1
+                    and row["finish_position_sort_value"] == 1
+                    for row in result_rows
+                ),
                 "evaluation": method_evaluation,
                 "value_pre": value_pre,
                 "value_post": value_simulation.get("post"),
@@ -676,7 +682,10 @@ def render_site(
                 "start_time": race.get("start_time"),
                 "track": race["track"],
                 "race_name": race["race_name"],
-                "is_new": is_created_this_week(persisted_created_at),
+                "is_new": (
+                    is_created_this_week(persisted_created_at)
+                    and context["status"] == "prediction_only"
+                ),
                 "status": context["status"],
                 "status_label": context["status_label"],
                 "status_class": context["status_class"],

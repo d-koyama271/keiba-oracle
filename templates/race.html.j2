@@ -462,14 +462,28 @@
       color: #2f6b63;
       font-weight: 700;
     }
+    .result-comparison-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .hit-badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border: 1px solid #b8d1c0;
+      border-radius: 999px;
+      background: #e3f0e7;
+      color: #2f6b63;
+      font-size: 11px;
+      font-weight: 700;
+    }
     .comparison-up {
       color: #2f6b63;
-      font-weight: 700;
     }
     .comparison-neutral { color: #5f6870; }
     .comparison-down {
       color: #8a5148;
-      font-weight: 700;
     }
     .result-table .comparison-cell { white-space: nowrap; }
     [hidden] { display: none !important; }
@@ -595,12 +609,12 @@
               <tr>
                 <td class="nowrap" data-sort-value="{{ horse.horse_number }}">{{ horse.horse_number }}</td>
 {% if view.method == "traditional" %}
-                <td class="horse-name">{{ horse.horse_name }}</td>
+                <td class="horse-name{% if horse.prediction_rank == 1 %} rank-prediction-top{% endif %}">{{ horse.horse_name }}</td>
                 <td class="nowrap">{{ horse.jockey or "-" }}</td>
                 <td class="nowrap" data-sort-value="{{ horse.win_odds if horse.win_odds is not none else '' }}">{{ horse.win_odds if horse.win_odds is not none else "-" }}</td>
                 <td class="nowrap" data-sort-value="{{ horse.popularity if horse.popularity is not none else '' }}">{{ horse.popularity if horse.popularity is not none else "-" }}</td>
 {% else %}
-                <td class="horse-name">{{ horse.horse_name }}</td>
+                <td class="horse-name{% if horse.prediction_rank == 1 %} rank-prediction-top{% endif %}">{{ horse.horse_name }}</td>
                 <td class="nowrap">{{ horse.jockey or "-" }}</td>
 {% endif %}
                 <td class="nowrap" data-sort-value="{{ horse.prediction.win_probability if horse.prediction else '' }}">{% if horse.prediction %}{{ "%.1f"|format(horse.prediction.win_probability * 100) }}%{% else %}-{% endif %}</td>
@@ -1344,7 +1358,10 @@
       <div class="ai-method-panel result-method-content" id="result-{{ view.method }}" role="tabpanel" data-ai-panel data-ai-method="{{ view.method }}"{% if not loop.first %} hidden{% endif %}>
         {% if result %}
         <div class="panel result-panel">
-          <h3>{{ view.label }}と実結果の比較</h3>
+          <h3 class="result-comparison-title">
+            <span>{{ view.label }}と実結果の比較</span>
+            {% if view.prediction_top_hit %}<span class="hit-badge">的中!</span>{% endif %}
+          </h3>
           <p class="table-scroll-hint">表は横にスクロールできます</p>
           <div class="table-scroll">
             <table class="result-table" data-sortable>
@@ -1353,7 +1370,7 @@
                 {% for item in result_rows %}
                 <tr>
                   <td class="nowrap" data-sort-value="{{ item.horse_number }}">{{ item.horse_number }}</td>
-                  <td class="horse-name">{{ item.horse_name }}</td>
+                  <td class="horse-name{% if item.prediction_rank_class %} {{ item.prediction_rank_class }}{% elif item.finish_rank_class %} {{ item.finish_rank_class }}{% endif %}">{{ item.horse_name }}</td>
                   <td class="nowrap" data-sort-value="{{ item.win_probability if item.win_probability is not none else '' }}">{{ "%.1f"|format(item.win_probability * 100) ~ "%" if item.win_probability is not none else "-" }}</td>
                   <td class="nowrap{% if item.prediction_rank_class %} {{ item.prediction_rank_class }}{% endif %}" data-sort-value="{{ item.prediction_rank if item.prediction_rank is not none else '' }}">{{ item.prediction_rank ~ "位" if item.prediction_rank is not none else "-" }}</td>
                   <td class="nowrap{% if item.finish_rank_class %} {{ item.finish_rank_class }}{% endif %}" data-sort-value="{{ item.finish_position_sort_value if item.finish_position_sort_value is not none else '' }}">{{ item.finish_position_label }}</td>

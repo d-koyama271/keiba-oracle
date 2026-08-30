@@ -821,6 +821,8 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
             [panel["data-ai-method"] for panel in result_panels],
             ["traditional", "statistical"],
         )
+        self.assertIsNotNone(result_panels[0].select_one(".hit-badge"))
+        self.assertIsNone(result_panels[1].select_one(".hit-badge"))
         self.assertIn("panel", result_section.get("class", []))
 
         embedded = json.loads(soup.select_one("#custom-simulator-data").string)
@@ -1249,8 +1251,21 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         )
         self.assertIsNone(rows[1][0].get("class"))
         self.assertIsNone(rows[2][0].get("class"))
+        self.assertIn("rank-prediction-top", rows[1][0].select("td")[1].get("class", []))
         self.assertIn("rank-prediction-top", rows[1][0].select("td")[3].get("class", []))
+        self.assertIn("rank-result-winner", rows[2][0].select("td")[1].get("class", []))
         self.assertIn("rank-result-winner", rows[2][0].select("td")[4].get("class", []))
+        comparison_classes = {
+            horse_number: rows[horse_number][0].select("td")[5].select_one("span")
+            for horse_number in rows
+        }
+        self.assertIn("comparison-down", comparison_classes[1].get("class", []))
+        self.assertIn("comparison-up", comparison_classes[2].get("class", []))
+        self.assertIn("comparison-neutral", comparison_classes[3].get("class", []))
+        self.assertTrue(
+            all(item.find(["strong", "b"]) is None for item in comparison_classes.values())
+        )
+        self.assertIsNone(soup.select_one(".hit-badge"))
         self.assertIn('class="table-scroll"', str(table.parent))
 
     def test_prediction_hit_uses_green_only_in_result_table(self) -> None:
@@ -1266,9 +1281,12 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
 
         self.assertIsNone(prediction_row.get("class"))
         self.assertIsNone(result_row.get("class"))
+        self.assertIn("rank-prediction-top", prediction_row.select("td")[1].get("class", []))
         self.assertIn("rank-prediction-top", prediction_row.select("td")[6].get("class", []))
+        self.assertIn("rank-prediction-hit", result_row.select("td")[1].get("class", []))
         self.assertIn("rank-prediction-hit", result_row.select("td")[3].get("class", []))
         self.assertIn("rank-prediction-hit", result_row.select("td")[4].get("class", []))
+        self.assertIsNotNone(result_soup.select_one(".hit-badge"))
 
     def test_result_highlight_ignores_simulation_selections(self) -> None:
         payload = make_payload(
