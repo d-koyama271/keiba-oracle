@@ -18,10 +18,6 @@
       --line: #d5ccbe;
       --accent: #32594d;
       --muted: #6f766c;
-      --result-bg: #eaf0f5;
-      --result-panel: #f7fafc;
-      --result-line: #9eb2c3;
-      --result-accent: #315b78;
       --status-prediction-bg: #dde9e4;
       --status-prediction-color: #32594d;
       --status-prediction-border: #b8cec5;
@@ -100,9 +96,6 @@
       color: var(--status-pending-color);
       border-color: var(--status-pending-border);
     }
-    .ev-above-threshold {
-      background: #f6f3f8;
-    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -117,6 +110,13 @@
     th {
       color: var(--muted);
       font-weight: 700;
+    }
+    .prediction-table tbody tr:nth-child(even),
+    .result-table tbody tr:nth-child(even) {
+      background: #faf6ee;
+    }
+    table tbody tr.ev-above-threshold {
+      background: #f6f3f8;
     }
     .sort-button {
       display: inline-flex;
@@ -135,10 +135,6 @@
     .sort-button:focus-visible {
       color: var(--accent);
     }
-    .result-table .sort-button:hover,
-    .result-table .sort-button:focus-visible {
-      color: var(--result-accent);
-    }
     .sort-button:focus-visible {
       outline: 2px solid #9bb8ae;
       outline-offset: 2px;
@@ -147,7 +143,7 @@
       font-size: 11px;
       opacity: 0.75;
     }
-    .selected-row { background: #fff6dc; }
+    table tbody tr.selected-row { background: #fff6dc; }
     .small {
       color: var(--muted);
       font-size: 13px;
@@ -350,7 +346,8 @@
       color: var(--accent);
     }
     .prediction-section.has-ai-tabs .prediction-method-tabs,
-    .simulation-section.has-ai-tabs .simulation-method-tabs {
+    .simulation-section.has-ai-tabs .simulation-method-tabs,
+    .result-section.has-ai-tabs .result-method-tabs {
       position: relative;
       z-index: 2;
       align-items: flex-end;
@@ -358,20 +355,23 @@
       border-bottom: 0;
     }
     .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab,
-    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab {
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab,
+    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab {
       position: relative;
       margin-bottom: 0;
       border-color: var(--line);
       background: #f4f2ed;
     }
     .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab[aria-selected="true"],
-    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab[aria-selected="true"] {
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab[aria-selected="true"],
+    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab[aria-selected="true"] {
       z-index: 3;
       border-bottom-color: var(--panel);
       background: var(--panel);
     }
     .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab[aria-selected="true"]::after,
-    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab[aria-selected="true"]::after {
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab[aria-selected="true"]::after,
+    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab[aria-selected="true"]::after {
       content: "";
       position: absolute;
       right: 0;
@@ -381,7 +381,8 @@
       background: var(--panel);
     }
     .prediction-section.has-ai-tabs .prediction-method-content,
-    .simulation-section.has-ai-tabs .simulation-method-content {
+    .simulation-section.has-ai-tabs .simulation-method-content,
+    .result-section.has-ai-tabs .result-method-content {
       position: relative;
       z-index: 1;
       margin-top: 0;
@@ -401,48 +402,6 @@
     }
     #custom-simulator {
       margin-top: 30px;
-    }
-    .result-section .ai-method-tab[aria-selected="true"] {
-      border-bottom-color: var(--result-bg);
-      background: var(--result-bg);
-      color: var(--result-accent);
-    }
-    .result-section.has-ai-tabs .result-method-tabs {
-      position: relative;
-      z-index: 2;
-      align-items: flex-end;
-      margin-bottom: -1px;
-      border-bottom: 0;
-    }
-    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab {
-      position: relative;
-      margin-bottom: 0;
-      border-color: var(--result-line);
-      background: var(--result-bg);
-    }
-    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab[aria-selected="true"] {
-      z-index: 3;
-      border-bottom-color: var(--result-panel);
-      background: var(--result-panel);
-      color: var(--result-accent);
-    }
-    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab[aria-selected="true"]::after {
-      content: "";
-      position: absolute;
-      right: 0;
-      bottom: -2px;
-      left: 0;
-      height: 3px;
-      background: var(--result-panel);
-    }
-    .result-section.has-ai-tabs .result-method-content {
-      position: relative;
-      z-index: 1;
-      margin-top: 0;
-      padding: 20px;
-      border: 1px solid var(--result-line);
-      border-radius: 0 14px 14px 14px;
-      background: var(--result-panel);
     }
     .result-method-content > .result-panel { margin-bottom: 0; }
     .result-method-content > .result-panel + .result-panel { margin-top: 18px; }
@@ -472,32 +431,14 @@
     }
     .result-section {
       margin-top: 40px;
-      padding: 24px 18px 20px;
-      border-top: 5px solid var(--result-accent);
-      border-radius: 14px;
-      background: var(--result-bg);
     }
     .result-section-title {
-      color: var(--result-accent);
       margin-bottom: 18px;
     }
-    .result-panel {
-      background: var(--result-panel);
-      border-color: var(--result-line);
-      box-shadow: 0 10px 26px rgba(49, 91, 120, 0.08);
-    }
-    .result-panel h2,
-    .result-panel h3,
-    .result-panel h4 {
-      color: var(--result-accent);
-    }
     .result-section .result-panel:last-child { margin-bottom: 0; }
-    .prediction-top { background: #f1ecf7; }
-    .simulation-selected { background: #fff6dc; }
-    .result-winner { background: #e4eef3; }
-    .prediction-hit { background: #e3f0e7; }
+    table tbody tr.simulation-selected { background: #fff6dc; }
     .rank-prediction-top {
-      color: #604879;
+      color: #8A5A00;
       font-weight: 700;
     }
     .rank-result-winner {
@@ -534,7 +475,6 @@
       }
       .result-section {
         margin-top: 28px;
-        padding: 18px 10px 12px;
       }
       .simulation-panel h4,
       .result-panel h4 {
@@ -546,10 +486,10 @@
         margin-bottom: 8px;
       }
       .prediction-section.has-ai-tabs .prediction-method-content,
-      .simulation-section.has-ai-tabs .simulation-method-content {
+      .simulation-section.has-ai-tabs .simulation-method-content,
+      .result-section.has-ai-tabs .result-method-content {
         padding: 12px;
       }
-      .result-section.has-ai-tabs .result-method-content { padding: 12px; }
       .simulation-method-content > .simulation-panel + .simulation-panel {
         margin-top: 20px;
       }
@@ -609,7 +549,7 @@
       
       <div class="ai-method-panel prediction-method-content" id="prediction-traditional" role="tabpanel" data-ai-panel data-ai-method="traditional">
         
-        <p class="small prediction-description">AIが各馬の過去成績、コース・距離適性、斤量、脚質、市場オッズなどから1着確率を推定しています。</p>
+        <p class="small prediction-description">過去成績や今回のレース条件、市場評価などを総合して1着確率を推定しています。</p>
         
         <p class="table-scroll-hint">表は横にスクロールできます</p>
         <div class="table-scroll">
@@ -710,7 +650,7 @@
                 <td class="reason-cell">新潟勝ちとG1級の実績で地力は高いが、273日ぶりの実戦と59kg、距離短縮が勝ち切りを難しくする。</td>
               </tr>
               
-              <tr class="prediction-top">
+              <tr>
                 <td class="nowrap" data-sort-value="5">5</td>
 
                 <td class="horse-name">ゾロアストロ</td>
@@ -719,7 +659,7 @@
                 <td class="nowrap" data-sort-value="1">1</td>
 
                 <td class="nowrap" data-sort-value="0.23">23.0%</td>
-                <td class="nowrap" data-sort-value="1">1位</td>
+                <td class="nowrap rank-prediction-top" data-sort-value="1">1位</td>
                 <td class="reason-cell">55kgの恩恵、重賞勝ち、芝2000m適性が魅力。皐月賞大敗後の休養明けでも相手関係と条件は好転する。</td>
               </tr>
               
@@ -810,7 +750,7 @@
       
       <div class="ai-method-panel prediction-method-content" id="prediction-statistical" role="tabpanel" data-ai-panel data-ai-method="statistical" hidden>
         
-        <p class="small prediction-description">オッズ等の市場由来の情報を使用せず、レース条件、過去成績、条件適性、近況、相手関係からAIが1着確率を推定しています。</p>
+        <p class="small prediction-description">市場情報を使用せず、過去成績や今回のレース条件などの客観データから1着確率を推定しています。</p>
         
         <p class="table-scroll-hint">表は横にスクロールできます</p>
         <div class="table-scroll">
@@ -834,22 +774,12 @@
   </button>
 </th>
                 <th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="ascending">
-    斤量 <span class="sort-indicator" aria-hidden="true">↕</span>
-  </button>
-</th>
-                <th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="4" data-sort-type="text" data-sort-first="ascending">
-    脚質 <span class="sort-indicator" aria-hidden="true">↕</span>
-  </button>
-</th>
-                <th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="descending">
+  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="descending">
     1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th>
                 <th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="ascending">
+  <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
     予想順位 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th>
@@ -864,8 +794,6 @@
 
                 <td class="horse-name">ボーンディスウェイ</td>
                 <td class="nowrap">丸山</td>
-                <td class="nowrap" data-sort-value="57.0">57.0</td>
-                <td class="nowrap">差し型</td>
 
                 <td class="nowrap" data-sort-value="0.07">7.0%</td>
                 <td class="nowrap" data-sort-value="6">6位</td>
@@ -877,8 +805,6 @@
 
                 <td class="horse-name">サヴォーナ</td>
                 <td class="nowrap">池添</td>
-                <td class="nowrap" data-sort-value="57.0">57.0</td>
-                <td class="nowrap">先行型</td>
 
                 <td class="nowrap" data-sort-value="0.11">11.0%</td>
                 <td class="nowrap" data-sort-value="4">4位</td>
@@ -890,8 +816,6 @@
 
                 <td class="horse-name">ロデオドライブ</td>
                 <td class="nowrap">ルメール</td>
-                <td class="nowrap" data-sort-value="57.0">57.0</td>
-                <td class="nowrap">差し型</td>
 
                 <td class="nowrap" data-sort-value="0.13">13.0%</td>
                 <td class="nowrap" data-sort-value="3">3位</td>
@@ -903,8 +827,6 @@
 
                 <td class="horse-name">ドゥレッツァ</td>
                 <td class="nowrap">田辺</td>
-                <td class="nowrap" data-sort-value="59.0">59.0</td>
-                <td class="nowrap">差し型</td>
 
                 <td class="nowrap" data-sort-value="0.14">14.0%</td>
                 <td class="nowrap" data-sort-value="2">2位</td>
@@ -916,8 +838,6 @@
 
                 <td class="horse-name">ゾロアストロ</td>
                 <td class="nowrap">岩田望</td>
-                <td class="nowrap" data-sort-value="55.0">55.0</td>
-                <td class="nowrap">追込型</td>
 
                 <td class="nowrap" data-sort-value="0.1">10.0%</td>
                 <td class="nowrap" data-sort-value="5">5位</td>
@@ -929,8 +849,6 @@
 
                 <td class="horse-name">チェルヴィニア</td>
                 <td class="nowrap">津村</td>
-                <td class="nowrap" data-sort-value="56.0">56.0</td>
-                <td class="nowrap">差し型</td>
 
                 <td class="nowrap" data-sort-value="0.06">6.0%</td>
                 <td class="nowrap" data-sort-value="7">7位</td>
@@ -942,24 +860,20 @@
 
                 <td class="horse-name">ジュンブロッサム</td>
                 <td class="nowrap">杉原</td>
-                <td class="nowrap" data-sort-value="58.0">58.0</td>
-                <td class="nowrap">追込型</td>
 
                 <td class="nowrap" data-sort-value="0.04">4.0%</td>
                 <td class="nowrap" data-sort-value="10">10位</td>
                 <td class="reason-cell">新潟は5戦で3着内4回とコース実績は高い。芝1800～2200mでも安定感はあるが、近3走が9、9、11着で、58kgと追込脚質も課題。</td>
               </tr>
               
-              <tr class="prediction-top">
+              <tr>
                 <td class="nowrap" data-sort-value="8">8</td>
 
                 <td class="horse-name">ダノンシーマ</td>
                 <td class="nowrap">川田</td>
-                <td class="nowrap" data-sort-value="57.0">57.0</td>
-                <td class="nowrap">差し型</td>
 
                 <td class="nowrap" data-sort-value="0.2">20.0%</td>
-                <td class="nowrap" data-sort-value="1">1位</td>
+                <td class="nowrap rank-prediction-top" data-sort-value="1">1位</td>
                 <td class="reason-cell">芝10戦で全て3着内、2000mを含む1800～2200mは4戦2勝・3着内4回。近3走も3、3、1着で、今回の相手関係では総合力が最上位。</td>
               </tr>
               
@@ -968,8 +882,6 @@
 
                 <td class="horse-name">アーバンシック</td>
                 <td class="nowrap">三浦</td>
-                <td class="nowrap" data-sort-value="59.0">59.0</td>
-                <td class="nowrap">追込型</td>
 
                 <td class="nowrap" data-sort-value="0.05">5.0%</td>
                 <td class="nowrap" data-sort-value="9">9位</td>
@@ -981,8 +893,6 @@
 
                 <td class="horse-name">バレエマスター</td>
                 <td class="nowrap">菊沢</td>
-                <td class="nowrap" data-sort-value="57.0">57.0</td>
-                <td class="nowrap">追込型</td>
 
                 <td class="nowrap" data-sort-value="0.06">6.0%</td>
                 <td class="nowrap" data-sort-value="8">8位</td>
@@ -994,8 +904,6 @@
 
                 <td class="horse-name">ステレンボッシュ</td>
                 <td class="nowrap">戸崎圭</td>
-                <td class="nowrap" data-sort-value="56.0">56.0</td>
-                <td class="nowrap">差し型</td>
 
                 <td class="nowrap" data-sort-value="0.04">4.0%</td>
                 <td class="nowrap" data-sort-value="11">11位</td>

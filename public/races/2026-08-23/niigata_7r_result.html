@@ -18,10 +18,6 @@
       --line: #d5ccbe;
       --accent: #32594d;
       --muted: #6f766c;
-      --result-bg: #eaf0f5;
-      --result-panel: #f7fafc;
-      --result-line: #9eb2c3;
-      --result-accent: #315b78;
       --status-prediction-bg: #dde9e4;
       --status-prediction-color: #32594d;
       --status-prediction-border: #b8cec5;
@@ -100,9 +96,6 @@
       color: var(--status-pending-color);
       border-color: var(--status-pending-border);
     }
-    .ev-above-threshold {
-      background: #f6f3f8;
-    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -117,6 +110,13 @@
     th {
       color: var(--muted);
       font-weight: 700;
+    }
+    .prediction-table tbody tr:nth-child(even),
+    .result-table tbody tr:nth-child(even) {
+      background: #faf6ee;
+    }
+    table tbody tr.ev-above-threshold {
+      background: #f6f3f8;
     }
     .sort-button {
       display: inline-flex;
@@ -135,10 +135,6 @@
     .sort-button:focus-visible {
       color: var(--accent);
     }
-    .result-table .sort-button:hover,
-    .result-table .sort-button:focus-visible {
-      color: var(--result-accent);
-    }
     .sort-button:focus-visible {
       outline: 2px solid #9bb8ae;
       outline-offset: 2px;
@@ -147,7 +143,7 @@
       font-size: 11px;
       opacity: 0.75;
     }
-    .selected-row { background: #fff6dc; }
+    table tbody tr.selected-row { background: #fff6dc; }
     .small {
       color: var(--muted);
       font-size: 13px;
@@ -350,7 +346,8 @@
       color: var(--accent);
     }
     .prediction-section.has-ai-tabs .prediction-method-tabs,
-    .simulation-section.has-ai-tabs .simulation-method-tabs {
+    .simulation-section.has-ai-tabs .simulation-method-tabs,
+    .result-section.has-ai-tabs .result-method-tabs {
       position: relative;
       z-index: 2;
       align-items: flex-end;
@@ -358,20 +355,23 @@
       border-bottom: 0;
     }
     .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab,
-    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab {
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab,
+    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab {
       position: relative;
       margin-bottom: 0;
       border-color: var(--line);
       background: #f4f2ed;
     }
     .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab[aria-selected="true"],
-    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab[aria-selected="true"] {
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab[aria-selected="true"],
+    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab[aria-selected="true"] {
       z-index: 3;
       border-bottom-color: var(--panel);
       background: var(--panel);
     }
     .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab[aria-selected="true"]::after,
-    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab[aria-selected="true"]::after {
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab[aria-selected="true"]::after,
+    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab[aria-selected="true"]::after {
       content: "";
       position: absolute;
       right: 0;
@@ -381,7 +381,8 @@
       background: var(--panel);
     }
     .prediction-section.has-ai-tabs .prediction-method-content,
-    .simulation-section.has-ai-tabs .simulation-method-content {
+    .simulation-section.has-ai-tabs .simulation-method-content,
+    .result-section.has-ai-tabs .result-method-content {
       position: relative;
       z-index: 1;
       margin-top: 0;
@@ -401,48 +402,6 @@
     }
     #custom-simulator {
       margin-top: 30px;
-    }
-    .result-section .ai-method-tab[aria-selected="true"] {
-      border-bottom-color: var(--result-bg);
-      background: var(--result-bg);
-      color: var(--result-accent);
-    }
-    .result-section.has-ai-tabs .result-method-tabs {
-      position: relative;
-      z-index: 2;
-      align-items: flex-end;
-      margin-bottom: -1px;
-      border-bottom: 0;
-    }
-    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab {
-      position: relative;
-      margin-bottom: 0;
-      border-color: var(--result-line);
-      background: var(--result-bg);
-    }
-    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab[aria-selected="true"] {
-      z-index: 3;
-      border-bottom-color: var(--result-panel);
-      background: var(--result-panel);
-      color: var(--result-accent);
-    }
-    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab[aria-selected="true"]::after {
-      content: "";
-      position: absolute;
-      right: 0;
-      bottom: -2px;
-      left: 0;
-      height: 3px;
-      background: var(--result-panel);
-    }
-    .result-section.has-ai-tabs .result-method-content {
-      position: relative;
-      z-index: 1;
-      margin-top: 0;
-      padding: 20px;
-      border: 1px solid var(--result-line);
-      border-radius: 0 14px 14px 14px;
-      background: var(--result-panel);
     }
     .result-method-content > .result-panel { margin-bottom: 0; }
     .result-method-content > .result-panel + .result-panel { margin-top: 18px; }
@@ -472,32 +431,14 @@
     }
     .result-section {
       margin-top: 40px;
-      padding: 24px 18px 20px;
-      border-top: 5px solid var(--result-accent);
-      border-radius: 14px;
-      background: var(--result-bg);
     }
     .result-section-title {
-      color: var(--result-accent);
       margin-bottom: 18px;
     }
-    .result-panel {
-      background: var(--result-panel);
-      border-color: var(--result-line);
-      box-shadow: 0 10px 26px rgba(49, 91, 120, 0.08);
-    }
-    .result-panel h2,
-    .result-panel h3,
-    .result-panel h4 {
-      color: var(--result-accent);
-    }
     .result-section .result-panel:last-child { margin-bottom: 0; }
-    .prediction-top { background: #f1ecf7; }
-    .simulation-selected { background: #fff6dc; }
-    .result-winner { background: #e4eef3; }
-    .prediction-hit { background: #e3f0e7; }
+    table tbody tr.simulation-selected { background: #fff6dc; }
     .rank-prediction-top {
-      color: #604879;
+      color: #8A5A00;
       font-weight: 700;
     }
     .rank-result-winner {
@@ -534,7 +475,6 @@
       }
       .result-section {
         margin-top: 28px;
-        padding: 18px 10px 12px;
       }
       .simulation-panel h4,
       .result-panel h4 {
@@ -546,10 +486,10 @@
         margin-bottom: 8px;
       }
       .prediction-section.has-ai-tabs .prediction-method-content,
-      .simulation-section.has-ai-tabs .simulation-method-content {
+      .simulation-section.has-ai-tabs .simulation-method-content,
+      .result-section.has-ai-tabs .result-method-content {
         padding: 12px;
       }
-      .result-section.has-ai-tabs .result-method-content { padding: 12px; }
       .simulation-method-content > .simulation-panel + .simulation-panel {
         margin-top: 20px;
       }
@@ -594,7 +534,7 @@
     
 
     
-    <section class="result-section has-ai-tabs">
+    <section class="panel result-section has-ai-tabs">
       <h2 class="result-section-title">レース結果</h2>
       
       <div class="ai-method-tabs result-method-tabs" role="tablist" aria-label="結果を比較するAI予想方式">
@@ -626,12 +566,12 @@
     馬名 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="number" data-sort-first="ascending">
-    予測順位 <span class="sort-indicator" aria-hidden="true">↕</span>
+  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="number" data-sort-first="descending">
+    1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="descending">
-    1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
+  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="ascending">
+    予測順位 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
@@ -655,19 +595,19 @@
                 <tr>
                   <td class="nowrap" data-sort-value="1">1</td>
                   <td class="horse-name">シャンデヴァーグ</td>
-                  <td class="nowrap" data-sort-value="2">2位</td>
                   <td class="nowrap" data-sort-value="0.21">21.0%</td>
+                  <td class="nowrap" data-sort-value="2">2位</td>
                   <td class="nowrap" data-sort-value="5">5着</td>
                   <td class="comparison-cell nowrap" data-sort-value="3"><span class="comparison-down">3着下</span></td>
                   <td class="nowrap" data-sort-value="4.3">4.3</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
-                <tr class="prediction-hit">
+                <tr>
                   <td class="nowrap" data-sort-value="2">2</td>
                   <td class="horse-name">レッチュベルク</td>
-                  <td class="nowrap rank-prediction-hit" data-sort-value="1">1位</td>
                   <td class="nowrap" data-sort-value="0.23">23.0%</td>
+                  <td class="nowrap rank-prediction-hit" data-sort-value="1">1位</td>
                   <td class="nowrap rank-prediction-hit" data-sort-value="1">1着</td>
                   <td class="comparison-cell nowrap" data-sort-value="0"><span class="comparison-neutral">差なし</span></td>
                   <td class="nowrap" data-sort-value="2.8">2.8</td>
@@ -677,8 +617,8 @@
                 <tr>
                   <td class="nowrap" data-sort-value="3">3</td>
                   <td class="horse-name">トップチェッカー</td>
-                  <td class="nowrap" data-sort-value="6">6位</td>
                   <td class="nowrap" data-sort-value="0.06">6.0%</td>
+                  <td class="nowrap" data-sort-value="6">6位</td>
                   <td class="nowrap" data-sort-value="3">3着</td>
                   <td class="comparison-cell nowrap" data-sort-value="-3"><span class="comparison-up">3着上</span></td>
                   <td class="nowrap" data-sort-value="8.2">8.2</td>
@@ -688,8 +628,8 @@
                 <tr>
                   <td class="nowrap" data-sort-value="4">4</td>
                   <td class="horse-name">アイデアルカット</td>
-                  <td class="nowrap" data-sort-value="8">8位</td>
                   <td class="nowrap" data-sort-value="0.025">2.5%</td>
+                  <td class="nowrap" data-sort-value="8">8位</td>
                   <td class="nowrap" data-sort-value="8">8着</td>
                   <td class="comparison-cell nowrap" data-sort-value="0"><span class="comparison-neutral">差なし</span></td>
                   <td class="nowrap" data-sort-value="110.6">110.6</td>
@@ -699,8 +639,8 @@
                 <tr>
                   <td class="nowrap" data-sort-value="5">5</td>
                   <td class="horse-name">エレスレイプニル</td>
-                  <td class="nowrap" data-sort-value="10">10位</td>
                   <td class="nowrap" data-sort-value="0.015">1.5%</td>
+                  <td class="nowrap" data-sort-value="10">10位</td>
                   <td class="nowrap" data-sort-value="7">7着</td>
                   <td class="comparison-cell nowrap" data-sort-value="-3"><span class="comparison-up">3着上</span></td>
                   <td class="nowrap" data-sort-value="113.4">113.4</td>
@@ -710,8 +650,8 @@
                 <tr>
                   <td class="nowrap" data-sort-value="6">6</td>
                   <td class="horse-name">マインドフルネス</td>
-                  <td class="nowrap" data-sort-value="7">7位</td>
                   <td class="nowrap" data-sort-value="0.04">4.0%</td>
+                  <td class="nowrap" data-sort-value="7">7位</td>
                   <td class="nowrap" data-sort-value="6">6着</td>
                   <td class="comparison-cell nowrap" data-sort-value="-1"><span class="comparison-up">1着上</span></td>
                   <td class="nowrap" data-sort-value="40.3">40.3</td>
@@ -721,8 +661,8 @@
                 <tr>
                   <td class="nowrap" data-sort-value="7">7</td>
                   <td class="horse-name">トウシンマジック</td>
-                  <td class="nowrap" data-sort-value="4">4位</td>
                   <td class="nowrap" data-sort-value="0.14">14.0%</td>
+                  <td class="nowrap" data-sort-value="4">4位</td>
                   <td class="nowrap" data-sort-value="2">2着</td>
                   <td class="comparison-cell nowrap" data-sort-value="-2"><span class="comparison-up">2着上</span></td>
                   <td class="nowrap" data-sort-value="4.0">4.0</td>
@@ -732,8 +672,8 @@
                 <tr>
                   <td class="nowrap" data-sort-value="8">8</td>
                   <td class="horse-name">マイホームパパ</td>
-                  <td class="nowrap" data-sort-value="9">9位</td>
                   <td class="nowrap" data-sort-value="0.02">2.0%</td>
+                  <td class="nowrap" data-sort-value="9">9位</td>
                   <td class="nowrap" data-sort-value="10">10着</td>
                   <td class="comparison-cell nowrap" data-sort-value="1"><span class="comparison-down">1着下</span></td>
                   <td class="nowrap" data-sort-value="185.0">185.0</td>
@@ -743,8 +683,8 @@
                 <tr>
                   <td class="nowrap" data-sort-value="9">9</td>
                   <td class="horse-name">スイートアリッサム</td>
-                  <td class="nowrap" data-sort-value="5">5位</td>
                   <td class="nowrap" data-sort-value="0.09">9.0%</td>
+                  <td class="nowrap" data-sort-value="5">5位</td>
                   <td class="nowrap" data-sort-value="4">4着</td>
                   <td class="comparison-cell nowrap" data-sort-value="-1"><span class="comparison-up">1着上</span></td>
                   <td class="nowrap" data-sort-value="19.8">19.8</td>
@@ -754,8 +694,8 @@
                 <tr>
                   <td class="nowrap" data-sort-value="10">10</td>
                   <td class="horse-name">インカルナータ</td>
-                  <td class="nowrap" data-sort-value="3">3位</td>
                   <td class="nowrap" data-sort-value="0.17">17.0%</td>
+                  <td class="nowrap" data-sort-value="3">3位</td>
                   <td class="nowrap" data-sort-value="9">9着</td>
                   <td class="comparison-cell nowrap" data-sort-value="6"><span class="comparison-down">6着下</span></td>
                   <td class="nowrap" data-sort-value="5.0">5.0</td>
@@ -832,12 +772,12 @@
     馬名 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="number" data-sort-first="ascending">
-    予測順位 <span class="sort-indicator" aria-hidden="true">↕</span>
+  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="number" data-sort-first="descending">
+    1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="descending">
-    1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
+  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="ascending">
+    予測順位 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
@@ -861,19 +801,19 @@
                 <tr>
                   <td class="nowrap" data-sort-value="1">1</td>
                   <td class="horse-name">シャンデヴァーグ</td>
-                  <td class="nowrap" data-sort-value="3">3位</td>
                   <td class="nowrap" data-sort-value="0.11">11.0%</td>
+                  <td class="nowrap" data-sort-value="3">3位</td>
                   <td class="nowrap" data-sort-value="5">5着</td>
                   <td class="comparison-cell nowrap" data-sort-value="2"><span class="comparison-down">2着下</span></td>
                   <td class="nowrap" data-sort-value="4.3">4.3</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
-                <tr class="result-winner">
+                <tr>
                   <td class="nowrap" data-sort-value="2">2</td>
                   <td class="horse-name">レッチュベルク</td>
-                  <td class="nowrap" data-sort-value="4">4位</td>
                   <td class="nowrap" data-sort-value="0.11">11.0%</td>
+                  <td class="nowrap" data-sort-value="4">4位</td>
                   <td class="nowrap rank-result-winner" data-sort-value="1">1着</td>
                   <td class="comparison-cell nowrap" data-sort-value="-3"><span class="comparison-up">3着上</span></td>
                   <td class="nowrap" data-sort-value="2.8">2.8</td>
@@ -883,8 +823,8 @@
                 <tr>
                   <td class="nowrap" data-sort-value="3">3</td>
                   <td class="horse-name">トップチェッカー</td>
-                  <td class="nowrap" data-sort-value="5">5位</td>
                   <td class="nowrap" data-sort-value="0.1">10.0%</td>
+                  <td class="nowrap" data-sort-value="5">5位</td>
                   <td class="nowrap" data-sort-value="3">3着</td>
                   <td class="comparison-cell nowrap" data-sort-value="-2"><span class="comparison-up">2着上</span></td>
                   <td class="nowrap" data-sort-value="8.2">8.2</td>
@@ -894,8 +834,8 @@
                 <tr>
                   <td class="nowrap" data-sort-value="4">4</td>
                   <td class="horse-name">アイデアルカット</td>
-                  <td class="nowrap" data-sort-value="6">6位</td>
                   <td class="nowrap" data-sort-value="0.1">10.0%</td>
+                  <td class="nowrap" data-sort-value="6">6位</td>
                   <td class="nowrap" data-sort-value="8">8着</td>
                   <td class="comparison-cell nowrap" data-sort-value="2"><span class="comparison-down">2着下</span></td>
                   <td class="nowrap" data-sort-value="110.6">110.6</td>
@@ -905,8 +845,8 @@
                 <tr>
                   <td class="nowrap" data-sort-value="5">5</td>
                   <td class="horse-name">エレスレイプニル</td>
-                  <td class="nowrap" data-sort-value="10">10位</td>
                   <td class="nowrap" data-sort-value="0.02">2.0%</td>
+                  <td class="nowrap" data-sort-value="10">10位</td>
                   <td class="nowrap" data-sort-value="7">7着</td>
                   <td class="comparison-cell nowrap" data-sort-value="-3"><span class="comparison-up">3着上</span></td>
                   <td class="nowrap" data-sort-value="113.4">113.4</td>
@@ -916,8 +856,8 @@
                 <tr>
                   <td class="nowrap" data-sort-value="6">6</td>
                   <td class="horse-name">マインドフルネス</td>
-                  <td class="nowrap" data-sort-value="2">2位</td>
                   <td class="nowrap" data-sort-value="0.13">13.0%</td>
+                  <td class="nowrap" data-sort-value="2">2位</td>
                   <td class="nowrap" data-sort-value="6">6着</td>
                   <td class="comparison-cell nowrap" data-sort-value="4"><span class="comparison-down">4着下</span></td>
                   <td class="nowrap" data-sort-value="40.3">40.3</td>
@@ -927,8 +867,8 @@
                 <tr>
                   <td class="nowrap" data-sort-value="7">7</td>
                   <td class="horse-name">トウシンマジック</td>
-                  <td class="nowrap" data-sort-value="7">7位</td>
                   <td class="nowrap" data-sort-value="0.08">8.0%</td>
+                  <td class="nowrap" data-sort-value="7">7位</td>
                   <td class="nowrap" data-sort-value="2">2着</td>
                   <td class="comparison-cell nowrap" data-sort-value="-5"><span class="comparison-up">5着上</span></td>
                   <td class="nowrap" data-sort-value="4.0">4.0</td>
@@ -938,19 +878,19 @@
                 <tr>
                   <td class="nowrap" data-sort-value="8">8</td>
                   <td class="horse-name">マイホームパパ</td>
-                  <td class="nowrap" data-sort-value="9">9位</td>
                   <td class="nowrap" data-sort-value="0.06">6.0%</td>
+                  <td class="nowrap" data-sort-value="9">9位</td>
                   <td class="nowrap" data-sort-value="10">10着</td>
                   <td class="comparison-cell nowrap" data-sort-value="1"><span class="comparison-down">1着下</span></td>
                   <td class="nowrap" data-sort-value="185.0">185.0</td>
                   <td class="nowrap" data-sort-value="">-</td>
                 </tr>
                 
-                <tr class="prediction-top">
+                <tr>
                   <td class="nowrap" data-sort-value="9">9</td>
                   <td class="horse-name">スイートアリッサム</td>
-                  <td class="nowrap rank-prediction-top" data-sort-value="1">1位</td>
                   <td class="nowrap" data-sort-value="0.22">22.0%</td>
+                  <td class="nowrap rank-prediction-top" data-sort-value="1">1位</td>
                   <td class="nowrap" data-sort-value="4">4着</td>
                   <td class="comparison-cell nowrap" data-sort-value="3"><span class="comparison-down">3着下</span></td>
                   <td class="nowrap" data-sort-value="19.8">19.8</td>
@@ -960,8 +900,8 @@
                 <tr>
                   <td class="nowrap" data-sort-value="10">10</td>
                   <td class="horse-name">インカルナータ</td>
-                  <td class="nowrap" data-sort-value="8">8位</td>
                   <td class="nowrap" data-sort-value="0.07">7.0%</td>
+                  <td class="nowrap" data-sort-value="8">8位</td>
                   <td class="nowrap" data-sort-value="9">9着</td>
                   <td class="comparison-cell nowrap" data-sort-value="1"><span class="comparison-down">1着下</span></td>
                   <td class="nowrap" data-sort-value="5.0">5.0</td>

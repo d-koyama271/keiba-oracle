@@ -61,8 +61,8 @@ PREDICTION_METHOD_LABELS = {
     STATISTICAL_PREDICTION_METHOD: "統計重視予想",
 }
 PREDICTION_METHOD_DESCRIPTIONS = {
-    TRADITIONAL_PREDICTION_METHOD: "AIが各馬の過去成績、コース・距離適性、斤量、脚質、市場オッズなどから1着確率を推定しています。",
-    STATISTICAL_PREDICTION_METHOD: "オッズ等の市場由来の情報を使用せず、レース条件、過去成績、条件適性、近況、相手関係からAIが1着確率を推定しています。",
+    TRADITIONAL_PREDICTION_METHOD: "過去成績や今回のレース条件、市場評価などを総合して1着確率を推定しています。",
+    STATISTICAL_PREDICTION_METHOD: "市場情報を使用せず、過去成績や今回のレース条件などの客観データから1着確率を推定しています。",
 }
 
 TOOLTIPS = {
@@ -160,17 +160,6 @@ def rank_comparison(prediction_rank: int | None, finish_position: Any) -> tuple[
     if finish > prediction_rank:
         return f"{finish - prediction_rank}着下", "comparison-down"
     return "差なし", "comparison-neutral"
-
-
-def result_highlight_class(prediction_rank: int | None, finish_position: Any) -> str:
-    finish = comparable_finish_position(finish_position)
-    if prediction_rank == 1 and finish == 1:
-        return "prediction-hit"
-    if finish == 1:
-        return "result-winner"
-    if prediction_rank == 1:
-        return "prediction-top"
-    return ""
 
 
 def build_odds_timing(race: dict[str, Any]) -> tuple[str, bool]:
@@ -424,7 +413,6 @@ def build_result_rows(horse_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "comparison_text": comparison_text,
                 "comparison_class": comparison_class,
                 "comparison_sort_value": comparison_sort_value,
-                "row_class": result_highlight_class(horse["prediction_rank"], finish_position),
                 "prediction_rank_class": (
                     "rank-prediction-hit"
                     if horse["prediction_rank"] == 1 and numeric_finish == 1
