@@ -31,6 +31,8 @@ def make_payload(*, predicted: bool, track: str, date: str, name: str) -> dict:
             "horse_number": number,
             "horse_name": f"Horse {number}",
             "jockey": f"Jockey {number}",
+            "weight_carried": 54.0 + number,
+            "running_style_summary": f"Style {number}",
             "win_odds": 3.0 + number,
             "popularity": number,
         }
@@ -411,14 +413,15 @@ class RenderTests(unittest.TestCase):
             self.assertIn('<th class="nowrap">発走</th>', index)
             self.assertIn('<td class="nowrap">15:30</td>', index)
             self.assertIn('<th class="nowrap">予想</th>', index)
-            self.assertIn('<th class="nowrap">結果</th>', index)
+            self.assertIn('<th class="nowrap result-link-column">結果</th>', index)
             self.assertIn("<td>予想済み</td>", index)
             self.assertIn(
                 '<a class="page-link" href="races/2026-01-01/nakayama_11r.html">開く</a>',
                 index,
             )
-            self.assertIn('<td class="nowrap unavailable-link">-</td>', index)
-            self.assertIn(".unavailable-link { text-align: center; }", index)
+            self.assertIn('<td class="nowrap result-link-column">-</td>', index)
+            self.assertIn(".result-link-column { text-align: center; }", index)
+            self.assertNotIn("unavailable-link", index)
             page_link_css = index.split(".page-link {", 1)[1].split("}", 1)[0]
             self.assertIn("text-decoration: underline", page_link_css)
             self.assertIn("text-underline-offset: 2px", page_link_css)

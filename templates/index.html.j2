@@ -96,7 +96,7 @@
       text-underline-offset: 2px;
       white-space: nowrap;
     }
-    .unavailable-link { text-align: center; }
+    .result-link-column { text-align: center; }
     .status {
       display: inline-block;
       padding: 4px 10px;
@@ -192,7 +192,7 @@
             <th>レース名</th>
             <th class="nowrap">状態</th>
             <th class="nowrap">予想</th>
-            <th class="nowrap">結果</th>
+            <th class="nowrap result-link-column">結果</th>
           </tr>
         </thead>
         <tbody>
@@ -204,7 +204,7 @@
             <td>{{ race.race_name|e }}</td>
             <td class="nowrap"><span class="status {{ race.status_class }}">{{ race.status_label }}</span></td>
             <td class="nowrap"><a class="page-link" href="{{ race.prediction_href }}">開く</a></td>
-            <td class="nowrap{% if not race.result_href %} unavailable-link{% endif %}">{% if race.result_href %}<a class="page-link" href="{{ race.result_href }}">開く</a>{% else %}-{% endif %}</td>
+            <td class="nowrap result-link-column">{% if race.result_href %}<a class="page-link" href="{{ race.result_href }}">開く</a>{% else %}-{% endif %}</td>
           </tr>
 {% else %}
           <tr>

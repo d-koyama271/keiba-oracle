@@ -578,17 +578,21 @@
             <thead>
               <tr>
                 {{ sortable_header("馬番", 0, "number", "ascending") }}
+{% if view.method == "traditional" %}
                 {{ sortable_header("馬名", 1, "text", "ascending", "horse-name") }}
-                {% if view.method == "traditional" %}
                 {{ sortable_header("騎手", 2, "text", "ascending") }}
                 {{ sortable_header("単勝オッズ", 3, "number", "ascending") }}
                 {{ sortable_header("人気", 4, "number", "ascending") }}
                 {{ sortable_header("1着確率", 5, "number", "descending") }}
                 {{ sortable_header("予想順位", 6, "number", "ascending") }}
-                {% else %}
-                {{ sortable_header("1着確率", 2, "number", "descending") }}
-                {{ sortable_header("予想順位", 3, "number", "ascending") }}
-                {% endif %}
+{% else %}
+                {{ sortable_header("馬名", 1, "text", "ascending", "horse-name") }}
+                {{ sortable_header("騎手", 2, "text", "ascending") }}
+                {{ sortable_header("斤量", 3, "number", "ascending") }}
+                {{ sortable_header("脚質", 4, "text", "ascending") }}
+                {{ sortable_header("1着確率", 5, "number", "descending") }}
+                {{ sortable_header("予想順位", 6, "number", "ascending") }}
+{% endif %}
                 <th class="reason-cell">理由</th>
               </tr>
             </thead>
@@ -596,12 +600,17 @@
               {% for horse in view.horse_rows %}
               <tr{% if horse.prediction_rank == 1 %} class="prediction-top"{% endif %}>
                 <td class="nowrap" data-sort-value="{{ horse.horse_number }}">{{ horse.horse_number }}</td>
+{% if view.method == "traditional" %}
                 <td class="horse-name">{{ horse.horse_name }}</td>
-                {% if view.method == "traditional" %}
                 <td class="nowrap">{{ horse.jockey or "-" }}</td>
                 <td class="nowrap" data-sort-value="{{ horse.win_odds if horse.win_odds is not none else '' }}">{{ horse.win_odds if horse.win_odds is not none else "-" }}</td>
                 <td class="nowrap" data-sort-value="{{ horse.popularity if horse.popularity is not none else '' }}">{{ horse.popularity if horse.popularity is not none else "-" }}</td>
-                {% endif %}
+{% else %}
+                <td class="horse-name">{{ horse.horse_name }}</td>
+                <td class="nowrap">{{ horse.jockey or "-" }}</td>
+                <td class="nowrap" data-sort-value="{{ horse.weight_carried | default('', true) }}">{{ horse.weight_carried | default("-", true) }}</td>
+                <td class="nowrap">{{ horse.running_style_summary | default("-", true) }}</td>
+{% endif %}
                 <td class="nowrap" data-sort-value="{{ horse.prediction.win_probability if horse.prediction else '' }}">{% if horse.prediction %}{{ "%.1f"|format(horse.prediction.win_probability * 100) }}%{% else %}-{% endif %}</td>
                 <td class="nowrap" data-sort-value="{{ horse.prediction_rank if horse.prediction_rank is not none else '' }}">{{ horse.prediction_rank ~ "位" if horse.prediction_rank is not none else "-" }}</td>
                 <td class="reason-cell">{{ horse.prediction.reason if horse.prediction else "-" }}</td>

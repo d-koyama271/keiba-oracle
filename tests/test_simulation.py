@@ -87,6 +87,8 @@ def make_payload(rows: list[tuple[int, float, float]]) -> dict:
                 "horse_number": number,
                 "horse_name": f"Horse {number}",
                 "jockey": f"Jockey {number}",
+                "weight_carried": 54.0 + number,
+                "running_style_summary": f"Style {number}",
                 "win_odds": odds,
                 "popularity": number,
             }
@@ -135,10 +137,54 @@ DUTCHING_ROWS = [
 
 
 class ValueSimulationTests(unittest.TestCase):
-    def test_app_config_default_ev_threshold_is_one(self) -> None:
+    def test_app_config_value_defaults_apply_to_both_prediction_methods(self) -> None:
         config = load_config(ROOT / "config" / "app.yaml")
 
         self.assertEqual(float(config["simulation"]["value"]["ev_threshold"]), 1.0)
+        self.assertEqual(float(config["simulation"]["value"]["kelly_fraction"]), 0.85)
+
+        payload = make_payload(DUTCHING_ROWS)
+        payload["prediction"]["variants"] = [
+            {
+                "method": "statistical",
+                "model_provider": "codex",
+                "model_name": "gpt-test",
+                "horses": [
+                    {
+                        "horse_number": number,
+                        "win_probability": probability,
+                        "reason": f"statistical reason {number}",
+                    }
+                    for number, probability, _ in DUTCHING_ROWS
+                ],
+            }
+        ]
+        payload["simulation"] = calculate_pre_simulation(payload, config)
+
+        self.assertEqual(
+            payload["simulation"]["value"]["pre"]["settings"]["kelly_fraction"],
+            0.85,
+        )
+        self.assertEqual(
+            payload["simulation"]["variants"][0]["value"]["pre"]["settings"]["kelly_fraction"],
+            0.85,
+        )
+
+        context = build_race_context(payload)
+        context.update(
+            {
+                "page_kind": "prediction",
+                "prediction_page_name": "test_11r.html",
+                "result_page_name": None,
+                "status_label": "予想公開",
+                "status_class": "status-prediction",
+            }
+        )
+        rendered = build_environment(ROOT).get_template("race.html.j2").render(**context)
+        custom_kelly = BeautifulSoup(rendered, "html.parser").select_one(
+            '#custom-kelly-fraction'
+        )
+        self.assertEqual(custom_kelly["value"], "0.85")
 
     def test_ev_boundary_and_single_candidate_are_included(self) -> None:
         payload = make_payload([(1, 0.35, 3.0), (2, 0.10, 2.0)])
@@ -709,6 +755,34 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
             all("prediction-method-content" in panel.get("class", []) for panel in prediction_panels)
         )
         self.assertTrue(all(panel.find("h3", recursive=False) is None for panel in prediction_panels))
+        traditional_headers = [
+            header.get_text(" ", strip=True).replace(" ↕", "")
+            for header in prediction_panels[0].select("table.prediction-table thead th")
+        ]
+        statistical_headers = [
+            header.get_text(" ", strip=True).replace(" ↕", "")
+            for header in prediction_panels[1].select("table.prediction-table thead th")
+        ]
+        self.assertEqual(
+            traditional_headers,
+            ["馬番", "馬名", "騎手", "単勝オッズ", "人気", "1着確率", "予想順位", "理由"],
+        )
+        self.assertEqual(
+            statistical_headers,
+            ["馬番", "馬名", "騎手", "斤量", "脚質", "1着確率", "予想順位", "理由"],
+        )
+        self.assertEqual(
+            len(prediction_panels[1].select("table.prediction-table thead button[data-sort-column]")),
+            7,
+        )
+        statistical_first_row = [
+            cell.get_text(" ", strip=True)
+            for cell in prediction_panels[1].select_one("table.prediction-table tbody tr").select("td")
+        ]
+        self.assertEqual(statistical_first_row[:5], ["1", "Horse 1", "Jockey 1", "55.0", "Style 1"])
+        self.assertNotIn("枠番", statistical_headers)
+        self.assertNotIn("単勝オッズ", statistical_headers)
+        self.assertNotIn("人気", statistical_headers)
         self.assertFalse(simulation_panels[0].has_attr("hidden"))
         self.assertTrue(simulation_panels[1].has_attr("hidden"))
         simulation_section = soup.select_one("section.simulation-section")
