@@ -149,6 +149,34 @@ def discover_race_ids(
     return sorted(race_ids)
 
 
+def discover_pre_race_ids(
+    session: requests.Session,
+    target_date: str,
+    target_races: set[str],
+) -> list[str]:
+    graded_race_ids = discover_race_ids(
+        session,
+        target_date,
+        race_number=None,
+        graded_only=True,
+    )
+    selected = [
+        race_id
+        for race_id in graded_race_ids
+        if track_name_from_race_id(race_id) in target_races
+    ]
+    if selected:
+        return sorted(set(selected))
+
+    return sorted(
+        {
+            race_id
+            for race_id in discover_race_ids(session, target_date)
+            if track_name_from_race_id(race_id) in target_races
+        }
+    )
+
+
 def fetch_win_odds(session: requests.Session, race_id: str) -> tuple[dict[int, dict[str, Any]], str | None]:
     response = session.get(
         NETKEIBA_ODDS_URL,
@@ -1313,11 +1341,12 @@ def collect_races(
     session = requests.Session()
 
     try:
-        race_ids = (
-            sorted(set(selected_race_ids))
-            if selected_race_ids is not None
-            else discover_race_ids(session, target_date)
-        )
+        if selected_race_ids is not None:
+            race_ids = sorted(set(selected_race_ids))
+        elif mode == "pre":
+            race_ids = discover_pre_race_ids(session, target_date, target_races)
+        else:
+            race_ids = discover_race_ids(session, target_date)
     except Exception as exc:  # noqa: BLE001
         log_job(logger, job_name, None, f"failed to fetch race list: {exc}")
         return []

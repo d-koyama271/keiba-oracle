@@ -2,7 +2,7 @@
   "meta": {
     "race_id": "202604030408",
     "kind": "prediction",
-    "generated_at": "2026-08-29T22:12:43+09:00"
+    "generated_at": "2026-08-30T14:22:21+09:00"
   },
   "race": {
     "date": "2026-08-30",
@@ -12,11 +12,11 @@
     "start_time": "15:45",
     "distance": 2000,
     "surface": "芝",
-    "going": "稍重",
+    "going": "良",
     "weather": "曇",
     "class_grade": "G3",
     "source_url": "https://race.netkeiba.com/race/shutuba.html?race_id=202604030408",
-    "odds_captured_at": "2026-08-29T22:12:40+09:00",
+    "odds_captured_at": "2026-08-30T14:22:18+09:00",
     "odds_source": "netkeiba",
     "odds_source_url": "https://race.netkeiba.com/api/api_get_jra_odds.html?race_id=202604030408",
     "odds_reference_minutes_before_start": 60
@@ -29,7 +29,7 @@
       "jockey": "丸山",
       "weight_carried": 57.0,
       "popularity": 11,
-      "win_odds": 56.4,
+      "win_odds": 62.6,
       "past_runs": [
         {
           "race_id": "202603020611",
@@ -201,10 +201,10 @@
           "average_finish_position": 4.8966
         },
         "current_going_record": {
-          "runs": 6,
-          "wins": 1,
-          "top3": 1,
-          "average_finish_position": 6.0
+          "runs": 28,
+          "wins": 4,
+          "top3": 13,
+          "average_finish_position": 5.2143
         },
         "current_weather_record": {
           "runs": 10,
@@ -240,8 +240,8 @@
       "horse_name": "サヴォーナ",
       "jockey": "池添",
       "weight_carried": 57.0,
-      "popularity": 9,
-      "win_odds": 30.7,
+      "popularity": 8,
+      "win_odds": 26.1,
       "past_runs": [
         {
           "race_id": "202603020611",
@@ -413,10 +413,10 @@
           "average_finish_position": 4.0
         },
         "current_going_record": {
-          "runs": 2,
-          "wins": 0,
-          "top3": 0,
-          "average_finish_position": 8.0
+          "runs": 17,
+          "wins": 4,
+          "top3": 9,
+          "average_finish_position": 3.3529
         },
         "current_weather_record": {
           "runs": 5,
@@ -452,8 +452,8 @@
       "horse_name": "ロデオドライブ",
       "jockey": "ルメール",
       "weight_carried": 57.0,
-      "popularity": 3,
-      "win_odds": 4.0,
+      "popularity": 2,
+      "win_odds": 3.8,
       "past_runs": [
         {
           "race_id": "202605020611",
@@ -597,10 +597,10 @@
           "average_finish_position": null
         },
         "current_going_record": {
-          "runs": 0,
-          "wins": 0,
-          "top3": 0,
-          "average_finish_position": null
+          "runs": 3,
+          "wins": 2,
+          "top3": 3,
+          "average_finish_position": 1.3333
         },
         "current_weather_record": {
           "runs": 1,
@@ -637,7 +637,7 @@
       "jockey": "田辺",
       "weight_carried": 59.0,
       "popularity": 4,
-      "win_odds": 9.5,
+      "win_odds": 8.3,
       "past_runs": [
         {
           "race_id": "202505050812",
@@ -809,10 +809,10 @@
           "average_finish_position": 2.5714
         },
         "current_going_record": {
-          "runs": 3,
-          "wins": 0,
-          "top3": 1,
-          "average_finish_position": 6.6667
+          "runs": 9,
+          "wins": 5,
+          "top3": 7,
+          "average_finish_position": 3.0
         },
         "current_weather_record": {
           "runs": 2,
@@ -849,7 +849,7 @@
       "jockey": "岩田望",
       "weight_carried": 55.0,
       "popularity": 1,
-      "win_odds": 3.3,
+      "win_odds": 3.7,
       "past_runs": [
         {
           "race_id": "202606030811",
@@ -1021,10 +1021,10 @@
           "average_finish_position": 4.0
         },
         "current_going_record": {
-          "runs": 0,
-          "wins": 0,
-          "top3": 0,
-          "average_finish_position": null
+          "runs": 6,
+          "wins": 2,
+          "top3": 5,
+          "average_finish_position": 3.5
         },
         "current_weather_record": {
           "runs": 1,
@@ -1233,10 +1233,10 @@
           "average_finish_position": 4.6
         },
         "current_going_record": {
-          "runs": 2,
-          "wins": 0,
-          "top3": 1,
-          "average_finish_position": 5.5
+          "runs": 11,
+          "wins": 4,
+          "top3": 5,
+          "average_finish_position": 5.5455
         },
         "current_weather_record": {
           "runs": 4,
@@ -1273,7 +1273,7 @@
       "jockey": "杉原",
       "weight_carried": 58.0,
       "popularity": 10,
-      "win_odds": 40.9,
+      "win_odds": 40.8,
       "past_runs": [
         {
           "race_id": "202604020507",
@@ -1445,10 +1445,10 @@
           "average_finish_position": 3.8333
         },
         "current_going_record": {
-          "runs": 2,
-          "wins": 0,
-          "top3": 0,
-          "average_finish_position": 7.5
+          "runs": 24,
+          "wins": 5,
+          "top3": 13,
+          "average_finish_position": 4.0833
         },
         "current_weather_record": {
           "runs": 7,
@@ -1484,7 +1484,7 @@
       "horse_name": "ダノンシーマ",
       "jockey": "川田",
       "weight_carried": 57.0,
-      "popularity": 2,
+      "popularity": 3,
       "win_odds": 3.8,
       "past_runs": [
         {
@@ -1657,10 +1657,10 @@
           "average_finish_position": 1.75
         },
         "current_going_record": {
-          "runs": 0,
-          "wins": 0,
-          "top3": 0,
-          "average_finish_position": null
+          "runs": 9,
+          "wins": 5,
+          "top3": 9,
+          "average_finish_position": 1.7778
         },
         "current_weather_record": {
           "runs": 3,
@@ -1697,7 +1697,7 @@
       "jockey": "三浦",
       "weight_carried": 59.0,
       "popularity": 7,
-      "win_odds": 13.9,
+      "win_odds": 15.5,
       "past_runs": [
         {
           "race_id": "202607010211",
@@ -1869,10 +1869,10 @@
           "average_finish_position": 5.25
         },
         "current_going_record": {
-          "runs": 2,
-          "wins": 0,
-          "top3": 1,
-          "average_finish_position": 8.5
+          "runs": 10,
+          "wins": 4,
+          "top3": 5,
+          "average_finish_position": 4.6
         },
         "current_weather_record": {
           "runs": 4,
@@ -1908,7 +1908,7 @@
       "horse_name": "バレエマスター",
       "jockey": "菊沢",
       "weight_carried": 57.0,
-      "popularity": 8,
+      "popularity": 9,
       "win_odds": 29.2,
       "past_runs": [
         {
@@ -2081,10 +2081,10 @@
           "average_finish_position": 5.0
         },
         "current_going_record": {
-          "runs": 6,
-          "wins": 1,
-          "top3": 2,
-          "average_finish_position": 6.6667
+          "runs": 27,
+          "wins": 3,
+          "top3": 6,
+          "average_finish_position": 5.5385
         },
         "current_weather_record": {
           "runs": 11,
@@ -2121,7 +2121,7 @@
       "jockey": "戸崎圭",
       "weight_carried": 56.0,
       "popularity": 5,
-      "win_odds": 11.7,
+      "win_odds": 11.4,
       "past_runs": [
         {
           "race_id": "202605030211",
@@ -2293,10 +2293,10 @@
           "average_finish_position": 7.2857
         },
         "current_going_record": {
-          "runs": 2,
-          "wins": 0,
-          "top3": 0,
-          "average_finish_position": 11.0
+          "runs": 12,
+          "wins": 3,
+          "top3": 8,
+          "average_finish_position": 4.5833
         },
         "current_weather_record": {
           "runs": 5,

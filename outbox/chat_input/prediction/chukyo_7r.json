@@ -2,7 +2,7 @@
   "meta": {
     "race_id": "202607030407",
     "kind": "prediction",
-    "generated_at": "2026-08-29T22:12:43+09:00"
+    "generated_at": "2026-08-30T14:22:21+09:00"
   },
   "race": {
     "date": "2026-08-30",
@@ -13,10 +13,10 @@
     "distance": 1400,
     "surface": "芝",
     "going": "良",
-    "weather": "曇",
+    "weather": "晴",
     "class_grade": "G3",
     "source_url": "https://race.netkeiba.com/race/shutuba.html?race_id=202607030407",
-    "odds_captured_at": "2026-08-29T22:12:42+09:00",
+    "odds_captured_at": "2026-08-30T14:22:20+09:00",
     "odds_source": "netkeiba",
     "odds_source_url": "https://race.netkeiba.com/api/api_get_jra_odds.html?race_id=202607030407",
     "odds_reference_minutes_before_start": 60
@@ -29,7 +29,7 @@
       "jockey": "田口",
       "weight_carried": 55.0,
       "popularity": 9,
-      "win_odds": 60.1,
+      "win_odds": 75.8,
       "past_runs": [
         {
           "race_id": "202607020703",
@@ -94,12 +94,7 @@
           "top3": 0,
           "average_finish_position": 7.0
         },
-        "current_weather_record": {
-          "runs": 1,
-          "wins": 0,
-          "top3": 0,
-          "average_finish_position": 7.0
-        },
+        "current_weather_record": null,
         "current_class_record": {
           "runs": 0,
           "wins": 0,
@@ -129,7 +124,7 @@
       "jockey": "松若",
       "weight_carried": 55.0,
       "popularity": 6,
-      "win_odds": 15.1,
+      "win_odds": 12.7,
       "past_runs": [
         {
           "race_id": "202607020801",
@@ -250,7 +245,12 @@
           "top3": 2,
           "average_finish_position": 2.0
         },
-        "current_weather_record": null,
+        "current_weather_record": {
+          "runs": 3,
+          "wins": 0,
+          "top3": 2,
+          "average_finish_position": 3.3333
+        },
         "current_class_record": {
           "runs": 0,
           "wins": 0,
@@ -280,7 +280,7 @@
       "jockey": "西村淳",
       "weight_carried": 55.0,
       "popularity": 3,
-      "win_odds": 4.6,
+      "win_odds": 4.9,
       "past_runs": [
         {
           "race_id": "202607020201",
@@ -373,12 +373,7 @@
           "top3": 1,
           "average_finish_position": 1.0
         },
-        "current_weather_record": {
-          "runs": 1,
-          "wins": 1,
-          "top3": 1,
-          "average_finish_position": 1.0
-        },
+        "current_weather_record": null,
         "current_class_record": {
           "runs": 0,
           "wins": 0,
@@ -408,7 +403,7 @@
       "jockey": "団野",
       "weight_carried": 55.0,
       "popularity": 4,
-      "win_odds": 8.9,
+      "win_odds": 9.5,
       "past_runs": [
         {
           "race_id": "202610020101",
@@ -501,12 +496,7 @@
           "top3": 0,
           "average_finish_position": null
         },
-        "current_weather_record": {
-          "runs": 1,
-          "wins": 1,
-          "top3": 1,
-          "average_finish_position": 1.0
-        },
+        "current_weather_record": null,
         "current_class_record": {
           "runs": 0,
           "wins": 0,
@@ -536,7 +526,7 @@
       "jockey": "泉谷",
       "weight_carried": 55.0,
       "popularity": 5,
-      "win_odds": 11.4,
+      "win_odds": 10.6,
       "past_runs": [
         {
           "race_id": "202610020606",
@@ -601,7 +591,12 @@
           "top3": 1,
           "average_finish_position": 1.0
         },
-        "current_weather_record": null,
+        "current_weather_record": {
+          "runs": 1,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 1.0
+        },
         "current_class_record": {
           "runs": 0,
           "wins": 0,
@@ -631,7 +626,7 @@
       "jockey": "中井",
       "weight_carried": 55.0,
       "popularity": 7,
-      "win_odds": 15.7,
+      "win_odds": 22.3,
       "past_runs": [
         {
           "race_id": "202604020502",
@@ -821,7 +816,7 @@
       "jockey": "吉村",
       "weight_carried": 55.0,
       "popularity": 8,
-      "win_odds": 26.9,
+      "win_odds": 68.2,
       "past_runs": [
         {
           "race_id": "202607020802",
@@ -916,7 +911,7 @@
       "jockey": "松山",
       "weight_carried": 55.0,
       "popularity": 1,
-      "win_odds": 2.4,
+      "win_odds": 2.1,
       "past_runs": [
         {
           "race_id": "202603020204",
@@ -981,7 +976,12 @@
           "top3": 1,
           "average_finish_position": 1.0
         },
-        "current_weather_record": null,
+        "current_weather_record": {
+          "runs": 1,
+          "wins": 1,
+          "top3": 1,
+          "average_finish_position": 1.0
+        },
         "current_class_record": {
           "runs": 0,
           "wins": 0,

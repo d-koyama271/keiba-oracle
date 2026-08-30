@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 import collect as collect_module  # noqa: E402
+import run_pre  # noqa: E402
 import run_pre_collect  # noqa: E402
 from bs4 import BeautifulSoup  # noqa: E402
 from utils import load_race_json  # noqa: E402
@@ -26,6 +27,8 @@ KYOTO = "202608020711"
 KOKURA = "202610020711"
 NIIGATA_7R = "202604020207"
 CHUKYO_7R = "202607020207"
+NIIGATA_8R = "202604030408"
+SAPPORO_8R = "202601020308"
 
 
 def race(track: str, name: str, start_time: str, race_number: int = 11) -> dict:
@@ -79,6 +82,133 @@ class DefaultRaceSelectionTests(unittest.TestCase):
             )
 
         self.assertEqual(race_ids, ["202604030207"])
+
+    def test_date_pre_selects_all_target_graded_races_regardless_of_number(self) -> None:
+        tracks = {
+            CHUKYO_7R: "中京",
+            NIIGATA_8R: "新潟",
+            SAPPORO_8R: "札幌",
+            FUKUSHIMA: "福島",
+        }
+
+        def discover(_session, _target_date, race_number=11, graded_only=False):
+            if graded_only:
+                return [NIIGATA_8R, SAPPORO_8R, CHUKYO_7R]
+            return [FUKUSHIMA]
+
+        with ExitStack() as stack:
+            discovered = stack.enter_context(
+                patch.object(collect_module, "discover_race_ids", side_effect=discover)
+            )
+            stack.enter_context(
+                patch.object(collect_module, "track_name_from_race_id", side_effect=tracks.get)
+            )
+            selected = collect_module.discover_pre_race_ids(
+                None,
+                "2026-08-30",
+                {"中京", "新潟", "福島"},
+            )
+
+        self.assertEqual(selected, sorted([CHUKYO_7R, NIIGATA_8R]))
+        discovered.assert_called_once_with(
+            None,
+            "2026-08-30",
+            race_number=None,
+            graded_only=True,
+        )
+
+    def test_date_pre_falls_back_to_target_track_11r_when_no_target_grade_exists(self) -> None:
+        tracks = {
+            SAPPORO_8R: "札幌",
+            FUKUSHIMA: "福島",
+            KOKURA: "小倉",
+            HAKODATE: "函館",
+        }
+
+        def discover(_session, _target_date, race_number=11, graded_only=False):
+            if graded_only:
+                return [SAPPORO_8R]
+            return [FUKUSHIMA, KOKURA, HAKODATE]
+
+        with ExitStack() as stack:
+            discovered = stack.enter_context(
+                patch.object(collect_module, "discover_race_ids", side_effect=discover)
+            )
+            stack.enter_context(
+                patch.object(collect_module, "track_name_from_race_id", side_effect=tracks.get)
+            )
+            selected = collect_module.discover_pre_race_ids(
+                None,
+                "2026-08-30",
+                {"福島", "小倉"},
+            )
+
+        self.assertEqual(selected, sorted([FUKUSHIMA, KOKURA]))
+        self.assertEqual(discovered.call_count, 2)
+        self.assertEqual(discovered.call_args_list[1].args, (None, "2026-08-30"))
+
+    def test_pre_collection_without_selected_ids_uses_date_pre_discovery(self) -> None:
+        logger = logging.getLogger("test.pre-race-discovery")
+        logger.handlers.clear()
+        logger.addHandler(logging.NullHandler())
+        config = {"target_races": ["福島"]}
+
+        with tempfile.TemporaryDirectory() as directory:
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch.object(collect_module, "setup_logger", return_value=logger)
+                )
+                pre_discovery = stack.enter_context(
+                    patch.object(collect_module, "discover_pre_race_ids", return_value=[])
+                )
+                default_discovery = stack.enter_context(
+                    patch.object(collect_module, "discover_race_ids")
+                )
+                paths = collect_module.collect_races(
+                    config,
+                    "test-pre-race-discovery",
+                    "2026-08-30",
+                    "pre",
+                    Path(directory),
+                )
+
+        self.assertEqual(paths, [])
+        default_discovery.assert_not_called()
+        self.assertEqual(pre_discovery.call_count, 1)
+        self.assertEqual(
+            pre_discovery.call_args.args[1:],
+            ("2026-08-30", {"福島"}),
+        )
+
+    def test_post_collection_keeps_default_11r_discovery(self) -> None:
+        logger = logging.getLogger("test.post-race-discovery")
+        logger.handlers.clear()
+        logger.addHandler(logging.NullHandler())
+        config = {"target_races": ["福島"]}
+
+        with tempfile.TemporaryDirectory() as directory:
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch.object(collect_module, "setup_logger", return_value=logger)
+                )
+                pre_discovery = stack.enter_context(
+                    patch.object(collect_module, "discover_pre_race_ids")
+                )
+                discovery = stack.enter_context(
+                    patch.object(collect_module, "discover_race_ids", return_value=[])
+                )
+                paths = collect_module.collect_races(
+                    config,
+                    "test-post-race-discovery",
+                    "2026-08-30",
+                    "post",
+                    Path(directory),
+                )
+
+        self.assertEqual(paths, [])
+        pre_discovery.assert_not_called()
+        self.assertEqual(discovery.call_count, 1)
+        self.assertEqual(discovery.call_args.args[1:], ("2026-08-30",))
 
     def test_grade_icon_is_used_when_race_name_has_no_grade_text(self) -> None:
         soup = BeautifulSoup(
@@ -267,6 +397,41 @@ class DefaultRaceSelectionTests(unittest.TestCase):
         self.assertEqual(collect.call_args.args[2:], ("2026-07-18", "pre"))
         self.assertIsNone(collect.call_args.kwargs["selected_race_ids"])
 
+    def test_run_pre_date_argument_is_forwarded_to_pre_flow(self) -> None:
+        config = {"target_races": ["中京", "新潟"]}
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch.object(sys, "argv", ["run_pre.py", "--date", "2026-08-30"])
+            )
+            stack.enter_context(patch.object(run_pre, "load_config", return_value=config))
+            run_flow = stack.enter_context(patch.object(run_pre, "run_pre_flow"))
+            run_pre.main()
+
+        run_flow.assert_called_once_with(config, "2026-08-30")
+
+    def test_collect_cli_date_pre_uses_pre_collection_mode(self) -> None:
+        config = {"target_races": ["中京", "新潟"]}
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch.object(
+                    sys,
+                    "argv",
+                    ["collect.py", "--date", "2026-08-30", "--mode", "pre"],
+                )
+            )
+            stack.enter_context(patch.object(collect_module, "load_config", return_value=config))
+            stack.enter_context(
+                patch.object(
+                    collect_module,
+                    "parse_target_date",
+                    return_value="2026-08-30",
+                )
+            )
+            collect = stack.enter_context(patch.object(collect_module, "collect_races"))
+            collect_module.main()
+
+        collect.assert_called_once_with(config, "pre", "2026-08-30", "pre")
+
     def test_main_passes_every_selected_track_to_collection(self) -> None:
         selected = [
             {"race_id": KOKURA, "race": race("小倉", "小倉記念 (G3)", "15:35"), "grade_rank": 1},
@@ -416,6 +581,9 @@ class MultipleRaceGenerationTests(unittest.TestCase):
             }
             with ExitStack() as stack:
                 stack.enter_context(patch.object(collect_module, "setup_logger", return_value=logger))
+                discovery = stack.enter_context(
+                    patch.object(collect_module, "discover_pre_race_ids")
+                )
                 stack.enter_context(patch.object(collect_module, "track_name_from_race_id", side_effect=tracks.get))
                 stack.enter_context(patch.object(collect_module, "fetch_html", side_effect=fetched))
                 stack.enter_context(patch.object(collect_module, "parse_race_overview", side_effect=overview))
@@ -438,6 +606,8 @@ class MultipleRaceGenerationTests(unittest.TestCase):
                     root,
                     selected_race_ids=race_ids,
                 )
+
+            discovery.assert_not_called()
 
             outbox = root / "outbox"
             with ExitStack() as stack:
