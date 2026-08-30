@@ -1,0 +1,1124 @@
+
+
+
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>新潟記念 結果 | keiba-oracle</title>
+  <meta name="description" content="新潟記念のレース結果、AI予想との比較、予測評価、購入シミュレーション結果を掲載します。">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f1ea;
+      --panel: #fffdf8;
+      --ink: #1f2520;
+      --line: #d5ccbe;
+      --accent: #32594d;
+      --muted: #6f766c;
+      --result-bg: #eaf0f5;
+      --result-panel: #f7fafc;
+      --result-line: #9eb2c3;
+      --result-accent: #315b78;
+      --status-prediction-bg: #dde9e4;
+      --status-prediction-color: #32594d;
+      --status-prediction-border: #b8cec5;
+      --status-result-bg: #e4eef3;
+      --status-result-color: #315b78;
+      --status-result-border: #b7cbd7;
+      --status-pending-bg: #ececeb;
+      --status-pending-color: #5f625f;
+      --status-pending-border: #d0d1cf;
+    }
+    body {
+      margin: 0;
+      font-family: "Yu Gothic", "Hiragino Sans", sans-serif;
+      background: #f2f2f0;
+      color: var(--ink);
+    }
+    main {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+      box-sizing: border-box;
+      min-width: 0;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 10px 30px rgba(50, 89, 77, 0.06);
+      min-width: 0;
+    }
+    h1, h2, h3 { margin-top: 0; }
+    .meta, .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      font-size: 14px;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .page-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .ai-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border: 1px solid #c8b9dc;
+      border-radius: 999px;
+      background: #eee8f6;
+      color: #604879;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .status-prediction {
+      background: var(--status-prediction-bg);
+      color: var(--status-prediction-color);
+      border-color: var(--status-prediction-border);
+    }
+    .status-result {
+      background: var(--status-result-bg);
+      color: var(--status-result-color);
+      border-color: var(--status-result-border);
+    }
+    .status-pending {
+      background: var(--status-pending-bg);
+      color: var(--status-pending-color);
+      border-color: var(--status-pending-border);
+    }
+    .ev-above-threshold {
+      background: #f6f3f8;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .sort-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-weight: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .sort-button:hover,
+    .sort-button:focus-visible {
+      color: var(--accent);
+    }
+    .result-table .sort-button:hover,
+    .result-table .sort-button:focus-visible {
+      color: var(--result-accent);
+    }
+    .sort-button:focus-visible {
+      outline: 2px solid #9bb8ae;
+      outline-offset: 2px;
+    }
+    .sort-indicator {
+      font-size: 11px;
+      opacity: 0.75;
+    }
+    .selected-row { background: #fff6dc; }
+    .small {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .prediction-description {
+      font-size: 14px;
+      line-height: 1.7;
+    }
+    a { color: var(--accent); }
+    ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+    .simulator-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      align-items: end;
+      margin: 18px 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f8f4ec;
+    }
+    .simulator-field {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .simulator-field-label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .simulator-field input,
+    .simulator-field select {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+    }
+    .simulator-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .simulator-checkbox input { width: auto; }
+    .simulator-form button {
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 18px;
+      background: var(--accent);
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .simulator-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      margin: 12px 0;
+    }
+    .simulator-error {
+      color: #9b352b;
+      font-weight: 700;
+    }
+    .table-scroll {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+    .table-scroll-hint { display: none; }
+    .horse-name {
+      min-width: 8em;
+      white-space: nowrap;
+      word-break: keep-all;
+      overflow-wrap: normal;
+    }
+    .nowrap {
+      white-space: nowrap;
+      word-break: keep-all;
+    }
+    .prediction-table { min-width: 980px; }
+    .prediction-table .reason-cell {
+      min-width: 300px;
+      white-space: normal;
+      line-height: 1.6;
+    }
+    .value-detail-table { min-width: 1200px; }
+    .simulation-table { min-width: 680px; }
+    .evaluation-table { min-width: 860px; }
+    .result-table { min-width: 820px; }
+    .term-with-tooltip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    .term-tooltip {
+      display: inline-flex;
+      align-items: center;
+    }
+    .term-tooltip .tooltip-trigger {
+      display: inline-grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      min-width: 18px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 13px;
+      line-height: 1;
+      cursor: help;
+    }
+    .term-tooltip .tooltip-trigger:hover,
+    .term-tooltip .tooltip-trigger:focus-visible {
+      color: var(--accent);
+      outline: 2px solid #9bb8ae;
+      outline-offset: 2px;
+    }
+    .tooltip-content {
+      position: fixed;
+      z-index: 100;
+      left: 50%;
+      bottom: 20px;
+      width: min(440px, calc(100vw - 32px));
+      box-sizing: border-box;
+      padding: 12px 14px;
+      border-radius: 9px;
+      background: #243b36;
+      color: #fff;
+      box-shadow: 0 12px 32px rgba(31, 37, 32, 0.24);
+      font-size: 13px;
+      font-weight: 400;
+      line-height: 1.6;
+      text-align: left;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 8px);
+      transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
+    }
+    .term-tooltip:hover .tooltip-content,
+    .tooltip-trigger:focus-visible + .tooltip-content,
+    .term-tooltip[data-open="true"] .tooltip-content {
+      visibility: visible;
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    .simulation-section {
+      margin-top: 32px;
+    }
+    .simulation-section-title {
+      color: var(--accent);
+      margin-bottom: 18px;
+    }
+    .ai-method-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .ai-method-tab {
+      margin: 0 0 -1px;
+      padding: 9px 14px;
+      border: 1px solid transparent;
+      border-bottom-color: var(--line);
+      border-radius: 10px 10px 0 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .ai-method-tab[aria-selected="true"] {
+      border-color: var(--line);
+      border-bottom-color: var(--panel);
+      border-radius: 10px 10px 0 0;
+      background: var(--panel);
+      color: var(--accent);
+    }
+    .prediction-section.has-ai-tabs .prediction-method-tabs,
+    .simulation-section.has-ai-tabs .simulation-method-tabs {
+      position: relative;
+      z-index: 2;
+      align-items: flex-end;
+      margin-bottom: -1px;
+      border-bottom: 0;
+    }
+    .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab,
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab {
+      position: relative;
+      margin-bottom: 0;
+      border-color: var(--line);
+      background: #f4f2ed;
+    }
+    .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab[aria-selected="true"],
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab[aria-selected="true"] {
+      z-index: 3;
+      border-bottom-color: var(--panel);
+      background: var(--panel);
+    }
+    .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab[aria-selected="true"]::after,
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab[aria-selected="true"]::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: -2px;
+      left: 0;
+      height: 3px;
+      background: var(--panel);
+    }
+    .prediction-section.has-ai-tabs .prediction-method-content,
+    .simulation-section.has-ai-tabs .simulation-method-content {
+      position: relative;
+      z-index: 1;
+      margin-top: 0;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 0 14px 14px 14px;
+      background: var(--panel);
+    }
+    .prediction-method-content > .prediction-description {
+      margin-top: 0;
+    }
+    .simulation-method-content > .simulation-panel {
+      margin-bottom: 0;
+    }
+    .simulation-method-content > .simulation-panel + .simulation-panel {
+      margin-top: 24px;
+    }
+    #custom-simulator {
+      margin-top: 30px;
+    }
+    .result-section .ai-method-tab[aria-selected="true"] {
+      border-bottom-color: var(--result-bg);
+      background: var(--result-bg);
+      color: var(--result-accent);
+    }
+    .ai-method-tab:focus-visible {
+      outline: 2px solid #9bb8ae;
+      outline-offset: 2px;
+    }
+    .simulation-panel h4 {
+      margin: 30px 0 10px;
+    }
+    .result-panel h4 {
+      margin: 28px 0 10px;
+    }
+    #custom-dutching-evaluations h3 {
+      margin: 28px 0 10px;
+    }
+    .simulation-details {
+      margin-top: 24px;
+    }
+    .simulation-details h4 {
+      margin-top: 20px;
+    }
+    .simulation-details summary {
+      color: var(--accent);
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .result-section {
+      margin-top: 40px;
+      padding: 24px 18px 20px;
+      border-top: 5px solid var(--result-accent);
+      border-radius: 14px;
+      background: var(--result-bg);
+    }
+    .result-section-title {
+      color: var(--result-accent);
+      margin-bottom: 18px;
+    }
+    .result-panel {
+      background: var(--result-panel);
+      border-color: var(--result-line);
+      box-shadow: 0 10px 26px rgba(49, 91, 120, 0.08);
+    }
+    .result-panel h2,
+    .result-panel h3,
+    .result-panel h4 {
+      color: var(--result-accent);
+    }
+    .result-section .result-panel:last-child { margin-bottom: 0; }
+    .prediction-top { background: #f1ecf7; }
+    .simulation-selected { background: #fff6dc; }
+    .result-winner { background: #e4eef3; }
+    .prediction-hit { background: #e3f0e7; }
+    .comparison-up {
+      color: #2f6b63;
+      font-weight: 700;
+    }
+    .comparison-neutral { color: #5f6870; }
+    .comparison-down {
+      color: #8a5148;
+      font-weight: 700;
+    }
+    .result-table .comparison-cell { white-space: nowrap; }
+    [hidden] { display: none !important; }
+    @media (max-width: 640px) {
+      main { padding: 20px 12px 40px; }
+      .panel { padding: 15px; }
+      table { font-size: 13px; }
+      th, td { padding: 8px 7px; }
+      .horse-name { min-width: 7.5em; }
+      .table-scroll-hint {
+        display: block;
+        margin: 0 0 6px;
+        color: var(--muted);
+        font-size: 12px;
+        text-align: right;
+      }
+      .result-section {
+        margin-top: 28px;
+        padding: 18px 10px 12px;
+      }
+      .simulation-panel h4,
+      .result-panel h4 {
+        margin-top: 24px;
+        margin-bottom: 8px;
+      }
+      #custom-dutching-evaluations h3 {
+        margin-top: 24px;
+        margin-bottom: 8px;
+      }
+      .prediction-section.has-ai-tabs .prediction-method-content,
+      .simulation-section.has-ai-tabs .simulation-method-content {
+        padding: 12px;
+      }
+      .simulation-method-content > .simulation-panel + .simulation-panel {
+        margin-top: 20px;
+      }
+      #custom-simulator {
+        margin-top: 24px;
+      }
+      .tooltip-content {
+        bottom: 12px;
+        width: calc(100vw - 24px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="panel">
+      <div class="page-badges">
+        <span class="ai-badge">AI予想</span>
+        <span class="status status-result">結果公開</span>
+      </div>
+      <h1>新潟 8R 新潟記念</h1>
+      <h2>レース基本情報</h2>
+      <div class="meta">
+        <div><strong>日付</strong><br>2026-08-30</div>
+        <div><strong>発走</strong><br>15:45</div>
+        <div><strong>距離</strong><br>芝 2000m</div>
+        <div><strong>馬場</strong><br>良</div>
+
+      </div>
+
+      <p class="small">
+        <a href="../../index.html">一覧へ戻る</a>
+
+         / <a href="niigata_8r.html">予想ページ</a>
+
+      </p>
+    </div>
+
+
+
+
+    <section class="result-section">
+      <h2 class="result-section-title">レース結果</h2>
+
+      <div class="ai-method-tabs" role="tablist" aria-label="結果を比較するAI予想方式">
+
+        <button type="button" class="ai-method-tab" role="tab" data-ai-tab data-ai-method="traditional" aria-controls="result-traditional" aria-selected="true" tabindex="0">総合AI予想</button>
+
+        <button type="button" class="ai-method-tab" role="tab" data-ai-tab data-ai-method="statistical" aria-controls="result-statistical" aria-selected="false" tabindex="-1">統計重視予想</button>
+
+      </div>
+
+
+
+
+
+
+      <div class="ai-method-panel" id="result-traditional" role="tabpanel" data-ai-panel data-ai-method="traditional">
+
+        <div class="panel result-panel">
+          <h3>総合AI予想と実結果の比較</h3>
+          <p class="table-scroll-hint">表は横にスクロールできます</p>
+          <div class="table-scroll">
+            <table class="result-table" data-sortable>
+              <thead><tr><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="0" data-sort-type="number" data-sort-first="ascending">
+    馬番 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="horse-name" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="1" data-sort-type="text" data-sort-first="ascending">
+    馬名 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="number" data-sort-first="ascending">
+    予測順位 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="descending">
+    1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
+    実着順 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="ascending">
+    予想との差 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="ascending">
+    確定オッズ <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="7" data-sort-type="number" data-sort-first="descending">
+    単勝払戻 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th></tr></thead>
+              <tbody>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="1">1</td>
+                  <td class="horse-name">ボーンディスウェイ</td>
+                  <td class="nowrap" data-sort-value="9">9位</td>
+                  <td class="nowrap" data-sort-value="0.025">2.5%</td>
+                  <td class="nowrap" data-sort-value="7">7着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="-2"><span class="comparison-up">2着上</span></td>
+                  <td class="nowrap" data-sort-value="85.1">85.1</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="2">2</td>
+                  <td class="horse-name">サヴォーナ</td>
+                  <td class="nowrap" data-sort-value="5">5位</td>
+                  <td class="nowrap" data-sort-value="0.08">8.0%</td>
+                  <td class="nowrap" data-sort-value="4">4着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="-1"><span class="comparison-up">1着上</span></td>
+                  <td class="nowrap" data-sort-value="26.5">26.5</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="3">3</td>
+                  <td class="horse-name">ロデオドライブ</td>
+                  <td class="nowrap" data-sort-value="3">3位</td>
+                  <td class="nowrap" data-sort-value="0.17">17.0%</td>
+                  <td class="nowrap" data-sort-value="2">2着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="-1"><span class="comparison-up">1着上</span></td>
+                  <td class="nowrap" data-sort-value="3.7">3.7</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="4">4</td>
+                  <td class="horse-name">ドゥレッツァ</td>
+                  <td class="nowrap" data-sort-value="4">4位</td>
+                  <td class="nowrap" data-sort-value="0.12">12.0%</td>
+                  <td class="nowrap" data-sort-value="6">6着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="2"><span class="comparison-down">2着下</span></td>
+                  <td class="nowrap" data-sort-value="9.2">9.2</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+                <tr class="prediction-hit">
+                  <td class="nowrap" data-sort-value="5">5</td>
+                  <td class="horse-name">ゾロアストロ</td>
+                  <td class="nowrap" data-sort-value="1">1位</td>
+                  <td class="nowrap" data-sort-value="0.23">23.0%</td>
+                  <td class="nowrap" data-sort-value="1">1着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="0"><span class="comparison-neutral">差なし</span></td>
+                  <td class="nowrap" data-sort-value="3.5">3.5</td>
+                  <td class="nowrap" data-sort-value="350">350円</td>
+                </tr>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="6">6</td>
+                  <td class="horse-name">チェルヴィニア</td>
+                  <td class="nowrap" data-sort-value="7">7位</td>
+                  <td class="nowrap" data-sort-value="0.04">4.0%</td>
+                  <td class="nowrap" data-sort-value="8">8着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="1"><span class="comparison-down">1着下</span></td>
+                  <td class="nowrap" data-sort-value="15.5">15.5</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="7">7</td>
+                  <td class="horse-name">ジュンブロッサム</td>
+                  <td class="nowrap" data-sort-value="11">11位</td>
+                  <td class="nowrap" data-sort-value="0.01">1.0%</td>
+                  <td class="nowrap" data-sort-value="9">9着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="-2"><span class="comparison-up">2着上</span></td>
+                  <td class="nowrap" data-sort-value="60.5">60.5</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="8">8</td>
+                  <td class="horse-name">ダノンシーマ</td>
+                  <td class="nowrap" data-sort-value="2">2位</td>
+                  <td class="nowrap" data-sort-value="0.22">22.0%</td>
+                  <td class="nowrap" data-sort-value="3">3着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="1"><span class="comparison-down">1着下</span></td>
+                  <td class="nowrap" data-sort-value="3.2">3.2</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="9">9</td>
+                  <td class="horse-name">アーバンシック</td>
+                  <td class="nowrap" data-sort-value="10">10位</td>
+                  <td class="nowrap" data-sort-value="0.015">1.5%</td>
+                  <td class="nowrap" data-sort-value="5">5着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="-5"><span class="comparison-up">5着上</span></td>
+                  <td class="nowrap" data-sort-value="18.4">18.4</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="10">10</td>
+                  <td class="horse-name">バレエマスター</td>
+                  <td class="nowrap" data-sort-value="8">8位</td>
+                  <td class="nowrap" data-sort-value="0.03">3.0%</td>
+                  <td class="nowrap" data-sort-value="10">10着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="2"><span class="comparison-down">2着下</span></td>
+                  <td class="nowrap" data-sort-value="36.9">36.9</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="11">11</td>
+                  <td class="horse-name">ステレンボッシュ</td>
+                  <td class="nowrap" data-sort-value="6">6位</td>
+                  <td class="nowrap" data-sort-value="0.06">6.0%</td>
+                  <td class="nowrap" data-sort-value="11">11着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="5"><span class="comparison-down">5着下</span></td>
+                  <td class="nowrap" data-sort-value="13.3">13.3</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+
+
+        <div class="panel result-panel">
+          <h3>総合AI予想の予測評価</h3>
+          <div class="metric-grid">
+            <div><strong>勝ち馬の予測順位</strong><br>1位</div>
+            <div><strong>勝ち馬の予測確率</strong><br>23.00%</div>
+            <div><strong>Top1</strong><br>的中</div>
+            <div><strong>Top3</strong><br>的中</div>
+            <div><strong>Top5</strong><br>的中</div>
+            <div><strong>Log Loss</strong><br>1.469676</div>
+            <div><strong>Brier Score</strong><br>0.063459</div>
+          </div>
+
+
+          <h4>市場ベースライン比較</h4>
+          <p>市場の勝ち馬確率 21.42% / 順位 1位</p>
+          <p>Log Loss差 -0.071128 / Brier Score差 -0.002649</p>
+
+
+        </div>
+
+
+
+
+
+        <div class="panel result-panel">
+          <h3>期待値重視方式のシミュレーション結果</h3>
+
+          <p><strong>投資:</strong> 100円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> -100円 / <strong>ROI:</strong> -100.00%</p>
+          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">2</td><td class="nowrap">100円</td><td class="nowrap">26.5</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
+
+        </div>
+
+
+
+        <div class="panel result-panel">
+          <h3>単勝分配方式のシミュレーション結果</h3>
+
+          <p><strong>投資:</strong> 3000円 / <strong>回収:</strong> 5250円 / <strong>損益:</strong> 2250円 / <strong>ROI:</strong> 75.00%</p>
+          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">5</td><td class="nowrap">1500円</td><td class="nowrap">3.5</td><td class="nowrap">的中</td><td class="nowrap">5250円</td></tr><tr><td class="nowrap">8</td><td class="nowrap">1500円</td><td class="nowrap">3.2</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
+
+        </div>
+
+      </div>
+
+
+
+
+
+      <div class="ai-method-panel" id="result-statistical" role="tabpanel" data-ai-panel data-ai-method="statistical" hidden>
+
+        <div class="panel result-panel">
+          <h3>統計重視予想と実結果の比較</h3>
+          <p class="table-scroll-hint">表は横にスクロールできます</p>
+          <div class="table-scroll">
+            <table class="result-table" data-sortable>
+              <thead><tr><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="0" data-sort-type="number" data-sort-first="ascending">
+    馬番 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="horse-name" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="1" data-sort-type="text" data-sort-first="ascending">
+    馬名 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="number" data-sort-first="ascending">
+    予測順位 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="descending">
+    1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
+    実着順 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="ascending">
+    予想との差 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="ascending">
+    確定オッズ <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="7" data-sort-type="number" data-sort-first="descending">
+    単勝払戻 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th></tr></thead>
+              <tbody>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="1">1</td>
+                  <td class="horse-name">ボーンディスウェイ</td>
+                  <td class="nowrap" data-sort-value="6">6位</td>
+                  <td class="nowrap" data-sort-value="0.07">7.0%</td>
+                  <td class="nowrap" data-sort-value="7">7着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="1"><span class="comparison-down">1着下</span></td>
+                  <td class="nowrap" data-sort-value="85.1">85.1</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="2">2</td>
+                  <td class="horse-name">サヴォーナ</td>
+                  <td class="nowrap" data-sort-value="4">4位</td>
+                  <td class="nowrap" data-sort-value="0.11">11.0%</td>
+                  <td class="nowrap" data-sort-value="4">4着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="0"><span class="comparison-neutral">差なし</span></td>
+                  <td class="nowrap" data-sort-value="26.5">26.5</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="3">3</td>
+                  <td class="horse-name">ロデオドライブ</td>
+                  <td class="nowrap" data-sort-value="3">3位</td>
+                  <td class="nowrap" data-sort-value="0.13">13.0%</td>
+                  <td class="nowrap" data-sort-value="2">2着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="-1"><span class="comparison-up">1着上</span></td>
+                  <td class="nowrap" data-sort-value="3.7">3.7</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="4">4</td>
+                  <td class="horse-name">ドゥレッツァ</td>
+                  <td class="nowrap" data-sort-value="2">2位</td>
+                  <td class="nowrap" data-sort-value="0.14">14.0%</td>
+                  <td class="nowrap" data-sort-value="6">6着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="4"><span class="comparison-down">4着下</span></td>
+                  <td class="nowrap" data-sort-value="9.2">9.2</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+                <tr class="result-winner">
+                  <td class="nowrap" data-sort-value="5">5</td>
+                  <td class="horse-name">ゾロアストロ</td>
+                  <td class="nowrap" data-sort-value="5">5位</td>
+                  <td class="nowrap" data-sort-value="0.1">10.0%</td>
+                  <td class="nowrap" data-sort-value="1">1着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="-4"><span class="comparison-up">4着上</span></td>
+                  <td class="nowrap" data-sort-value="3.5">3.5</td>
+                  <td class="nowrap" data-sort-value="350">350円</td>
+                </tr>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="6">6</td>
+                  <td class="horse-name">チェルヴィニア</td>
+                  <td class="nowrap" data-sort-value="7">7位</td>
+                  <td class="nowrap" data-sort-value="0.06">6.0%</td>
+                  <td class="nowrap" data-sort-value="8">8着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="1"><span class="comparison-down">1着下</span></td>
+                  <td class="nowrap" data-sort-value="15.5">15.5</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="7">7</td>
+                  <td class="horse-name">ジュンブロッサム</td>
+                  <td class="nowrap" data-sort-value="10">10位</td>
+                  <td class="nowrap" data-sort-value="0.04">4.0%</td>
+                  <td class="nowrap" data-sort-value="9">9着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="-1"><span class="comparison-up">1着上</span></td>
+                  <td class="nowrap" data-sort-value="60.5">60.5</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+                <tr class="prediction-top">
+                  <td class="nowrap" data-sort-value="8">8</td>
+                  <td class="horse-name">ダノンシーマ</td>
+                  <td class="nowrap" data-sort-value="1">1位</td>
+                  <td class="nowrap" data-sort-value="0.2">20.0%</td>
+                  <td class="nowrap" data-sort-value="3">3着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="2"><span class="comparison-down">2着下</span></td>
+                  <td class="nowrap" data-sort-value="3.2">3.2</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="9">9</td>
+                  <td class="horse-name">アーバンシック</td>
+                  <td class="nowrap" data-sort-value="9">9位</td>
+                  <td class="nowrap" data-sort-value="0.05">5.0%</td>
+                  <td class="nowrap" data-sort-value="5">5着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="-4"><span class="comparison-up">4着上</span></td>
+                  <td class="nowrap" data-sort-value="18.4">18.4</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="10">10</td>
+                  <td class="horse-name">バレエマスター</td>
+                  <td class="nowrap" data-sort-value="8">8位</td>
+                  <td class="nowrap" data-sort-value="0.06">6.0%</td>
+                  <td class="nowrap" data-sort-value="10">10着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="2"><span class="comparison-down">2着下</span></td>
+                  <td class="nowrap" data-sort-value="36.9">36.9</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+                <tr>
+                  <td class="nowrap" data-sort-value="11">11</td>
+                  <td class="horse-name">ステレンボッシュ</td>
+                  <td class="nowrap" data-sort-value="11">11位</td>
+                  <td class="nowrap" data-sort-value="0.04">4.0%</td>
+                  <td class="nowrap" data-sort-value="11">11着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="0"><span class="comparison-neutral">差なし</span></td>
+                  <td class="nowrap" data-sort-value="13.3">13.3</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+
+
+        <div class="panel result-panel">
+          <h3>統計重視予想の予測評価</h3>
+          <div class="metric-grid">
+            <div><strong>勝ち馬の予測順位</strong><br>5位</div>
+            <div><strong>勝ち馬の予測確率</strong><br>10.00%</div>
+            <div><strong>Top1</strong><br>不的中</div>
+            <div><strong>Top3</strong><br>不的中</div>
+            <div><strong>Top5</strong><br>的中</div>
+            <div><strong>Log Loss</strong><br>2.302585</div>
+            <div><strong>Brier Score</strong><br>0.083309</div>
+          </div>
+          <p class="small">市場情報は予想には使用せず、結果評価の比較基準としてのみ使用しています。</p>
+
+          <h4>市場ベースライン比較</h4>
+          <p>市場の勝ち馬確率 21.42% / 順位 1位</p>
+          <p>Log Loss差 +0.761781 / Brier Score差 +0.017201</p>
+
+
+        </div>
+
+
+
+
+
+        <div class="panel result-panel">
+          <h3>期待値重視方式のシミュレーション結果</h3>
+
+          <p><strong>投資:</strong> 200円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> -200円 / <strong>ROI:</strong> -100.00%</p>
+          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">1</td><td class="nowrap">100円</td><td class="nowrap">85.1</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">2</td><td class="nowrap">100円</td><td class="nowrap">26.5</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
+
+        </div>
+
+
+
+        <div class="panel result-panel">
+          <h3>単勝分配方式のシミュレーション結果</h3>
+
+          <p><strong>投資:</strong> 3000円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> -3000円 / <strong>ROI:</strong> -100.00%</p>
+          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">8</td><td class="nowrap">1100円</td><td class="nowrap">3.2</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">4</td><td class="nowrap">600円</td><td class="nowrap">9.2</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">3</td><td class="nowrap">1100円</td><td class="nowrap">3.7</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">2</td><td class="nowrap">200円</td><td class="nowrap">26.5</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <p class="small">本ページはAIによる確率推定と購入シミュレーションを掲載するもので、的中や利益を保証するものではありません。投票はご自身の判断で行ってください。</p>
+  </main>
+  <script>
+    const initializeSortableTable = (table) => {
+      const body = table.tBodies[0];
+      if (!body) return;
+
+      const buttons = Array.from(table.querySelectorAll("thead .sort-button"));
+      Array.from(body.rows).forEach((row, index) => {
+        row.dataset.originalIndex = String(index);
+      });
+
+      const originalIndex = (row) => Number(row.dataset.originalIndex);
+      const resetHeader = (button) => {
+        button.closest("th").setAttribute("aria-sort", "none");
+        button.querySelector(".sort-indicator").textContent = "↕";
+      };
+      const readValue = (row, columnIndex, valueType) => {
+        const cell = row.cells[columnIndex];
+        const rawValue = valueType === "number"
+          ? (cell?.dataset.sortValue ?? "")
+          : (cell?.textContent?.trim() ?? "");
+        if (["", "-", "null", "undefined", "NaN"].includes(rawValue)) return null;
+        if (valueType === "text") return rawValue;
+        const number = Number(rawValue);
+        return Number.isFinite(number) ? number : null;
+      };
+
+      for (const button of buttons) {
+        button.addEventListener("click", () => {
+          const header = button.closest("th");
+          const currentDirection = header.getAttribute("aria-sort") || "none";
+          const firstDirection = button.dataset.sortFirst === "descending" ? "descending" : "ascending";
+          const oppositeDirection = firstDirection === "ascending" ? "descending" : "ascending";
+          const nextDirection = currentDirection === "none"
+            ? firstDirection
+            : currentDirection === firstDirection
+              ? oppositeDirection
+              : "none";
+
+          buttons.forEach(resetHeader);
+          const rows = Array.from(body.rows);
+          if (nextDirection === "none") {
+            rows.sort((rowA, rowB) => originalIndex(rowA) - originalIndex(rowB));
+          } else {
+            header.setAttribute("aria-sort", nextDirection);
+            button.querySelector(".sort-indicator").textContent = nextDirection === "ascending" ? "▲" : "▼";
+            const columnIndex = Number(button.dataset.sortColumn);
+            const valueType = button.dataset.sortType;
+            rows.sort((rowA, rowB) => {
+              const valueA = readValue(rowA, columnIndex, valueType);
+              const valueB = readValue(rowB, columnIndex, valueType);
+              if (valueA === null && valueB === null) return originalIndex(rowA) - originalIndex(rowB);
+              if (valueA === null) return 1;
+              if (valueB === null) return -1;
+              const comparison = valueType === "text"
+                ? valueA.localeCompare(valueB, "ja")
+                : valueA - valueB;
+              if (comparison === 0) return originalIndex(rowA) - originalIndex(rowB);
+              return nextDirection === "ascending" ? comparison : -comparison;
+            });
+          }
+          rows.forEach((row) => body.appendChild(row));
+        });
+      }
+    };
+
+    (() => {
+      const aiMethodTabs = Array.from(document.querySelectorAll("[data-ai-tab]"));
+      const activateAiMethod = (method) => {
+        for (const tab of aiMethodTabs) {
+          const selected = tab.dataset.aiMethod === method;
+          tab.setAttribute("aria-selected", selected ? "true" : "false");
+          tab.tabIndex = selected ? 0 : -1;
+        }
+        document.querySelectorAll("[data-ai-panel]").forEach((panel) => {
+          panel.hidden = panel.dataset.aiMethod !== method;
+        });
+        document.dispatchEvent(new CustomEvent("ai-method-change", { detail: { method } }));
+      };
+      for (const tab of aiMethodTabs) {
+        tab.addEventListener("click", () => activateAiMethod(tab.dataset.aiMethod));
+        tab.addEventListener("keydown", (event) => {
+          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+          const tabs = Array.from(tab.closest('[role="tablist"]').querySelectorAll("[data-ai-tab]"));
+          const offset = event.key === "ArrowRight" ? 1 : -1;
+          const target = tabs[(tabs.indexOf(tab) + offset + tabs.length) % tabs.length];
+          activateAiMethod(target.dataset.aiMethod);
+          target.focus();
+          event.preventDefault();
+        });
+      }
+      if (aiMethodTabs.length) {
+        activateAiMethod("traditional");
+      }
+
+      const tooltipTriggers = Array.from(document.querySelectorAll(".tooltip-trigger"));
+      const closeTooltips = () => {
+        for (const trigger of tooltipTriggers) {
+          trigger.closest(".term-tooltip").removeAttribute("data-open");
+          trigger.setAttribute("aria-expanded", "false");
+        }
+      };
+
+      for (const trigger of tooltipTriggers) {
+        trigger.addEventListener("click", (event) => {
+          event.stopPropagation();
+          const tooltip = trigger.closest(".term-tooltip");
+          const shouldOpen = tooltip.getAttribute("data-open") !== "true";
+          closeTooltips();
+          if (shouldOpen) {
+            tooltip.setAttribute("data-open", "true");
+            trigger.setAttribute("aria-expanded", "true");
+          }
+        });
+      }
+      document.addEventListener("click", closeTooltips);
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeTooltips();
+          if (document.activeElement?.classList.contains("tooltip-trigger")) {
+            document.activeElement.blur();
+          }
+        }
+      });
+      document.querySelectorAll(
+        ".prediction-table[data-sortable], .result-table[data-sortable]"
+      ).forEach(initializeSortableTable);
+    })();
+  </script>
+</body>
+</html>

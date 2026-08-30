@@ -3,9 +3,9 @@
     "race_id": "202604030408",
     "schema_version": 8,
     "created_at": "2026-08-29T20:26:50+09:00",
-    "updated_at": "2026-08-30T14:23:48+09:00",
+    "updated_at": "2026-08-30T15:57:07+09:00",
     "pre_status": "published",
-    "post_status": "awaiting_result"
+    "post_status": "published"
   },
   "race": {
     "date": "2026-08-30",
@@ -2486,7 +2486,20 @@
           }
         ]
       },
-      "post": null
+      "post": {
+        "total_stake": 100,
+        "total_return": 0,
+        "profit": -100,
+        "roi": -1.0,
+        "selections": [
+          {
+            "horse_number": 2,
+            "stake": 100,
+            "hit": false,
+            "return": 0
+          }
+        ]
+      }
     },
     "dutching": {
       "pre": {
@@ -2610,7 +2623,26 @@
           }
         ]
       },
-      "post": null
+      "post": {
+        "total_stake": 3000,
+        "total_return": 5250,
+        "profit": 2250,
+        "roi": 0.75,
+        "selections": [
+          {
+            "horse_number": 5,
+            "stake": 1500,
+            "hit": true,
+            "return": 5250
+          },
+          {
+            "horse_number": 8,
+            "stake": 1500,
+            "hit": false,
+            "return": 0
+          }
+        ]
+      }
     },
     "variants": [
       {
@@ -2651,7 +2683,26 @@
               }
             ]
           },
-          "post": null
+          "post": {
+            "total_stake": 200,
+            "total_return": 0,
+            "profit": -200,
+            "roi": -1.0,
+            "selections": [
+              {
+                "horse_number": 1,
+                "stake": 100,
+                "hit": false,
+                "return": 0
+              },
+              {
+                "horse_number": 2,
+                "stake": 100,
+                "hit": false,
+                "return": 0
+              }
+            ]
+          }
         },
         "dutching": {
           "pre": {
@@ -2791,11 +2842,232 @@
               }
             ]
           },
-          "post": null
+          "post": {
+            "total_stake": 3000,
+            "total_return": 0,
+            "profit": -3000,
+            "roi": -1.0,
+            "selections": [
+              {
+                "horse_number": 8,
+                "stake": 1100,
+                "hit": false,
+                "return": 0
+              },
+              {
+                "horse_number": 4,
+                "stake": 600,
+                "hit": false,
+                "return": 0
+              },
+              {
+                "horse_number": 3,
+                "stake": 1100,
+                "hit": false,
+                "return": 0
+              },
+              {
+                "horse_number": 2,
+                "stake": 200,
+                "hit": false,
+                "return": 0
+              }
+            ]
+          }
         }
       }
     ]
   },
-  "result": null,
-  "evaluation": null
+  "result": {
+    "fetched_at": "2026-08-30T15:57:06+09:00",
+    "finish_order": [
+      5,
+      3,
+      8,
+      2,
+      9,
+      4,
+      1,
+      6,
+      7,
+      10,
+      11
+    ],
+    "horses": [
+      {
+        "horse_number": 5,
+        "finish_position": 1
+      },
+      {
+        "horse_number": 3,
+        "finish_position": 2
+      },
+      {
+        "horse_number": 8,
+        "finish_position": 3
+      },
+      {
+        "horse_number": 2,
+        "finish_position": 4
+      },
+      {
+        "horse_number": 9,
+        "finish_position": 5
+      },
+      {
+        "horse_number": 4,
+        "finish_position": 6
+      },
+      {
+        "horse_number": 1,
+        "finish_position": 7
+      },
+      {
+        "horse_number": 6,
+        "finish_position": 8
+      },
+      {
+        "horse_number": 7,
+        "finish_position": 9
+      },
+      {
+        "horse_number": 10,
+        "finish_position": 10
+      },
+      {
+        "horse_number": 11,
+        "finish_position": 11
+      }
+    ],
+    "payouts": {
+      "win": [
+        {
+          "horse_number": 5,
+          "payout_per_100": 350
+        }
+      ]
+    },
+    "final_win_odds": [
+      {
+        "horse_number": 1,
+        "win_odds": 85.1
+      },
+      {
+        "horse_number": 2,
+        "win_odds": 26.5
+      },
+      {
+        "horse_number": 3,
+        "win_odds": 3.7
+      },
+      {
+        "horse_number": 4,
+        "win_odds": 9.2
+      },
+      {
+        "horse_number": 5,
+        "win_odds": 3.5
+      },
+      {
+        "horse_number": 6,
+        "win_odds": 15.5
+      },
+      {
+        "horse_number": 7,
+        "win_odds": 60.5
+      },
+      {
+        "horse_number": 8,
+        "win_odds": 3.2
+      },
+      {
+        "horse_number": 9,
+        "win_odds": 18.4
+      },
+      {
+        "horse_number": 10,
+        "win_odds": 36.9
+      },
+      {
+        "horse_number": 11,
+        "win_odds": 13.3
+      }
+    ]
+  },
+  "evaluation": {
+    "evaluated_at": "2026-08-30T15:57:06+09:00",
+    "winner": {
+      "horse_number": 5,
+      "predicted_probability": 0.23,
+      "predicted_rank": 1
+    },
+    "metrics": {
+      "log_loss": 1.469676,
+      "brier_score": 0.063459,
+      "top1_hit": true,
+      "top3_hit": true,
+      "top5_hit": true
+    },
+    "market_baseline": {
+      "available": true,
+      "winner_probability": 0.214209,
+      "winner_rank": 1,
+      "log_loss": 1.540804,
+      "brier_score": 0.066108,
+      "model_log_loss_difference": -0.071128,
+      "model_brier_difference": -0.002649,
+      "odds_recorded_after_start": false,
+      "comparison_note": null
+    },
+    "simulation_results": {
+      "value": {
+        "total_stake": 100,
+        "total_return": 0,
+        "profit": -100,
+        "roi": -1.0,
+        "hit": false
+      },
+      "dutching": {
+        "total_stake": 3000,
+        "total_return": 5250,
+        "profit": 2250,
+        "roi": 0.75,
+        "hit": true
+      }
+    },
+    "variants": [
+      {
+        "method": "statistical",
+        "model_provider": "codex",
+        "model_name": "gpt-5.6-luna",
+        "predicted_at": "2026-08-30T14:23:27+09:00",
+        "prompt_sha256": "6f4bb97fd821a1031aa81b0320058ec2bdac16ab75092cceecc525479dc7d41c",
+        "prediction_input_sha256": "1dbfd08e659ad33a7729f81fb50322ad7aa2c41ef5b1e6e652e9751ca840e6e0",
+        "evaluated_at": "2026-08-30T15:57:06+09:00",
+        "winner": {
+          "horse_number": 5,
+          "predicted_probability": 0.1,
+          "predicted_rank": 5
+        },
+        "metrics": {
+          "log_loss": 2.302585,
+          "brier_score": 0.083309,
+          "top1_hit": false,
+          "top3_hit": false,
+          "top5_hit": true
+        },
+        "market_baseline": {
+          "available": true,
+          "winner_probability": 0.214209,
+          "winner_rank": 1,
+          "log_loss": 1.540804,
+          "brier_score": 0.066108,
+          "model_log_loss_difference": 0.761781,
+          "model_brier_difference": 0.017201,
+          "odds_recorded_after_start": false,
+          "comparison_note": null
+        }
+      }
+    ]
+  }
 }
