@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-30T15:57:06+09:00",
+  "generated_at": "2026-08-31T14:07:15+09:00",
   "overall": {
     "evaluated_races": 16,
     "top1_hits": 5,
@@ -949,13 +949,13 @@
           "overall_roi": 0.0
         },
         "dutching": {
-          "simulation_races": 2,
-          "purchase_races": 2,
-          "hit_races": 1,
-          "total_stake": 6000,
-          "total_return": 3060,
-          "cumulative_profit": -2940,
-          "overall_roi": 0.51
+          "simulation_races": 6,
+          "purchase_races": 6,
+          "hit_races": 3,
+          "total_stake": 18000,
+          "total_return": 19050,
+          "cumulative_profit": 1050,
+          "overall_roi": 1.058333
         }
       }
     }
