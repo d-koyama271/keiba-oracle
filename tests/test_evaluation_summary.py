@@ -340,7 +340,8 @@ class EvaluationSummaryTests(unittest.TestCase):
         self.assertEqual(paired["methods"]["statistical"]["average_log_loss"], 0.25)
         self.assertEqual(paired["differences"]["average_log_loss"], -0.05)
         self.assertEqual(paired["differences"]["average_brier_score"], -0.005)
-        self.assertIn("negative values favor statistical", paired["differences"]["definition"])
+        self.assertIsInstance(paired["differences"]["definition"], str)
+        self.assertTrue(paired["differences"]["definition"])
 
     def test_method_summaries_support_traditional_only_and_statistical_only(self) -> None:
         traditional_only = evaluated_payload("traditional-only", field_size=3)

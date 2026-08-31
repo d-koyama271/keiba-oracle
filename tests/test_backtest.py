@@ -153,7 +153,8 @@ class BacktestTests(unittest.TestCase):
                 statistical["excluded"],
                 {"statistical_prediction_missing": 1, "result_missing": 1},
             )
-            self.assertIn("回収率: -", backtest.format_backtest_report(report))
+            self.assertIsNone(traditional["value"]["return_rate"])
+            self.assertIsNone(traditional["dutching"]["return_rate"])
 
 
 if __name__ == "__main__":

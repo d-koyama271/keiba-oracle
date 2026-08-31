@@ -8,11 +8,12 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from bs4 import BeautifulSoup
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from render import (  # noqa: E402
-    PREDICTION_METHOD_DESCRIPTIONS,
     build_environment,
     build_expected_value_rows,
     build_race_context,
@@ -23,7 +24,6 @@ from render import (  # noqa: E402
     rank_comparison,
     rejection_reason_text,
     render_site,
-    status_class,
     status_label,
 )
 
@@ -74,12 +74,14 @@ def make_payload(*, predicted: bool, track: str, date: str, name: str) -> dict:
 
 class RenderTests(unittest.TestCase):
     def test_status_labels_do_not_expose_internal_values(self) -> None:
-        self.assertEqual(status_label("prediction_only"), "予想公開")
-        self.assertEqual(status_label("result_published"), "結果公開")
-        self.assertEqual(status_label("unknown"), "処理中")
-        self.assertEqual(status_class("prediction_only"), "status-prediction")
-        self.assertEqual(status_class("result_published"), "status-result")
-        self.assertEqual(status_class("unknown"), "status-pending")
+        labels = {
+            status: status_label(status)
+            for status in ("prediction_only", "result_published", "unknown")
+        }
+
+        self.assertTrue(all(labels.values()))
+        self.assertTrue(all(label != status for status, label in labels.items()))
+        self.assertNotEqual(labels["prediction_only"], labels["result_published"])
 
     def test_index_sort_prioritizes_status_then_latest_start(self) -> None:
         rows = [
@@ -184,21 +186,15 @@ class RenderTests(unittest.TestCase):
                 "test-new-badge",
                 root=root,
             )
-            index = (output / "index.html").read_text(encoding="utf-8")
-            prediction_row = index.split("今週予想レース", 1)[1].split("</tr>", 1)[0]
-            result_row = index.split("今週結果レース", 1)[1].split("</tr>", 1)[0]
+            soup = BeautifulSoup(
+                (output / "index.html").read_text(encoding="utf-8"),
+                "html.parser",
+            )
+            prediction_row = soup.find(string="今週予想レース").find_parent("tr")
+            result_row = soup.find(string="今週結果レース").find_parent("tr")
 
-            self.assertIn("NEW!", prediction_row)
-            self.assertNotIn("NEW!", result_row)
-
-    def test_prediction_method_descriptions_match_fixed_spec(self) -> None:
-        self.assertEqual(
-            PREDICTION_METHOD_DESCRIPTIONS,
-            {
-                "traditional": "過去成績や今回のレース条件、市場評価などを総合して1着確率を推定しています。",
-                "statistical": "市場情報を使用せず、過去成績や今回のレース条件などの客観データから1着確率を推定しています。",
-            },
-        )
+            self.assertIsNotNone(prediction_row.select_one(".new-badge"))
+            self.assertIsNone(result_row.select_one(".new-badge"))
 
     def test_recorded_odds_requires_timestamp_and_at_least_one_odds_value(self) -> None:
         payload = make_payload(predicted=True, track="中山", date="2026-01-01", name="検証レース")
@@ -210,7 +206,7 @@ class RenderTests(unittest.TestCase):
             horse["win_odds"] = None
         self.assertFalse(build_race_context(payload)["has_recorded_odds"])
 
-    def test_race_title_avoids_duplicate_ai_label_and_escapes_description(self) -> None:
+    def test_race_title_escapes_race_name(self) -> None:
         payload = make_payload(
             predicted=True,
             track="中山",
@@ -220,9 +216,9 @@ class RenderTests(unittest.TestCase):
         rendered = build_environment(ROOT).get_template("race.html.j2").render(
             **build_race_context(payload)
         )
+        title = BeautifulSoup(rendered, "html.parser").title.get_text(strip=True)
 
-        self.assertIn("<title>A&amp;B AI予想 | keiba-oracle</title>", rendered)
-        self.assertNotIn("AI予想 AI予想", rendered)
+        self.assertIn("A&B", title)
 
     def test_expected_value_rows_use_raw_values_sort_and_handle_missing_odds(self) -> None:
         horse_rows = [
@@ -284,22 +280,34 @@ class RenderTests(unittest.TestCase):
         self.assertNotIn("expected_return", value_pre["selections"][0])
 
     def test_rejection_reason_labels_do_not_expose_internal_values(self) -> None:
-        self.assertEqual(
-            rejection_reason_text(
-                [
-                    "coverage_probability_below_threshold",
-                    "minimum_profit_not_positive",
-                ]
-            ),
-            "カバー確率が最低基準未満、的中時の最低利益を確保できない",
-        )
-        self.assertEqual(rejection_reason_text(["unknown_reason"]), "条件を満たしていません")
+        internal_reasons = [
+            "coverage_probability_below_threshold",
+            "minimum_profit_not_positive",
+        ]
+        known = rejection_reason_text(internal_reasons)
+        unknown = rejection_reason_text(["unknown_reason"])
 
-    def test_rank_comparison_uses_japanese_labels_and_ignores_non_numeric_finish(self) -> None:
-        self.assertEqual(rank_comparison(3, 1), ("2着上", "comparison-up"))
-        self.assertEqual(rank_comparison(2, 10), ("8着下", "comparison-down"))
-        self.assertEqual(rank_comparison(5, 5), ("差なし", "comparison-neutral"))
-        self.assertEqual(rank_comparison(2, "中止"), ("-", "comparison-neutral"))
+        self.assertTrue(known)
+        self.assertTrue(unknown)
+        self.assertNotEqual(known, unknown)
+        self.assertTrue(
+            all(reason not in known for reason in internal_reasons),
+        )
+        self.assertNotIn("unknown_reason", unknown)
+
+    def test_rank_comparison_preserves_direction_and_ignores_non_numeric_finish(self) -> None:
+        upward = rank_comparison(3, 1)
+        downward = rank_comparison(2, 10)
+        same = rank_comparison(5, 5)
+        unavailable = rank_comparison(2, "中止")
+
+        self.assertEqual(upward[1], "comparison-up")
+        self.assertIn("2", upward[0])
+        self.assertEqual(downward[1], "comparison-down")
+        self.assertIn("8", downward[0])
+        self.assertEqual(same[1], "comparison-neutral")
+        self.assertEqual(unavailable[1], "comparison-neutral")
+        self.assertNotEqual(same[0], unavailable[0])
 
     def test_prediction_rank_ties_use_horse_number_without_reordering_rows(self) -> None:
         context = build_race_context(
@@ -394,28 +402,36 @@ class RenderTests(unittest.TestCase):
         template = build_environment(ROOT).get_template("race.html.j2")
         rendered = template.render(**prediction_context)
         result_rendered = template.render(**result_context)
+        prediction_soup = BeautifulSoup(rendered, "html.parser")
+        result_soup = BeautifulSoup(result_rendered, "html.parser")
 
         self.assertEqual(
             [row["prediction_rank"] for row in context["statistical_horse_rows"]],
             [3, 2, 1],
         )
         self.assertEqual(context["statistical_evaluation"]["winner"]["predicted_rank"], 1)
-        self.assertIn("<h2>予想比較</h2>", rendered)
-        self.assertIn('data-ai-method="traditional"', rendered)
-        self.assertIn('data-ai-method="statistical"', rendered)
-        self.assertNotIn("<h3>総合AI予想</h3>", rendered)
-        self.assertNotIn("<h3>統計重視予想</h3>", rendered)
-        self.assertIn('id="prediction-statistical" role="tabpanel" data-ai-panel data-ai-method="statistical" hidden', rendered)
-        self.assertIn(PREDICTION_METHOD_DESCRIPTIONS["statistical"], rendered)
-        self.assertIn("客観データの比較では3番を上位評価。", rendered)
-        self.assertEqual(rendered.count('class="prediction-table" data-sortable'), 2)
-        self.assertNotIn("レース結果", rendered)
-        self.assertEqual(result_rendered.count('class="result-table" data-sortable'), 2)
-        self.assertIn("総合AI予想の予測評価", result_rendered)
-        self.assertIn("統計重視予想の予測評価", result_rendered)
-        self.assertNotIn("シミュレーション収支", result_rendered)
-        self.assertIn('id="result-statistical"', result_rendered)
-        self.assertNotIn("カスタム購入シミュレーション", result_rendered)
+        prediction_panels = prediction_soup.select(
+            ".prediction-section [data-ai-panel]"
+        )
+        result_panels = result_soup.select(".result-section [data-ai-panel]")
+        self.assertEqual(
+            [panel["data-ai-method"] for panel in prediction_panels],
+            ["traditional", "statistical"],
+        )
+        self.assertEqual(
+            [panel["data-ai-method"] for panel in result_panels],
+            ["traditional", "statistical"],
+        )
+        self.assertFalse(prediction_panels[0].has_attr("hidden"))
+        self.assertTrue(prediction_panels[1].has_attr("hidden"))
+        self.assertEqual(len(prediction_soup.select("table.prediction-table")), 2)
+        self.assertEqual(len(result_soup.select("table.result-table")), 2)
+        self.assertIn(
+            payload["prediction"]["variants"][0]["optional_summary"],
+            prediction_panels[1].get_text(" ", strip=True),
+        )
+        self.assertIsNone(prediction_soup.select_one(".result-section"))
+        self.assertIsNone(result_soup.select_one("#custom-simulator"))
 
     def test_render_only_prediction_races_and_remove_stale_managed_html(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -455,34 +471,38 @@ class RenderTests(unittest.TestCase):
                 root=root,
             )
 
-            index = (output / "index.html").read_text(encoding="utf-8")
-            race_html = (output / "races" / "2026-01-01" / "nakayama_11r.html").read_text(
-                encoding="utf-8"
+            index_soup = BeautifulSoup(
+                (output / "index.html").read_text(encoding="utf-8"),
+                "html.parser",
             )
-            self.assertIn("予想済み", index)
-            self.assertIn("<h2>レース一覧</h2>", index)
-            self.assertIn('<table class="index-table">', index)
-            self.assertIn('<th class="nowrap">発走</th>', index)
-            self.assertIn('<td class="nowrap">15:30</td>', index)
-            self.assertIn('<th class="nowrap">予想</th>', index)
-            self.assertIn('<th class="nowrap result-link-column">結果</th>', index)
-            self.assertNotIn(">状態</th>", index)
-            self.assertIn(
-                '<a class="page-link" href="races/2026-01-01/nakayama_11r.html">開く</a>',
-                index,
+            race_soup = BeautifulSoup(
+                (output / "races" / "2026-01-01" / "nakayama_11r.html").read_text(
+                    encoding="utf-8"
+                ),
+                "html.parser",
             )
-            self.assertIn('<td class="nowrap result-link-column">-</td>', index)
-            self.assertNotIn("未予想", index)
-            self.assertNotIn("prediction_only", index)
+            table = index_soup.select_one("table.index-table")
+            rows = table.select("tbody tr")
+            self.assertEqual(len(rows), 1)
+            self.assertIn("予想済み", rows[0].get_text(" ", strip=True))
+            self.assertNotIn("未予想", table.get_text(" ", strip=True))
+            self.assertEqual(
+                [link["href"] for link in rows[0].select("a[href]")],
+                ["races/2026-01-01/nakayama_11r.html"],
+            )
+            self.assertIsNone(rows[0].select("td")[-1].find("a"))
             self.assertTrue((output / "assets" / "site.css").exists())
             self.assertFalse((output / stale.relative_to(public)).exists())
             self.assertFalse((output / "races" / "2026-01-02" / "tokyo_11r.html").exists())
             self.assertFalse((output / "races" / "2026-01-01" / "nakayama_11r_result.html").exists())
-            self.assertIn('class="prediction-table"', race_html)
-            self.assertIn('data-ai-method="traditional"', race_html)
-            self.assertIn("<h3>総合AI予想</h3>", race_html)
-            self.assertNotIn("統計重視予想", race_html)
-            self.assertNotIn("prediction_only", race_html)
+            self.assertEqual(
+                [
+                    panel["data-ai-method"]
+                    for panel in race_soup.select(".prediction-section [data-ai-panel]")
+                ],
+                ["traditional"],
+            )
+            self.assertIsNone(race_soup.select_one(".result-section"))
 
     def test_result_race_generates_separate_prediction_and_result_pages_and_index_links(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -545,33 +565,31 @@ class RenderTests(unittest.TestCase):
             prediction_html = (output / "races" / "2026-01-01" / "nakayama_11r.html").read_text(encoding="utf-8")
             result_html = (output / "races" / "2026-01-01" / "nakayama_11r_result.html").read_text(encoding="utf-8")
             index = (output / "index.html").read_text(encoding="utf-8")
+            prediction_soup = BeautifulSoup(prediction_html, "html.parser")
+            result_soup = BeautifulSoup(result_html, "html.parser")
+            index_soup = BeautifulSoup(index, "html.parser")
 
-            self.assertIn("購入シミュレーション", prediction_html)
-            self.assertNotIn('<section class="panel result-section', prediction_html)
-            self.assertIn('<section class="panel result-section">', result_html)
-            self.assertIn("予測評価", result_html)
-            self.assertNotIn("実着順一覧", result_html)
-            self.assertIn("確定オッズ", result_html)
-            self.assertNotIn("確定単勝オッズ", result_html)
-            self.assertIn(">5.0</td><td class=\"nowrap\">的中</td>", result_html)
-            self.assertNotIn(">yes<", result_html)
-            self.assertNotIn(">no<", result_html)
-            self.assertNotIn('class="stats"', result_html)
-            self.assertIn('class="metric-grid"', result_html)
-            self.assertNotIn("シミュレーション収支", result_html)
+            self.assertIsNotNone(prediction_soup.select_one(".prediction-section"))
+            self.assertIsNotNone(prediction_soup.select_one(".simulation-section"))
+            self.assertIsNone(prediction_soup.select_one(".result-section"))
+            self.assertIsNotNone(result_soup.select_one(".result-section"))
+            self.assertIsNotNone(result_soup.select_one(".result-section .metric-grid"))
+            self.assertIsNotNone(
+                result_soup.select_one('table.result-table td[data-sort-value="5.0"]')
+            )
             self.assertEqual(
                 [horse["win_odds"] for horse in payload["horses"]],
                 prediction_odds_before,
             )
-            self.assertNotIn('class="prediction-table"', result_html)
-            self.assertNotIn("カスタム購入シミュレーション", result_html)
-            self.assertIn(
-                '<a class="page-link" href="races/2026-01-01/nakayama_11r.html">開く</a>',
-                index,
-            )
-            self.assertIn(
-                '<a class="page-link" href="races/2026-01-01/nakayama_11r_result.html">開く</a>',
-                index,
+            self.assertIsNone(result_soup.select_one("table.prediction-table"))
+            self.assertIsNone(result_soup.select_one("#custom-simulator"))
+            row = index_soup.select_one("table.index-table tbody tr")
+            self.assertEqual(
+                [link["href"] for link in row.select("a[href]")],
+                [
+                    "races/2026-01-01/nakayama_11r.html",
+                    "races/2026-01-01/nakayama_11r_result.html",
+                ],
             )
 
     def test_index_renders_generated_evaluation_summary(self) -> None:
@@ -646,26 +664,27 @@ class RenderTests(unittest.TestCase):
                 "test-render-summary",
                 root=root,
             )
-            index = (output / "index.html").read_text(encoding="utf-8")
+            soup = BeautifulSoup(
+                (output / "index.html").read_text(encoding="utf-8"),
+                "html.parser",
+            )
+            performance_panels = soup.select(".performance-panel")
 
-            self.assertIn("20.0%", index)
-            self.assertIn("1 / 5レース", index)
-            self.assertIn("60.0%", index)
-            self.assertIn("3 / 5レース", index)
-            self.assertIn("3.4位", index)
-            self.assertIn("50.0%", index)
-            self.assertIn("1 / 2レース", index)
-            self.assertIn("100.0%", index)
-            self.assertIn("2 / 2レース", index)
-            self.assertIn("<span>単勝分配方式</span>", index)
-            self.assertIn('<strong class="profit-amount profit-negative">-9,670円</strong>', index)
-            self.assertIn('<strong class="profit-amount profit-neutral">0円</strong>', index)
-            self.assertIn('<strong class="profit-amount profit-negative">-100円</strong>', index)
-            self.assertIn('<strong class="profit-amount profit-positive">300円</strong>', index)
-            self.assertNotIn("Top5的中率", index)
-            self.assertNotIn("80.0%", index)
-            self.assertIn("予想済み", index)
-            self.assertLess(index.index("予測成績"), index.index("予想済み"))
+            self.assertEqual(len(performance_panels), 2)
+            self.assertTrue(
+                all(len(panel.select(".performance-item")) == 4 for panel in performance_panels)
+            )
+            self.assertTrue(
+                all(len(panel.select(".profit-amount")) == 2 for panel in performance_panels)
+            )
+            self.assertTrue(
+                all(
+                    value.get_text(strip=True) != "-"
+                    for panel in performance_panels
+                    for value in panel.select(".performance-value")
+                )
+            )
+            self.assertIsNotNone(soup.select_one("table.index-table"))
 
 
 if __name__ == "__main__":

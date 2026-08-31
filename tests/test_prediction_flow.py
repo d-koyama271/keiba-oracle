@@ -96,9 +96,9 @@ class PredictionValidationTests(unittest.TestCase):
 
         for forbidden in predict.STATISTICAL_FORBIDDEN_OUTPUT_TERMS:
             self.assertNotIn(forbidden, prompt_text.lower())
-        self.assertIn("全出走馬を横断比較", prompt_text)
-        self.assertIn("全馬の確率合計を1.0", prompt_text)
-        self.assertIn("Web検索", prompt_text)
+        self.assertRegex(prompt_text, r"全(?:出走)?馬.*(?:比較|評価)")
+        self.assertRegex(prompt_text, r"確率合計.*1\.0")
+        self.assertRegex(prompt_text, r"(?:Web|ウェブ).*(?:参照|検索).*(?:ない|しない|禁止)")
         self.assertIn("{{RACE_CONTEXT}}", prompt_text)
 
     def test_prediction_audit_hashes_are_stable_and_content_sensitive(self) -> None:

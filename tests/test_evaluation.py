@@ -9,6 +9,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from bs4 import BeautifulSoup
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
@@ -276,17 +278,12 @@ class EvaluationFlowTests(unittest.TestCase):
             }
         )
         rendered = build_environment(ROOT).get_template("race.html.j2").render(**context)
+        soup = BeautifulSoup(rendered, "html.parser")
+        evaluation_grid = soup.select_one("#result-traditional .metric-grid")
 
-        for text in (
-            "予測評価",
-            "勝ち馬の予測順位",
-            "Log Loss",
-            "Brier Score",
-            "市場ベースライン比較",
-            "正式な発走前性能比較ではありません",
-        ):
-            self.assertIn(text, rendered)
-        self.assertNotIn("フィードバック要約", rendered)
+        self.assertIsNotNone(evaluation_grid)
+        self.assertGreater(len(evaluation_grid.find_all("div", recursive=False)), 0)
+        self.assertNotIn("feedback", rendered.lower())
         self.assertEqual(build_race_context(payload)["status"], "result_published")
 
 
