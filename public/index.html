@@ -42,8 +42,12 @@
     .performance-panel h2 { margin-top: 0; }
     .performance-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 12px;
+    }
+    .profit-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-top: 16px;
     }
     .performance-item {
       min-width: 0;
@@ -157,6 +161,7 @@
       main { padding: 20px 12px 40px; }
       .panel { padding: 15px; }
       .performance-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .profit-grid { grid-template-columns: 1fr; }
       table { font-size: 13px; }
       th, td { padding: 8px 7px; }
       .index-table th,
@@ -205,8 +210,10 @@
           <strong>勝ち馬の平均予想順位</strong>
           <div class="performance-value">4.4位</div>
         </div>
+      </div>
+      <div class="performance-grid profit-grid">
         <div class="performance-item">
-          <strong>累計収支</strong>
+          <strong>累計収支（単勝）</strong>
           <div class="performance-breakdown">
 
 
@@ -219,6 +226,24 @@
             <div>
               <span>期待値重視方式</span>
               <strong class="profit-amount profit-negative">-800円</strong>
+            </div>
+          </div>
+        </div>
+        <div class="performance-item">
+          <strong>累計収支（馬連）</strong>
+          <div class="performance-breakdown">
+
+
+
+            <div>
+              <span>馬連分配方式</span>
+              <strong class="profit-amount profit-neutral">-</strong>
+            </div>
+
+
+            <div>
+              <span>馬連期待値重視方式</span>
+              <strong class="profit-amount profit-neutral">-</strong>
             </div>
           </div>
         </div>
@@ -245,8 +270,10 @@
           <strong>勝ち馬の平均予想順位</strong>
           <div class="performance-value">4.2位</div>
         </div>
+      </div>
+      <div class="performance-grid profit-grid">
         <div class="performance-item">
-          <strong>累計収支</strong>
+          <strong>累計収支（単勝）</strong>
           <div class="performance-breakdown">
 
 
@@ -259,6 +286,24 @@
             <div>
               <span>期待値重視方式</span>
               <strong class="profit-amount profit-negative">-1,300円</strong>
+            </div>
+          </div>
+        </div>
+        <div class="performance-item">
+          <strong>累計収支（馬連）</strong>
+          <div class="performance-breakdown">
+
+
+
+            <div>
+              <span>馬連分配方式</span>
+              <strong class="profit-amount profit-neutral">-</strong>
+            </div>
+
+
+            <div>
+              <span>馬連期待値重視方式</span>
+              <strong class="profit-amount profit-neutral">-</strong>
             </div>
           </div>
         </div>
@@ -279,6 +324,24 @@
           </tr>
         </thead>
         <tbody>
+
+          <tr>
+            <td class="nowrap">2026-09-06</td>
+            <td class="nowrap">15:45</td>
+            <td class="nowrap">中山</td>
+            <td>紫苑S<span class="new-badge">NEW!</span></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-09-06/nakayama_11r.html">開く</a></td>
+            <td class="nowrap result-link-column">-</td>
+          </tr>
+
+          <tr>
+            <td class="nowrap">2026-09-06</td>
+            <td class="nowrap">15:30</td>
+            <td class="nowrap">阪神</td>
+            <td>セントウルS<span class="new-badge">NEW!</span></td>
+            <td class="nowrap"><a class="page-link" href="races/2026-09-06/hanshin_11r.html">開く</a></td>
+            <td class="nowrap result-link-column">-</td>
+          </tr>
 
           <tr>
             <td class="nowrap">2026-09-05</td>
