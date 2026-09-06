@@ -11,7 +11,7 @@ from typing import Any
 import yaml
 
 JST = timezone(timedelta(hours=9), name="Asia/Tokyo")
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 REQUIRED_TOP_LEVEL_KEYS = ("meta", "race", "horses", "prediction", "simulation", "result", "evaluation")
 TRADITIONAL_PREDICTION_METHOD = "traditional"
 STATISTICAL_PREDICTION_METHOD = "statistical"
@@ -213,6 +213,8 @@ def ensure_race_payload(payload: dict[str, Any] | None, race_id: str | None = No
         "dutching": {"pre": dutching.get("pre"), "post": dutching.get("post")},
         "variants": [item for item in variants if isinstance(item, dict)],
     }
+    if isinstance(simulation.get("quinella"), dict):
+        merged["simulation"]["quinella"] = simulation["quinella"]
     for key in REQUIRED_TOP_LEVEL_KEYS:
         merged.setdefault(key, base.get(key))
     return merged

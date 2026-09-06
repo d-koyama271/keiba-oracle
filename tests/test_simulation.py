@@ -827,7 +827,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         self.assertIsNone(result_soup.select_one("#custom-simulator"))
 
         simulation_section = soup.select_one("section.simulation-section")
-        simulation_panels = simulation_section.select_one(".ai-method-panel").find_all(
+        simulation_panels = simulation_section.select_one('[data-ticket-panel="win"]').find_all(
             "div",
             class_="simulation-panel",
             recursive=False,
@@ -1145,8 +1145,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         payload["simulation"]["dutching"]["post"] = calculate_dutching_post(payload)
         rendered = self.render_page(payload, "result")
         soup = BeautifulSoup(rendered, "html.parser")
-        result_panels = soup.select("#result-traditional > .result-panel")
-        simulation_panels = result_panels[1:]
+        simulation_panels = soup.select('#settlement-traditional-win > .result-panel')
 
         self.assertEqual(len(simulation_panels), 2)
         for panel in simulation_panels:

@@ -1,0 +1,73 @@
+{% macro ticket_tabs(prefix, shared_panel=none) -%}
+<div class="ai-method-tabs ticket-tabs" role="tablist" aria-label="シミュレーションの券種">
+  <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="win" aria-controls="{{ shared_panel or prefix ~ '-win' }}" aria-selected="true" tabindex="0">単勝</button>
+  <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="quinella" aria-controls="{{ shared_panel or prefix ~ '-quinella' }}" aria-selected="false" tabindex="-1">馬連</button>
+</div>
+{%- endmacro %}
+
+{% macro panels(view, page_kind, rejection_reason_text) -%}
+{% set q = view.quinella %}
+<p class="small">馬連的中確率は各馬の1着確率から算出した、同着を考慮しない近似値です。{% if q.get('harville_lambda') is not none %}λ={{ q.harville_lambda }}{% endif %}</p>
+{% if q.get('status') != 'ready' %}
+<p class="quinella-unavailable">馬連は計算できません。発走前の完全なオッズ・確率データが記録されていません。</p>
+{% else %}
+{% for method, label in [('dutching', '馬連分配方式'), ('value', '馬連期待値重視方式')] %}
+{% set pre = q[method].pre %}
+{% set post = q[method].post %}
+<div class="panel {{ 'result-panel' if page_kind == 'result' else 'simulation-panel' }}" data-quinella-method="{{ method }}">
+  <h3>{{ label }}{% if page_kind == 'result' %}のシミュレーション結果{% endif %}</h3>
+  {% if page_kind == 'result' %}
+    {% if post %}
+    <div class="metric-grid">
+      <div><strong>当初購入額</strong><br>{{ post.total_stake }}円</div>
+      <div><strong>返還額</strong><br>{{ post.total_refund }}円</div>
+      <div><strong>回収額（返還含む）</strong><br>{{ post.total_return }}円</div>
+      <div><strong>損益</strong><br>{{ post.profit }}円</div>
+      <div><strong>ROI（損益率）</strong><br>{{ '%.2f'|format(post.roi * 100) }}%</div>
+    </div>
+    {% if post.selections %}
+    <div class="table-scroll"><table class="simulation-table"><thead><tr><th>馬番ペア</th><th>購入額</th><th>判定</th><th>的中払戻</th><th>返還額</th><th>回収額</th></tr></thead><tbody>
+      {% for item in post.selections %}<tr><td class="nowrap">{{ item.horse_numbers|join('-') }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ '返還' if item.refund else ('的中' if item.hit else '不的中') }}</td><td class="nowrap">{{ item.payout }}円</td><td class="nowrap">{{ item.refund }}円</td><td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}
+    </tbody></table></div>
+    {% else %}<p>購入なし</p>{% endif %}
+    {% else %}<p class="quinella-pending">結果・馬連払戻または返還情報の確定待ちです。</p>{% endif %}
+  {% elif pre %}
+    <div class="metric-grid">
+      <div><strong>予算上限</strong><br>{{ pre.budget }}円</div>
+      <div><strong>合計購入額</strong><br>{{ pre.total_stake }}円</div>
+      <div><strong>未使用予算</strong><br>{{ pre.unused_budget }}円</div>
+      {% if method == 'value' %}
+      <div><strong>最低EV</strong><br>{{ pre.settings.ev_threshold }}</div><div><strong>Kelly係数</strong><br>{{ pre.settings.kelly_fraction }}</div>
+      {% else %}
+      <div><strong>最大対象組数</strong><br>{{ pre.settings.max_selection_count }}組</div>
+      <div><strong>最低カバー確率</strong><br>{{ '%.2f'|format(pre.settings.min_coverage_probability * 100) }}%</div>
+      <div><strong>最低グループ期待値</strong><br>{{ pre.settings.min_group_expected_value }}</div>
+      <div><strong>最低利益率</strong><br>{{ '%.0f'|format(pre.settings.min_profit_rate * 100) }}%</div>
+      <div><strong>的中時利益必須</strong><br>{{ '有効' if pre.settings.require_profit_if_hit else '無効' }}</div>
+      <div><strong>選択組数</strong><br>{{ pre.selected_count }}組</div>
+      <div><strong>カバー確率</strong><br>{{ '%.2f'|format(pre.coverage_probability * 100) }}%</div>
+      <div><strong>グループ期待値</strong><br>{{ '%.3f'|format(pre.group_expected_value) }}</div>
+      <div><strong>最低払戻額</strong><br>{{ '%.0f'|format(pre.minimum_payout) }}円</div>
+      <div><strong>最低利益</strong><br>{{ '%.0f'|format(pre.minimum_profit) }}円</div>
+      {% endif %}
+    </div>
+    {% if pre.selections %}
+    <div class="table-scroll"><table class="simulation-table"><thead><tr><th>馬番ペア</th><th>馬連的中確率</th><th>馬連オッズ</th><th>EV</th><th>購入額</th>{% if method == 'dutching' %}<th>的中時払戻額</th><th>的中時利益</th>{% endif %}</tr></thead><tbody>
+      {% for item in pre.selections %}<tr><td class="nowrap">{{ item.horse_numbers|join('-') }}</td><td class="nowrap">{{ '%.2f'|format(item.predicted_probability * 100) }}%</td><td class="nowrap">{{ item.odds }}</td><td class="nowrap">{{ '%.3f'|format(item.expected_value) }}</td><td class="nowrap">{{ item.stake }}円</td>{% if method == 'dutching' %}<td class="nowrap">{{ '%.0f'|format(item.estimated_payout) }}円</td><td class="nowrap">{{ '%.0f'|format(item.estimated_profit) }}円</td>{% endif %}</tr>{% endfor %}
+    </tbody></table></div>
+    {% else %}<p><strong>購入なし</strong>：{{ '設定条件を満たす候補がありません。' if method == 'dutching' else '最低EVとKelly基準を満たす購入単位以上の候補がありません。' }}</p>{% endif %}
+    <details class="simulation-details"><summary>{{ '組数別比較' if method == 'dutching' else '全ペア期待値' }}の詳細を見る</summary>
+    <div class="table-scroll"><table class="evaluation-table">
+      {% if method == 'dutching' %}
+      <thead><tr><th>組数</th><th>対象ペア</th><th>カバー確率</th><th>グループEV</th><th>最低払戻</th><th>最低利益</th><th>判定</th><th>除外理由</th></tr></thead><tbody>
+      {% for item in pre.evaluated_counts %}<tr{% if pre.selections and item.selection_count == pre.selected_count %} class="selected-row"{% endif %}><td>{{ item.selection_count }}</td><td>{% for pair in item.horse_pairs %}{{ pair|join('-') }}{{ ', ' if not loop.last else '' }}{% endfor %}</td><td>{{ '%.2f'|format(item.coverage_probability * 100) }}%</td><td>{{ '%.3f'|format(item.group_expected_value) }}</td><td>{{ '%.0f'|format(item.minimum_payout) }}円</td><td>{{ '%.0f'|format(item.minimum_profit) }}円</td><td>{{ '採用' if pre.selections and item.selection_count == pre.selected_count else ('適格' if item.eligible else '除外') }}</td><td>{{ rejection_reason_text(item.rejection_reasons)|replace('頭数', '組数') }}</td></tr>{% endfor %}
+      {% else %}
+      <thead><tr><th>馬番ペア</th><th>馬連的中確率</th><th>馬連オッズ</th><th>EV</th><th>Full Kelly</th><th>適用Kelly</th><th>理論購入額</th><th>購入額</th></tr></thead><tbody>
+      {% for item in pre.details %}<tr><td>{{ item.horse_numbers|join('-') }}</td><td>{{ '%.2f'|format(item.predicted_probability * 100) }}%</td><td>{{ item.odds }}</td><td>{{ '%.3f'|format(item.expected_value) }}</td><td>{{ '%.4f'|format(item.full_kelly * 100) }}%</td><td>{{ '%.4f'|format(item.fractional_kelly * 100) }}%</td><td>{{ '%.2f'|format(item.theoretical_stake) if item.theoretical_stake is not none else '-' }}円</td><td>{{ item.stake }}円</td></tr>{% endfor %}
+      {% endif %}
+    </tbody></table></div></details>
+  {% endif %}
+</div>
+{% endfor %}
+{% endif %}
+{%- endmacro %}

@@ -42,8 +42,12 @@
     .performance-panel h2 { margin-top: 0; }
     .performance-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 12px;
+    }
+    .profit-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-top: 16px;
     }
     .performance-item {
       min-width: 0;
@@ -157,6 +161,7 @@
       main { padding: 20px 12px 40px; }
       .panel { padding: 15px; }
       .performance-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .profit-grid { grid-template-columns: 1fr; }
       table { font-size: 13px; }
       th, td { padding: 8px 7px; }
       .index-table th,
@@ -200,11 +205,21 @@
           <strong>勝ち馬の平均予想順位</strong>
           <div class="performance-value">{% if evaluated_races and overall.get("average_winner_predicted_rank") is not none %}{{ "%.1f"|format(overall.average_winner_predicted_rank) }}位{% else %}-{% endif %}</div>
         </div>
+      </div>
+      <div class="performance-grid profit-grid">
         <div class="performance-item">
-          <strong>累計収支</strong>
+          <strong>累計収支（単勝）</strong>
           <div class="performance-breakdown">
 {{ profit_line("単勝分配方式", dutching_simulation) }}
 {{ profit_line("期待値重視方式", value_simulation) }}
+          </div>
+        </div>
+        <div class="performance-item">
+          <strong>累計収支（馬連）</strong>
+          <div class="performance-breakdown">
+{% set quinella = simulation.get("quinella", {}) if simulation else {} %}
+{{ profit_line("馬連分配方式", quinella.get("dutching")) }}
+{{ profit_line("馬連期待値重視方式", quinella.get("value")) }}
           </div>
         </div>
       </div>

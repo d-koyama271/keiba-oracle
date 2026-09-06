@@ -25,6 +25,7 @@ src/
   collect.py
   predict.py
   simulate.py
+  quinella.py
   evaluation.py
   evaluation_summary.py
   render.py
@@ -44,6 +45,7 @@ outbox/
 templates/
   race.html.j2
   index.html.j2
+  quinella.html.j2
 public/
   races/
 requirements.txt
@@ -76,6 +78,7 @@ codex login status
 - `simulation.value.ev_threshold`: 期待値重視方式の最低 EV（既定値 1.0）
 - `simulation.value.kelly_fraction`: 期待値重視方式の fractional Kelly 係数（既定値 0.75）
 - `simulation.dutching.*`: 単勝分配方式（内部キー `dutching`）の最大頭数、最低カバー確率、最低グループ期待値、最低利益率（既定値20%、合計購入額基準）、的中時利益条件
+- `simulation.quinella.*`: 馬連専用の確率近似・購入条件（下記参照）。単勝設定とは独立し、旧設定にこの項目がなくても単勝は動作します。
 - `publish_mode`: `github_pages` を想定
 - `llm_provider`: 通常運用では `codex`
 - `llm_model`: Codex で使用するモデル名
@@ -130,7 +133,7 @@ python src/run_post.py --date 2026-04-14
 }
 ```
 
-`schema_version` は `8` です。既存の `prediction` 本体は総合AI予想（内部識別子 `traditional`）のまま維持し、追加方式は `prediction.variants` に保存します。統計重視予想は `method: statistical` と `model_provider` / `model_name` で識別します。既存predictionに `method` がない場合は総合AI予想として扱い、過去JSONへのバックフィルは行いません。追加方式の購入シミュレーションは `simulation.variants`、結果評価は `evaluation.variants` へ同じ識別情報とともに保存します。結果取得時に全出走馬の確定単勝オッズが揃った場合のみ、予想時点の `horses[].win_odds` を変更せず `result.final_win_odds` へ保存します。
+`schema_version` は `9` です。既存の `prediction` 本体は総合AI予想（内部識別子 `traditional`）のまま維持し、追加方式は `prediction.variants` に保存します。統計重視予想は `method: statistical` と `model_provider` / `model_name` で識別します。既存predictionに `method` がない場合は総合AI予想として扱い、過去JSONへのバックフィルは行いません。追加方式の購入シミュレーションは `simulation.variants`、結果評価は `evaluation.variants` へ同じ識別情報とともに保存します。結果取得時に全出走馬の確定単勝オッズが揃った場合のみ、予想時点の `horses[].win_odds` を変更せず `result.final_win_odds` へ保存します。馬連の追加キーがない旧JSONも読み込み可能で、一括移行は行いません。
 
 `race` には取得時点の `weather` と正規化した `class_grade` を保存します。各馬の `past_runs` は対象レース自身を除外した直近5走で、走破タイム、ペース、馬体重、当時の人気・オッズなどの詳細を含みます。
 
@@ -145,7 +148,7 @@ python src/run_post.py --date 2026-04-14
 1. `collect.py` で対象レース情報を取得
 2. 予想開始時点の `meta` / `race` / `horses` を確定し、総合AI予想入力と、市場情報を除いた統計重視予想入力を独立して作成
 3. `predict.py` から Codex を実行し、総合AI予想と統計重視予想の各馬の 1 着確率・理由・総括を検証して保存
-4. 両AI予想を個別に入力として、`simulate.py` で期待値重視方式と単勝分配方式のpreを生成
+4. 両AI予想を個別に入力として、`simulate.py` で単勝・馬連の期待値重視方式と分配方式のpreを生成（馬連は発走前の完全なデータがある場合のみ）
 5. `render.py` で予想ページと index を生成
 6. `publish.py` で `public/` を更新
 
@@ -166,12 +169,46 @@ Codex は一時作業ディレクトリ内の読み取り専用・構造化出�
 
 ## 購入シミュレーション
 
-正式な購入シミュレーションは次の2方式です。総合AI予想のレース前想定と収支は従来どおり `simulation.*.pre/post`、統計重視予想分は `simulation.variants` に保存します。レース結果を取得しても各 `pre` は変更しません。
+単勝の購入シミュレーションは次の2方式です。総合AI予想のレース前想定と収支は従来どおり `simulation.*.pre/post`、統計重視予想分は `simulation.variants` に保存します。レース結果を取得しても各 `pre` は変更しません。
 
 - `value`: 予測勝率と単勝オッズから EV と fractional Kelly を計算します。理論購入額が予算を超える場合だけ比例縮小し、余った予算の強制配分は行いません。
 - `dutching`（画面表示: 単勝分配方式）: 予測勝率上位を1頭から設定上限まで評価し、逆オッズ配分を購入単位へ丸めます。カバー確率、グループ期待値、的中時最低利益を満たす候補からグループ期待値が最大の頭数を採用します。
 
-予想ページではAI予想と正式シミュレーションを総合AI予想／統計重視予想のタブで切り替えます。カスタムシミュレーターも選択中タブの予測確率を使い、両購入方式の条件をブラウザ内で変更できます。単勝分配方式は自動選択に加え、確認用の固定頭数も選べます。入力値と計算結果はrace JSON、正式な収支、localStorage、Cookieへ保存されません。HTMLへ埋め込む計算データは馬番、予測勝率、単勝オッズ、購入単位だけです。
+予想ページではAI予想と正式シミュレーションを総合AI予想／統計重視予想のタブで切り替えます。購入シミュレーション・カスタム・購入結果には、その下に単勝／馬連の券種タブがあります。初期表示は総合AI予想・単勝です。AI予想表は券種にかかわらず各馬の1着確率を表示します。カスタムでは選択中のAI・券種の保存済み確率、オッズ、設定を使い、自動選択に加え確認用の固定頭数・固定組数を指定できます。入力値と計算結果はrace JSON、正式な収支、localStorage、Cookieへ保存されません。馬連の確率はPythonで算出した保存値を埋め込み、ブラウザで再推定しません。
+
+### 馬連
+
+総合AI／統計重視 × 単勝／馬連 × 分配／期待値の8通りは、各々が共通予算上限3,000円・購入単位100円の独立した仮想シミュレーションです。8通りへ予算を分割したり、1つの実運用収支へ合算したりしません。
+
+`simulation.quinella` の既定条件は次の通りです。最適化済みの設定ではありません。
+
+| 項目 | 値 |
+| --- | ---: |
+| `harville_lambda` | 0.81 |
+| `value.ev_threshold` | 1.10 |
+| `value.kelly_fraction` | 0.80 |
+| `dutching.max_selection_count` | 15 |
+| `dutching.min_coverage_probability` | 0.40 |
+| `dutching.min_group_expected_value` | 1.10 |
+| `dutching.min_profit_rate` | 0.20 |
+| `dutching.require_profit_if_hit` | true |
+
+既存netkeiba APIの `type=all` レスポンスから単勝 `odds["1"]` と馬連 `odds["4"]` を同時に取得します。組番は辞書キーではなく `row[3]`、オッズは `row[0]` を読みます。昇順整数ペアの完全な集合、重複、欠落、有限・有効な数値を検証し、`race.quinella_odds` に `pairs`、`fetched_at`、`source`、`source_url`、`official_datetime`、`api_status`、`api_reason`、`update_count`、`available`、`reason` を保存します。不完全なスナップショットを部分利用したり、取消馬を推定したりしません。APIの発走前状態と更新・取得時刻も確認し、結果時点のオッズはpreに使いません。馬連取得失敗時も単勝の検証とJRAフォールバックは継続します。馬連情報は両AIの予想入力から除外します。
+
+全出走馬の1着確率から、同着なしの近似であるDiscounted Harvilleを使用します。
+
+```text
+P(i,j) = p_i * p_j^lambda / sum(k != i, p_k^lambda)
+       + p_j * p_i^lambda / sum(k != j, p_k^lambda)
+```
+
+全ペア合計を許容誤差1e-6以内で検証し、単勝オッズによる対象除外や候補内の再正規化は行いません。馬連valueは既存のEV・Kelly計算と比例縮小・購入単位切り捨てを再利用します。馬連dutchingは確率上位1～最大15組を評価し、各組へ1単位を配分後、想定払戻が最小の組へ順に残りを配ります。確率同率や払戻同額は馬番ペアの数値昇順です。条件適合候補をグループEV最大、カバー確率最大、組数最小の順で選びます。最低利益率の基準は実際の合計購入額です。
+
+保存先は `simulation.quinella` と `simulation.variants[].quinella` です。`probabilities`、`harville_lambda`、`odds_snapshot` を方式間で共有し、その配下に `value.pre/post` と `dutching.pre/post` を持ちます。preには予算・購入単位・設定・ペアごとの購入値・候補評価を保持します。`status: ready` の中でpreの `purchased` / `no_purchase` を区別し、計算不可は `status: unavailable` と理由を保存してpreを `null` にします。結果待ちは `post_status: awaiting_result`、払戻未確定は `awaiting_payouts`、確定後は `settled` です。保存済みpreは単勝・馬連とも再実行で上書きしません。新規馬連preは発走前・結果未取得時に限定し、過去へのバックフィルは行いません。
+
+結果ページの馬連払戻DOMを組番と金額の対応を維持して読み、`result.payouts.quinella` に `horse_numbers` と `payout_per_100` を保存します。同着時は全払戻組を照合し、`result.quinella_settlement` に完全性・確定した取消／除外の馬番を保持します。中止・失格は返還しません。postは実払戻一覧だけで的中を判定し、当初購入額 `total_stake`、返還 `total_refund`、的中払戻＋返還 `total_return`、損益 `profit` を保存します。`roi` は損益／当初購入額（購入0円なら0）です。払戻や返還情報が不完全ならpostは `null` のままとし、外れとして確定せず、単勝結果の処理を継続します。保存済みの正常な馬連結果・postを取得失敗で消しません。全面中止など払戻一覧を確認できないケースも未確定として残します。
+
+馬連の集計は保存済みの確定postだけから `evaluation_summary.simulation.quinella` と `methods.*.simulation.quinella` に生成します。対象・購入・的中レース数、購入額、返還額、回収額、損益、回収率を方式別に保持し、返還を的中へ数えません。正常な購入なしは対象数に含め、計算不可・未確定は除外します。`overall_roi` は回収／当初購入額（購入0円ならnull）で、既存の定義を維持します。indexでは各AIの単勝と馬連の方式別収支を分けて表示します。1着予想のevaluation指標は変更しません。
 
 ## 予測評価
 
@@ -196,7 +233,7 @@ python src/evaluation_summary.py
 
 トップページの「総合AI予想の予測成績」と「統計重視予想の予測成績」はこの集計ファイルを読み込みます。統計重視予想の累計収支は、保存済みのsimulation postだけを集計します。ファイルがない場合は未算出として `-` を表示し、予想入力にはこの集計を含めません。
 
-状態はレース前入力生成後が `pre_status: awaiting_prediction`、予想公開後が `pre_status: published` です。`post_status` は結果待ちの `awaiting_result` から、結果・保存済み全simulationのpost・evaluation・結果HTML公開完了後に `published` となります。
+状態はレース前入力生成後が `pre_status: awaiting_prediction`、予想公開後が `pre_status: published` です。`post_status` は結果待ちの `awaiting_result` から、結果・保存済み単勝simulationのpost・evaluation・結果HTML公開完了後に `published` となります。馬連の未確定状態は各 `quinella.post_status` に独立して保持します。
 
 ## Codex 予想フロー
 

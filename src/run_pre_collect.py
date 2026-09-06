@@ -163,11 +163,13 @@ def export_prediction_chat_input(paths: list[Path], config: dict, job_name: str)
             log_job(logger, job_name, payload["meta"].get("race_id"), "prediction input skipped: prediction already exists")
             continue
         payload["prediction"] = None
-        payload["simulation"] = {
+        initial_simulation = {
             "value": {"pre": None, "post": None},
             "dutching": {"pre": None, "post": None},
             "variants": [],
         }
+        for key, value in initial_simulation.items():
+            payload.setdefault("simulation", {}).setdefault(key, value)
         payload["result"] = None
         payload["evaluation"] = None
         payload.setdefault("meta", {})["post_status"] = "awaiting_result"

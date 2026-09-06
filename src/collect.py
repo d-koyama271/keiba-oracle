@@ -14,6 +14,8 @@ from urllib.parse import unquote, urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 
+from quinella import pair_numbers, validate_pair_odds
+
 from utils import (
     ensure_race_payload,
     load_config,
@@ -24,6 +26,8 @@ from utils import (
     parse_finish_position,
     parse_float,
     parse_int,
+    parse_jst_datetime,
+    race_start_datetime,
     parse_target_date,
     race_json_path,
     save_race_json,
@@ -177,7 +181,9 @@ def discover_pre_race_ids(
     )
 
 
-def fetch_win_odds(session: requests.Session, race_id: str) -> tuple[dict[int, dict[str, Any]], str | None]:
+def fetch_win_odds(
+    session: requests.Session, race_id: str, *, quinella_snapshot: dict | None = None,
+) -> tuple[dict[int, dict[str, Any]], str | None]:
     response = session.get(
         NETKEIBA_ODDS_URL,
         headers=REQUEST_HEADERS,
@@ -200,6 +206,27 @@ def fetch_win_odds(session: requests.Session, race_id: str) -> tuple[dict[int, d
 
     body = zlib.decompress(base64.b64decode(payload["data"])).decode("utf-8")
     odds_payload = json.loads(body)
+    if quinella_snapshot is not None:
+        quinella_snapshot.update(
+            fetched_at=now_jst_iso(), source="netkeiba",
+            source_url=f"{NETKEIBA_ODDS_URL}?race_id={race_id}",
+            official_datetime=odds_payload.get("official_datetime"),
+            api_status=payload.get("status"), api_reason=payload.get("reason"),
+            update_count=payload.get("update_count"), pairs=[], available=False,
+        )
+        try:
+            rows = odds_payload.get("odds", {}).get("4", {})
+            for row in rows.values():
+                if not isinstance(row, list) or len(row) < 4 or not re.fullmatch(r"\d{4}", str(row[3])):
+                    raise ValueError("invalid_pair_row")
+                pair = pair_numbers([int(str(row[3])[:2]), int(str(row[3])[2:])])
+                if isinstance(row[0], bool):
+                    raise ValueError("invalid_odds")
+                odds = float(row[0])
+                quinella_snapshot["pairs"].append({"horse_numbers": list(pair), "odds": odds})
+            quinella_snapshot["reason"] = None
+        except (TypeError, ValueError, AttributeError):
+            quinella_snapshot.update(pairs=[], reason="invalid_pair_row")
     odds_rows = odds_payload.get("odds", {}).get("1", {})
 
     odds_map: dict[int, dict[str, Any]] = {}
@@ -500,15 +527,30 @@ def fetch_validated_win_odds(
     logger: Any,
     job_name: str,
 ) -> tuple[dict[int, dict[str, Any]], str | None, str | None, str | None]:
+    snapshot = {"available": False, "reason": "odds_unavailable", "pairs": [], "fetched_at": None, "source": "netkeiba", "source_url": f"{NETKEIBA_ODDS_URL}?race_id={race_id}"}
+    race["quinella_odds"] = snapshot
     log_job(logger, job_name, race_id, "netkeiba win odds fetch started")
     try:
-        netkeiba_odds, _ = fetch_win_odds(session, race_id)
+        netkeiba_odds, _ = fetch_win_odds(session, race_id, quinella_snapshot=snapshot)
         log_job(logger, job_name, race_id, f"netkeiba win odds fetched: {len(netkeiba_odds)} horses")
         reason = validate_odds_snapshot(netkeiba_odds, expected_horses, expected_horses)
     except Exception as exc:  # noqa: BLE001
         netkeiba_odds = {}
         log_job(logger, job_name, race_id, "netkeiba win odds fetched: 0 horses")
         reason = str(exc)
+
+    try:
+        if snapshot.get("reason"):
+            raise ValueError(snapshot["reason"])
+        validate_pair_odds(snapshot["pairs"], list(expected_horses))
+        start = race_start_datetime(race.get("date"), race.get("start_time"))
+        fetched = parse_jst_datetime(snapshot.get("fetched_at"))
+        official = parse_jst_datetime(snapshot.get("official_datetime"))
+        if start is None or fetched is None or official is None or not official <= fetched < start or snapshot.get("api_status") != "middle":
+            raise ValueError("odds_not_pre_race")
+        snapshot.update(available=True, reason=None)
+    except (TypeError, ValueError) as exc:
+        snapshot.update(available=False, reason=str(exc), pairs=[])
 
     if reason is None:
         captured_at = now_jst_iso()
@@ -1173,6 +1215,50 @@ def parse_horses(
     return horses
 
 
+def parse_quinella_payouts(soup: BeautifulSoup, horses: list[dict]) -> tuple[list[dict], dict]:
+    payouts = []
+    settlement = {"status": "pending", "reason": "quinella_payouts_unavailable", "refund_horse_numbers": []}
+    try:
+        seen = set()
+        for tr in soup.find_all("tr"):
+            cells = tr.find_all(["th", "td"], recursive=False)
+            if len(cells) < 3 or normalize_header(cells[0].get_text()) != "馬連":
+                continue
+            # Each UL (desktop/mobile) or BR-separated line is one winning pair.
+            groups = cells[1].find_all("ul")
+            pair_texts = [g.get_text(" ", strip=True) for g in groups] if groups else cells[1].get_text("\n", strip=True).splitlines()
+            amounts = re.findall(r"[\d,]+\s*円", cells[2].get_text(" ", strip=True))
+            if not amounts:
+                amounts = cells[2].get_text("\n", strip=True).splitlines()
+            if len(pair_texts) != len(amounts) or not pair_texts:
+                raise ValueError("quinella_payout_pair_mismatch")
+            for pair_text, amount_text in zip(pair_texts, amounts):
+                pair = pair_numbers([int(n) for n in re.findall(r"\d+", pair_text)])
+                amount_text = amount_text.replace(",", "").replace("円", "").strip()
+                if pair in seen or not amount_text.isdigit() or int(amount_text) <= 0:
+                    raise ValueError("invalid_quinella_payout")
+                seen.add(pair)
+                payouts.append({"horse_numbers": list(pair), "payout_per_100": int(amount_text)})
+        numbers = {h["horse_number"] for h in horses}
+        if any(n not in numbers for row in payouts for n in row["horse_numbers"]):
+            raise ValueError("quinella_payout_horse_mismatch")
+        refunds = [h["horse_number"] for h in horses if h.get("finish_position") in ("取消", "除外")]
+        if any(n in refunds for row in payouts for n in row["horse_numbers"]):
+            raise ValueError("quinella_refund_payout_conflict")
+        if payouts:
+            first = [h["horse_number"] for h in horses if h.get("finish_position") == 1]
+            second = [h["horse_number"] for h in horses if h.get("finish_position") == 2]
+            from itertools import combinations
+            expected = set(combinations(sorted(first), 2)) if len(first) >= 2 else {tuple(sorted((i, j))) for i in first for j in second}
+            if not expected or seen != expected:
+                raise ValueError("quinella_payouts_incomplete")
+            settlement.update(status="complete", reason=None, refund_horse_numbers=sorted(refunds))
+    except (TypeError, ValueError) as exc:
+        payouts = []
+        settlement["reason"] = str(exc)
+    return payouts, settlement
+
+
 def parse_result(html: str) -> dict[str, Any] | None:
     soup = BeautifulSoup(html, "html.parser")
     conditions = parse_race_conditions(soup)
@@ -1256,6 +1342,9 @@ def parse_result(html: str) -> dict[str, Any] | None:
             {"horse_number": horse_number, "win_odds": final_win_odds[horse_number]}
             for horse_number in sorted(final_win_odds)
         ]
+    quinella_payouts, settlement = parse_quinella_payouts(soup, horses)
+    result["payouts"]["quinella"] = quinella_payouts
+    result["quinella_settlement"] = settlement
     return result
 
 
@@ -1334,6 +1423,10 @@ def collect_results(
             result_html = fetch_html(session, RESULT_URL.format(race_id=race_id))
             result = parse_result(result_html)
             validate_complete_result(result, payload.get("horses", []))
+            previous = payload.get("result") or {}
+            if (previous.get("quinella_settlement") or {}).get("status") == "complete" and (result.get("quinella_settlement") or {}).get("status") != "complete":
+                result.setdefault("payouts", {})["quinella"] = previous["payouts"]["quinella"]
+                result["quinella_settlement"] = previous["quinella_settlement"]
             payload["result"] = result
             save_race_json(path, payload)
             processed.append(path)
@@ -1425,7 +1518,13 @@ def collect_races(
             if mode == "post":
                 try:
                     result_html = fetch_html(session, RESULT_URL.format(race_id=race_id))
-                    payload["result"] = parse_result(result_html)
+                    result = parse_result(result_html)
+                    previous = payload.get("result") or {}
+                    if result is not None:
+                        if (previous.get("quinella_settlement") or {}).get("status") == "complete" and (result.get("quinella_settlement") or {}).get("status") != "complete":
+                            result.setdefault("payouts", {})["quinella"] = previous["payouts"]["quinella"]
+                            result["quinella_settlement"] = previous["quinella_settlement"]
+                        payload["result"] = result
                 except Exception as exc:  # noqa: BLE001
                     log_job(logger, job_name, race_id, f"result scraping skipped: {exc}")
 

@@ -526,7 +526,16 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
             for horse in horse_rows
             if horse.get("prediction") and horse.get("win_odds") is not None
         ]
-        custom_simulation_methods[method] = {"horses": custom_horses}
+        quinella = method_simulation.get("quinella") or {}
+        quinella_rows = []
+        if quinella.get("status") == "ready":
+            pair_odds = {tuple(row["horse_numbers"]): row["odds"] for row in quinella.get("odds_snapshot", {}).get("pairs", [])}
+            quinella_rows = [{**row, "odds": pair_odds.get(tuple(row["horse_numbers"]))} for row in quinella.get("probabilities", [])]
+        custom_simulation_methods[method] = {
+            "horses": custom_horses,
+            "win": {"value": value_pre, "dutching": dutching_pre},
+            "quinella": {"available": quinella.get("status") == "ready", "pairs": quinella_rows, "value": (quinella.get("value") or {}).get("pre"), "dutching": (quinella.get("dutching") or {}).get("pre")},
+        }
         result_rows = build_result_rows(horse_rows)
         ai_views.append(
             {
@@ -549,6 +558,8 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
                 "expected_value_rows": expected_value_rows,
                 "value_selection_rows": build_value_selection_rows(value_pre),
                 "value_no_purchase_reason": value_no_purchase_reason,
+                "quinella": quinella,
+                "quinella_odds_at": format_jst_datetime(quinella.get("odds_snapshot", {}).get("fetched_at")),
             }
         )
 
@@ -570,6 +581,16 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         "display": {
             "rejection_reason_labels": REJECTION_REASON_LABELS,
             "unknown_rejection_reason_label": UNKNOWN_REJECTION_REASON_LABEL,
+            "quinella_tooltips": {
+                "coverage_probability": "選択した組の馬連的中確率を合計した値です。",
+                "group_expected_value": "選択組全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。",
+                "minimum_ev": "馬連的中確率と馬連オッズから計算した期待値の最低ラインです。Kelly割合が0以下の組には購入額を割り当てません。",
+                "ev": "馬連的中確率×馬連オッズで計算する期待値です。1.0が損益分岐の目安です。",
+                "full_kelly": "馬連的中確率と馬連オッズからKelly基準で算出した、予算に対する購入割合です。",
+                "minimum_payout": "選択した組のうち、最も払戻額が低い組が的中した場合の払戻額です。",
+                "minimum_profit": "選択した組のうち、最も利益が低い組が的中した場合の利益です。",
+                "expected_return": "各組の馬連的中確率を考慮した、平均的な払戻見込み額です。",
+            },
         },
     }
 

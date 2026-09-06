@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import math
 from pathlib import Path
 from typing import Any
+
+from quinella import calculate_quinella_post, calculate_quinella_pre
 
 from utils import (
     list_race_files,
@@ -12,6 +15,7 @@ from utils import (
     log_job,
     parse_target_date,
     prediction_variants,
+    find_variant,
     save_race_json,
     simulation_variants,
     setup_logger,
@@ -440,33 +444,43 @@ def calculate_dutching_post(
 
 def calculate_pre_simulation(payload: dict[str, Any], config: dict[str, Any]) -> dict[str, Any] | None:
     prediction = payload.get("prediction")
-    value_pre = calculate_value_pre(payload, config, prediction)
-    dutching_pre = calculate_dutching_pre(payload, config, prediction)
+    if not prediction:
+        return None
+    existing = copy.deepcopy(payload.get("simulation") or {})
+    value_pre = (existing.get("value") or {}).get("pre") or calculate_value_pre(payload, config, prediction)
+    dutching_pre = (existing.get("dutching") or {}).get("pre") or calculate_dutching_pre(payload, config, prediction)
     if value_pre is None or dutching_pre is None:
         return None
-    variants = []
+    existing.setdefault("value", {})["pre"] = value_pre
+    existing.setdefault("dutching", {})["pre"] = dutching_pre
+    existing["value"].setdefault("post", None)
+    existing["dutching"].setdefault("post", None)
+    variants = existing.setdefault("variants", [])
     for variant_prediction in prediction_variants(payload):
-        variant_value_pre = calculate_value_pre(payload, config, variant_prediction)
-        variant_dutching_pre = calculate_dutching_pre(payload, config, variant_prediction)
+        saved = find_variant(variants, variant_prediction.get("method"), variant_prediction.get("model_provider"), variant_prediction.get("model_name")) or {}
+        variant_value_pre = (saved.get("value") or {}).get("pre") or calculate_value_pre(payload, config, variant_prediction)
+        variant_dutching_pre = (saved.get("dutching") or {}).get("pre") or calculate_dutching_pre(payload, config, variant_prediction)
         if variant_value_pre is None or variant_dutching_pre is None:
             continue
-        variant = {
+        variant = saved or {
             key: variant_prediction[key]
             for key in SIMULATION_VARIANT_IDENTITY_KEYS
             if variant_prediction.get(key) is not None
         }
-        variant.update(
-            {
-                "value": {"pre": variant_value_pre, "post": None},
-                "dutching": {"pre": variant_dutching_pre, "post": None},
-            }
-        )
-        variants.append(variant)
-    return {
-        "value": {"pre": value_pre, "post": None},
-        "dutching": {"pre": dutching_pre, "post": None},
-        "variants": variants,
-    }
+        for name, pre in (("value", variant_value_pre), ("dutching", variant_dutching_pre)):
+            variant.setdefault(name, {})["pre"] = pre
+            variant[name].setdefault("post", None)
+        if not saved:
+            variants.append(variant)
+        if not any(((variant.get("quinella") or {}).get(name) or {}).get("pre") is not None for name in ("value", "dutching")):
+            quinella = calculate_quinella_pre(payload, config, variant_prediction)
+            if quinella is not None:
+                variant["quinella"] = quinella
+    if not any(((existing.get("quinella") or {}).get(name) or {}).get("pre") is not None for name in ("value", "dutching")):
+        quinella = calculate_quinella_pre(payload, config, prediction)
+        if quinella is not None:
+            existing["quinella"] = quinella
+    return existing
 
 
 def simulate_file(path: Path, config: dict[str, Any], mode: str, job_name: str, root: Path | None = None) -> bool:
@@ -507,6 +521,14 @@ def simulate_file(path: Path, config: dict[str, Any], mode: str, job_name: str, 
         variant["value"]["post"] = variant_value_post
         variant["dutching"]["post"] = variant_dutching_post
         updated_variants += 1
+    for simulation in [payload["simulation"], *simulation_variants(payload)]:
+        quinella = simulation.get("quinella")
+        if not quinella or quinella.get("status") != "ready":
+            continue
+        for method in ("value", "dutching"):
+            if quinella[method].get("post") is None:
+                quinella[method]["post"] = calculate_quinella_post(quinella[method].get("pre"), payload.get("result"))
+        quinella["post_status"] = "settled" if all(quinella[m].get("post") is not None for m in ("value", "dutching")) else "awaiting_payouts"
     save_race_json(path, payload)
     log_job(
         logger,

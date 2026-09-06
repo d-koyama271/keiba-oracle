@@ -200,7 +200,7 @@ def build_prediction_chat_input(
             "kind": "prediction",
             "generated_at": now_jst_iso(),
         },
-        "race": payload["race"],
+        "race": {key: value for key, value in payload["race"].items() if key != "quinella_odds"},
         "horses": payload["horses"],
     }
 
@@ -291,7 +291,8 @@ def validate_prediction_input(
     race_id = str((prediction_input.get("meta") or {}).get("race_id") or "")
     if race_id != str(race_payload["meta"].get("race_id") or ""):
         raise ValueError("prediction input race_id does not match race JSON")
-    if prediction_input.get("race") != race_payload.get("race"):
+    expected_race = {key: value for key, value in (race_payload.get("race") or {}).items() if key != "quinella_odds"}
+    if prediction_input.get("race") != expected_race:
         raise ValueError("prediction input race does not match race JSON")
     if prediction_input.get("horses") != race_payload.get("horses"):
         raise ValueError("prediction input horses do not match race JSON")

@@ -672,10 +672,10 @@ class RenderTests(unittest.TestCase):
 
             self.assertEqual(len(performance_panels), 2)
             self.assertTrue(
-                all(len(panel.select(".performance-item")) == 4 for panel in performance_panels)
+                all(len(panel.select(".profit-grid > .performance-item")) == 2 for panel in performance_panels)
             )
             self.assertTrue(
-                all(len(panel.select(".profit-amount")) == 2 for panel in performance_panels)
+                all(len(panel.select(".profit-amount")) == 4 for panel in performance_panels)
             )
             self.assertTrue(
                 all(

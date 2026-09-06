@@ -531,6 +531,41 @@ def aggregate_method_simulation(
     }
 
 
+def aggregate_quinella_simulation(payloads: list[dict], prediction_method: str, purchase_method: str) -> dict:
+    records = []
+    for payload in payloads:
+        if prediction_method == TRADITIONAL_PREDICTION_METHOD:
+            simulation = payload.get("simulation") or {}
+        else:
+            prediction = find_variant(prediction_variants(payload), prediction_method)
+            if prediction is None:
+                continue
+            simulation = find_variant(simulation_variants(payload), prediction_method, prediction.get("model_provider"), prediction.get("model_name")) or {}
+        quinella = simulation.get("quinella") or {}
+        purchase = quinella.get(purchase_method) or {}
+        pre = purchase.get("pre") or {}
+        post = purchase.get("post")
+        if quinella.get("status") != "ready" or not isinstance(post, dict) or post.get("status") != "settled":
+            continue
+        if pre.get("status") not in ("purchased", "no_purchase") or not isinstance(post.get("selections"), list):
+            continue
+        if any(finite_number(post.get(key)) is None for key in ("total_stake", "total_refund", "total_return", "profit")):
+            continue
+        if any(post[key] < 0 for key in ("total_stake", "total_refund", "total_return")):
+            continue
+        records.append(post)
+    stake = sum(row["total_stake"] for row in records)
+    returned = sum(row["total_return"] for row in records)
+    return {
+        "simulation_races": len(records),
+        "purchase_races": sum(row["total_stake"] > 0 for row in records),
+        "hit_races": sum(any(s.get("hit") is True for s in row["selections"]) for row in records),
+        "total_stake": stake, "total_refund": sum(row["total_refund"] for row in records),
+        "total_return": returned, "cumulative_profit": sum(row["profit"] for row in records),
+        "overall_roi": round_metric(returned / stake) if stake else None,
+    }
+
+
 def build_evaluation_summary(
     payloads: list[dict[str, Any]],
     generated_at: str | None = None,
@@ -539,7 +574,7 @@ def build_evaluation_summary(
     statistical = collect_method_evaluations(payloads, STATISTICAL_PREDICTION_METHOD)
     evaluated = [(payload, record) for payload, record, _ in traditional]
     comparable = comparable_market_records(evaluated)
-    return {
+    summary = {
         "generated_at": generated_at or now_jst_iso(),
         "overall": aggregate_prediction_metrics([record for _, record in evaluated]),
         "market_comparison": aggregate_market_comparison(comparable),
@@ -562,6 +597,13 @@ def build_evaluation_summary(
         },
         "paired_comparison": build_paired_comparison(payloads),
     }
+    for method in (TRADITIONAL_PREDICTION_METHOD, STATISTICAL_PREDICTION_METHOD):
+        summary["methods"][method]["simulation"]["quinella"] = {
+            purchase: aggregate_quinella_simulation(payloads, method, purchase)
+            for purchase in ("value", "dutching")
+        }
+    summary["simulation"]["quinella"] = summary["methods"][TRADITIONAL_PREDICTION_METHOD]["simulation"]["quinella"]
+    return summary
 
 
 def evaluation_summary_path(config: dict[str, Any], root: Path | None = None) -> Path:

@@ -1,5 +1,5 @@
 {% macro info_tooltip(term, key) -%}
-<span class="term-tooltip">
+<span class="term-tooltip" data-term-key="{{ key }}">
   <button type="button" class="tooltip-trigger" aria-label="{{ term }}: {{ tooltips[key] }}" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">{{ tooltips[key] }}</span>
 </span>
@@ -15,6 +15,7 @@
 </th>
 {%- endmacro %}
 {% set page_kind = page_kind | default("prediction") %}
+{% import 'quinella.html.j2' as quinella_ui %}
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -325,6 +326,8 @@
       opacity: 1;
       transform: translate(-50%, 0);
     }
+    .ticket-tabs { margin: 12px 0 20px; }
+    [data-ticket-panel][hidden] { display: none; }
     .simulation-section {
       margin-top: 32px;
     }
@@ -418,6 +421,7 @@
     }
     .result-method-content > .result-panel { margin-bottom: 0; }
     .result-method-content > .result-panel + .result-panel { margin-top: 18px; }
+    .result-method-content > .ticket-tabs { margin-top: 28px; }
     .ai-method-tab:focus-visible {
       outline: 2px solid #9bb8ae;
       outline-offset: 2px;
@@ -503,6 +507,7 @@
       .result-section {
         margin-top: 28px;
       }
+      .result-method-content > .ticket-tabs { margin-top: 24px; }
       .simulation-panel h4,
       .result-panel h4 {
         margin-top: 24px;
@@ -651,7 +656,8 @@
       {% set value_no_purchase_reason = view.value_no_purchase_reason %}
       {% set missing_simulation_message = "このレースでは統計重視予想の購入シミュレーションは記録されていません。" if view.method == "statistical" and view.prediction else "予想取込後に生成されます。" %}
       <div class="ai-method-panel simulation-method-content" id="simulation-{{ view.method }}" role="tabpanel" data-ai-panel data-ai-method="{{ view.method }}"{% if not loop.first %} hidden{% endif %}>
-
+      {{ quinella_ui.ticket_tabs('purchase-' ~ view.method) }}
+      <div id="purchase-{{ view.method }}-win" data-ticket-panel="win" role="tabpanel">
     <div class="panel simulation-panel">
       <h3>{{ explained_term("単勝分配方式", "dutching_method") }}</h3>
       <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
@@ -787,6 +793,10 @@
       {% endif %}
     </div>
       </div>
+      <div id="purchase-{{ view.method }}-quinella" data-ticket-panel="quinella" role="tabpanel" hidden>
+        {{ quinella_ui.panels(view, 'prediction', rejection_reason_text) }}
+      </div>
+      </div>
       {% endfor %}
     </section>
 
@@ -794,6 +804,8 @@
     {% set custom_min_profit_rate = simulation_dutching_pre.settings.min_profit_rate | default(0.20) %}
     <div class="panel" id="custom-simulator">
       <h2>カスタム購入シミュレーション</h2>
+      {{ quinella_ui.ticket_tabs('custom', 'custom-controls') }}
+      <div id="custom-controls" role="tabpanel">
       <p class="small">予算や各条件を任意に変更して、購入額や払戻額をシミュレーションできます。</p>
       <form class="simulator-form" id="custom-simulator-form">
         <label class="simulator-field">方式
@@ -813,7 +825,7 @@
           <span class="simulator-field-label"><label for="custom-kelly-fraction">Kelly係数</label>{{ info_tooltip("Kelly係数", "kelly_fraction") }}</span>
           <input id="custom-kelly-fraction" name="kelly_fraction" type="number" min="0" max="1" step="0.05" value="{{ simulation_value_pre.settings.kelly_fraction }}">
         </div>
-        <label class="simulator-field dutching-field">最大対象頭数
+        <label class="simulator-field dutching-field"><span data-count-label="最大対象頭数">最大対象頭数</span>
           <input name="max_selection_count" type="number" min="1" max="{{ custom_simulation_data.horses | length }}" step="1" value="{{ simulation_dutching_pre.settings.max_selection_count }}">
         </label>
         <div class="simulator-field dutching-field">
@@ -828,7 +840,7 @@
           <span class="simulator-field-label"><label for="custom-min-profit-rate">最低利益率（%）</label>{{ info_tooltip("最低利益率", "minimum_profit_rate") }}</span>
           <input id="custom-min-profit-rate" name="min_profit_rate" type="number" min="0" step="1" value="{{ "%.0f"|format(custom_min_profit_rate * 100) }}" required>
         </div>
-        <label class="simulator-field dutching-field">頭数
+        <label class="simulator-field dutching-field"><span data-count-label="頭数">頭数</span>
           <select name="fixed_selection_count">
             <option value="0">自動</option>
             {% for count in range(1, (custom_simulation_data.horses | length) + 1) %}<option value="{{ count }}">{{ count }}頭</option>{% endfor %}
@@ -840,7 +852,7 @@
         </label>
         <button type="submit">再計算</button>
       </form>
-      <p class="small">購入単位は{{ custom_simulation_data.stake_unit }}円です。頭数の手動指定は画面内の確認にだけ使用します。</p>
+      <p class="small">購入単位は<span id="custom-stake-unit">{{ custom_simulation_data.stake_unit }}</span>円です。対象数の手動指定は画面内の確認にだけ使用します。</p>
       <p class="simulator-error" id="custom-simulator-error" role="alert" hidden></p>
       <div id="custom-simulator-result" aria-live="polite">
         <p id="custom-simulator-empty" hidden><strong>購入なし</strong><span id="custom-simulator-empty-reason"></span></p>
@@ -870,6 +882,7 @@
         </div>
       </div>
     </div>
+      </div>
     <script type="application/json" id="custom-simulator-data">{{ custom_simulation_data | tojson }}</script>
     <script>
       const SIMULATION_EPSILON = 1e-12;
@@ -1128,6 +1141,60 @@
         return result;
       }
 
+      function calculateQuinellaSimulation(pairs, budget, stakeUnit, settings, method, fixedCount = 0) {
+        const ordered = pairs.slice().sort((a, b) => (a.horse_numbers[0] - b.horse_numbers[0]) || (a.horse_numbers[1] - b.horse_numbers[1]));
+        const horses = ordered.map((row, index) => ({horse_number: index + 1, win_probability: row.probability, win_odds: row.odds}));
+        const restore = (row) => {
+          const item = {...row, horse_numbers: ordered[row.horse_number - 1].horse_numbers, odds: row.win_odds};
+          item.expected_value ??= item.predicted_probability * item.odds;
+          delete item.horse_number;
+          delete item.win_odds;
+          return item;
+        };
+        const result = {budget, stake_unit: stakeUnit, settings: {...settings}, total_stake: 0, unused_budget: budget, selections: [], status: "no_purchase", reason: null};
+        if (method === "value") {
+          const details = calculateValueDetails(horses, budget, stakeUnit, settings);
+          for (const horse of horses.filter((h) => h.win_odds === 1)) {
+            details.push({horse_number: horse.horse_number, predicted_probability: horse.win_probability, win_odds: 1, expected_value: horse.win_probability, full_kelly: 0, fractional_kelly: 0, theoretical_stake: 0, stake: 0, eligible: false, meets_threshold: horse.win_probability + SIMULATION_EPSILON >= settings.ev_threshold});
+          }
+          result.details = details.sort((a, b) => (b.expected_value - a.expected_value) || (a.horse_number - b.horse_number)).map(restore);
+          result.selections = result.details.filter((row) => row.stake >= stakeUnit).map((row) => ({...row}));
+          result.reason = result.selections.length ? null : "no_positive_kelly_stake";
+        } else {
+          const rows = horses.map((h) => ({horse_number: h.horse_number, predicted_probability: h.win_probability, win_odds: h.win_odds})).sort((a,b) => (b.predicted_probability-a.predicted_probability) || (a.horse_number-b.horse_number));
+          const evaluations = [];
+          for (let count = 1; count <= Math.min(settings.max_selection_count, rows.length); count += 1) {
+            const chosen = rows.slice(0, count);
+            const selections = allocateDutchingStakes(chosen, budget, stakeUnit);
+            selections.forEach((s, i) => { s.predicted_probability = chosen[i].predicted_probability; });
+            const stake = selections.reduce((sum, s) => sum+s.stake, 0);
+            const expectedReturn = selections.reduce((sum, s) => sum+s.predicted_probability*s.estimated_payout, 0);
+            const coverage = chosen.reduce((sum, r) => sum+r.predicted_probability, 0);
+            const groupEv = stake ? expectedReturn/stake : 0;
+            const payout = selections.length ? Math.min(...selections.map((s) => s.estimated_payout)) : 0;
+            const profit = payout-stake;
+            const reasons = [];
+            if (coverage+SIMULATION_EPSILON < settings.min_coverage_probability) reasons.push("coverage_probability_below_threshold");
+            if (groupEv+SIMULATION_EPSILON < settings.min_group_expected_value) reasons.push("group_expected_value_below_threshold");
+            if (!selections.length) reasons.push("insufficient_budget_units");
+            if (profit+SIMULATION_EPSILON < stake*settings.min_profit_rate) reasons.push("minimum_profit_rate_below_threshold");
+            if (settings.require_profit_if_hit && profit <= 0) reasons.push("minimum_profit_not_positive");
+            evaluations.push({evaluation: {selection_count: count, horse_pairs: chosen.map((r) => ordered[r.horse_number-1].horse_numbers), coverage_probability: coverage, expected_return: expectedReturn, group_expected_value: groupEv, minimum_payout: payout, minimum_profit: profit, eligible: !reasons.length, rejection_reasons: reasons}, selections: selections.map(restore)});
+          }
+          const selected = fixedCount ? evaluations.find((item) => item.evaluation.selection_count === fixedCount) : selectBestDutching(evaluations);
+          Object.assign(result, {selected_count: 0, coverage_probability: 0, expected_return: 0, group_expected_value: 0, minimum_payout: 0, minimum_profit: 0, evaluated_counts: evaluations.map((item) => item.evaluation)});
+          if (selected) {
+            for (const key of ["coverage_probability", "expected_return", "group_expected_value", "minimum_payout", "minimum_profit"]) result[key] = selected.evaluation[key];
+            result.selected_count = selected.evaluation.selection_count;
+            result.selections = selected.selections;
+          } else result.reason = "no_eligible_candidate";
+        }
+        result.total_stake = result.selections.reduce((sum, row) => sum+row.stake, 0);
+        result.unused_budget = budget-result.total_stake;
+        result.status = result.total_stake ? "purchased" : "no_purchase";
+        return result;
+      }
+
       (() => {
         const root = document.getElementById("custom-simulator");
         if (!root) {
@@ -1135,9 +1202,14 @@
         }
         const data = JSON.parse(document.getElementById("custom-simulator-data").textContent);
         let activeAiMethod = "traditional";
-        const activeHorses = () => data.methods?.[activeAiMethod]?.horses || data.horses;
+        let activeTicket = "win";
+        const activeData = () => data.methods?.[activeAiMethod]?.[activeTicket];
+        const activeHorses = () => activeTicket === "quinella" ? (activeData()?.pairs || []) : (data.methods?.[activeAiMethod]?.horses || data.horses);
         const rejectionReasonText = (reasons) => reasons.length
-          ? reasons.map((reason) => data.display.rejection_reason_labels[reason] || data.display.unknown_rejection_reason_label).join("、")
+          ? reasons.map((reason) => {
+              const label = data.display.rejection_reason_labels[reason] || data.display.unknown_rejection_reason_label;
+              return activeTicket === "quinella" ? label.replaceAll("頭数", "組数") : label;
+            }).join("、")
           : "-";
         const form = document.getElementById("custom-simulator-form");
         const error = document.getElementById("custom-simulator-error");
@@ -1169,6 +1241,7 @@
         };
 
         const validate = () => {
+          if (activeTicket === "quinella" && !activeData()?.available) return "馬連の発走前データが記録されていないため計算できません。";
           const enteredBudget = Number(form.elements.budget.value);
           const stakeUnit = Number(data.stake_unit);
           if (!Number.isInteger(enteredBudget) || enteredBudget <= 0) {
@@ -1193,8 +1266,8 @@
             const profitRateText = String(form.elements.min_profit_rate.value ?? "").trim();
             const profitRate = Number(profitRateText);
             const fixedCount = Number(form.elements.fixed_selection_count.value);
-            if (!Number.isInteger(maxCount) || maxCount < 1 || maxCount > activeHorses().length) {
-              return "最大対象頭数を出走頭数以内の正の整数で入力してください。";
+            if (!Number.isInteger(maxCount) || maxCount < 1 || (activeTicket === "win" && maxCount > activeHorses().length)) {
+              return activeTicket === "quinella" ? "最大対象組数は正の整数で入力してください。" : "最大対象頭数を出走頭数以内の正の整数で入力してください。";
             }
             if (!Number.isFinite(coverage) || coverage < 0 || coverage > 1) {
               return "最低カバー確率は0以上1以下で入力してください。";
@@ -1205,8 +1278,8 @@
             if (!profitRateText || !Number.isFinite(profitRate) || profitRate < 0) {
               return "最低利益率は0以上で入力してください。";
             }
-            if (fixedCount > maxCount) {
-              return "手動指定頭数は最大対象頭数以下にしてください。";
+            if (!Number.isInteger(fixedCount) || fixedCount < 0 || fixedCount > maxCount || fixedCount > activeHorses().length) {
+              return "手動指定数は対象数以内の整数で入力してください。";
             }
           }
           return "";
@@ -1216,20 +1289,20 @@
           valueRows.replaceChildren();
           for (const item of result.selections) {
             const row = document.createElement("tr");
-            addCell(row, String(item.horse_number));
+            addCell(row, item.horse_numbers ? item.horse_numbers.join("-") : String(item.horse_number));
             addCell(row, `${(item.predicted_probability * 100).toFixed(2)}%`);
-            addCell(row, item.win_odds.toFixed(1));
+            addCell(row, (item.odds ?? item.win_odds).toFixed(1));
             addCell(row, item.expected_value.toFixed(3));
             addCell(row, item.full_kelly.toFixed(4));
             addCell(row, item.fractional_kelly.toFixed(4));
             addCell(row, `${yen.format(item.stake)}円`);
-            addCell(row, `${yen.format(item.expected_return)}円`);
+            addCell(row, `${yen.format(item.expected_return ?? item.stake * item.expected_value)}円`);
             valueRows.appendChild(row);
           }
         };
 
         const renderDutching = (result) => {
-          document.getElementById("custom-dutching-count").textContent = `${result.selected_count}頭`;
+          document.getElementById("custom-dutching-count").textContent = `${result.selected_count}${activeTicket === "quinella" ? "組" : "頭"}`;
           document.getElementById("custom-dutching-coverage").textContent = `${(result.coverage_probability * 100).toFixed(2)}%`;
           document.getElementById("custom-dutching-ev").textContent = result.group_expected_value.toFixed(3);
           document.getElementById("custom-dutching-min-payout").textContent = `${yen.format(result.minimum_payout)}円`;
@@ -1237,9 +1310,9 @@
           dutchingRows.replaceChildren();
           for (const item of result.selections) {
             const row = document.createElement("tr");
-            addCell(row, String(item.horse_number));
+            addCell(row, item.horse_numbers ? item.horse_numbers.join("-") : String(item.horse_number));
             addCell(row, `${(item.predicted_probability * 100).toFixed(2)}%`);
-            addCell(row, item.win_odds.toFixed(1));
+            addCell(row, (item.odds ?? item.win_odds).toFixed(1));
             addCell(row, `${yen.format(item.stake)}円`);
             addCell(row, `${yen.format(item.estimated_payout)}円`);
             addCell(row, `${yen.format(item.estimated_profit)}円`);
@@ -1252,7 +1325,7 @@
               row.className = "selected-row";
             }
             addCell(row, String(item.selection_count));
-            addCell(row, item.horse_numbers.join(", "));
+            addCell(row, item.horse_pairs ? item.horse_pairs.map((pair) => pair.join("-")).join(", ") : item.horse_numbers.join(", "));
             addCell(row, `${(item.coverage_probability * 100).toFixed(2)}%`);
             addCell(row, item.group_expected_value.toFixed(3));
             addCell(row, `${yen.format(item.minimum_payout)}円`);
@@ -1280,7 +1353,7 @@
 
           const method = form.elements.method.value;
           const stakeUnit = Number(data.stake_unit);
-          const budget = Math.floor(Number(form.elements.budget.value) / stakeUnit) * stakeUnit;
+          const budget = activeTicket === "quinella" ? Number(form.elements.budget.value) : Math.floor(Number(form.elements.budget.value) / stakeUnit) * stakeUnit;
           let result;
           let noPurchaseReason = "";
           if (method === "value") {
@@ -1288,22 +1361,25 @@
               ev_threshold: parseMinimumEv(form.elements.ev_threshold.value),
               kelly_fraction: Number(form.elements.kelly_fraction.value),
             };
-            const details = calculateValueDetails(activeHorses(), budget, stakeUnit, settings);
-            result = valueSimulationResult(details, budget, stakeUnit, settings);
+            const details = activeTicket === "quinella" ? [] : calculateValueDetails(activeHorses(), budget, stakeUnit, settings);
+            result = activeTicket === "quinella" ? calculateQuinellaSimulation(activeHorses(), budget, stakeUnit, settings, "value") : valueSimulationResult(details, budget, stakeUnit, settings);
             noPurchaseReason = valueNoPurchaseReason(details, stakeUnit, settings.kelly_fraction);
+            if (activeTicket === "quinella") noPurchaseReason = "最低EVとKelly基準を満たす購入単位以上の候補がありません。";
             renderValue(result);
           } else {
-            result = calculateDutchingSimulation(activeHorses(), budget, stakeUnit, {
+            const settings = {
               max_selection_count: Number(form.elements.max_selection_count.value),
               min_coverage_probability: Number(form.elements.min_coverage_probability.value),
               min_group_expected_value: Number(form.elements.min_group_expected_value.value),
               min_profit_rate: Number(form.elements.min_profit_rate.value) / 100,
               require_profit_if_hit: form.elements.require_profit_if_hit.checked,
-            }, Number(form.elements.fixed_selection_count.value));
+            };
+            result = activeTicket === "quinella" ? calculateQuinellaSimulation(activeHorses(), budget, stakeUnit, settings, "dutching", Number(form.elements.fixed_selection_count.value)) : calculateDutchingSimulation(activeHorses(), budget, stakeUnit, settings, Number(form.elements.fixed_selection_count.value));
+            if (activeTicket === "quinella") noPurchaseReason = "設定条件を満たす候補がありません。";
             renderDutching(result);
           }
 
-          document.getElementById("custom-simulator-method").textContent = method === "value" ? "期待値重視" : "単勝分配方式";
+          document.getElementById("custom-simulator-method").textContent = activeTicket === "quinella" ? (method === "value" ? "馬連期待値重視" : "馬連分配方式") : (method === "value" ? "期待値重視" : "単勝分配方式");
           document.getElementById("custom-simulator-budget").textContent = `${yen.format(result.budget)}円`;
           document.getElementById("custom-simulator-total").textContent = `${yen.format(result.total_stake)}円`;
           document.getElementById("custom-simulator-unused").textContent = `${yen.format(result.unused_budget)}円`;
@@ -1317,17 +1393,59 @@
         };
 
         form.elements.method.addEventListener("change", recalculate);
+        const resetTicketDefaults = () => {
+          const settingsData = activeData();
+          const value = settingsData?.value;
+          const dutching = settingsData?.dutching;
+          if (value && dutching) {
+            form.elements.budget.value = String(value.budget);
+            data.stake_unit = value.stake_unit;
+            form.elements.budget.min = String(value.stake_unit);
+            form.elements.budget.step = String(value.stake_unit);
+            document.getElementById("custom-stake-unit").textContent = String(value.stake_unit);
+            for (const key of ["ev_threshold", "kelly_fraction"]) form.elements[key].value = String(value.settings[key]);
+            for (const key of ["max_selection_count", "min_coverage_probability", "min_group_expected_value"]) form.elements[key].value = String(dutching.settings[key]);
+            form.elements.min_profit_rate.value = String((dutching.settings.min_profit_rate ?? 0.20)*100);
+            form.elements.require_profit_if_hit.checked = dutching.settings.require_profit_if_hit;
+          }
+          const pairMode = activeTicket === "quinella";
+          const count = activeHorses().length;
+          if (!pairMode) form.elements.max_selection_count.value = String(Math.min(count, Number(form.elements.max_selection_count.value)));
+          form.elements.max_selection_count.max = String(Math.max(count, Number(form.elements.max_selection_count.value)));
+          form.elements.fixed_selection_count.replaceChildren(new Option("自動選択", "0"));
+          for (let i = 1; i <= count; i += 1) form.elements.fixed_selection_count.add(new Option(`${i}${pairMode ? "組" : "頭"}`, String(i)));
+          form.elements.method.querySelector('option[value="dutching"]').textContent = pairMode ? "馬連分配方式" : "単勝分配方式";
+          root.querySelectorAll("th, label, h3, strong").forEach((element) => {
+            if (element.children.length) return;
+            element.dataset.winLabel ??= element.textContent;
+            const original = element.dataset.winLabel;
+            element.textContent = pairMode ? original.replaceAll("頭数", "組数").replaceAll("馬番", "馬番ペア").replaceAll("予測勝率", "馬連的中確率").replaceAll("単勝オッズ", "馬連オッズ") : original;
+          });
+          root.querySelectorAll('[data-count-label]').forEach((element) => {
+            element.textContent = pairMode ? element.dataset.countLabel.replaceAll('頭数', '組数') : element.dataset.countLabel;
+          });
+          root.querySelectorAll('[data-term-key]').forEach((element) => {
+            const trigger = element.querySelector('.tooltip-trigger');
+            const content = element.querySelector('.tooltip-content');
+            content.dataset.winText ??= content.textContent;
+            trigger.dataset.winLabel ??= trigger.getAttribute('aria-label');
+            const text = pairMode ? data.display.quinella_tooltips[element.dataset.termKey] : null;
+            content.textContent = text || content.dataset.winText;
+            trigger.setAttribute('aria-label', text || trigger.dataset.winLabel);
+          });
+        };
+        document.addEventListener("ticket-change", (event) => {
+          activeTicket = event.detail.ticket;
+          resetTicketDefaults();
+          recalculate();
+        });
         document.addEventListener("ai-method-change", (event) => {
           const method = event.detail?.method;
           if (!method || !data.methods?.[method]) {
             return;
           }
           activeAiMethod = method;
-          const maxCountInput = form.elements.max_selection_count;
-          maxCountInput.max = String(activeHorses().length);
-          if (Number(maxCountInput.value) > activeHorses().length) {
-            maxCountInput.value = String(activeHorses().length);
-          }
+          resetTicketDefaults();
           recalculate();
         });
         form.addEventListener("submit", (event) => {
@@ -1409,6 +1527,8 @@
         </div>
         {% endif %}
 
+        {{ quinella_ui.ticket_tabs('settlement-' ~ view.method) }}
+        <div id="settlement-{{ view.method }}-win" data-ticket-panel="win" role="tabpanel">
         {% if view.method == "statistical" and view.prediction and not simulation_value_post and not simulation_dutching_post %}
         <div class="panel result-panel">
           <h3>統計重視予想のシミュレーション結果</h3>
@@ -1439,6 +1559,10 @@
           {% endif %}
         </div>
         {% endif %}
+        </div>
+        <div id="settlement-{{ view.method }}-quinella" data-ticket-panel="quinella" role="tabpanel" hidden>
+          {{ quinella_ui.panels(view, 'result', rejection_reason_text) }}
+        </div>
       </div>
       {% endfor %}
     </section>
@@ -1512,6 +1636,27 @@
     };
 
     (() => {
+      const ticketTabs = Array.from(document.querySelectorAll("[data-ticket-tab]"));
+      const activateTicket = (ticket) => {
+        ticketTabs.forEach((tab) => {
+          const selected = tab.dataset.ticketTab === ticket;
+          tab.setAttribute("aria-selected", String(selected));
+          tab.tabIndex = selected ? 0 : -1;
+        });
+        document.querySelectorAll("[data-ticket-panel]").forEach((panel) => { panel.hidden = panel.dataset.ticketPanel !== ticket; });
+        document.dispatchEvent(new CustomEvent("ticket-change", { detail: { ticket } }));
+      };
+      ticketTabs.forEach((tab) => {
+        tab.addEventListener("click", () => activateTicket(tab.dataset.ticketTab));
+        tab.addEventListener("keydown", (event) => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+          event.preventDefault();
+          const tabs = Array.from(tab.closest('[role="tablist"]').querySelectorAll('[data-ticket-tab]'));
+          const index = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (tabs.indexOf(tab) + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+          activateTicket(tabs[index].dataset.ticketTab);
+          tabs[index].focus();
+        });
+      });
       const aiMethodTabs = Array.from(document.querySelectorAll("[data-ai-tab]"));
       const activateAiMethod = (method) => {
         for (const tab of aiMethodTabs) {
