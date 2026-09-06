@@ -343,10 +343,12 @@ class ValueSimulationTests(unittest.TestCase):
 
 
 class DutchingSimulationTests(unittest.TestCase):
-    def test_app_config_default_min_profit_rate_is_twenty_percent(self) -> None:
+    def test_app_config_dutching_defaults_are_ticket_specific(self) -> None:
         config = load_config(ROOT / "config" / "app.yaml")
 
         self.assertEqual(float(config["simulation"]["dutching"]["min_profit_rate"]), 0.20)
+        self.assertEqual(float(config["simulation"]["dutching"]["min_group_expected_value"]), 0.70)
+        self.assertEqual(float(config["simulation"]["quinella"]["dutching"]["min_group_expected_value"]), 0.75)
 
     def test_counts_order_metrics_allocation_and_best_candidate(self) -> None:
         result = calculate_dutching_pre(
