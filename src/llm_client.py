@@ -12,13 +12,14 @@ import requests
 
 
 class LLMClient:
-    def __init__(self, provider: str, model: str) -> None:
+    def __init__(self, provider: str, model: str, reasoning_effort: str | None = None) -> None:
         self.provider = provider
         self.model = model
+        self.reasoning_effort = reasoning_effort
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> "LLMClient":
-        return cls(config["llm_provider"], config["llm_model"])
+        return cls(config["llm_provider"], config["llm_model"], config.get("llm_reasoning_effort"))
 
     def invoke_json(self, prompt: str, max_retries: int = 2) -> dict[str, Any]:
         last_error: Exception | None = None
@@ -89,6 +90,10 @@ class LLMClient:
             ]
             if self.model and self.model != "default":
                 command.extend(["--model", self.model])
+            if self.reasoning_effort:
+                command.extend(
+                    ["--config", f"model_reasoning_effort={json.dumps(self.reasoning_effort)}"]
+                )
             command.extend(
                 [
                     "--output-schema",

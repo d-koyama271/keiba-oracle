@@ -82,6 +82,7 @@ codex login status
 - `publish_mode`: `github_pages` を想定
 - `llm_provider`: 通常運用では `codex`
 - `llm_model`: Codex で使用するモデル名
+- `llm_reasoning_effort`: Codex CLI の `model_reasoning_effort` に渡す設定値
 - `data_dir`: レース JSON 保存先
 - `public_dir`: 公開物の出力先
 

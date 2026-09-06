@@ -20,7 +20,7 @@ import run_pre  # noqa: E402
 import run_pre_collect  # noqa: E402
 import simulate  # noqa: E402
 from llm_client import LLMClient  # noqa: E402
-from utils import JST, load_race_json, save_race_json  # noqa: E402
+from utils import JST, load_config, load_race_json, save_race_json  # noqa: E402
 
 
 def race_payload(prediction: dict | None = None) -> dict:
@@ -425,6 +425,16 @@ class PredictionValidationTests(unittest.TestCase):
 
 
 class CodexClientTests(unittest.TestCase):
+    def test_from_config_sets_reasoning_effort(self) -> None:
+        client = LLMClient.from_config(load_config(ROOT / "config" / "app.yaml"))
+        self.assertEqual(client.provider, "codex")
+        self.assertEqual(client.model, "gpt-5.6-sol")
+        self.assertEqual(client.reasoning_effort, "ultra")
+
+    def test_from_config_without_reasoning_effort(self) -> None:
+        client = LLMClient.from_config({"llm_provider": "codex", "llm_model": "gpt-test"})
+        self.assertIsNone(client.reasoning_effort)
+
     def test_codex_cli_is_isolated_and_uses_structured_output(self) -> None:
         commands: list[list[str]] = []
         run_kwargs: dict = {}
@@ -450,14 +460,16 @@ class CodexClientTests(unittest.TestCase):
             "llm_client.subprocess.run",
             side_effect=run,
         ):
-            response = LLMClient("codex", "gpt-test").invoke_json("ONLY_INPUT", max_retries=0)
+            client = LLMClient.from_config(load_config(ROOT / "config" / "app.yaml"))
+            response = client.invoke_json("ONLY_INPUT", max_retries=0)
 
         command = commands[0]
         self.assertIn("--ephemeral", command)
         self.assertIn("--ignore-user-config", command)
         self.assertIn("--ignore-rules", command)
         self.assertEqual(command[command.index("--sandbox") + 1], "read-only")
-        self.assertEqual(command[command.index("--model") + 1], "gpt-test")
+        self.assertEqual(command[command.index("--model") + 1], "gpt-5.6-sol")
+        self.assertEqual(command[command.index("--config") + 1], 'model_reasoning_effort="ultra"')
         self.assertIn("--output-schema", command)
         self.assertEqual(run_kwargs["input"], "ONLY_INPUT")
         self.assertNotEqual(Path(run_kwargs["cwd"]), ROOT)
