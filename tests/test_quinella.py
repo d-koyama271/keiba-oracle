@@ -334,7 +334,7 @@ class FlowAndSummaryTests(unittest.TestCase):
     def test_default_settings_and_missing_quinella_do_not_replace_win_history(self):
         config, payload = load_config(), payload_with_odds()
         q_settings = config["simulation"]["quinella"]
-        self.assertEqual(q_settings, {"harville_lambda": .81, "value": {"ev_threshold": 1.1, "kelly_fraction": .8}, "dutching": {"max_selection_count": 10, "min_coverage_probability": .4, "min_group_expected_value": .8, "min_profit_rate": .2}})
+        self.assertEqual(q_settings, {"harville_lambda": .81, "value": {"ev_threshold": 1.1, "kelly_fraction": .8}, "dutching": {"max_selection_count": 10, "min_coverage_probability": .4, "min_group_expected_value": .75, "min_profit_rate": .2}})
         old_config = copy.deepcopy(config)
         old_config["simulation"].pop("quinella")
         payload["simulation"] = calculate_pre_simulation(payload, old_config)

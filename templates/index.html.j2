@@ -234,7 +234,7 @@
 {% set traditional_summary = method_summaries.get("traditional") %}
 {% set statistical_summary = method_summaries.get("statistical") %}
 {% set traditional_overall = traditional_summary.get("overall") if traditional_summary else (evaluation_summary.get("overall") if evaluation_summary else none) %}
-{% set traditional_simulation = evaluation_summary.get("simulation") if evaluation_summary else none %}
+{% set traditional_simulation = traditional_summary.get("simulation") if traditional_summary else (evaluation_summary.get("simulation") if evaluation_summary else none) %}
 {% set statistical_overall = statistical_summary.get("overall") if statistical_summary else none %}
 {% set statistical_simulation = statistical_summary.get("simulation") if statistical_summary else none %}
 {{ performance_panel("総合AI予想の予測成績", prediction_method_descriptions.get("traditional", ""), traditional_overall, traditional_simulation) }}

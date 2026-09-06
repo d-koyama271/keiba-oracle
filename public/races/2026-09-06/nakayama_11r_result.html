@@ -160,7 +160,7 @@
     }
     .simulator-form {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
       gap: 12px;
       align-items: end;
       margin: 18px 0;
@@ -171,6 +171,7 @@
     }
     .simulator-field {
       display: grid;
+      min-width: 0;
       gap: 6px;
       color: var(--muted);
       font-size: 13px;
@@ -178,6 +179,7 @@
     }
     .simulator-field-label {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 4px;
     }
@@ -185,6 +187,7 @@
     .simulator-field select {
       width: 100%;
       box-sizing: border-box;
+      min-width: 0;
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 10px;
@@ -192,17 +195,7 @@
       color: var(--ink);
       font: inherit;
     }
-    .simulator-checkbox {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 42px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 700;
-    }
-    .simulator-checkbox input { width: auto; }
-    .simulator-form button {
+    .simulator-form button[type="submit"] {
       border: 0;
       border-radius: 8px;
       padding: 11px 18px;
@@ -588,27 +581,31 @@
     馬名 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="number" data-sort-first="descending">
+  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="number" data-sort-first="ascending">
+    人気 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="descending">
     1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="ascending">
+  <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
     予測順位 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
+  <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="ascending">
     実着順 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="ascending">
+  <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="ascending">
     予想との差 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="ascending">
+  <button type="button" class="sort-button" data-sort-column="7" data-sort-type="number" data-sort-first="ascending">
     確定オッズ <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="7" data-sort-type="number" data-sort-first="descending">
+  <button type="button" class="sort-button" data-sort-column="8" data-sort-type="number" data-sort-first="descending">
     単勝払戻 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th></tr></thead>
@@ -617,6 +614,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="1">1</td>
                   <td class="horse-name">ジワタネホ</td>
+                  <td class="nowrap" data-sort-value="9">9</td>
                   <td class="nowrap" data-sort-value="0.01">1.0%</td>
                   <td class="nowrap" data-sort-value="11">11位</td>
                   <td class="nowrap" data-sort-value="5">5着</td>
@@ -628,6 +626,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="2">2</td>
                   <td class="horse-name">サムシングスイート</td>
+                  <td class="nowrap" data-sort-value="4">4</td>
                   <td class="nowrap" data-sort-value="0.13">13.0%</td>
                   <td class="nowrap" data-sort-value="4">4位</td>
                   <td class="nowrap" data-sort-value="2">2着</td>
@@ -639,6 +638,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="3">3</td>
                   <td class="horse-name">リアライズルミナス</td>
+                  <td class="nowrap" data-sort-value="2">2</td>
                   <td class="nowrap" data-sort-value="0.18">18.0%</td>
                   <td class="nowrap" data-sort-value="2">2位</td>
                   <td class="nowrap" data-sort-value="7">7着</td>
@@ -650,6 +650,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="4">4</td>
                   <td class="horse-name rank-result-winner">マスターソアラ</td>
+                  <td class="nowrap" data-sort-value="6">6</td>
                   <td class="nowrap" data-sort-value="0.03">3.0%</td>
                   <td class="nowrap" data-sort-value="8">8位</td>
                   <td class="nowrap rank-result-winner" data-sort-value="1">1着</td>
@@ -661,6 +662,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="5">5</td>
                   <td class="horse-name">ファムクラジューズ</td>
+                  <td class="nowrap" data-sort-value="8">8</td>
                   <td class="nowrap" data-sort-value="0.04">4.0%</td>
                   <td class="nowrap" data-sort-value="7">7位</td>
                   <td class="nowrap" data-sort-value="8">8着</td>
@@ -672,6 +674,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="6">6</td>
                   <td class="horse-name">アストリル</td>
+                  <td class="nowrap" data-sort-value="5">5</td>
                   <td class="nowrap" data-sort-value="0.17">17.0%</td>
                   <td class="nowrap" data-sort-value="3">3位</td>
                   <td class="nowrap" data-sort-value="4">4着</td>
@@ -683,6 +686,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="7">7</td>
                   <td class="horse-name">ロングトールサリー</td>
+                  <td class="nowrap" data-sort-value="10">10</td>
                   <td class="nowrap" data-sort-value="0.02">2.0%</td>
                   <td class="nowrap" data-sort-value="9">9位</td>
                   <td class="nowrap" data-sort-value="11">11着</td>
@@ -694,6 +698,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="8">8</td>
                   <td class="horse-name">ナイスプレーアスク</td>
+                  <td class="nowrap" data-sort-value="11">11</td>
                   <td class="nowrap" data-sort-value="0.02">2.0%</td>
                   <td class="nowrap" data-sort-value="10">10位</td>
                   <td class="nowrap" data-sort-value="6">6着</td>
@@ -705,6 +710,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="9">9</td>
                   <td class="horse-name rank-prediction-top">ドリームコア</td>
+                  <td class="nowrap" data-sort-value="1">1</td>
                   <td class="nowrap" data-sort-value="0.22">22.0%</td>
                   <td class="nowrap rank-prediction-top" data-sort-value="1">1位</td>
                   <td class="nowrap" data-sort-value="3">3着</td>
@@ -716,6 +722,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="10">10</td>
                   <td class="horse-name">ジッピーチューン</td>
+                  <td class="nowrap" data-sort-value="3">3</td>
                   <td class="nowrap" data-sort-value="0.11">11.0%</td>
                   <td class="nowrap" data-sort-value="5">5位</td>
                   <td class="nowrap" data-sort-value="10">10着</td>
@@ -727,6 +734,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="11">11</td>
                   <td class="horse-name">ベンヴェヌータ</td>
+                  <td class="nowrap" data-sort-value="7">7</td>
                   <td class="nowrap" data-sort-value="0.07">7.0%</td>
                   <td class="nowrap" data-sort-value="6">6位</td>
                   <td class="nowrap" data-sort-value="9">9着</td>
@@ -772,7 +780,7 @@
 
         
         <div class="panel result-panel">
-          <h3>期待値重視方式のシミュレーション結果</h3>
+          <h3 class="result-comparison-title"><span>期待値重視方式のシミュレーション結果</span></h3>
           
           <p><strong>投資:</strong> 200円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> -200円 / <strong>ROI:</strong> -100.00%</p>
           <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">6</td><td class="nowrap">200円</td><td class="nowrap">8.9</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
@@ -782,7 +790,7 @@
 
         
         <div class="panel result-panel">
-          <h3>単勝分配方式のシミュレーション結果</h3>
+          <h3 class="result-comparison-title"><span>単勝分配方式のシミュレーション結果</span></h3>
           
           <p><strong>投資:</strong> 3000円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> -3000円 / <strong>ROI:</strong> -100.00%</p>
           <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">9</td><td class="nowrap">1600円</td><td class="nowrap">2.5</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">3</td><td class="nowrap">1100円</td><td class="nowrap">5.2</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">6</td><td class="nowrap">300円</td><td class="nowrap">8.9</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
@@ -798,17 +806,21 @@
 
 
 <div class="panel result-panel" data-quinella-method="dutching">
-  <h3>馬連分配方式のシミュレーション結果</h3>
+  <h3 class="result-comparison-title"><span>馬連分配方式のシミュレーション結果</span></h3>
   
     
     <div class="metric-grid">
-      <div><strong>当初購入額</strong><br>0円</div>
+      <div><strong>当初購入額</strong><br>3000円</div>
       <div><strong>返還額</strong><br>0円</div>
       <div><strong>回収額（返還含む）</strong><br>0円</div>
-      <div><strong>損益</strong><br>0円</div>
-      <div><strong>ROI（損益率）</strong><br>0.00%</div>
+      <div><strong>損益</strong><br>-3000円</div>
+      <div><strong>ROI（損益率）</strong><br>-100.00%</div>
     </div>
-    <p>購入なし</p>
+    
+    <div class="table-scroll"><table class="simulation-table"><thead><tr><th>馬番ペア</th><th>購入額</th><th>判定</th><th>的中払戻</th><th>返還額</th><th>回収額</th></tr></thead><tbody>
+      <tr><td class="nowrap">3-9</td><td class="nowrap">700円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">6-9</td><td class="nowrap">300円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">3-6</td><td class="nowrap">200円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">2-9</td><td class="nowrap">400円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">9-10</td><td class="nowrap">600円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">2-3</td><td class="nowrap">300円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">2-6</td><td class="nowrap">200円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">3-10</td><td class="nowrap">300円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr>
+    </tbody></table></div>
+    
     
   
 </div>
@@ -816,7 +828,7 @@
 
 
 <div class="panel result-panel" data-quinella-method="value">
-  <h3>馬連期待値重視方式のシミュレーション結果</h3>
+  <h3 class="result-comparison-title"><span>期待値重視方式のシミュレーション結果</span></h3>
   
     
     <div class="metric-grid">
@@ -858,27 +870,31 @@
     馬名 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="number" data-sort-first="descending">
+  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="number" data-sort-first="ascending">
+    人気 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="descending">
     1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="ascending">
+  <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
     予測順位 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
+  <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="ascending">
     実着順 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="ascending">
+  <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="ascending">
     予想との差 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="ascending">
+  <button type="button" class="sort-button" data-sort-column="7" data-sort-type="number" data-sort-first="ascending">
     確定オッズ <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="7" data-sort-type="number" data-sort-first="descending">
+  <button type="button" class="sort-button" data-sort-column="8" data-sort-type="number" data-sort-first="descending">
     単勝払戻 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th></tr></thead>
@@ -887,6 +903,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="1">1</td>
                   <td class="horse-name">ジワタネホ</td>
+                  <td class="nowrap" data-sort-value="9">9</td>
                   <td class="nowrap" data-sort-value="0.06">6.0%</td>
                   <td class="nowrap" data-sort-value="6">6位</td>
                   <td class="nowrap" data-sort-value="5">5着</td>
@@ -898,6 +915,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="2">2</td>
                   <td class="horse-name">サムシングスイート</td>
+                  <td class="nowrap" data-sort-value="4">4</td>
                   <td class="nowrap" data-sort-value="0.13">13.0%</td>
                   <td class="nowrap" data-sort-value="4">4位</td>
                   <td class="nowrap" data-sort-value="2">2着</td>
@@ -909,6 +927,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="3">3</td>
                   <td class="horse-name">リアライズルミナス</td>
+                  <td class="nowrap" data-sort-value="2">2</td>
                   <td class="nowrap" data-sort-value="0.14">14.0%</td>
                   <td class="nowrap" data-sort-value="3">3位</td>
                   <td class="nowrap" data-sort-value="7">7着</td>
@@ -920,6 +939,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="4">4</td>
                   <td class="horse-name rank-result-winner">マスターソアラ</td>
+                  <td class="nowrap" data-sort-value="6">6</td>
                   <td class="nowrap" data-sort-value="0.025">2.5%</td>
                   <td class="nowrap" data-sort-value="11">11位</td>
                   <td class="nowrap rank-result-winner" data-sort-value="1">1着</td>
@@ -931,6 +951,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="5">5</td>
                   <td class="horse-name">ファムクラジューズ</td>
+                  <td class="nowrap" data-sort-value="8">8</td>
                   <td class="nowrap" data-sort-value="0.055">5.5%</td>
                   <td class="nowrap" data-sort-value="8">8位</td>
                   <td class="nowrap" data-sort-value="8">8着</td>
@@ -942,6 +963,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="6">6</td>
                   <td class="horse-name rank-prediction-top">アストリル</td>
+                  <td class="nowrap" data-sort-value="5">5</td>
                   <td class="nowrap" data-sort-value="0.18">18.0%</td>
                   <td class="nowrap rank-prediction-top" data-sort-value="1">1位</td>
                   <td class="nowrap" data-sort-value="4">4着</td>
@@ -953,6 +975,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="7">7</td>
                   <td class="horse-name">ロングトールサリー</td>
+                  <td class="nowrap" data-sort-value="10">10</td>
                   <td class="nowrap" data-sort-value="0.06">6.0%</td>
                   <td class="nowrap" data-sort-value="7">7位</td>
                   <td class="nowrap" data-sort-value="11">11着</td>
@@ -964,6 +987,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="8">8</td>
                   <td class="horse-name">ナイスプレーアスク</td>
+                  <td class="nowrap" data-sort-value="11">11</td>
                   <td class="nowrap" data-sort-value="0.035">3.5%</td>
                   <td class="nowrap" data-sort-value="10">10位</td>
                   <td class="nowrap" data-sort-value="6">6着</td>
@@ -975,6 +999,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="9">9</td>
                   <td class="horse-name">ドリームコア</td>
+                  <td class="nowrap" data-sort-value="1">1</td>
                   <td class="nowrap" data-sort-value="0.16">16.0%</td>
                   <td class="nowrap" data-sort-value="2">2位</td>
                   <td class="nowrap" data-sort-value="3">3着</td>
@@ -986,6 +1011,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="10">10</td>
                   <td class="horse-name">ジッピーチューン</td>
+                  <td class="nowrap" data-sort-value="3">3</td>
                   <td class="nowrap" data-sort-value="0.1">10.0%</td>
                   <td class="nowrap" data-sort-value="5">5位</td>
                   <td class="nowrap" data-sort-value="10">10着</td>
@@ -997,6 +1023,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="11">11</td>
                   <td class="horse-name">ベンヴェヌータ</td>
+                  <td class="nowrap" data-sort-value="7">7</td>
                   <td class="nowrap" data-sort-value="0.055">5.5%</td>
                   <td class="nowrap" data-sort-value="9">9位</td>
                   <td class="nowrap" data-sort-value="9">9着</td>
@@ -1042,7 +1069,7 @@
 
         
         <div class="panel result-panel">
-          <h3>期待値重視方式のシミュレーション結果</h3>
+          <h3 class="result-comparison-title"><span>期待値重視方式のシミュレーション結果</span></h3>
           
           <p><strong>投資:</strong> 200円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> -200円 / <strong>ROI:</strong> -100.00%</p>
           <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">6</td><td class="nowrap">200円</td><td class="nowrap">8.9</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
@@ -1052,10 +1079,9 @@
 
         
         <div class="panel result-panel">
-          <h3>単勝分配方式のシミュレーション結果</h3>
+          <h3 class="result-comparison-title"><span>単勝分配方式のシミュレーション結果</span></h3>
           
-          <p><strong>投資:</strong> 3000円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> -3000円 / <strong>ROI:</strong> -100.00%</p>
-          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">6</td><td class="nowrap">300円</td><td class="nowrap">8.9</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">9</td><td class="nowrap">1600円</td><td class="nowrap">2.5</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">3</td><td class="nowrap">1100円</td><td class="nowrap">5.2</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
+          <p><strong>購入なし</strong></p><p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
           
         </div>
         
@@ -1068,7 +1094,7 @@
 
 
 <div class="panel result-panel" data-quinella-method="dutching">
-  <h3>馬連分配方式のシミュレーション結果</h3>
+  <h3 class="result-comparison-title"><span>馬連分配方式のシミュレーション結果</span></h3>
   
     
     <div class="metric-grid">
@@ -1086,7 +1112,7 @@
 
 
 <div class="panel result-panel" data-quinella-method="value">
-  <h3>馬連期待値重視方式のシミュレーション結果</h3>
+  <h3 class="result-comparison-title"><span>期待値重視方式のシミュレーション結果</span></h3>
   
     
     <div class="metric-grid">

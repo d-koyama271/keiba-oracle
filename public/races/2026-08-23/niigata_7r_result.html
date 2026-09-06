@@ -2,6 +2,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -159,7 +160,7 @@
     }
     .simulator-form {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
       gap: 12px;
       align-items: end;
       margin: 18px 0;
@@ -170,6 +171,7 @@
     }
     .simulator-field {
       display: grid;
+      min-width: 0;
       gap: 6px;
       color: var(--muted);
       font-size: 13px;
@@ -177,6 +179,7 @@
     }
     .simulator-field-label {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 4px;
     }
@@ -184,6 +187,7 @@
     .simulator-field select {
       width: 100%;
       box-sizing: border-box;
+      min-width: 0;
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 10px;
@@ -191,17 +195,7 @@
       color: var(--ink);
       font: inherit;
     }
-    .simulator-checkbox {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 42px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 700;
-    }
-    .simulator-checkbox input { width: auto; }
-    .simulator-form button {
+    .simulator-form button[type="submit"] {
       border: 0;
       border-radius: 8px;
       padding: 11px 18px;
@@ -312,6 +306,8 @@
       opacity: 1;
       transform: translate(-50%, 0);
     }
+    .ticket-tabs { margin: 12px 0 20px; }
+    [data-ticket-panel][hidden] { display: none; }
     .simulation-section {
       margin-top: 32px;
     }
@@ -405,6 +401,7 @@
     }
     .result-method-content > .result-panel { margin-bottom: 0; }
     .result-method-content > .result-panel + .result-panel { margin-top: 18px; }
+    .result-method-content > .ticket-tabs { margin-top: 28px; }
     .ai-method-tab:focus-visible {
       outline: 2px solid #9bb8ae;
       outline-offset: 2px;
@@ -490,6 +487,7 @@
       .result-section {
         margin-top: 28px;
       }
+      .result-method-content > .ticket-tabs { margin-top: 24px; }
       .simulation-panel h4,
       .result-panel h4 {
         margin-top: 24px;
@@ -583,27 +581,31 @@
     馬名 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="number" data-sort-first="descending">
+  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="number" data-sort-first="ascending">
+    人気 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="descending">
     1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="ascending">
+  <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
     予測順位 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
+  <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="ascending">
     実着順 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="ascending">
+  <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="ascending">
     予想との差 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="ascending">
+  <button type="button" class="sort-button" data-sort-column="7" data-sort-type="number" data-sort-first="ascending">
     確定オッズ <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="7" data-sort-type="number" data-sort-first="descending">
+  <button type="button" class="sort-button" data-sort-column="8" data-sort-type="number" data-sort-first="descending">
     単勝払戻 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th></tr></thead>
@@ -612,6 +614,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="1">1</td>
                   <td class="horse-name">シャンデヴァーグ</td>
+                  <td class="nowrap" data-sort-value="2">2</td>
                   <td class="nowrap" data-sort-value="0.21">21.0%</td>
                   <td class="nowrap" data-sort-value="2">2位</td>
                   <td class="nowrap" data-sort-value="5">5着</td>
@@ -623,6 +626,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="2">2</td>
                   <td class="horse-name rank-prediction-hit">レッチュベルク</td>
+                  <td class="nowrap" data-sort-value="1">1</td>
                   <td class="nowrap" data-sort-value="0.23">23.0%</td>
                   <td class="nowrap rank-prediction-hit" data-sort-value="1">1位</td>
                   <td class="nowrap rank-prediction-hit" data-sort-value="1">1着</td>
@@ -634,6 +638,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="3">3</td>
                   <td class="horse-name">トップチェッカー</td>
+                  <td class="nowrap" data-sort-value="5">5</td>
                   <td class="nowrap" data-sort-value="0.06">6.0%</td>
                   <td class="nowrap" data-sort-value="6">6位</td>
                   <td class="nowrap" data-sort-value="3">3着</td>
@@ -645,6 +650,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="4">4</td>
                   <td class="horse-name">アイデアルカット</td>
+                  <td class="nowrap" data-sort-value="9">9</td>
                   <td class="nowrap" data-sort-value="0.025">2.5%</td>
                   <td class="nowrap" data-sort-value="8">8位</td>
                   <td class="nowrap" data-sort-value="8">8着</td>
@@ -656,6 +662,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="5">5</td>
                   <td class="horse-name">エレスレイプニル</td>
+                  <td class="nowrap" data-sort-value="8">8</td>
                   <td class="nowrap" data-sort-value="0.015">1.5%</td>
                   <td class="nowrap" data-sort-value="10">10位</td>
                   <td class="nowrap" data-sort-value="7">7着</td>
@@ -667,6 +674,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="6">6</td>
                   <td class="horse-name">マインドフルネス</td>
+                  <td class="nowrap" data-sort-value="7">7</td>
                   <td class="nowrap" data-sort-value="0.04">4.0%</td>
                   <td class="nowrap" data-sort-value="7">7位</td>
                   <td class="nowrap" data-sort-value="6">6着</td>
@@ -678,6 +686,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="7">7</td>
                   <td class="horse-name">トウシンマジック</td>
+                  <td class="nowrap" data-sort-value="3">3</td>
                   <td class="nowrap" data-sort-value="0.14">14.0%</td>
                   <td class="nowrap" data-sort-value="4">4位</td>
                   <td class="nowrap" data-sort-value="2">2着</td>
@@ -689,6 +698,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="8">8</td>
                   <td class="horse-name">マイホームパパ</td>
+                  <td class="nowrap" data-sort-value="10">10</td>
                   <td class="nowrap" data-sort-value="0.02">2.0%</td>
                   <td class="nowrap" data-sort-value="9">9位</td>
                   <td class="nowrap" data-sort-value="10">10着</td>
@@ -700,6 +710,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="9">9</td>
                   <td class="horse-name">スイートアリッサム</td>
+                  <td class="nowrap" data-sort-value="6">6</td>
                   <td class="nowrap" data-sort-value="0.09">9.0%</td>
                   <td class="nowrap" data-sort-value="5">5位</td>
                   <td class="nowrap" data-sort-value="4">4着</td>
@@ -711,6 +722,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="10">10</td>
                   <td class="horse-name">インカルナータ</td>
+                  <td class="nowrap" data-sort-value="4">4</td>
                   <td class="nowrap" data-sort-value="0.17">17.0%</td>
                   <td class="nowrap" data-sort-value="3">3位</td>
                   <td class="nowrap" data-sort-value="9">9着</td>
@@ -747,11 +759,16 @@
         </div>
         
 
+        <div class="ai-method-tabs ticket-tabs" role="tablist" aria-label="シミュレーションの券種">
+  <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="win" aria-controls="settlement-traditional-win" aria-selected="true" tabindex="0">単勝</button>
+  <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="quinella" aria-controls="settlement-traditional-quinella" aria-selected="false" tabindex="-1">馬連</button>
+</div>
+        <div id="settlement-traditional-win" data-ticket-panel="win" role="tabpanel">
         
 
         
         <div class="panel result-panel">
-          <h3>期待値重視方式のシミュレーション結果</h3>
+          <h3 class="result-comparison-title"><span>期待値重視方式のシミュレーション結果</span></h3>
           
           <p><strong>購入なし</strong></p><p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
           
@@ -760,13 +777,21 @@
 
         
         <div class="panel result-panel">
-          <h3>単勝分配方式のシミュレーション結果</h3>
+          <h3 class="result-comparison-title"><span>単勝分配方式のシミュレーション結果</span><span class="hit-badge">的中!</span></h3>
           
           <p><strong>投資:</strong> 3000円 / <strong>回収:</strong> 4480円 / <strong>損益:</strong> 1480円 / <strong>ROI:</strong> 49.33%</p>
           <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">2</td><td class="nowrap">1600円</td><td class="nowrap">2.8</td><td class="nowrap">的中</td><td class="nowrap">4480円</td></tr><tr><td class="nowrap">1</td><td class="nowrap">1400円</td><td class="nowrap">4.3</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
           
         </div>
         
+        </div>
+        <div id="settlement-traditional-quinella" data-ticket-panel="quinella" role="tabpanel" hidden>
+          
+<p class="small">馬連的中確率は各馬の1着確率から算出した、同着を考慮しない近似値です。</p>
+
+<p class="quinella-unavailable">馬連は計算できません。発走前の完全なオッズ・確率データが記録されていません。</p>
+
+        </div>
       </div>
       
       
@@ -792,27 +817,31 @@
     馬名 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="number" data-sort-first="descending">
+  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="number" data-sort-first="ascending">
+    人気 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="descending">
     1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="ascending">
+  <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
     予測順位 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
+  <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="ascending">
     実着順 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="ascending">
+  <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="ascending">
     予想との差 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="ascending">
+  <button type="button" class="sort-button" data-sort-column="7" data-sort-type="number" data-sort-first="ascending">
     確定オッズ <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="7" data-sort-type="number" data-sort-first="descending">
+  <button type="button" class="sort-button" data-sort-column="8" data-sort-type="number" data-sort-first="descending">
     単勝払戻 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th></tr></thead>
@@ -821,6 +850,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="1">1</td>
                   <td class="horse-name">シャンデヴァーグ</td>
+                  <td class="nowrap" data-sort-value="2">2</td>
                   <td class="nowrap" data-sort-value="0.11">11.0%</td>
                   <td class="nowrap" data-sort-value="3">3位</td>
                   <td class="nowrap" data-sort-value="5">5着</td>
@@ -832,6 +862,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="2">2</td>
                   <td class="horse-name rank-result-winner">レッチュベルク</td>
+                  <td class="nowrap" data-sort-value="1">1</td>
                   <td class="nowrap" data-sort-value="0.11">11.0%</td>
                   <td class="nowrap" data-sort-value="4">4位</td>
                   <td class="nowrap rank-result-winner" data-sort-value="1">1着</td>
@@ -843,6 +874,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="3">3</td>
                   <td class="horse-name">トップチェッカー</td>
+                  <td class="nowrap" data-sort-value="5">5</td>
                   <td class="nowrap" data-sort-value="0.1">10.0%</td>
                   <td class="nowrap" data-sort-value="5">5位</td>
                   <td class="nowrap" data-sort-value="3">3着</td>
@@ -854,6 +886,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="4">4</td>
                   <td class="horse-name">アイデアルカット</td>
+                  <td class="nowrap" data-sort-value="9">9</td>
                   <td class="nowrap" data-sort-value="0.1">10.0%</td>
                   <td class="nowrap" data-sort-value="6">6位</td>
                   <td class="nowrap" data-sort-value="8">8着</td>
@@ -865,6 +898,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="5">5</td>
                   <td class="horse-name">エレスレイプニル</td>
+                  <td class="nowrap" data-sort-value="8">8</td>
                   <td class="nowrap" data-sort-value="0.02">2.0%</td>
                   <td class="nowrap" data-sort-value="10">10位</td>
                   <td class="nowrap" data-sort-value="7">7着</td>
@@ -876,6 +910,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="6">6</td>
                   <td class="horse-name">マインドフルネス</td>
+                  <td class="nowrap" data-sort-value="7">7</td>
                   <td class="nowrap" data-sort-value="0.13">13.0%</td>
                   <td class="nowrap" data-sort-value="2">2位</td>
                   <td class="nowrap" data-sort-value="6">6着</td>
@@ -887,6 +922,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="7">7</td>
                   <td class="horse-name">トウシンマジック</td>
+                  <td class="nowrap" data-sort-value="3">3</td>
                   <td class="nowrap" data-sort-value="0.08">8.0%</td>
                   <td class="nowrap" data-sort-value="7">7位</td>
                   <td class="nowrap" data-sort-value="2">2着</td>
@@ -898,6 +934,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="8">8</td>
                   <td class="horse-name">マイホームパパ</td>
+                  <td class="nowrap" data-sort-value="10">10</td>
                   <td class="nowrap" data-sort-value="0.06">6.0%</td>
                   <td class="nowrap" data-sort-value="9">9位</td>
                   <td class="nowrap" data-sort-value="10">10着</td>
@@ -909,6 +946,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="9">9</td>
                   <td class="horse-name rank-prediction-top">スイートアリッサム</td>
+                  <td class="nowrap" data-sort-value="6">6</td>
                   <td class="nowrap" data-sort-value="0.22">22.0%</td>
                   <td class="nowrap rank-prediction-top" data-sort-value="1">1位</td>
                   <td class="nowrap" data-sort-value="4">4着</td>
@@ -920,6 +958,7 @@
                 <tr>
                   <td class="nowrap" data-sort-value="10">10</td>
                   <td class="horse-name">インカルナータ</td>
+                  <td class="nowrap" data-sort-value="4">4</td>
                   <td class="nowrap" data-sort-value="0.07">7.0%</td>
                   <td class="nowrap" data-sort-value="8">8位</td>
                   <td class="nowrap" data-sort-value="9">9着</td>
@@ -956,19 +995,32 @@
         </div>
         
 
+        <div class="ai-method-tabs ticket-tabs" role="tablist" aria-label="シミュレーションの券種">
+  <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="win" aria-controls="settlement-statistical-win" aria-selected="true" tabindex="0">単勝</button>
+  <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="quinella" aria-controls="settlement-statistical-quinella" aria-selected="false" tabindex="-1">馬連</button>
+</div>
+        <div id="settlement-statistical-win" data-ticket-panel="win" role="tabpanel">
         
 
         
 
         
         <div class="panel result-panel">
-          <h3>単勝分配方式のシミュレーション結果</h3>
+          <h3 class="result-comparison-title"><span>単勝分配方式のシミュレーション結果</span></h3>
           
           <p><strong>投資:</strong> 3000円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> -3000円 / <strong>ROI:</strong> -100.00%</p>
           <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">9</td><td class="nowrap">600円</td><td class="nowrap">19.8</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">6</td><td class="nowrap">300円</td><td class="nowrap">40.3</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">1</td><td class="nowrap">2100円</td><td class="nowrap">4.3</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
           
         </div>
         
+        </div>
+        <div id="settlement-statistical-quinella" data-ticket-panel="quinella" role="tabpanel" hidden>
+          
+<p class="small">馬連的中確率は各馬の1着確率から算出した、同着を考慮しない近似値です。</p>
+
+<p class="quinella-unavailable">馬連は計算できません。発走前の完全なオッズ・確率データが記録されていません。</p>
+
+        </div>
       </div>
       
     </section>
@@ -1042,6 +1094,27 @@
     };
 
     (() => {
+      const ticketTabs = Array.from(document.querySelectorAll("[data-ticket-tab]"));
+      const activateTicket = (ticket) => {
+        ticketTabs.forEach((tab) => {
+          const selected = tab.dataset.ticketTab === ticket;
+          tab.setAttribute("aria-selected", String(selected));
+          tab.tabIndex = selected ? 0 : -1;
+        });
+        document.querySelectorAll("[data-ticket-panel]").forEach((panel) => { panel.hidden = panel.dataset.ticketPanel !== ticket; });
+        document.dispatchEvent(new CustomEvent("ticket-change", { detail: { ticket } }));
+      };
+      ticketTabs.forEach((tab) => {
+        tab.addEventListener("click", () => activateTicket(tab.dataset.ticketTab));
+        tab.addEventListener("keydown", (event) => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+          event.preventDefault();
+          const tabs = Array.from(tab.closest('[role="tablist"]').querySelectorAll('[data-ticket-tab]'));
+          const index = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (tabs.indexOf(tab) + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+          activateTicket(tabs[index].dataset.ticketTab);
+          tabs[index].focus();
+        });
+      });
       const aiMethodTabs = Array.from(document.querySelectorAll("[data-ai-tab]"));
       const activateAiMethod = (method) => {
         for (const tab of aiMethodTabs) {

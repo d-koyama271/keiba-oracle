@@ -190,7 +190,7 @@ Codex は一時作業ディレクトリ内の読み取り専用・構造化出�
 | `value.kelly_fraction` | 0.80 |
 | `dutching.max_selection_count` | 10 |
 | `dutching.min_coverage_probability` | 0.40 |
-| `dutching.min_group_expected_value` | 0.80 |
+| `dutching.min_group_expected_value` | 0.75 |
 | `dutching.min_profit_rate` | 0.20 |
 
 既存netkeiba APIの `type=all` レスポンスから単勝 `odds["1"]` と馬連 `odds["4"]` を同時に取得します。組番は辞書キーではなく `row[3]`、オッズは `row[0]` を読みます。昇順整数ペアの完全な集合、重複、欠落、有限・有効な数値を検証し、`race.quinella_odds` に `pairs`、`fetched_at`、`source`、`source_url`、`official_datetime`、`api_status`、`api_reason`、`update_count`、`available`、`reason` を保存します。不完全なスナップショットを部分利用したり、取消馬を推定したりしません。APIの発走前状態と更新・取得時刻も確認し、結果時点のオッズはpreに使いません。馬連取得失敗時も単勝の検証とJRAフォールバックは継続します。馬連情報は両AIの予想入力から除外します。

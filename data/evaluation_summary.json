@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-06T21:52:18+09:00",
+  "generated_at": "2026-09-07T01:47:39+09:00",
   "overall": {
     "evaluated_races": 20,
     "top1_hits": 7,
@@ -498,13 +498,13 @@
       },
       "dutching": {
         "simulation_races": 2,
-        "purchase_races": 0,
-        "hit_races": 0,
-        "total_stake": 0,
+        "purchase_races": 2,
+        "hit_races": 1,
+        "total_stake": 6000,
         "total_refund": 0,
-        "total_return": 0,
-        "cumulative_profit": 0,
-        "overall_roi": null
+        "total_return": 3200,
+        "cumulative_profit": -2800,
+        "overall_roi": 0.533333
       }
     }
   },
@@ -818,12 +818,12 @@
         },
         "dutching": {
           "simulation_races": 20,
-          "purchase_races": 19,
-          "hit_races": 11,
-          "total_stake": 57000,
-          "total_return": 44620,
-          "cumulative_profit": -12380,
-          "overall_roi": 0.782807
+          "purchase_races": 18,
+          "hit_races": 10,
+          "total_stake": 54000,
+          "total_return": 40980,
+          "cumulative_profit": -13020,
+          "overall_roi": 0.758889
         },
         "quinella": {
           "value": {
@@ -838,13 +838,13 @@
           },
           "dutching": {
             "simulation_races": 2,
-            "purchase_races": 0,
-            "hit_races": 0,
-            "total_stake": 0,
+            "purchase_races": 2,
+            "hit_races": 1,
+            "total_stake": 6000,
             "total_refund": 0,
-            "total_return": 0,
-            "cumulative_profit": 0,
-            "overall_roi": null
+            "total_return": 3200,
+            "cumulative_profit": -2800,
+            "overall_roi": 0.533333
           }
         }
       }
@@ -1098,12 +1098,12 @@
         },
         "dutching": {
           "simulation_races": 10,
-          "purchase_races": 9,
+          "purchase_races": 8,
           "hit_races": 4,
-          "total_stake": 27000,
+          "total_stake": 24000,
           "total_return": 22410,
-          "cumulative_profit": -4590,
-          "overall_roi": 0.83
+          "cumulative_profit": -1590,
+          "overall_roi": 0.93375
         },
         "quinella": {
           "value": {
