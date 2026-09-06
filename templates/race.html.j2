@@ -339,7 +339,6 @@
       margin: 0 0 -1px;
       padding: 9px 14px;
       border: 1px solid transparent;
-      border-bottom-color: var(--line);
       border-radius: 10px 10px 0 0;
       background: transparent;
       color: var(--muted);
@@ -532,7 +531,7 @@
   <main>
     <div class="panel">
       <div class="page-badges">
-        <span class="ai-badge">AI予想</span>
+        {% if prediction and prediction.model_name %}<span class="ai-badge">{{ prediction.model_name }}</span>{% endif %}
         <span class="status {{ status_class }}">{{ status_label }}</span>
       </div>
       <h1>{{ race.track }} {{ race.race_number }}R {{ race.race_name }}</h1>
@@ -1520,18 +1519,6 @@
         </div>
         {% endif %}
 
-        {% if simulation_value_post %}
-        <div class="panel result-panel">
-          <h3 class="result-comparison-title"><span>期待値重視方式のシミュレーション結果</span>{% if simulation_value_post.selections | selectattr('hit', 'sameas', true) | list %}<span class="hit-badge">的中!</span>{% endif %}</h3>
-          {% if simulation_value_post.total_stake == 0 %}
-          <p><strong>購入なし</strong></p><p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
-          {% else %}
-          <p><strong>投資:</strong> {{ simulation_value_post.total_stake }}円 / <strong>回収:</strong> {{ simulation_value_post.total_return }}円 / <strong>損益:</strong> {{ simulation_value_post.profit }}円 / <strong>ROI:</strong> {{ "%.2f"|format(simulation_value_post.roi * 100) }}%</p>
-          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody>{% for item in simulation_value_post.selections %}{% set final_odds = final_win_odds_by_horse.get(item.horse_number) %}<tr><td class="nowrap">{{ item.horse_number }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ final_odds if final_odds is not none else "-" }}</td><td class="nowrap">{{ "的中" if item.hit else "不的中" }}</td><td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
-          {% endif %}
-        </div>
-        {% endif %}
-
         {% if simulation_dutching_post %}
         <div class="panel result-panel">
           <h3 class="result-comparison-title"><span>単勝分配方式のシミュレーション結果</span>{% if simulation_dutching_post.selections | selectattr('hit', 'sameas', true) | list %}<span class="hit-badge">的中!</span>{% endif %}</h3>
@@ -1540,6 +1527,18 @@
           {% else %}
           <p><strong>投資:</strong> {{ simulation_dutching_post.total_stake }}円 / <strong>回収:</strong> {{ simulation_dutching_post.total_return }}円 / <strong>損益:</strong> {{ simulation_dutching_post.profit }}円 / <strong>ROI:</strong> {{ "%.2f"|format(simulation_dutching_post.roi * 100) }}%</p>
           <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody>{% for item in simulation_dutching_post.selections %}{% set final_odds = final_win_odds_by_horse.get(item.horse_number) %}<tr><td class="nowrap">{{ item.horse_number }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ final_odds if final_odds is not none else "-" }}</td><td class="nowrap">{{ "的中" if item.hit else "不的中" }}</td><td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% if simulation_value_post %}
+        <div class="panel result-panel">
+          <h3 class="result-comparison-title"><span>期待値重視方式のシミュレーション結果</span>{% if simulation_value_post.selections | selectattr('hit', 'sameas', true) | list %}<span class="hit-badge">的中!</span>{% endif %}</h3>
+          {% if simulation_value_post.total_stake == 0 %}
+          <p><strong>購入なし</strong></p><p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
+          {% else %}
+          <p><strong>投資:</strong> {{ simulation_value_post.total_stake }}円 / <strong>回収:</strong> {{ simulation_value_post.total_return }}円 / <strong>損益:</strong> {{ simulation_value_post.profit }}円 / <strong>ROI:</strong> {{ "%.2f"|format(simulation_value_post.roi * 100) }}%</p>
+          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody>{% for item in simulation_value_post.selections %}{% set final_odds = final_win_odds_by_horse.get(item.horse_number) %}<tr><td class="nowrap">{{ item.horse_number }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ final_odds if final_odds is not none else "-" }}</td><td class="nowrap">{{ "的中" if item.hit else "不的中" }}</td><td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
           {% endif %}
         </div>
         {% endif %}

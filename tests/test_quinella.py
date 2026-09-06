@@ -495,6 +495,14 @@ class HtmlAndBrowserCalculationTests(unittest.TestCase):
         for ai in ("traditional", "statistical"):
             win_panels = soup.select(f"#purchase-{ai}-win .simulation-panel")
             pair_panels = soup.select(f"#purchase-{ai}-quinella .simulation-panel")
+            self.assertEqual(
+                [panel.h3.get_text(strip=True) for panel in win_panels],
+                ["単勝分配方式", "期待値重視方式"],
+            )
+            self.assertEqual(
+                [panel.h3.get_text(strip=True) for panel in pair_panels],
+                ["馬連分配方式", "期待値重視方式"],
+            )
             for win, pair in zip(win_panels, pair_panels):
                 win_labels = [node.get_text(strip=True).replace("頭数", "組数") for node in win.select(".metric-grid strong")]
                 pair_labels = [node.get_text(strip=True) for node in pair.select(".metric-grid strong")]
@@ -527,9 +535,18 @@ class HtmlAndBrowserCalculationTests(unittest.TestCase):
                             }
                 soup = BeautifulSoup(template.render(**build_race_context(payload), page_kind="result"), "html.parser")
                 for ai in ("traditional", "statistical"):
+                    result_method = soup.select_one(f"#result-{ai}")
+                    self.assertEqual(
+                        [tab.get_text(strip=True) for tab in result_method.select(":scope > .ticket-tabs .ai-method-tab")],
+                        ["単勝", "馬連"],
+                    )
                     for ticket in ("win", "quinella"):
                         panels = soup.select(f"#settlement-{ai}-{ticket} .result-panel")
                         self.assertEqual(len(panels), 2)
+                        self.assertEqual(
+                            [panel.h3.select_one("span").get_text(strip=True) for panel in panels],
+                            (["単勝分配方式のシミュレーション結果", "期待値重視方式のシミュレーション結果"] if ticket == "win" else ["馬連分配方式のシミュレーション結果", "期待値重視方式のシミュレーション結果"]),
+                        )
                         for panel in panels:
                             self.assertEqual(panel.select_one("h3 .hit-badge") is not None, hit)
 

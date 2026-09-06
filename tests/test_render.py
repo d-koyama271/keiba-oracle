@@ -220,6 +220,28 @@ class RenderTests(unittest.TestCase):
 
         self.assertIn("A&B", title)
 
+    def test_race_pages_show_saved_prediction_model_badge(self) -> None:
+        payload = make_payload(
+            predicted=True,
+            track="中山",
+            date="2026-01-01",
+            name="検証レース",
+        )
+        payload["prediction"]["model_name"] = "saved-model"
+        template = build_environment(ROOT).get_template("race.html.j2")
+
+        for page_kind, status in (("prediction", "予想公開"), ("result", "結果公開")):
+            with self.subTest(page_kind=page_kind):
+                context = {
+                    **build_race_context(payload),
+                    "page_kind": page_kind,
+                    "status_label": status,
+                }
+                rendered = template.render(**context)
+                badges = BeautifulSoup(rendered, "html.parser").select_one(".page-badges")
+                self.assertEqual(badges.select_one(".ai-badge").get_text(strip=True), "saved-model")
+                self.assertEqual(badges.select_one(".status").get_text(strip=True), status)
+
     def test_expected_value_rows_use_raw_values_sort_and_handle_missing_odds(self) -> None:
         horse_rows = [
             {"horse_number": 3, "horse_name": "Horse 3", "win_odds": 5.0, "prediction": {"win_probability": 0.2}},
