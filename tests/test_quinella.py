@@ -504,12 +504,15 @@ class HtmlAndBrowserCalculationTests(unittest.TestCase):
                 ["馬連分配方式", "期待値重視方式"],
             )
             for win, pair in zip(win_panels, pair_panels):
-                win_labels = [node.get_text(strip=True).replace("頭数", "組数") for node in win.select(".metric-grid strong")]
+                win_labels = [
+                    node.get_text(strip=True).replace("自動選択頭数", "選択組数").replace("頭数", "組数")
+                    for node in win.select(".metric-grid strong")
+                ]
                 pair_labels = [node.get_text(strip=True) for node in pair.select(".metric-grid strong")]
                 self.assertEqual(pair_labels, win_labels)
             self.assertEqual(
                 [node.get_text(strip=True) for node in pair_panels[0].select(".metric-grid strong")],
-                ["予算", "最低利益率", "自動選択組数", "カバー確率", "グループ期待値", "最低払戻額", "最低利益", "合計購入額", "未使用予算"],
+                ["予算", "最低利益率", "選択組数", "カバー確率", "グループ期待値", "最低払戻額", "最低利益", "合計購入額", "未使用予算"],
             )
             self.assertEqual(pair_panels[1].h3.get_text(strip=True), "期待値重視方式")
         self.assertIsNotNone(soup.select_one('input[name="max_selection_count"]'))

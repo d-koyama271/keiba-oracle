@@ -38,7 +38,7 @@
       <div><strong>最低EV</strong><br>{{ pre.settings.ev_threshold }}</div><div><strong>Kelly係数</strong><br>{{ pre.settings.kelly_fraction }}</div>
       {% else %}
       <div><strong>最低利益率</strong><br>{{ '%.0f'|format(pre.settings.min_profit_rate * 100) }}%</div>
-      <div><strong>自動選択組数</strong><br>{{ pre.selected_count }}組</div>
+      <div><strong>選択組数</strong><br>{{ pre.selected_count }}組</div>
       <div><strong>カバー確率</strong><br>{{ '%.2f'|format(pre.coverage_probability * 100) }}%</div>
       <div><strong>グループ期待値</strong><br>{{ '%.3f'|format(pre.group_expected_value) }}</div>
       <div><strong>最低払戻額</strong><br>{{ '%.0f'|format(pre.minimum_payout) }}円</div>
