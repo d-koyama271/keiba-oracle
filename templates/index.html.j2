@@ -219,7 +219,7 @@
           <div class="performance-breakdown">
 {% set quinella = simulation.get("quinella", {}) if simulation else {} %}
 {{ profit_line("馬連分配方式", quinella.get("dutching")) }}
-{{ profit_line("馬連期待値重視方式", quinella.get("value")) }}
+{{ profit_line("期待値重視方式", quinella.get("value")) }}
           </div>
         </div>
       </div>

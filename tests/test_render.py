@@ -700,6 +700,13 @@ class RenderTests(unittest.TestCase):
             )
             self.assertTrue(
                 all(
+                    [label.get_text(strip=True) for label in panel.select(".performance-breakdown span")]
+                    == ["単勝分配方式", "期待値重視方式", "馬連分配方式", "期待値重視方式"]
+                    for panel in performance_panels
+                )
+            )
+            self.assertTrue(
+                all(
                     value.get_text(strip=True) != "-"
                     for panel in performance_panels
                     for value in panel.select(".performance-value")
