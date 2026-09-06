@@ -77,7 +77,7 @@ codex login status
 - `simulation.stake_unit`: 両方式共通の購入金額単位
 - `simulation.value.ev_threshold`: 期待値重視方式の最低 EV（既定値 1.0）
 - `simulation.value.kelly_fraction`: 期待値重視方式の fractional Kelly 係数（既定値 0.75）
-- `simulation.dutching.*`: 単勝分配方式（内部キー `dutching`）の最大頭数、最低カバー確率、最低グループ期待値、最低利益率（既定値20%、合計購入額基準）、的中時利益条件
+- `simulation.dutching.*`: 単勝分配方式（内部キー `dutching`）の最大頭数、最低カバー確率、最低グループ期待値、最低利益率（既定値20%、合計購入額基準）
 - `simulation.quinella.*`: 馬連専用の確率近似・購入条件（下記参照）。単勝設定とは独立し、旧設定にこの項目がなくても単勝は動作します。
 - `publish_mode`: `github_pages` を想定
 - `llm_provider`: 通常運用では `codex`
@@ -188,11 +188,10 @@ Codex は一時作業ディレクトリ内の読み取り専用・構造化出�
 | `harville_lambda` | 0.81 |
 | `value.ev_threshold` | 1.10 |
 | `value.kelly_fraction` | 0.80 |
-| `dutching.max_selection_count` | 15 |
+| `dutching.max_selection_count` | 10 |
 | `dutching.min_coverage_probability` | 0.40 |
-| `dutching.min_group_expected_value` | 1.10 |
+| `dutching.min_group_expected_value` | 0.80 |
 | `dutching.min_profit_rate` | 0.20 |
-| `dutching.require_profit_if_hit` | true |
 
 既存netkeiba APIの `type=all` レスポンスから単勝 `odds["1"]` と馬連 `odds["4"]` を同時に取得します。組番は辞書キーではなく `row[3]`、オッズは `row[0]` を読みます。昇順整数ペアの完全な集合、重複、欠落、有限・有効な数値を検証し、`race.quinella_odds` に `pairs`、`fetched_at`、`source`、`source_url`、`official_datetime`、`api_status`、`api_reason`、`update_count`、`available`、`reason` を保存します。不完全なスナップショットを部分利用したり、取消馬を推定したりしません。APIの発走前状態と更新・取得時刻も確認し、結果時点のオッズはpreに使いません。馬連取得失敗時も単勝の検証とJRAフォールバックは継続します。馬連情報は両AIの予想入力から除外します。
 
@@ -203,7 +202,7 @@ P(i,j) = p_i * p_j^lambda / sum(k != i, p_k^lambda)
        + p_j * p_i^lambda / sum(k != j, p_k^lambda)
 ```
 
-全ペア合計を許容誤差1e-6以内で検証し、単勝オッズによる対象除外や候補内の再正規化は行いません。馬連valueは既存のEV・Kelly計算と比例縮小・購入単位切り捨てを再利用します。馬連dutchingは確率上位1～最大15組を評価し、各組へ1単位を配分後、想定払戻が最小の組へ順に残りを配ります。確率同率や払戻同額は馬番ペアの数値昇順です。条件適合候補をグループEV最大、カバー確率最大、組数最小の順で選びます。最低利益率の基準は実際の合計購入額です。
+全ペア合計を許容誤差1e-6以内で検証し、単勝オッズによる対象除外や候補内の再正規化は行いません。馬連valueは既存のEV・Kelly計算と比例縮小・購入単位切り捨てを再利用します。馬連dutchingは確率上位1～設定上限組数を評価し、各組へ1単位を配分後、想定払戻が最小の組へ順に残りを配ります。確率同率や払戻同額は馬番ペアの数値昇順です。条件適合候補をグループEV最大、カバー確率最大、組数最小の順で選びます。最低利益率の基準は実際の合計購入額です。
 
 保存先は `simulation.quinella` と `simulation.variants[].quinella` です。`probabilities`、`harville_lambda`、`odds_snapshot` を方式間で共有し、その配下に `value.pre/post` と `dutching.pre/post` を持ちます。preには予算・購入単位・設定・ペアごとの購入値・候補評価を保持します。`status: ready` の中でpreの `purchased` / `no_purchase` を区別し、計算不可は `status: unavailable` と理由を保存してpreを `null` にします。結果待ちは `post_status: awaiting_result`、払戻未確定は `awaiting_payouts`、確定後は `settled` です。保存済みpreは単勝・馬連とも再実行で上書きしません。新規馬連preは発走前・結果未取得時に限定し、過去へのバックフィルは行いません。
 

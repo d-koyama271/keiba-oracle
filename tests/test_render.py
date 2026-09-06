@@ -282,7 +282,6 @@ class RenderTests(unittest.TestCase):
     def test_rejection_reason_labels_do_not_expose_internal_values(self) -> None:
         internal_reasons = [
             "coverage_probability_below_threshold",
-            "minimum_profit_not_positive",
         ]
         known = rejection_reason_text(internal_reasons)
         unknown = rejection_reason_text(["unknown_reason"])

@@ -111,9 +111,11 @@ def calculate_quinella_purchase(rows: list[dict], budget: int, stake_unit: int, 
         raise ValueError("invalid_budget_or_unit")
     if method not in ("value", "dutching"):
         raise ValueError("invalid_purchase_method")
-    for key, value in settings.items():
-        if key == "require_profit_if_hit":
-            continue
+    setting_keys = ("ev_threshold", "kelly_fraction") if method == "value" else (
+        "max_selection_count", "min_coverage_probability", "min_group_expected_value", "min_profit_rate"
+    )
+    settings = {key: settings[key] for key in setting_keys}
+    for value in settings.values():
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
             raise ValueError("invalid_quinella_settings")
     if method == "dutching" and (type(settings["max_selection_count"]) is not int or settings["max_selection_count"] <= 0):
@@ -160,7 +162,6 @@ def calculate_quinella_purchase(rows: list[dict], budget: int, stake_unit: int, 
             if group_ev + EPSILON < settings["min_group_expected_value"]: reasons.append("group_expected_value_below_threshold")
             if not selections: reasons.append("insufficient_budget_units")
             if profit + EPSILON < stake * settings["min_profit_rate"]: reasons.append("minimum_profit_rate_below_threshold")
-            if settings["require_profit_if_hit"] and profit <= 0: reasons.append("minimum_profit_not_positive")
             evaluation = {"selection_count": count, "horse_pairs": [pairs[r["horse_number"]] for r in selected_rows], "coverage_probability": coverage, "expected_return": expected_return, "group_expected_value": group_ev, "minimum_payout": payout, "minimum_profit": profit, "eligible": not reasons, "rejection_reasons": reasons}
             evaluations.append((evaluation, [restore(s) for s in selections]))
         selected = next((entry for entry in evaluations if entry[0]["selection_count"] == fixed_count), None) if fixed_count else select_best_dutching(evaluations)

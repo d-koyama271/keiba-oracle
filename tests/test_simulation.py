@@ -43,7 +43,6 @@ def make_config(
     min_coverage_probability: float = 0.4,
     min_group_expected_value: float = 0.0,
     min_profit_rate: float = 0.20,
-    require_profit_if_hit: bool = True,
 ) -> dict:
     return {
         "simulation": {
@@ -58,7 +57,6 @@ def make_config(
                 "min_coverage_probability": min_coverage_probability,
                 "min_group_expected_value": min_group_expected_value,
                 "min_profit_rate": min_profit_rate,
-                "require_profit_if_hit": require_profit_if_hit,
             },
         }
     }
@@ -379,7 +377,6 @@ class DutchingSimulationTests(unittest.TestCase):
             min_coverage_probability=0.0,
             min_group_expected_value=0.0,
             min_profit_rate=0.20,
-            require_profit_if_hit=False,
         )["simulation"]["dutching"]
         at_boundary, at_boundary_selections = evaluate_dutching_count(
             [{"horse_number": 1, "predicted_probability": 1.0, "win_odds": 1.2}],
@@ -465,7 +462,6 @@ class DutchingSimulationTests(unittest.TestCase):
                 budget=100,
                 max_selection_count=3,
                 min_coverage_probability=0.5,
-                require_profit_if_hit=False,
             ),
         )
 
@@ -480,18 +476,17 @@ class DutchingSimulationTests(unittest.TestCase):
         self.assertIn("coverage_probability_below_threshold", insufficient["evaluated_counts"][0]["rejection_reasons"])
         self.assertIn("insufficient_budget_units", insufficient["evaluated_counts"][1]["rejection_reasons"])
 
-    def test_profit_requirement_is_applied(self) -> None:
-        required = calculate_dutching_pre(
-            make_payload(DUTCHING_ROWS),
-            make_config(budget=1000, require_profit_if_hit=True),
-        )
-        optional = calculate_dutching_pre(
-            make_payload(DUTCHING_ROWS),
-            make_config(budget=1000, require_profit_if_hit=False),
-        )
-
-        self.assertIn("minimum_profit_not_positive", required["evaluated_counts"][4]["rejection_reasons"])
-        self.assertNotIn("minimum_profit_not_positive", optional["evaluated_counts"][4]["rejection_reasons"])
+    def test_minimum_profit_rate_allows_break_even_at_zero(self) -> None:
+        payload = make_payload([(1, 0.5, 2.0), (2, 0.5, 2.0)])
+        for rate, eligible in ((0, True), (0.2, False)):
+            with self.subTest(rate=rate):
+                config = make_config(budget=1000, min_profit_rate=rate)
+                result = calculate_dutching_pre(payload, config)
+                candidate = result["evaluated_counts"][1]
+                self.assertEqual(candidate["minimum_profit"], 0)
+                self.assertEqual(candidate["eligible"], eligible)
+                config["simulation"]["dutching"]["require_profit_if_hit"] = True
+                self.assertEqual(calculate_dutching_pre(payload, config), result)
 
     def test_best_candidate_tie_breaking(self) -> None:
         evaluations = [
@@ -963,12 +958,13 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
             [
                 ("number", "ascending", 0, "none"),
                 ("text", "ascending", 1, "none"),
-                ("number", "descending", 2, "none"),
-                ("number", "ascending", 3, "none"),
+                ("number", "ascending", 2, "none"),
+                ("number", "descending", 3, "none"),
                 ("number", "ascending", 4, "none"),
                 ("number", "ascending", 5, "none"),
                 ("number", "ascending", 6, "none"),
-                ("number", "descending", 7, "none"),
+                ("number", "ascending", 7, "none"),
+                ("number", "descending", 8, "none"),
             ],
         )
         self.assertIsNone(prediction_table.select("thead th")[-1].find("button"))
@@ -984,7 +980,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         result_first = result_table.select_one("tbody tr")
         self.assertEqual(
             [cell.get("data-sort-value") for cell in result_first.select("td")],
-            ["1", None, "0.3", "1", "1", "0", "", "400"],
+            ["1", None, "1", "0.3", "1", "1", "0", "", "400"],
         )
 
     def test_all_horse_expected_values_are_rendered_without_changing_simulation(self) -> None:
@@ -1052,6 +1048,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
             [
                 "馬番",
                 "馬名",
+                "人気",
                 "1着確率",
                 "予測順位",
                 "実着順",
@@ -1062,18 +1059,18 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         )
         self.assertEqual(
             [cell.get("data-sort-value") for cell in rows[1].select("td")],
-            ["1", None, "0.4", "1", "2", "1", "", ""],
+            ["1", None, "1", "0.4", "1", "2", "1", "", ""],
         )
         self.assertEqual(
             [cell.get("data-sort-value") for cell in rows[2].select("td")],
-            ["2", None, "0.35", "2", "1", "-1", "", "500"],
+            ["2", None, "2", "0.35", "2", "1", "-1", "", "500"],
         )
         self.assertIn("rank-prediction-top", rows[1].select("td")[1].get("class", []))
-        self.assertIn("rank-prediction-top", rows[1].select("td")[3].get("class", []))
+        self.assertIn("rank-prediction-top", rows[1].select("td")[4].get("class", []))
         self.assertIn("rank-result-winner", rows[2].select("td")[1].get("class", []))
-        self.assertIn("rank-result-winner", rows[2].select("td")[4].get("class", []))
+        self.assertIn("rank-result-winner", rows[2].select("td")[5].get("class", []))
         comparison_classes = {
-            horse_number: rows[horse_number].select("td")[5].select_one("span")
+            horse_number: rows[horse_number].select("td")[6].select_one("span")
             for horse_number in rows
         }
         self.assertIn("comparison-down", comparison_classes[1].get("class", []))
@@ -1100,8 +1097,8 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         self.assertIn("rank-prediction-top", prediction_row.select("td")[1].get("class", []))
         self.assertIn("rank-prediction-top", prediction_row.select("td")[6].get("class", []))
         self.assertIn("rank-prediction-hit", result_row.select("td")[1].get("class", []))
-        self.assertIn("rank-prediction-hit", result_row.select("td")[3].get("class", []))
         self.assertIn("rank-prediction-hit", result_row.select("td")[4].get("class", []))
+        self.assertIn("rank-prediction-hit", result_row.select("td")[5].get("class", []))
         self.assertIsNotNone(result_soup.select_one(".hit-badge"))
 
     def test_result_highlight_ignores_simulation_selections(self) -> None:
@@ -1289,6 +1286,10 @@ process.stdout.write(JSON.stringify(output));
                 payload,
                 make_config(budget=1000, min_profit_rate=10.0),
             ),
+            "dutching_break_even": calculate_dutching_pre(
+                make_payload([(1, 0.5, 2.0), (2, 0.5, 2.0)]),
+                make_config(budget=1000, min_profit_rate=0),
+            ),
         }
         horses = [
             {
@@ -1316,6 +1317,10 @@ const tinyDetails = calculateValueDetails(
   valueSettings
 );
 const output = {{
+  dutching_break_even: calculateDutchingSimulation(
+    [{{horse_number: 1, win_probability: 0.5, win_odds: 2.0}}, {{horse_number: 2, win_probability: 0.5, win_odds: 2.0}}],
+    1000, 100, {json.dumps(make_config(min_profit_rate=0)["simulation"]["dutching"])}
+  ),
   value: calculateValueSimulation(horses, 1000, 100, valueSettings),
   value_details: calculateValueDetails(horses, 1000, 100, valueSettings),
   value_below_one: calculateValueSimulation(horses, 1000, 100, {{ev_threshold: 0.5, kelly_fraction: 0.5}}),
@@ -1325,14 +1330,12 @@ const output = {{
     min_coverage_probability: 0.4,
     min_group_expected_value: 0.0,
     min_profit_rate: 0.2,
-    require_profit_if_hit: true
   }}),
   dutching_strict: calculateDutchingSimulation(horses, 1000, 100, {{
     max_selection_count: 5,
     min_coverage_probability: 0.4,
     min_group_expected_value: 0.0,
     min_profit_rate: 10.0,
-    require_profit_if_hit: true
   }}),
   minimum_ev_valid: ["0", "0.5", "0.99", "1.0", "1.05"].map(parseMinimumEv),
   minimum_ev_invalid: ["-0.01", "", "NaN", "Infinity"].map(parseMinimumEv)

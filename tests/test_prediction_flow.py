@@ -520,7 +520,6 @@ class FlowAndCompatibilityTests(unittest.TestCase):
                         "min_coverage_probability": 0.0,
                         "min_group_expected_value": 0.0,
                         "min_profit_rate": 0.20,
-                        "require_profit_if_hit": False,
                     },
                 },
             }
@@ -603,7 +602,6 @@ class FlowAndCompatibilityTests(unittest.TestCase):
                         "min_coverage_probability": 0.0,
                         "min_group_expected_value": 0.0,
                         "min_profit_rate": 0.20,
-                        "require_profit_if_hit": False,
                     },
                 },
             }

@@ -39,3 +39,11 @@ Do not add extra top-level sections unless explicitly requested.
 - Run the full suite for cross-cutting changes, substantial logic changes, or when explicitly requested.
 - Do not run unrelated full suites for every minor display change.
 - Do not run compileall or repository-wide whitespace/conflict-marker checks for minor copy or CSS changes unless the change warrants them.
+
+## Browser and visual validation
+
+- No browser integration is available for this project by default.
+- Do not search for, probe, install, start, or attempt to connect browser, browser-use, CDP, WebMCP, MCP browser, or similar browser tooling unless the user explicitly requests browser-based validation.
+- For UI changes, validate using the existing render tests, generated HTML, and direct inspection of the relevant HTML/CSS/JavaScript.
+- Do not start a local server solely to discover whether browser integration is available.
+- If a change would benefit from visual browser verification but no browser was explicitly provided, complete all non-browser verification and report that visual verification was not performed. Do not spend time trying to obtain a browser connection.

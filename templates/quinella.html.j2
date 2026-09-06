@@ -11,11 +11,11 @@
 {% if q.get('status') != 'ready' %}
 <p class="quinella-unavailable">馬連は計算できません。発走前の完全なオッズ・確率データが記録されていません。</p>
 {% else %}
-{% for method, label in [('dutching', '馬連分配方式'), ('value', '馬連期待値重視方式')] %}
+{% for method, label in [('dutching', '馬連分配方式'), ('value', '期待値重視方式')] %}
 {% set pre = q[method].pre %}
 {% set post = q[method].post %}
 <div class="panel {{ 'result-panel' if page_kind == 'result' else 'simulation-panel' }}" data-quinella-method="{{ method }}">
-  <h3>{{ label }}{% if page_kind == 'result' %}のシミュレーション結果{% endif %}</h3>
+  <h3 class="result-comparison-title"><span>{{ label }}{% if page_kind == 'result' %}のシミュレーション結果{% endif %}</span>{% if page_kind == 'result' and post and post.selections | selectattr('hit', 'sameas', true) | list %}<span class="hit-badge">的中!</span>{% endif %}</h3>
   {% if page_kind == 'result' %}
     {% if post %}
     <div class="metric-grid">
@@ -33,23 +33,19 @@
     {% else %}<p class="quinella-pending">結果・馬連払戻または返還情報の確定待ちです。</p>{% endif %}
   {% elif pre %}
     <div class="metric-grid">
-      <div><strong>予算上限</strong><br>{{ pre.budget }}円</div>
-      <div><strong>合計購入額</strong><br>{{ pre.total_stake }}円</div>
-      <div><strong>未使用予算</strong><br>{{ pre.unused_budget }}円</div>
+      <div><strong>予算</strong><br>{{ pre.budget }}円</div>
       {% if method == 'value' %}
       <div><strong>最低EV</strong><br>{{ pre.settings.ev_threshold }}</div><div><strong>Kelly係数</strong><br>{{ pre.settings.kelly_fraction }}</div>
       {% else %}
-      <div><strong>最大対象組数</strong><br>{{ pre.settings.max_selection_count }}組</div>
-      <div><strong>最低カバー確率</strong><br>{{ '%.2f'|format(pre.settings.min_coverage_probability * 100) }}%</div>
-      <div><strong>最低グループ期待値</strong><br>{{ pre.settings.min_group_expected_value }}</div>
       <div><strong>最低利益率</strong><br>{{ '%.0f'|format(pre.settings.min_profit_rate * 100) }}%</div>
-      <div><strong>的中時利益必須</strong><br>{{ '有効' if pre.settings.require_profit_if_hit else '無効' }}</div>
-      <div><strong>選択組数</strong><br>{{ pre.selected_count }}組</div>
+      <div><strong>自動選択組数</strong><br>{{ pre.selected_count }}組</div>
       <div><strong>カバー確率</strong><br>{{ '%.2f'|format(pre.coverage_probability * 100) }}%</div>
       <div><strong>グループ期待値</strong><br>{{ '%.3f'|format(pre.group_expected_value) }}</div>
       <div><strong>最低払戻額</strong><br>{{ '%.0f'|format(pre.minimum_payout) }}円</div>
       <div><strong>最低利益</strong><br>{{ '%.0f'|format(pre.minimum_profit) }}円</div>
       {% endif %}
+      <div><strong>合計購入額</strong><br>{{ pre.total_stake }}円</div>
+      <div><strong>未使用予算</strong><br>{{ pre.unused_budget }}円</div>
     </div>
     {% if pre.selections %}
     <div class="table-scroll"><table class="simulation-table"><thead><tr><th>馬番ペア</th><th>馬連的中確率</th><th>馬連オッズ</th><th>EV</th><th>購入額</th>{% if method == 'dutching' %}<th>的中時払戻額</th><th>的中時利益</th>{% endif %}</tr></thead><tbody>
@@ -59,7 +55,7 @@
     <details class="simulation-details"><summary>{{ '組数別比較' if method == 'dutching' else '全ペア期待値' }}の詳細を見る</summary>
     <div class="table-scroll"><table class="evaluation-table">
       {% if method == 'dutching' %}
-      <thead><tr><th>組数</th><th>対象ペア</th><th>カバー確率</th><th>グループEV</th><th>最低払戻</th><th>最低利益</th><th>判定</th><th>除外理由</th></tr></thead><tbody>
+      <thead><tr><th>組数</th><th>対象ペア</th><th>カバー確率</th><th>グループ期待値</th><th>最低払戻額</th><th>最低利益</th><th>判定</th><th>除外理由</th></tr></thead><tbody>
       {% for item in pre.evaluated_counts %}<tr{% if pre.selections and item.selection_count == pre.selected_count %} class="selected-row"{% endif %}><td>{{ item.selection_count }}</td><td>{% for pair in item.horse_pairs %}{{ pair|join('-') }}{{ ', ' if not loop.last else '' }}{% endfor %}</td><td>{{ '%.2f'|format(item.coverage_probability * 100) }}%</td><td>{{ '%.3f'|format(item.group_expected_value) }}</td><td>{{ '%.0f'|format(item.minimum_payout) }}円</td><td>{{ '%.0f'|format(item.minimum_profit) }}円</td><td>{{ '採用' if pre.selections and item.selection_count == pre.selected_count else ('適格' if item.eligible else '除外') }}</td><td>{{ rejection_reason_text(item.rejection_reasons)|replace('頭数', '組数') }}</td></tr>{% endfor %}
       {% else %}
       <thead><tr><th>馬番ペア</th><th>馬連的中確率</th><th>馬連オッズ</th><th>EV</th><th>Full Kelly</th><th>適用Kelly</th><th>理論購入額</th><th>購入額</th></tr></thead><tbody>

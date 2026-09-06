@@ -280,8 +280,6 @@ def evaluate_dutching_count(
     required_minimum_profit = total_stake * float(settings["min_profit_rate"])
     if minimum_profit + EPSILON < required_minimum_profit:
         rejection_reasons.append("minimum_profit_rate_below_threshold")
-    if bool(settings["require_profit_if_hit"]) and minimum_profit <= 0:
-        rejection_reasons.append("minimum_profit_not_positive")
 
     evaluation = {
         "selection_count": len(rows),
@@ -348,7 +346,6 @@ def calculate_dutching_pre(
             "min_coverage_probability": float(settings["min_coverage_probability"]),
             "min_group_expected_value": float(settings["min_group_expected_value"]),
             "min_profit_rate": min_profit_rate,
-            "require_profit_if_hit": bool(settings["require_profit_if_hit"]),
         },
         "selected_count": 0,
         "coverage_probability": 0.0,

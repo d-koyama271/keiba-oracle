@@ -28,7 +28,7 @@ from quinella import (
     calculate_quinella_post, calculate_quinella_pre, calculate_quinella_purchase,
     harville_probabilities, pair_numbers, validate_pair_odds,
 )
-from render import render_site
+from render import build_environment, build_race_context, render_site
 from run_pre_collect import export_prediction_chat_input
 from simulate import calculate_post, calculate_pre_simulation, calculate_value_details, simulate_file
 from utils import ensure_race_payload, load_config, load_race_json, parse_jst_datetime, save_race_json
@@ -235,7 +235,7 @@ class ProbabilityAndPurchaseTests(unittest.TestCase):
         rows = [{"horse_numbers": list(pair), "probability": 1/21, "odds": 30.0} for pair in combinations(range(1, 8), 2)]
         settings = load_config()["simulation"]["quinella"]["dutching"]
         result = calculate_quinella_purchase(rows, 3050, 100, settings, "dutching")
-        self.assertEqual(len(result["evaluated_counts"]), 15)
+        self.assertEqual(len(result["evaluated_counts"]), 10)
         self.assertAlmostEqual(result["evaluated_counts"][0]["coverage_probability"], 1/21)
         self.assertEqual(result["total_stake"], 3000)
         self.assertEqual(result["unused_budget"], 50)
@@ -334,7 +334,7 @@ class FlowAndSummaryTests(unittest.TestCase):
     def test_default_settings_and_missing_quinella_do_not_replace_win_history(self):
         config, payload = load_config(), payload_with_odds()
         q_settings = config["simulation"]["quinella"]
-        self.assertEqual(q_settings, {"harville_lambda": .81, "value": {"ev_threshold": 1.1, "kelly_fraction": .8}, "dutching": {"max_selection_count": 15, "min_coverage_probability": .4, "min_group_expected_value": 1.1, "min_profit_rate": .2, "require_profit_if_hit": True}})
+        self.assertEqual(q_settings, {"harville_lambda": .81, "value": {"ev_threshold": 1.1, "kelly_fraction": .8}, "dutching": {"max_selection_count": 10, "min_coverage_probability": .4, "min_group_expected_value": .8, "min_profit_rate": .2}})
         old_config = copy.deepcopy(config)
         old_config["simulation"].pop("quinella")
         payload["simulation"] = calculate_pre_simulation(payload, old_config)
@@ -479,6 +479,95 @@ class FlowAndSummaryTests(unittest.TestCase):
 
 
 class HtmlAndBrowserCalculationTests(unittest.TestCase):
+    def test_purchase_display_and_legacy_settings_are_compatible(self):
+        payload = payload_with_odds()
+        payload["race"]["weather"] = "晴"
+        with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
+            payload["simulation"] = calculate_pre_simulation(payload, load_config())
+        for simulation in [payload["simulation"], *payload["simulation"]["variants"]]:
+            simulation["dutching"]["pre"]["settings"]["require_profit_if_hit"] = True
+            simulation["quinella"]["dutching"]["pre"]["settings"]["require_profit_if_hit"] = True
+        before = copy.deepcopy(payload)
+        rendered = build_environment(ROOT).get_template("race.html.j2").render(**build_race_context(payload))
+        soup = BeautifulSoup(rendered, "html.parser")
+        for tooltip in soup.select(".term-tooltip"):
+            tooltip.decompose()
+        for ai in ("traditional", "statistical"):
+            win_panels = soup.select(f"#purchase-{ai}-win .simulation-panel")
+            pair_panels = soup.select(f"#purchase-{ai}-quinella .simulation-panel")
+            for win, pair in zip(win_panels, pair_panels):
+                win_labels = [node.get_text(strip=True).replace("頭数", "組数") for node in win.select(".metric-grid strong")]
+                pair_labels = [node.get_text(strip=True) for node in pair.select(".metric-grid strong")]
+                self.assertEqual(pair_labels, win_labels)
+            self.assertEqual(
+                [node.get_text(strip=True) for node in pair_panels[0].select(".metric-grid strong")],
+                ["予算", "最低利益率", "自動選択組数", "カバー確率", "グループ期待値", "最低払戻額", "最低利益", "合計購入額", "未使用予算"],
+            )
+            self.assertEqual(pair_panels[1].h3.get_text(strip=True), "期待値重視方式")
+        self.assertIsNotNone(soup.select_one('input[name="max_selection_count"]'))
+        self.assertIsNone(soup.select_one('input[name="require_profit_if_hit"]'))
+        self.assertNotIn("的中時利益必須", soup.get_text())
+        self.assertEqual(payload, before)
+
+    def test_result_badges_use_hits_for_each_ai_ticket_and_method(self):
+        template = build_environment(ROOT).get_template("race.html.j2")
+        for case, hit, stake, refund in (("hit_with_loss", True, 1000, 0), ("miss", False, 1000, 0), ("refund", False, 1000, 1000), ("empty", False, 0, 0)):
+            with self.subTest(case=case):
+                payload = payload_with_odds()
+                with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
+                    payload["simulation"] = calculate_pre_simulation(payload, load_config())
+                payload["result"] = parse_result(result_html())
+                for simulation in [payload["simulation"], *payload["simulation"]["variants"]]:
+                    for ticket in (simulation, simulation["quinella"]):
+                        for method in ("value", "dutching"):
+                            ticket[method]["post"] = {
+                                "total_stake": stake, "total_refund": refund, "total_return": refund,
+                                "profit": refund - stake, "roi": -1 if stake and not refund else 0,
+                                "selections": [{"horse_number": 1, "horse_numbers": [1, 2], "stake": stake, "hit": hit, "refund": refund, "payout": 0, "return": refund}] if stake else [],
+                            }
+                soup = BeautifulSoup(template.render(**build_race_context(payload), page_kind="result"), "html.parser")
+                for ai in ("traditional", "statistical"):
+                    for ticket in ("win", "quinella"):
+                        panels = soup.select(f"#settlement-{ai}-{ticket} .result-panel")
+                        self.assertEqual(len(panels), 2)
+                        for panel in panels:
+                            self.assertEqual(panel.select_one("h3 .hit-badge") is not None, hit)
+
+    def test_weather_and_saved_popularity_on_both_ai_result_tables(self):
+        payload = payload_with_odds()
+        payload["race"]["weather"] = "晴"
+        payload["result"] = parse_result(result_html())
+        payload["result"]["weather"] = "雨"
+        for horse, popularity in zip(payload["horses"], (10, 2, None)):
+            horse["popularity"] = popularity
+        before = copy.deepcopy(payload)
+        template = build_environment(ROOT).get_template("race.html.j2")
+        for kind, weather in (("prediction", "晴"), ("result", "雨")):
+            soup = BeautifulSoup(template.render(**build_race_context(payload), page_kind=kind), "html.parser")
+            weather_label = soup.find("strong", string="天候")
+            self.assertEqual(weather_label.parent.get_text(strip=True), "天候" + weather)
+            if kind == "result":
+                for table in soup.select(".result-table"):
+                    self.assertEqual([row.select("td")[2].get("data-sort-value") for row in table.select("tbody tr")], ["10", "2", ""])
+                    header = table.select("thead .sort-button")[2]
+                    self.assertEqual(header["data-sort-type"], "number")
+                    self.assertEqual(header["data-sort-column"], "2")
+        self.assertEqual(payload, before)
+        payload["race"].pop("weather")
+        soup = BeautifulSoup(template.render(**build_race_context(payload)), "html.parser")
+        self.assertEqual(soup.find("strong", string="天候").parent.get_text(strip=True), "天候-")
+
+    def test_quinella_minimum_profit_rate_allows_break_even_and_ignores_legacy_key(self):
+        pairs = [{"horse_numbers": [1, 2], "probability": .5, "odds": 2.0}, {"horse_numbers": [1, 3], "probability": .5, "odds": 2.0}]
+        for rate, eligible in ((0, True), (.2, False)):
+            with self.subTest(rate=rate):
+                settings = {**load_config()["simulation"]["quinella"]["dutching"], "min_profit_rate": rate}
+                result = calculate_quinella_purchase(pairs, 1000, 100, settings, "dutching")
+                self.assertEqual(result["evaluated_counts"][1]["minimum_profit"], 0)
+                self.assertEqual(result["evaluated_counts"][1]["eligible"], eligible)
+                settings["require_profit_if_hit"] = True
+                self.assertEqual(calculate_quinella_purchase(pairs, 1000, 100, settings, "dutching"), result)
+
     def test_temp_render_ticket_panels_and_saved_probability_data(self):
         config, payload = load_config(), payload_with_odds()
         with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
@@ -531,6 +620,8 @@ class HtmlAndBrowserCalculationTests(unittest.TestCase):
                 for fixed in ((0, 4) if method == "dutching" else (0,)):
                     cases.append([rows, budget, 100, settings[method], method, fixed])
         cases.append([[{"horse_numbers": [1, 2], "probability": .8, "odds": 1.0}, {"horse_numbers": [1, 3], "probability": .2, "odds": 5.6}], 3000, 100, settings["value"], "value", 0])
+        for rate in (0, .2):
+            cases.append([[{"horse_numbers": [1, 2], "probability": .5, "odds": 2.0}, {"horse_numbers": [1, 3], "probability": .5, "odds": 2.0}], 1000, 100, {**settings["dutching"], "min_profit_rate": rate}, "dutching", 0])
         rng = random.Random(20260905)
         for count in range(3, 17):
             probabilities = [rng.random() for _ in range(count)]

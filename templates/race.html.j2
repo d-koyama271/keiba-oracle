@@ -173,7 +173,7 @@
     }
     .simulator-form {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
       gap: 12px;
       align-items: end;
       margin: 18px 0;
@@ -184,6 +184,7 @@
     }
     .simulator-field {
       display: grid;
+      min-width: 0;
       gap: 6px;
       color: var(--muted);
       font-size: 13px;
@@ -191,6 +192,7 @@
     }
     .simulator-field-label {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 4px;
     }
@@ -198,6 +200,7 @@
     .simulator-field select {
       width: 100%;
       box-sizing: border-box;
+      min-width: 0;
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 10px;
@@ -205,17 +208,7 @@
       color: var(--ink);
       font: inherit;
     }
-    .simulator-checkbox {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 42px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 700;
-    }
-    .simulator-checkbox input { width: auto; }
-    .simulator-form button {
+    .simulator-form button[type="submit"] {
       border: 0;
       border-radius: 8px;
       padding: 11px 18px;
@@ -554,6 +547,7 @@
         <div><strong>結果取得日時</strong><br>{{ result_fetched_at_label }}</div>
         {% else %}
         <div><strong>馬場</strong><br>{{ race.going or "-" }}</div>
+        <div><strong>天候</strong><br>{{ race.weather or "-" }}</div>
         <div><strong>オッズ記録時刻</strong><br>{{ odds_captured_at_label }}</div>
         <div><strong>発走時点との差</strong><br>{{ odds_timing_label }}</div>
         {% endif %}
@@ -730,7 +724,7 @@
       <h3>{{ explained_term("期待値重視方式", "value_method") }}</h3>
       {% if simulation_value_pre %}
       <div class="metric-grid">
-        <div><strong>予算上限</strong><br>{{ simulation_value_pre.budget }}円</div>
+        <div><strong>予算</strong><br>{{ simulation_value_pre.budget }}円</div>
         <div><strong>{{ explained_term("最低EV", "minimum_ev") }}</strong><br>{{ simulation_value_pre.settings.ev_threshold }}</div>
         <div><strong>{{ explained_term("Kelly係数", "kelly_fraction") }}</strong><br>{{ simulation_value_pre.settings.kelly_fraction }}</div>
         <div><strong>合計購入額</strong><br>{{ simulation_value_pre.total_stake }}円</div>
@@ -811,7 +805,7 @@
         <label class="simulator-field">方式
           <select name="method">
             <option value="dutching" selected>単勝分配方式</option>
-            <option value="value">期待値重視</option>
+            <option value="value">期待値重視方式</option>
           </select>
         </label>
         <label class="simulator-field">予算（円）
@@ -845,10 +839,6 @@
             <option value="0">自動</option>
             {% for count in range(1, (custom_simulation_data.horses | length) + 1) %}<option value="{{ count }}">{{ count }}頭</option>{% endfor %}
           </select>
-        </label>
-        <label class="simulator-checkbox dutching-field">
-          <input name="require_profit_if_hit" type="checkbox"{% if simulation_dutching_pre.settings.require_profit_if_hit %} checked{% endif %}>
-          的中時利益を必須にする
         </label>
         <button type="submit">再計算</button>
       </form>
@@ -1063,9 +1053,6 @@
         if (minimumProfit + SIMULATION_EPSILON < requiredMinimumProfit) {
           rejectionReasons.push("minimum_profit_rate_below_threshold");
         }
-        if (settings.require_profit_if_hit && minimumProfit <= 0) {
-          rejectionReasons.push("minimum_profit_not_positive");
-        }
         return {
           evaluation: {
             selection_count: rows.length,
@@ -1112,7 +1099,6 @@
             min_coverage_probability: settings.min_coverage_probability,
             min_group_expected_value: settings.min_group_expected_value,
             min_profit_rate: settings.min_profit_rate,
-            require_profit_if_hit: settings.require_profit_if_hit,
           },
           selected_count: 0,
           coverage_probability: 0,
@@ -1178,7 +1164,6 @@
             if (groupEv+SIMULATION_EPSILON < settings.min_group_expected_value) reasons.push("group_expected_value_below_threshold");
             if (!selections.length) reasons.push("insufficient_budget_units");
             if (profit+SIMULATION_EPSILON < stake*settings.min_profit_rate) reasons.push("minimum_profit_rate_below_threshold");
-            if (settings.require_profit_if_hit && profit <= 0) reasons.push("minimum_profit_not_positive");
             evaluations.push({evaluation: {selection_count: count, horse_pairs: chosen.map((r) => ordered[r.horse_number-1].horse_numbers), coverage_probability: coverage, expected_return: expectedReturn, group_expected_value: groupEv, minimum_payout: payout, minimum_profit: profit, eligible: !reasons.length, rejection_reasons: reasons}, selections: selections.map(restore)});
           }
           const selected = fixedCount ? evaluations.find((item) => item.evaluation.selection_count === fixedCount) : selectBestDutching(evaluations);
@@ -1372,14 +1357,13 @@
               min_coverage_probability: Number(form.elements.min_coverage_probability.value),
               min_group_expected_value: Number(form.elements.min_group_expected_value.value),
               min_profit_rate: Number(form.elements.min_profit_rate.value) / 100,
-              require_profit_if_hit: form.elements.require_profit_if_hit.checked,
             };
             result = activeTicket === "quinella" ? calculateQuinellaSimulation(activeHorses(), budget, stakeUnit, settings, "dutching", Number(form.elements.fixed_selection_count.value)) : calculateDutchingSimulation(activeHorses(), budget, stakeUnit, settings, Number(form.elements.fixed_selection_count.value));
             if (activeTicket === "quinella") noPurchaseReason = "設定条件を満たす候補がありません。";
             renderDutching(result);
           }
 
-          document.getElementById("custom-simulator-method").textContent = activeTicket === "quinella" ? (method === "value" ? "馬連期待値重視" : "馬連分配方式") : (method === "value" ? "期待値重視" : "単勝分配方式");
+          document.getElementById("custom-simulator-method").textContent = method === "value" ? "期待値重視方式" : (activeTicket === "quinella" ? "馬連分配方式" : "単勝分配方式");
           document.getElementById("custom-simulator-budget").textContent = `${yen.format(result.budget)}円`;
           document.getElementById("custom-simulator-total").textContent = `${yen.format(result.total_stake)}円`;
           document.getElementById("custom-simulator-unused").textContent = `${yen.format(result.unused_budget)}円`;
@@ -1406,7 +1390,6 @@
             for (const key of ["ev_threshold", "kelly_fraction"]) form.elements[key].value = String(value.settings[key]);
             for (const key of ["max_selection_count", "min_coverage_probability", "min_group_expected_value"]) form.elements[key].value = String(dutching.settings[key]);
             form.elements.min_profit_rate.value = String((dutching.settings.min_profit_rate ?? 0.20)*100);
-            form.elements.require_profit_if_hit.checked = dutching.settings.require_profit_if_hit;
           }
           const pairMode = activeTicket === "quinella";
           const count = activeHorses().length;
@@ -1483,12 +1466,13 @@
           <p class="table-scroll-hint">表は横にスクロールできます</p>
           <div class="table-scroll">
             <table class="result-table" data-sortable>
-              <thead><tr>{{ sortable_header("馬番", 0, "number", "ascending") }}{{ sortable_header("馬名", 1, "text", "ascending", "horse-name") }}{{ sortable_header("1着確率", 2, "number", "descending") }}{{ sortable_header("予測順位", 3, "number", "ascending") }}{{ sortable_header("実着順", 4, "number", "ascending") }}{{ sortable_header("予想との差", 5, "number", "ascending") }}{{ sortable_header("確定オッズ", 6, "number", "ascending") }}{{ sortable_header("単勝払戻", 7, "number", "descending") }}</tr></thead>
+              <thead><tr>{{ sortable_header("馬番", 0, "number", "ascending") }}{{ sortable_header("馬名", 1, "text", "ascending", "horse-name") }}{{ sortable_header("人気", 2, "number", "ascending") }}{{ sortable_header("1着確率", 3, "number", "descending") }}{{ sortable_header("予測順位", 4, "number", "ascending") }}{{ sortable_header("実着順", 5, "number", "ascending") }}{{ sortable_header("予想との差", 6, "number", "ascending") }}{{ sortable_header("確定オッズ", 7, "number", "ascending") }}{{ sortable_header("単勝払戻", 8, "number", "descending") }}</tr></thead>
               <tbody>
                 {% for item in result_rows %}
                 <tr>
                   <td class="nowrap" data-sort-value="{{ item.horse_number }}">{{ item.horse_number }}</td>
                   <td class="horse-name{% if item.prediction_rank_class %} {{ item.prediction_rank_class }}{% elif item.finish_rank_class %} {{ item.finish_rank_class }}{% endif %}">{{ item.horse_name }}</td>
+                  <td class="nowrap" data-sort-value="{{ item.popularity if item.popularity is not none else '' }}">{{ item.popularity if item.popularity is not none else "-" }}</td>
                   <td class="nowrap" data-sort-value="{{ item.win_probability if item.win_probability is not none else '' }}">{{ "%.1f"|format(item.win_probability * 100) ~ "%" if item.win_probability is not none else "-" }}</td>
                   <td class="nowrap{% if item.prediction_rank_class %} {{ item.prediction_rank_class }}{% endif %}" data-sort-value="{{ item.prediction_rank if item.prediction_rank is not none else '' }}">{{ item.prediction_rank ~ "位" if item.prediction_rank is not none else "-" }}</td>
                   <td class="nowrap{% if item.finish_rank_class %} {{ item.finish_rank_class }}{% endif %}" data-sort-value="{{ item.finish_position_sort_value if item.finish_position_sort_value is not none else '' }}">{{ item.finish_position_label }}</td>
@@ -1538,7 +1522,7 @@
 
         {% if simulation_value_post %}
         <div class="panel result-panel">
-          <h3>期待値重視方式のシミュレーション結果</h3>
+          <h3 class="result-comparison-title"><span>期待値重視方式のシミュレーション結果</span>{% if simulation_value_post.selections | selectattr('hit', 'sameas', true) | list %}<span class="hit-badge">的中!</span>{% endif %}</h3>
           {% if simulation_value_post.total_stake == 0 %}
           <p><strong>購入なし</strong></p><p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
           {% else %}
@@ -1550,7 +1534,7 @@
 
         {% if simulation_dutching_post %}
         <div class="panel result-panel">
-          <h3>単勝分配方式のシミュレーション結果</h3>
+          <h3 class="result-comparison-title"><span>単勝分配方式のシミュレーション結果</span>{% if simulation_dutching_post.selections | selectattr('hit', 'sameas', true) | list %}<span class="hit-badge">的中!</span>{% endif %}</h3>
           {% if simulation_dutching_post.total_stake == 0 %}
           <p><strong>購入なし</strong></p><p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
           {% else %}

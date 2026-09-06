@@ -32,7 +32,6 @@ def make_config(
                 "min_coverage_probability": min_coverage_probability,
                 "min_group_expected_value": 0.0,
                 "min_profit_rate": 0.2,
-                "require_profit_if_hit": True,
             },
         },
     }

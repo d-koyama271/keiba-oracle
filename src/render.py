@@ -88,7 +88,6 @@ REJECTION_REASON_LABELS = {
     "coverage_probability_below_threshold": "カバー確率が最低基準未満",
     "group_expected_value_below_threshold": "グループ期待値が最低基準未満",
     "minimum_profit_rate_below_threshold": "最低利益率が最低基準未満",
-    "minimum_profit_not_positive": "的中時の最低利益を確保できない",
     "insufficient_budget_units": "予算が購入単位または選択頭数に対して不足",
 }
 UNKNOWN_REJECTION_REASON_LABEL = "条件を満たしていません"
@@ -403,6 +402,7 @@ def build_result_rows(horse_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             {
                 "horse_number": horse["horse_number"],
                 "horse_name": horse["horse_name"],
+                "popularity": horse.get("popularity"),
                 "prediction_rank": horse["prediction_rank"],
                 "win_probability": (horse.get("prediction") or {}).get("win_probability"),
                 "finish_position": finish_position,
