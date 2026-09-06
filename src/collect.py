@@ -222,7 +222,12 @@ def fetch_win_odds(
                 pair = pair_numbers([int(str(row[3])[:2]), int(str(row[3])[2:])])
                 if isinstance(row[0], bool):
                     raise ValueError("invalid_odds")
-                odds = float(row[0])
+                odds_text = str(row[0]).strip()
+                if "," in odds_text:
+                    if not re.fullmatch(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?", odds_text):
+                        raise ValueError("invalid_odds")
+                    odds_text = odds_text.replace(",", "")
+                odds = float(odds_text)
                 quinella_snapshot["pairs"].append({"horse_numbers": list(pair), "odds": odds})
             quinella_snapshot["reason"] = None
         except (TypeError, ValueError, AttributeError):

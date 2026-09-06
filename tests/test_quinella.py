@@ -107,6 +107,50 @@ class OddsTests(unittest.TestCase):
         self.assertEqual(len(win[0]), 3)
         self.assertEqual(snapshot["reason"], "odds_not_pre_race")
 
+    def test_grouped_odds_are_numeric_and_can_generate_both_ai_pre(self):
+        for text, expected in (("1,025.0", 1025.0), ("12,345.6", 12345.6),
+                               ("1,234,567.8", 1234567.8), (" 1,025.0 ", 1025.0),
+                               ("2.5", 2.5), (1025.0, 1025.0)):
+            with self.subTest(odds=text):
+                session = self.api({"1": [text, 0, 1, "0102"],
+                                    "2": ["5.0", 0, 2, "0103"],
+                                    "3": ["8.0", 0, 3, "0203"]})
+                win, snapshot = self.fetch(session)
+                session.get.assert_called_once()
+                self.assertEqual(set(win[0]), {1, 2, 3})
+                self.assertTrue(snapshot["available"])
+                self.assertEqual(snapshot["pairs"][0]["odds"], expected)
+                payload, config = payload_with_odds(), load_config()
+                payload["race"]["quinella_odds"].update(available=False, pairs=[])
+                with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
+                    payload["simulation"] = calculate_pre_simulation(payload, config)
+                    before = copy.deepcopy(payload)
+                    payload["race"]["quinella_odds"] = snapshot
+                    simulation = calculate_pre_simulation(payload, config)
+                self.assertEqual(payload["prediction"], before["prediction"])
+                self.assertEqual(payload["horses"], before["horses"])
+                for new, old in zip((simulation, *simulation["variants"]),
+                                    (before["simulation"], *before["simulation"]["variants"])):
+                    self.assertEqual(old["quinella"]["status"], "unavailable")
+                    self.assertEqual(new["quinella"]["status"], "ready")
+                    self.assertEqual(new["quinella"]["odds_snapshot"], snapshot)
+                    for method in ("value", "dutching"):
+                        self.assertEqual(new[method], old[method])
+                        self.assertIsNotNone(new["quinella"][method]["pre"])
+
+    def test_invalid_odds_reject_the_entire_pair_snapshot(self):
+        for odds in ("1,02.5", "1,,025.0", "1,025.0x", "", "---",
+                     "NaN", "Infinity", 0, -1, True, None):
+            with self.subTest(odds=odds):
+                win, snapshot = self.fetch(self.api({
+                    "1": ["2.5", 0, 1, "0102"],
+                    "2": [odds, 0, 2, "0103"],
+                    "3": ["8.0", 0, 3, "0203"],
+                }))
+                self.assertEqual(set(win[0]), {1, 2, 3})
+                self.assertFalse(snapshot["available"])
+                self.assertEqual(snapshot["pairs"], [])
+
     def test_pair_validation_checks_exact_set_and_finite_values(self):
         rows = payload_with_odds()["race"]["quinella_odds"]["pairs"]
         validate_pair_odds(rows, [1, 2, 3])
