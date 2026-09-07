@@ -15,6 +15,7 @@ from utils import (
     list_race_files,
     log_job,
     parse_target_date,
+    prediction_entries,
     save_race_json,
     set_race_status,
     setup_logger,
@@ -51,7 +52,7 @@ def run_post_flow(config: dict, target_date: str, job_name: str) -> list[Path]:
     target_paths = []
     for path in list_race_files(config, target_date):
         payload = load_race_json(path)
-        if payload and payload.get("prediction"):
+        if payload and any(entry.get(method) for entry in prediction_entries(payload) for method in ("general", "statistical")):
             target_paths.append(path)
 
     if not target_paths:

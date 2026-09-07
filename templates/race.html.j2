@@ -531,7 +531,7 @@
   <main>
     <div class="panel">
       <div class="page-badges">
-        {% if prediction and prediction.model_name %}<span class="ai-badge">{{ prediction.model_name }}</span>{% endif %}
+        {% if model_name %}<span class="ai-badge">{{ model_name }}</span>{% endif %}
         <span class="status {{ status_class }}">{{ status_label }}</span>
       </div>
       <h1>{{ race.track }} {{ race.race_number }}R {{ race.race_name }}</h1>
@@ -586,7 +586,7 @@
             <thead>
               <tr>
                 {{ sortable_header("馬番", 0, "number", "ascending") }}
-{% if view.method == "traditional" %}
+{% if view.prediction_method == "general" %}
                 {{ sortable_header("馬名", 1, "text", "ascending", "horse-name") }}
                 {{ sortable_header("騎手", 2, "text", "ascending") }}
                 {{ sortable_header("単勝オッズ", 3, "number", "ascending") }}
@@ -606,7 +606,7 @@
               {% for horse in view.horse_rows %}
               <tr>
                 <td class="nowrap" data-sort-value="{{ horse.horse_number }}">{{ horse.horse_number }}</td>
-{% if view.method == "traditional" %}
+{% if view.prediction_method == "general" %}
                 <td class="horse-name{% if horse.prediction_rank == 1 %} rank-prediction-top{% endif %}">{{ horse.horse_name }}</td>
                 <td class="nowrap">{{ horse.jockey or "-" }}</td>
                 <td class="nowrap" data-sort-value="{{ horse.win_odds if horse.win_odds is not none else '' }}">{{ horse.win_odds if horse.win_odds is not none else "-" }}</td>
@@ -647,7 +647,7 @@
       {% set expected_value_rows = view.expected_value_rows %}
       {% set value_selection_rows = view.value_selection_rows %}
       {% set value_no_purchase_reason = view.value_no_purchase_reason %}
-      {% set missing_simulation_message = "このレースでは統計重視予想の購入シミュレーションは記録されていません。" if view.method == "statistical" and view.prediction else "予想取込後に生成されます。" %}
+      {% set missing_simulation_message = "このレースでは統計重視予想の購入シミュレーションは記録されていません。" if view.prediction_method == "statistical" and view.prediction else "予想取込後に生成されます。" %}
       <div class="ai-method-panel simulation-method-content" id="simulation-{{ view.method }}" role="tabpanel" data-ai-panel data-ai-method="{{ view.method }}"{% if not loop.first %} hidden{% endif %}>
       {{ quinella_ui.ticket_tabs('purchase-' ~ view.method) }}
       <div id="purchase-{{ view.method }}-win" data-ticket-panel="win" role="tabpanel">
@@ -1185,7 +1185,7 @@
           return;
         }
         const data = JSON.parse(document.getElementById("custom-simulator-data").textContent);
-        let activeAiMethod = "traditional";
+        let activeAiMethod = Object.keys(data.methods)[0];
         let activeTicket = "win";
         const activeData = () => data.methods?.[activeAiMethod]?.[activeTicket];
         const activeHorses = () => activeTicket === "quinella" ? (activeData()?.pairs || []) : (data.methods?.[activeAiMethod]?.horses || data.horses);
@@ -1498,7 +1498,7 @@
             <div><strong>Log Loss</strong><br>{{ "%.6f"|format(evaluation.metrics.log_loss) }}</div>
             <div><strong>Brier Score</strong><br>{{ "%.6f"|format(evaluation.metrics.brier_score) }}</div>
           </div>
-          {% if view.method == "statistical" %}<p class="small">市場情報は予想には使用せず、結果評価の比較基準としてのみ使用しています。</p>{% endif %}
+          {% if view.prediction_method == "statistical" %}<p class="small">市場情報は予想には使用せず、結果評価の比較基準としてのみ使用しています。</p>{% endif %}
           {% if evaluation.market_baseline.available %}
           <h4>市場ベースライン比較</h4>
           <p>市場の勝ち馬確率 {{ "%.2f"|format(evaluation.market_baseline.winner_probability * 100) }}% / 順位 {{ evaluation.market_baseline.winner_rank }}位</p>
@@ -1512,7 +1512,7 @@
 
         {{ quinella_ui.ticket_tabs('settlement-' ~ view.method) }}
         <div id="settlement-{{ view.method }}-win" data-ticket-panel="win" role="tabpanel">
-        {% if view.method == "statistical" and view.prediction and not simulation_value_post and not simulation_dutching_post %}
+        {% if view.prediction_method == "statistical" and view.prediction and not simulation_value_post and not simulation_dutching_post %}
         <div class="panel result-panel">
           <h3>統計重視予想のシミュレーション結果</h3>
           <p>このレースでは統計重視予想の購入シミュレーションは記録されていません。</p>
@@ -1665,7 +1665,7 @@
         });
       }
       if (aiMethodTabs.length) {
-        activateAiMethod("traditional");
+        activateAiMethod(aiMethodTabs[0].dataset.aiMethod);
       }
 
       const tooltipTriggers = Array.from(document.querySelectorAll(".tooltip-trigger"));

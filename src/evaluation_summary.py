@@ -6,22 +6,20 @@ import math
 from pathlib import Path
 from typing import Any, Callable
 
-from evaluation import normalized_market_probabilities, ranked_probabilities, round_metric
+from evaluation import normalized_market_probabilities, ranked_prediction_probabilities, round_metric
 from utils import (
     atomic_write_json,
     data_dir,
-    evaluation_variants,
-    find_variant,
     list_race_files,
     load_config,
+    prediction_entries,
+    linked_record,
     load_race_json,
     log_job,
     now_jst_iso,
-    prediction_variants,
     setup_logger,
-    simulation_variants,
     STATISTICAL_PREDICTION_METHOD,
-    TRADITIONAL_PREDICTION_METHOD,
+    GENERAL_PREDICTION_METHOD,
 )
 
 CALIBRATION_BUCKETS = (
@@ -82,10 +80,6 @@ def evaluation_record_from(evaluation: Any) -> dict[str, Any] | None:
         "top3_hit": hits[1],
         "top5_hit": hits[2],
     }
-
-
-def evaluation_record(payload: dict[str, Any]) -> dict[str, Any] | None:
-    return evaluation_record_from(payload.get("evaluation"))
 
 
 def aggregate_prediction_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
@@ -207,42 +201,26 @@ def aggregate_calibration(
     return calibration
 
 
-def method_evaluation(
-    payload: dict[str, Any],
-    method: str,
-) -> tuple[dict[str, Any], dict[str, Any]] | None:
-    if method == TRADITIONAL_PREDICTION_METHOD:
-        prediction = payload.get("prediction")
-        record = evaluation_record(payload)
-        if not isinstance(prediction, dict) or record is None:
-            return None
-        return record, prediction
-
-    evaluation = find_variant(evaluation_variants(payload), method)
-    if evaluation is None:
-        return None
-    prediction = find_variant(
-        prediction_variants(payload),
-        method,
-        evaluation.get("model_provider"),
-        evaluation.get("model_name"),
-    )
-    record = evaluation_record_from(evaluation)
-    if prediction is None or record is None:
-        return None
-    return record, prediction
+def method_evaluation(payload: dict[str, Any], method: str, prediction_id: str | None = None) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    for entry in prediction_entries(payload):
+        if prediction_id is not None and entry["id"] != prediction_id:
+            continue
+        prediction = entry.get(method)
+        evaluation = linked_record(payload, "evaluation", entry["id"]).get(method)
+        record = evaluation_record_from(evaluation)
+        if prediction and record:
+            return {**record, "prediction_id": entry["id"]}, {**prediction, "prediction_id": entry["id"]}
+    return None
 
 
-def collect_method_evaluations(
-    payloads: list[dict[str, Any]],
-    method: str,
-) -> list[tuple[dict[str, Any], dict[str, Any], dict[str, Any]]]:
+def collect_method_evaluations(payloads: list[dict[str, Any]], method: str) -> list[tuple[dict[str, Any], dict[str, Any], dict[str, Any]]]:
     evaluated = []
     for payload in payloads:
-        item = method_evaluation(payload, method)
-        if item is not None:
-            record, prediction = item
-            evaluated.append((payload, record, prediction))
+        for entry in prediction_entries(payload):
+            item = method_evaluation(payload, method, entry["id"])
+            if item is not None:
+                record, prediction = item
+                evaluated.append((payload, record, prediction))
     return evaluated
 
 
@@ -262,31 +240,32 @@ def build_method_summary(
 
 
 def build_paired_comparison(payloads: list[dict[str, Any]]) -> dict[str, Any]:
-    traditional_records = []
+    general_records = []
     statistical_records = []
     for payload in payloads:
-        traditional = method_evaluation(payload, TRADITIONAL_PREDICTION_METHOD)
-        statistical = method_evaluation(payload, STATISTICAL_PREDICTION_METHOD)
-        if traditional is None or statistical is None:
-            continue
-        traditional_records.append(traditional[0])
-        statistical_records.append(statistical[0])
+        for entry in prediction_entries(payload):
+            general = method_evaluation(payload, GENERAL_PREDICTION_METHOD, entry["id"])
+            statistical = method_evaluation(payload, STATISTICAL_PREDICTION_METHOD, entry["id"])
+            if general is None or statistical is None:
+                continue
+            general_records.append(general[0])
+            statistical_records.append(statistical[0])
 
-    traditional_metrics = aggregate_prediction_metrics(traditional_records)
+    general_metrics = aggregate_prediction_metrics(general_records)
     statistical_metrics = aggregate_prediction_metrics(statistical_records)
-    count = len(traditional_records)
+    count = len(general_records)
     return {
         "compared_races": count,
         "methods": {
-            TRADITIONAL_PREDICTION_METHOD: traditional_metrics,
+            GENERAL_PREDICTION_METHOD: general_metrics,
             STATISTICAL_PREDICTION_METHOD: statistical_metrics,
         },
         "differences": {
-            "definition": "statistical minus traditional; negative values favor statistical",
+            "definition": "statistical minus general; negative values favor statistical",
             "average_log_loss": (
                 round_metric(
                     statistical_metrics["average_log_loss"]
-                    - traditional_metrics["average_log_loss"]
+                    - general_metrics["average_log_loss"]
                 )
                 if count
                 else None
@@ -294,7 +273,7 @@ def build_paired_comparison(payloads: list[dict[str, Any]]) -> dict[str, Any]:
             "average_brier_score": (
                 round_metric(
                     statistical_metrics["average_brier_score"]
-                    - traditional_metrics["average_brier_score"]
+                    - general_metrics["average_brier_score"]
                 )
                 if count
                 else None
@@ -308,7 +287,7 @@ def comparable_market_records(
 ) -> list[tuple[dict[str, Any], dict[str, Any], dict[str, Any]]]:
     comparable = []
     for payload, record in evaluated:
-        market = (payload.get("evaluation") or {}).get("market_baseline")
+        market = linked_record(payload, "evaluation", record.get("prediction_id", "p1")).get("general", {}).get("market_baseline")
         if not isinstance(market, dict):
             continue
         if market.get("available") is not True or market.get("odds_recorded_after_start") is True:
@@ -368,9 +347,10 @@ def aggregate_market_characteristics(
     comparable: list[tuple[dict[str, Any], dict[str, Any], dict[str, Any]]],
 ) -> dict[str, Any]:
     records = []
-    for payload, _, market in comparable:
+    for payload, record, market in comparable:
         try:
-            model_rows = ranked_probabilities(payload)
+            prediction = next(entry["general"] for entry in prediction_entries(payload) if entry["id"] == record["prediction_id"])
+            model_rows = ranked_prediction_probabilities(prediction)
         except (KeyError, TypeError, ValueError):
             continue
         probabilities = normalized_market_probabilities(payload, model_rows)
@@ -429,8 +409,8 @@ def aggregate_simulation(
     method: str,
 ) -> dict[str, Any]:
     records = []
-    for payload, _ in evaluated:
-        result = ((payload.get("evaluation") or {}).get("simulation_results") or {}).get(method)
+    for payload, record in evaluated:
+        result = (linked_record(payload, "evaluation", record.get("prediction_id", "p1")).get("general", {}).get("simulation_results") or {}).get(method)
         if not isinstance(result, dict):
             continue
         stake = finite_number(result.get("total_stake"))
@@ -475,15 +455,7 @@ def aggregate_method_simulation(
 ) -> dict[str, Any]:
     records = []
     for payload, _, prediction in evaluated:
-        if prediction_method == TRADITIONAL_PREDICTION_METHOD:
-            simulation = payload.get("simulation")
-        else:
-            simulation = find_variant(
-                simulation_variants(payload),
-                prediction_method,
-                prediction.get("model_provider"),
-                prediction.get("model_name"),
-            )
+        simulation = linked_record(payload, "simulation", prediction["prediction_id"]).get(prediction_method, {}).get("win", {})
         if not isinstance(simulation, dict):
             continue
         post = (simulation.get(simulation_method) or {}).get("post")
@@ -533,14 +505,8 @@ def aggregate_method_simulation(
 
 def aggregate_quinella_simulation(payloads: list[dict], prediction_method: str, purchase_method: str) -> dict:
     records = []
-    for payload in payloads:
-        if prediction_method == TRADITIONAL_PREDICTION_METHOD:
-            simulation = payload.get("simulation") or {}
-        else:
-            prediction = find_variant(prediction_variants(payload), prediction_method)
-            if prediction is None:
-                continue
-            simulation = find_variant(simulation_variants(payload), prediction_method, prediction.get("model_provider"), prediction.get("model_name")) or {}
+    for payload, entry in ((p, e) for p in payloads for e in prediction_entries(p)):
+        simulation = linked_record(payload, "simulation", entry["id"]).get(prediction_method, {})
         quinella = simulation.get("quinella") or {}
         purchase = quinella.get(purchase_method) or {}
         pre = purchase.get("pre") or {}
@@ -570,15 +536,15 @@ def build_evaluation_summary(
     payloads: list[dict[str, Any]],
     generated_at: str | None = None,
 ) -> dict[str, Any]:
-    traditional = collect_method_evaluations(payloads, TRADITIONAL_PREDICTION_METHOD)
+    general = collect_method_evaluations(payloads, GENERAL_PREDICTION_METHOD)
     statistical = collect_method_evaluations(payloads, STATISTICAL_PREDICTION_METHOD)
-    evaluated = [(payload, record) for payload, record, _ in traditional]
+    evaluated = [(payload, record) for payload, record, _ in general]
     comparable = comparable_market_records(evaluated)
     summary = {
         "generated_at": generated_at or now_jst_iso(),
         "overall": aggregate_prediction_metrics([record for _, record in evaluated]),
         "market_comparison": aggregate_market_comparison(comparable),
-        "calibration": aggregate_calibration(traditional),
+        "calibration": aggregate_calibration(general),
         "segments": aggregate_segments(evaluated),
         "market_characteristics": aggregate_market_characteristics(comparable),
         "simulation": {
@@ -586,9 +552,9 @@ def build_evaluation_summary(
             "dutching": aggregate_simulation(evaluated, "dutching"),
         },
         "methods": {
-            TRADITIONAL_PREDICTION_METHOD: build_method_summary(
-                traditional,
-                TRADITIONAL_PREDICTION_METHOD,
+            GENERAL_PREDICTION_METHOD: build_method_summary(
+                general,
+                GENERAL_PREDICTION_METHOD,
             ),
             STATISTICAL_PREDICTION_METHOD: build_method_summary(
                 statistical,
@@ -597,12 +563,12 @@ def build_evaluation_summary(
         },
         "paired_comparison": build_paired_comparison(payloads),
     }
-    for method in (TRADITIONAL_PREDICTION_METHOD, STATISTICAL_PREDICTION_METHOD):
+    for method in (GENERAL_PREDICTION_METHOD, STATISTICAL_PREDICTION_METHOD):
         summary["methods"][method]["simulation"]["quinella"] = {
             purchase: aggregate_quinella_simulation(payloads, method, purchase)
             for purchase in ("value", "dutching")
         }
-    summary["simulation"]["quinella"] = summary["methods"][TRADITIONAL_PREDICTION_METHOD]["simulation"]["quinella"]
+    summary["simulation"]["quinella"] = summary["methods"][GENERAL_PREDICTION_METHOD]["simulation"]["quinella"]
     return summary
 
 
@@ -621,7 +587,12 @@ def load_evaluation_summary(
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-    return payload if isinstance(payload, dict) else None
+    if not isinstance(payload, dict):
+        return None
+    for methods in (payload.get("methods", {}), payload.get("paired_comparison", {}).get("methods", {})):
+        if "traditional" in methods and "general" not in methods:
+            methods["general"] = methods.pop("traditional")
+    return payload
 
 
 def generate_evaluation_summary(

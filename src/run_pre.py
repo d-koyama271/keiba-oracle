@@ -14,6 +14,7 @@ from render import render_site
 from run_pre_collect import run_pre_collect_flow
 from simulate import simulate_paths
 from utils import (
+    runtime_prediction_entry,
     load_config,
     load_race_json,
     log_job,
@@ -27,30 +28,35 @@ def run_pre_flow(config: dict, target_date: str | None, job_name: str = "pre") -
     logger = setup_logger(job_name, config)
     paths, input_paths = run_pre_collect_flow(config, target_date, job_name)
     prediction_inputs = load_prediction_inputs(input_paths)
-    statistical_inputs = build_pending_statistical_inputs(paths, config)
+    statistical_inputs = {}
+    for path in paths:
+        try:
+            statistical_inputs.update(build_pending_statistical_inputs([path], config))
+        except (ValueError, KeyError) as exc:
+            log_job(logger, job_name, None, f"statistical input unavailable for {path}: {exc}")
     pending_race_ids = {
         str(payload["meta"].get("race_id") or "")
         for path in paths
-        if (payload := load_race_json(path)) and not payload.get("prediction")
+        if (payload := load_race_json(path)) and not (runtime_prediction_entry(payload, config) or {}).get("general")
     }
     if set(prediction_inputs) != pending_race_ids:
         raise RuntimeError("pre flow stopped: finalized prediction inputs do not match pending races")
 
     predicted_paths = predict_paths(paths, config, job_name, prediction_inputs=prediction_inputs)
-    if set(predicted_paths) != set(paths):
-        raise RuntimeError("pre flow stopped: prediction generation failed")
-
     statistical_paths = predict_statistical_paths(
         paths,
         config,
         job_name,
         prediction_inputs=statistical_inputs,
     )
-    if set(statistical_paths) != set(paths):
-        raise RuntimeError("pre flow stopped: statistical prediction generation failed")
-
-    simulated_paths = simulate_paths(statistical_paths, config, "pre", job_name)
-    if set(simulated_paths) != set(paths):
+    successful_paths = set(predicted_paths) | set(statistical_paths)
+    for path in paths:
+        if path not in successful_paths:
+            log_job(logger, job_name, None, f"prediction failed for both methods: {path}")
+    if not successful_paths:
+        raise RuntimeError("pre flow stopped: prediction generation failed for both methods")
+    simulated_paths = simulate_paths([path for path in paths if path in successful_paths], config, "pre", job_name)
+    if set(simulated_paths) != successful_paths:
         raise RuntimeError("pre flow stopped: simulation generation failed")
 
     for path in simulated_paths:

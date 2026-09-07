@@ -14,25 +14,23 @@ from evaluation_summary import load_evaluation_summary
 from simulate import calculate_value_details, minimum_budget_for_value_stake, round_ratio
 from utils import (
     STATISTICAL_PREDICTION_METHOD,
-    TRADITIONAL_PREDICTION_METHOD,
-    evaluation_variants,
+    GENERAL_PREDICTION_METHOD,
     ensure_dir,
-    find_variant,
     list_race_files,
     load_config,
+    ensure_race_payload,
+    linked_record,
     load_race_json,
     log_job,
     now_jst,
     parse_jst_datetime,
     parse_target_date,
-    prediction_variants,
     public_dir,
     race_html_path,
     race_result_html_path,
     race_start_datetime,
     repo_root,
     stage_dir,
-    simulation_variants,
     track_name_from_race_id,
 )
 
@@ -57,11 +55,11 @@ STATUS_COLORS = {
 SITE_BACKGROUND = "#f2f2f0"
 
 PREDICTION_METHOD_LABELS = {
-    TRADITIONAL_PREDICTION_METHOD: "総合AI予想",
+    GENERAL_PREDICTION_METHOD: "総合AI予想",
     STATISTICAL_PREDICTION_METHOD: "統計重視予想",
 }
 PREDICTION_METHOD_DESCRIPTIONS = {
-    TRADITIONAL_PREDICTION_METHOD: "過去成績や今回のレース条件、市場評価などを総合して1着確率を推定しています。",
+    GENERAL_PREDICTION_METHOD: "過去成績や今回のレース条件、市場評価などを総合して1着確率を推定しています。",
     STATISTICAL_PREDICTION_METHOD: "市場情報を使用せず、過去成績や今回のレース条件などの客観データから1着確率を推定しています。",
 }
 
@@ -431,24 +429,10 @@ def build_result_rows(horse_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
+    payload = ensure_race_payload(payload)
     race = payload.get("race", {})
-    prediction = payload.get("prediction")
-    statistical_prediction = find_variant(
-        prediction_variants(payload),
-        STATISTICAL_PREDICTION_METHOD,
-    )
-    simulation = payload.get("simulation") or {}
     result = payload.get("result")
     final_win_odds = result_final_win_odds(payload, result)
-    evaluation = payload.get("evaluation")
-    statistical_evaluation = None
-    if statistical_prediction is not None:
-        statistical_evaluation = find_variant(
-            evaluation_variants(payload),
-            STATISTICAL_PREDICTION_METHOD,
-            statistical_prediction.get("model_provider"),
-            statistical_prediction.get("model_name"),
-        )
     odds_timing_label, odds_recorded_after_start = build_odds_timing(race)
     has_recorded_odds = (
         parse_jst_datetime(race.get("odds_captured_at")) is not None
@@ -458,44 +442,27 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         )
     )
 
-    statistical_simulation = None
-    if statistical_prediction is not None:
-        statistical_simulation = find_variant(
-            simulation_variants(payload),
-            STATISTICAL_PREDICTION_METHOD,
-            statistical_prediction.get("model_provider"),
-            statistical_prediction.get("model_name"),
-        )
-
-    prediction_specs = [
-        (
-            TRADITIONAL_PREDICTION_METHOD,
-            prediction,
-            simulation,
-            evaluation,
-        )
-    ]
-    if statistical_prediction is not None:
-        prediction_specs.append(
-            (
-                STATISTICAL_PREDICTION_METHOD,
-                statistical_prediction,
-                statistical_simulation or {},
-                statistical_evaluation,
-            )
-        )
-
+    prediction_specs = []
+    for entry in payload["prediction"]:
+        simulation = linked_record(payload, "simulation", entry["id"])
+        evaluation = linked_record(payload, "evaluation", entry["id"])
+        for method in ("general", "statistical"):
+            if entry.get(method):
+                prediction_specs.append((entry, method, entry[method], simulation.get(method, {}), evaluation.get(method)))
+    if not prediction_specs:
+        prediction_specs.append(({}, "general", None, {}, None))
     ai_views = []
     custom_simulation_methods = {}
-    for method, method_prediction, method_simulation, method_evaluation in prediction_specs:
+    for entry, prediction_method, method_prediction, method_simulation, method_evaluation in prediction_specs:
+        method = prediction_method if len(payload["prediction"]) <= 1 else entry["id"] + "-" + prediction_method
         horse_rows = build_prediction_horse_rows(
             payload,
             method_prediction,
             result,
             final_win_odds,
         )
-        value_simulation = method_simulation.get("value") or {}
-        dutching_simulation = method_simulation.get("dutching") or {}
+        value_simulation = method_simulation.get("win", {}).get("value") or {}
+        dutching_simulation = method_simulation.get("win", {}).get("dutching") or {}
         value_pre = value_simulation.get("pre")
         dutching_pre = dutching_simulation.get("pre")
         expected_value_rows = (
@@ -540,8 +507,11 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         ai_views.append(
             {
                 "method": method,
-                "label": PREDICTION_METHOD_LABELS[method],
-                "description": PREDICTION_METHOD_DESCRIPTIONS[method],
+                "prediction_method": prediction_method,
+                "prediction_id": entry.get("id"),
+                "model": entry.get("model"),
+                "label": PREDICTION_METHOD_LABELS[prediction_method] + (" / " + str(entry.get("model") or entry.get("id")) if len(payload["prediction"]) > 1 else ""),
+                "description": PREDICTION_METHOD_DESCRIPTIONS[prediction_method],
                 "prediction": method_prediction,
                 "horse_rows": horse_rows,
                 "result_rows": result_rows,
@@ -563,15 +533,15 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
             }
         )
 
-    traditional_view = ai_views[0]
+    primary_view = ai_views[0]
     statistical_view = next(
-        (view for view in ai_views if view["method"] == STATISTICAL_PREDICTION_METHOD),
+        (view for view in ai_views if view["prediction_method"] == STATISTICAL_PREDICTION_METHOD),
         None,
     )
-    value_pre = traditional_view["value_pre"]
-    dutching_pre = traditional_view["dutching_pre"]
+    value_pre = primary_view["value_pre"]
+    dutching_pre = primary_view["dutching_pre"]
     custom_simulation_horses = custom_simulation_methods.get(
-        TRADITIONAL_PREDICTION_METHOD,
+        primary_view["method"],
         {"horses": []},
     )["horses"]
     custom_simulation_data = {
@@ -594,27 +564,32 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         },
     }
 
-    has_result_page = bool(result and evaluation)
+    prediction = primary_view["prediction"]
+    evaluation = primary_view["evaluation"]
+    statistical_prediction = statistical_view["prediction"] if statistical_view else None
+    statistical_evaluation = statistical_view["evaluation"] if statistical_view else None
+    has_result_page = bool(result and any(view["evaluation"] for view in ai_views))
     status = "result_published" if has_result_page else "prediction_only"
     return {
         "race": race,
         "prediction": prediction,
+        "model_name": primary_view["model"],
         "statistical_prediction": statistical_prediction,
         "ai_views": ai_views,
-        "simulation_value_pre": traditional_view["value_pre"],
-        "simulation_value_post": traditional_view["value_post"],
-        "simulation_dutching_pre": traditional_view["dutching_pre"],
-        "simulation_dutching_post": traditional_view["dutching_post"],
+        "simulation_value_pre": primary_view["value_pre"],
+        "simulation_value_post": primary_view["value_post"],
+        "simulation_dutching_pre": primary_view["dutching_pre"],
+        "simulation_dutching_post": primary_view["dutching_post"],
         "result": result,
         "final_win_odds_by_horse": final_win_odds,
         "evaluation": evaluation,
         "statistical_evaluation": statistical_evaluation,
-        "horse_rows": traditional_view["horse_rows"],
+        "horse_rows": primary_view["horse_rows"],
         "statistical_horse_rows": statistical_view["horse_rows"] if statistical_view else [],
-        "result_rows": traditional_view["result_rows"],
+        "result_rows": primary_view["result_rows"],
         "statistical_result_rows": statistical_view["result_rows"] if statistical_view else [],
-        "expected_value_rows": traditional_view["expected_value_rows"],
-        "value_no_purchase_reason": traditional_view["value_no_purchase_reason"],
+        "expected_value_rows": primary_view["expected_value_rows"],
+        "value_no_purchase_reason": primary_view["value_no_purchase_reason"],
         "has_result_page": has_result_page,
         "status": status,
         "status_label": status_label(status),
@@ -664,7 +639,7 @@ def render_site(
         persisted_payload = json.loads(path.read_text(encoding="utf-8"))
         persisted_created_at = (persisted_payload.get("meta") or {}).get("created_at")
         payload = load_race_json(path)
-        if not payload or not payload.get("prediction"):
+        if not payload or not any(entry.get(method) for entry in payload["prediction"] for method in ("general", "statistical")):
             continue
         context = build_race_context(payload)
         race = payload["race"]

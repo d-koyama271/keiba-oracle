@@ -20,7 +20,7 @@ import run_pre  # noqa: E402
 import run_pre_collect  # noqa: E402
 import simulate  # noqa: E402
 from llm_client import LLMClient  # noqa: E402
-from utils import JST, load_config, load_race_json, save_race_json  # noqa: E402
+from utils import ensure_race_payload, JST, load_config, load_race_json, save_race_json  # noqa: E402
 
 
 def race_payload(prediction: dict | None = None) -> dict:
@@ -62,7 +62,7 @@ def race_payload(prediction: dict | None = None) -> dict:
         "simulation": {
             "value": {"pre": None, "post": None},
             "dutching": {"pre": None, "post": None},
-        },
+        } if prediction else [],
         "result": None,
         "evaluation": None,
     }
@@ -188,21 +188,21 @@ class PredictionValidationTests(unittest.TestCase):
             self.assertNotIn("EVALUATION_MUST_NOT_LEAK", captured["prompt"])
             self.assertIn('"race_id": "202601010111"', captured["prompt"])
             saved = load_race_json(path)
-            self.assertEqual(saved["prediction"]["model_provider"], "codex")
-            self.assertEqual(saved["prediction"]["model_name"], "gpt-test")
-            self.assertEqual(saved["prediction"]["predicted_at"], "2026-08-15T14:00:00+09:00")
+            self.assertEqual(saved["prediction"][-1]["runtime_provider"], "codex")
+            self.assertEqual(saved["prediction"][-1]["model"], "gpt-test")
+            self.assertEqual(saved["prediction"][-1]["general"]["predicted_at"], "2026-08-15T14:00:00+09:00")
             self.assertEqual(
-                saved["prediction"]["prompt_sha256"],
+                saved["prediction"][-1]["general"]["prompt_sha256"],
                 predict.sha256_text("Use only this JSON and return JSON: {{RACE_CONTEXT}}"),
             )
             self.assertEqual(
-                saved["prediction"]["prediction_input_sha256"],
+                saved["prediction"][-1]["general"]["prediction_input_sha256"],
                 predict.prediction_input_sha256(prediction_input),
             )
-            self.assertEqual(len(saved["prediction"]["prompt_sha256"]), 64)
-            self.assertEqual(len(saved["prediction"]["prediction_input_sha256"]), 64)
+            self.assertEqual(len(saved["prediction"][-1]["general"]["prompt_sha256"]), 64)
+            self.assertEqual(len(saved["prediction"][-1]["general"]["prediction_input_sha256"]), 64)
             self.assertAlmostEqual(
-                sum(item["win_probability"] for item in saved["prediction"]["horses"]),
+                sum(item["win_probability"] for item in saved["prediction"][-1]["general"]["horses"]),
                 1.0,
             )
 
@@ -223,7 +223,7 @@ class PredictionValidationTests(unittest.TestCase):
 
             self.assertTrue(reused)
             self.assertEqual(path.read_bytes(), before)
-            self.assertNotIn("prompt_sha256", load_race_json(path)["prediction"])
+            self.assertNotIn("prompt_sha256", load_race_json(path)["prediction"][0]["general"])
             self.assertNotIn("prediction_input_sha256", load_race_json(path)["prediction"])
 
     def test_statistical_input_removes_all_market_and_non_input_data(self) -> None:
@@ -357,19 +357,15 @@ class PredictionValidationTests(unittest.TestCase):
                 )
 
             saved = load_race_json(path)
-            self.assertEqual(saved["meta"]["schema_version"], 9)
+            self.assertEqual(saved["meta"]["schema_version"], 10)
             self.assertEqual(
                 set(saved),
                 {"meta", "race", "horses", "prediction", "simulation", "result", "evaluation"},
             )
-            saved_traditional = copy.deepcopy(saved["prediction"])
-            variants = saved_traditional.pop("variants")
-            self.assertEqual(saved_traditional, traditional)
-            self.assertEqual(len(variants), 1)
-            statistical = variants[0]
-            self.assertEqual(statistical["method"], "statistical")
-            self.assertEqual(statistical["model_provider"], "codex")
-            self.assertEqual(statistical["model_name"], "gpt-test")
+            self.assertEqual(saved["prediction"][0]["general"], ensure_race_payload({"prediction": traditional})["prediction"][0]["general"])
+            statistical = saved["prediction"][0]["statistical"]
+            self.assertEqual(saved["prediction"][0]["runtime_provider"], "codex")
+            self.assertEqual(saved["prediction"][0]["model"], "gpt-test")
             self.assertEqual(statistical["predicted_at"], "2026-08-16T12:00:00+09:00")
             self.assertEqual(statistical["prompt_sha256"], predict.sha256_text(prompt_text))
             self.assertEqual(
@@ -495,7 +491,7 @@ class FlowAndCompatibilityTests(unittest.TestCase):
                 "outbox_chat_input_dir",
                 return_value=root / "outbox",
             ):
-                exported = run_pre_collect.export_prediction_chat_input([path], {}, "test-export")
+                exported = run_pre_collect.export_prediction_chat_input([path], {"llm_provider": "codex", "llm_model": "gpt-test"}, "test-export")
 
             self.assertEqual(exported, [])
             self.assertEqual(path.read_bytes(), before)
@@ -562,14 +558,11 @@ class FlowAndCompatibilityTests(unittest.TestCase):
 
             saved = load_race_json(path)
             self.assertEqual(processed, [path])
-            saved_traditional = copy.deepcopy(saved["prediction"])
-            statistical = saved_traditional.pop("variants")
-            self.assertEqual(saved_traditional, original_prediction)
-            self.assertEqual(statistical[0]["method"], "statistical")
-            self.assertEqual(statistical[0]["horses"][0]["win_probability"], 0.2)
-            self.assertIsNotNone(saved["simulation"]["value"]["pre"])
-            self.assertIsNotNone(saved["simulation"]["dutching"]["pre"])
-            for selection in saved["simulation"]["value"]["pre"]["selections"]:
+            self.assertEqual(saved["prediction"][0]["general"], ensure_race_payload({"prediction": original_prediction})["prediction"][0]["general"])
+            self.assertEqual(saved["prediction"][0]["statistical"]["horses"][0]["win_probability"], 0.2)
+            self.assertIsNotNone(saved["simulation"][0]["general"]["win"]["value"]["pre"])
+            self.assertIsNotNone(saved["simulation"][0]["general"]["win"]["dutching"]["pre"])
+            for selection in saved["simulation"][0]["general"]["win"]["value"]["pre"]["selections"]:
                 expected = next(
                     item["win_probability"]
                     for item in original_prediction["horses"]
@@ -660,28 +653,28 @@ class FlowAndCompatibilityTests(unittest.TestCase):
                 run_pre.run_pre_flow(config, None, "test-pre-new")
 
             saved = load_race_json(path)
-            self.assertEqual(saved["prediction"]["model_provider"], "codex")
-            self.assertEqual(saved["prediction"]["model_name"], "gpt-test")
-            self.assertEqual(saved["prediction"]["predicted_at"], "2026-08-15T15:00:00+09:00")
+            self.assertEqual(saved["prediction"][-1]["runtime_provider"], "codex")
+            self.assertEqual(saved["prediction"][-1]["model"], "gpt-test")
+            self.assertEqual(saved["prediction"][-1]["general"]["predicted_at"], "2026-08-15T15:00:00+09:00")
             self.assertEqual(
-                [item["win_probability"] for item in saved["prediction"]["horses"]],
+                [item["win_probability"] for item in saved["prediction"][-1]["general"]["horses"]],
                 [0.65, 0.35],
             )
             self.assertEqual(len(prompts), 2)
-            self.assertEqual(len(saved["prediction"]["variants"]), 1)
-            self.assertEqual(saved["prediction"]["variants"][0]["method"], "statistical")
+            self.assertEqual(len(saved["prediction"]), 1)
+            self.assertIn("statistical", saved["prediction"][0])
             self.assertEqual(
                 [
                     item["win_probability"]
-                    for item in saved["prediction"]["variants"][0]["horses"]
+                    for item in saved["prediction"][0]["statistical"]["horses"]
                 ],
                 [0.25, 0.75],
             )
-            self.assertIsNotNone(saved["simulation"]["value"]["pre"])
-            self.assertIsNotNone(saved["simulation"]["dutching"]["pre"])
+            self.assertIsNotNone(saved["simulation"][0]["general"]["win"]["value"]["pre"])
+            self.assertIsNotNone(saved["simulation"][0]["general"]["win"]["dutching"]["pre"])
             self.assertEqual(saved["meta"]["pre_status"], "published")
             self.assertIsNone(saved["result"])
-            self.assertIsNone(saved["evaluation"])
+            self.assertEqual(saved["evaluation"], [])
             render_site.assert_called_once()
             publish_site.assert_called_once()
 
@@ -712,7 +705,7 @@ class FlowAndCompatibilityTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "finalized prediction inputs"):
                     run_pre.run_pre_flow(config, None, "test-pre-input")
 
-    def test_pre_flow_stops_before_simulation_when_statistical_prediction_fails(self) -> None:
+    def test_pre_flow_continues_when_statistical_prediction_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             path = root / "data" / "races" / "2026-08-16" / "sapporo_11r.json"
@@ -740,7 +733,7 @@ class FlowAndCompatibilityTests(unittest.TestCase):
                 run_pre,
                 "predict_statistical_paths",
                 return_value=[],
-            ), patch.object(run_pre, "simulate_paths") as simulate_paths, patch.object(
+            ), patch.object(run_pre, "simulate_paths", return_value=[path]) as simulate_paths, patch.object(
                 run_pre,
                 "render_site",
             ) as render_site, patch.object(run_pre, "publish_site") as publish_site, patch.object(
@@ -748,13 +741,12 @@ class FlowAndCompatibilityTests(unittest.TestCase):
                 "setup_logger",
                 return_value=logger("test.pre.statistical.failure"),
             ):
-                with self.assertRaisesRegex(RuntimeError, "statistical prediction generation failed"):
-                    run_pre.run_pre_flow(config, None, "test-pre-statistical-failure")
+                self.assertEqual(run_pre.run_pre_flow(config, None, "test-pre-statistical-failure"), [path])
 
-            self.assertEqual(load_race_json(path)["prediction"], original_prediction)
-            simulate_paths.assert_not_called()
-            render_site.assert_not_called()
-            publish_site.assert_not_called()
+            self.assertEqual(load_race_json(path)["prediction"], ensure_race_payload({"prediction": original_prediction})["prediction"])
+            simulate_paths.assert_called_once()
+            render_site.assert_called_once()
+            publish_site.assert_called_once()
 
     def test_legacy_import_defaults_to_manual_and_cannot_overwrite(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -793,8 +785,8 @@ class FlowAndCompatibilityTests(unittest.TestCase):
                     )
 
             saved = load_race_json(imported)
-            self.assertEqual(saved["prediction"]["model_provider"], "manual")
-            self.assertEqual(saved["prediction"]["model_name"], "manual-import")
+            self.assertEqual(saved["prediction"][-1]["runtime_provider"], "manual")
+            self.assertEqual(saved["prediction"][-1]["model"], "manual-import")
 
 
 if __name__ == "__main__":

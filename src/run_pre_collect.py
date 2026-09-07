@@ -18,6 +18,7 @@ from collect import (
 )
 from predict import build_prediction_chat_input
 from utils import (
+    runtime_prediction_entry,
     atomic_write_json,
     load_config,
     load_race_json,
@@ -159,19 +160,9 @@ def export_prediction_chat_input(paths: list[Path], config: dict, job_name: str)
         if not payload.get("horses"):
             log_job(logger, job_name, payload["meta"].get("race_id"), "prediction chat_input skipped: horses missing")
             continue
-        if payload.get("prediction"):
+        if (runtime_prediction_entry(payload, config) or {}).get("general"):
             log_job(logger, job_name, payload["meta"].get("race_id"), "prediction input skipped: prediction already exists")
             continue
-        payload["prediction"] = None
-        initial_simulation = {
-            "value": {"pre": None, "post": None},
-            "dutching": {"pre": None, "post": None},
-            "variants": [],
-        }
-        for key, value in initial_simulation.items():
-            payload.setdefault("simulation", {}).setdefault(key, value)
-        payload["result"] = None
-        payload["evaluation"] = None
         payload.setdefault("meta", {})["post_status"] = "awaiting_result"
         set_race_status(payload, pre_status="awaiting_prediction")
         save_race_json(path, payload)
@@ -257,7 +248,7 @@ def run_pre_collect_flow(
     pending_count = sum(
         1
         for path in paths
-        if not (load_race_json(path) or {}).get("prediction")
+        if not (runtime_prediction_entry(load_race_json(path), config) or {}).get("general")
     )
     if pending_count and len(exported) < pending_count:
         raise SystemExit(f"No prediction chat_input exported for {target_date}")

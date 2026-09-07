@@ -44,6 +44,8 @@ def make_payload(*, predicted: bool, track: str, date: str, name: str) -> dict:
     prediction = None
     if predicted:
         prediction = {
+            "model_provider": "codex",
+            "model_name": "gpt-test",
             "horses": [
                 {"horse_number": 2, "win_probability": 0.4, "reason": "reason 2"},
                 {"horse_number": 1, "win_probability": 0.4, "reason": "reason 1"},
@@ -437,11 +439,11 @@ class RenderTests(unittest.TestCase):
         result_panels = result_soup.select(".result-section [data-ai-panel]")
         self.assertEqual(
             [panel["data-ai-method"] for panel in prediction_panels],
-            ["traditional", "statistical"],
+            ["general", "statistical"],
         )
         self.assertEqual(
             [panel["data-ai-method"] for panel in result_panels],
-            ["traditional", "statistical"],
+            ["general", "statistical"],
         )
         self.assertFalse(prediction_panels[0].has_attr("hidden"))
         self.assertTrue(prediction_panels[1].has_attr("hidden"))
@@ -521,7 +523,7 @@ class RenderTests(unittest.TestCase):
                     panel["data-ai-method"]
                     for panel in race_soup.select(".prediction-section [data-ai-panel]")
                 ],
-                ["traditional"],
+                ["general"],
             )
             self.assertIsNone(race_soup.select_one(".result-section"))
 
@@ -645,7 +647,7 @@ class RenderTests(unittest.TestCase):
                             "dutching": {"simulation_races": 5, "cumulative_profit": -9670},
                         },
                         "methods": {
-                            "traditional": {
+                            "general": {
                                 "overall": {
                                     "evaluated_races": 5,
                                     "top1_hits": 1,

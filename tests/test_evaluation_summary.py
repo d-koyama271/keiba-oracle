@@ -321,7 +321,7 @@ class EvaluationSummaryTests(unittest.TestCase):
         )
 
         self.assertEqual(summary["overall"]["evaluated_races"], 3)
-        traditional = summary["methods"]["traditional"]
+        traditional = summary["methods"]["general"]
         statistical = summary["methods"]["statistical"]
         self.assertEqual(traditional["overall"]["evaluated_races"], 3)
         self.assertEqual(statistical["overall"]["evaluated_races"], 3)
@@ -334,9 +334,9 @@ class EvaluationSummaryTests(unittest.TestCase):
 
         paired = summary["paired_comparison"]
         self.assertEqual(paired["compared_races"], 2)
-        self.assertEqual(paired["methods"]["traditional"]["top1_hits"], 1)
+        self.assertEqual(paired["methods"]["general"]["top1_hits"], 1)
         self.assertEqual(paired["methods"]["statistical"]["top1_hits"], 1)
-        self.assertEqual(paired["methods"]["traditional"]["average_log_loss"], 0.3)
+        self.assertEqual(paired["methods"]["general"]["average_log_loss"], 0.3)
         self.assertEqual(paired["methods"]["statistical"]["average_log_loss"], 0.25)
         self.assertEqual(paired["differences"]["average_log_loss"], -0.05)
         self.assertEqual(paired["differences"]["average_brier_score"], -0.005)
@@ -362,7 +362,7 @@ class EvaluationSummaryTests(unittest.TestCase):
         statistical_summary = build_evaluation_summary([statistical_only])
 
         self.assertEqual(
-            traditional_summary["methods"]["traditional"]["overall"]["evaluated_races"],
+            traditional_summary["methods"]["general"]["overall"]["evaluated_races"],
             1,
         )
         self.assertEqual(
@@ -515,7 +515,7 @@ class EvaluationSummaryTests(unittest.TestCase):
         self.assertEqual(statistical["dutching"]["simulation_races"], 1)
         self.assertEqual(statistical["dutching"]["cumulative_profit"], -400)
         self.assertEqual(
-            summary["methods"]["traditional"]["simulation"]["value"]["simulation_races"],
+            summary["methods"]["general"]["simulation"]["value"]["simulation_races"],
             0,
         )
 

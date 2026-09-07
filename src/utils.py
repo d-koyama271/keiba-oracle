@@ -11,9 +11,9 @@ from typing import Any
 import yaml
 
 JST = timezone(timedelta(hours=9), name="Asia/Tokyo")
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 REQUIRED_TOP_LEVEL_KEYS = ("meta", "race", "horses", "prediction", "simulation", "result", "evaluation")
-TRADITIONAL_PREDICTION_METHOD = "traditional"
+GENERAL_PREDICTION_METHOD = "general"
 STATISTICAL_PREDICTION_METHOD = "statistical"
 TRACK_CODE_TO_NAME = {
     "01": "札幌",
@@ -177,14 +177,10 @@ def default_race_payload(race_id: str) -> dict[str, Any]:
         },
         "race": {},
         "horses": [],
-        "prediction": None,
-        "simulation": {
-            "value": {"pre": None, "post": None},
-            "dutching": {"pre": None, "post": None},
-            "variants": [],
-        },
+        "prediction": [],
+        "simulation": [],
         "result": None,
-        "evaluation": None,
+        "evaluation": [],
     }
 
 
@@ -200,20 +196,62 @@ def ensure_race_payload(payload: dict[str, Any] | None, race_id: str | None = No
     merged["meta"]["schema_version"] = SCHEMA_VERSION
     if not merged["meta"].get("created_at"):
         merged["meta"]["created_at"] = now_jst_iso()
-    if source_schema_version < SCHEMA_VERSION and merged.get("evaluation") is None:
+    if source_schema_version < 9 and merged.get("evaluation") is None:
         merged["meta"]["post_status"] = "awaiting_result"
     merged["meta"]["updated_at"] = now_jst_iso()
-    simulation = merged.get("simulation") if isinstance(merged.get("simulation"), dict) else {}
-    value = simulation.get("value") if isinstance(simulation.get("value"), dict) else {}
-    dutching = simulation.get("dutching") if isinstance(simulation.get("dutching"), dict) else {}
-    variants = simulation.get("variants") if isinstance(simulation.get("variants"), list) else []
-    merged["simulation"] = {
-        "value": {"pre": value.get("pre"), "post": value.get("post")},
-        "dutching": {"pre": dutching.get("pre"), "post": dutching.get("post")},
-        "variants": [item for item in variants if isinstance(item, dict)],
-    }
-    if isinstance(simulation.get("quinella"), dict):
-        merged["simulation"]["quinella"] = simulation["quinella"]
+    if not isinstance(merged.get("prediction"), list):
+        legacy_prediction = merged.get("prediction") or {}
+        predictions = []
+        identities = {}
+        identity_fields = {"method", "model_provider", "model_name", "reasoning_effort", "variants"}
+
+        def entry_for(record):
+            identity = (record.get("model_provider"), record.get("model_name"))
+            if identity not in identities:
+                runtime, model = identity
+                entry = {
+                    "id": f"p{len(predictions) + 1}",
+                    "provider": "OpenAI" if runtime in ("codex", "openai") or str(model).startswith("gpt-") else None,
+                    "family": "GPT" if str(model).startswith("gpt-") else None,
+                    "model": model,
+                    "runtime_provider": runtime,
+                    "reasoning_effort": record.get("reasoning_effort"),
+                }
+                identities[identity] = entry
+                predictions.append(entry)
+            return identities[identity]
+
+        legacy_records = ([legacy_prediction] if legacy_prediction.get("horses") else []) + legacy_prediction.get("variants", [])
+        for record in legacy_records:
+            method = record.get("method", "traditional")
+            method = "general" if method == "traditional" else method
+            entry_for(record)[method] = {k: v for k, v in record.items() if k not in identity_fields}
+        for section in ("simulation", "evaluation"):
+            if isinstance(merged.get(section), list):
+                continue
+            legacy = merged.get(section) or {}
+            records = ([legacy] if any(k != "variants" for k in legacy) else []) + legacy.get("variants", [])
+            converted = []
+            for record in records:
+                method = record.get("method", "traditional")
+                method = "general" if method == "traditional" else method
+                identity = legacy_prediction if record is legacy else record
+                # Older evaluation variants sometimes omitted model metadata.
+                candidates = [e for e in predictions if method in e and all(identity.get(old) is None or e.get(new) == identity[old] for old, new in (("model_provider", "runtime_provider"), ("model_name", "model")))]
+                entry = candidates[0] if len(candidates) == 1 else entry_for(identity)
+                linked = next((e for e in converted if e["prediction_id"] == entry["id"]), None)
+                if linked is None:
+                    linked = {"prediction_id": entry["id"]}
+                    converted.append(linked)
+                content = {k: v for k, v in record.items() if k not in identity_fields}
+                if section == "simulation":
+                    linked[method] = {"win": {k: content[k] for k in ("value", "dutching") if k in content}}
+                    if "quinella" in content:
+                        linked[method]["quinella"] = content["quinella"]
+                else:
+                    linked[method] = content
+            merged[section] = converted
+        merged["prediction"] = predictions
     for key in REQUIRED_TOP_LEVEL_KEYS:
         merged.setdefault(key, base.get(key))
     return merged
@@ -253,39 +291,42 @@ def set_race_status(payload: dict[str, Any], *, pre_status: str | None = None, p
         meta["post_status"] = post_status
 
 
-def prediction_variants(payload: dict[str, Any]) -> list[dict[str, Any]]:
+def prediction_entries(payload: dict[str, Any]) -> list[dict[str, Any]]:
     prediction = payload.get("prediction")
-    variants = prediction.get("variants") if isinstance(prediction, dict) else None
-    return [item for item in variants if isinstance(item, dict)] if isinstance(variants, list) else []
+    return prediction if isinstance(prediction, list) else ensure_race_payload(payload)["prediction"]
 
 
-def evaluation_variants(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    evaluation = payload.get("evaluation")
-    variants = evaluation.get("variants") if isinstance(evaluation, dict) else None
-    return [item for item in variants if isinstance(item, dict)] if isinstance(variants, list) else []
+def prediction_for_method(payload: dict[str, Any], method: str = "general") -> dict[str, Any] | None:
+    return next((entry[method] for entry in prediction_entries(payload) if entry.get(method)), None)
 
 
-def simulation_variants(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    simulation = payload.get("simulation")
-    variants = simulation.get("variants") if isinstance(simulation, dict) else None
-    return [item for item in variants if isinstance(item, dict)] if isinstance(variants, list) else []
+def linked_record(payload: dict[str, Any], section: str, prediction_id: str) -> dict[str, Any]:
+    records = payload.get(section)
+    if not isinstance(records, list):
+        records = ensure_race_payload(payload)[section]
+    return next((record for record in records if record["prediction_id"] == prediction_id), {})
 
 
-def find_variant(
-    variants: list[dict[str, Any]],
-    method: str,
-    provider: str | None = None,
-    model: str | None = None,
-) -> dict[str, Any] | None:
-    for item in variants:
-        if item.get("method") != method:
-            continue
-        if provider is not None and item.get("model_provider") != provider:
-            continue
-        if model is not None and item.get("model_name") != model:
-            continue
-        return item
-    return None
+def runtime_prediction_entry(payload: dict[str, Any], config: dict[str, Any], create: bool = False) -> dict[str, Any] | None:
+    if payload is None:
+        return None
+    entries = payload["prediction"]
+    runtime, model = config.get("llm_provider"), config.get("llm_model")
+    metadata = {
+        "provider": "OpenAI" if runtime in ("codex", "openai") or str(model).startswith("gpt-") else None,
+        "family": "GPT" if str(model).startswith("gpt-") else None,
+        "model": model,
+        "runtime_provider": runtime,
+        "reasoning_effort": config.get("llm_reasoning_effort"),
+    }
+    entry = next((e for e in entries if all(e.get(key) == value for key, value in metadata.items())), None)
+    if entry is None and create:
+        number = 1
+        while any(e["id"] == f"p{number}" for e in entries):
+            number += 1
+        entry = {"id": f"p{number}", **metadata}
+        entries.append(entry)
+    return entry
 
 
 def race_json_path(

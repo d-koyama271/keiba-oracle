@@ -115,9 +115,9 @@ class BacktestTests(unittest.TestCase):
             self.assertEqual(value_mock.call_count, 2)
             self.assertEqual(dutching_mock.call_count, 2)
             self.assertEqual(post_mock.call_count, 4)
-            self.assertEqual(report["methods"]["traditional"]["value"]["target_races"], 1)
+            self.assertEqual(report["methods"]["general"]["value"]["target_races"], 1)
             self.assertEqual(report["methods"]["statistical"]["value"]["target_races"], 1)
-            self.assertEqual(report["methods"]["traditional"]["dutching"]["hit_races"], 1)
+            self.assertEqual(report["methods"]["general"]["dutching"]["hit_races"], 1)
             self.assertEqual(report["methods"]["statistical"]["dutching"]["hit_races"], 0)
 
     def test_zero_stake_is_target_but_not_purchase_and_missing_variant_is_excluded(self) -> None:
@@ -139,7 +139,7 @@ class BacktestTests(unittest.TestCase):
                 root,
             )
 
-            traditional = report["methods"]["traditional"]
+            traditional = report["methods"]["general"]
             self.assertEqual(traditional["value"]["target_races"], 1)
             self.assertEqual(traditional["value"]["purchased_races"], 0)
             self.assertEqual(traditional["dutching"]["target_races"], 1)

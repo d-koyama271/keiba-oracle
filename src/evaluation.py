@@ -16,7 +16,9 @@ from utils import (
     race_start_datetime,
     save_race_json,
     setup_logger,
-    prediction_variants,
+    prediction_entries,
+    prediction_for_method,
+    linked_record,
 )
 
 PROBABILITY_FLOOR = 1e-12
@@ -38,7 +40,7 @@ def ranked_prediction_probabilities(prediction: dict[str, Any]) -> list[dict[str
 
 
 def ranked_probabilities(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    return ranked_prediction_probabilities(payload.get("prediction") or {})
+    return ranked_prediction_probabilities(prediction_for_method(payload) or {})
 
 
 def winner_number(result: dict[str, Any]) -> int | None:
@@ -191,43 +193,26 @@ def build_prediction_evaluation(
     }
 
 
-def build_evaluation(payload: dict[str, Any]) -> dict[str, Any] | None:
-    simulation = payload.get("simulation") or {}
-    value_post = (simulation.get("value") or {}).get("post")
-    dutching_post = (simulation.get("dutching") or {}).get("post")
-    if value_post is None or dutching_post is None:
-        return None
-
-    evaluation = build_prediction_evaluation(payload, payload.get("prediction") or {})
-    if evaluation is None:
-        return None
-    evaluation["simulation_results"] = {
-        "value": simulation_summary(value_post),
-        "dutching": simulation_summary(dutching_post),
-    }
-
-    variant_evaluations = []
-    identity_keys = (
-        "method",
-        "model_provider",
-        "model_name",
-        "predicted_at",
-        "prompt_sha256",
-        "prediction_input_sha256",
-    )
-    for prediction in prediction_variants(payload):
-        variant_evaluation = build_prediction_evaluation(payload, prediction)
-        if variant_evaluation is None:
-            continue
-        variant_evaluations.append(
-            {
-                **{key: prediction.get(key) for key in identity_keys if prediction.get(key) is not None},
-                **variant_evaluation,
-            }
-        )
-    if variant_evaluations:
-        evaluation["variants"] = variant_evaluations
-    return evaluation
+def build_evaluation(payload: dict[str, Any]) -> list[dict[str, Any]] | None:
+    evaluations = []
+    for entry in prediction_entries(payload):
+        linked = {"prediction_id": entry["id"]}
+        simulation = linked_record(payload, "simulation", entry["id"])
+        for method in ("general", "statistical"):
+            prediction = entry.get(method)
+            if not prediction:
+                continue
+            evaluation = build_prediction_evaluation(payload, prediction)
+            if evaluation is None:
+                continue
+            win = simulation.get(method, {}).get("win", {})
+            posts = {name: (win.get(name) or {}).get("post") for name in ("value", "dutching")}
+            if method == "general" and all(post is not None for post in posts.values()):
+                evaluation["simulation_results"] = {name: simulation_summary(post) for name, post in posts.items()}
+            linked[method] = evaluation
+        if len(linked) > 1:
+            evaluations.append(linked)
+    return evaluations or None
 
 
 def evaluate_file(

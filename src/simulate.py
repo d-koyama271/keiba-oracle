@@ -14,22 +14,15 @@ from utils import (
     load_race_json,
     log_job,
     parse_target_date,
-    prediction_variants,
-    find_variant,
+    prediction_entries,
+    prediction_for_method,
+    ensure_race_payload,
     save_race_json,
-    simulation_variants,
+    linked_record,
     setup_logger,
 )
 
 EPSILON = 1e-12
-SIMULATION_VARIANT_IDENTITY_KEYS = (
-    "method",
-    "model_provider",
-    "model_name",
-    "predicted_at",
-    "prompt_sha256",
-    "prediction_input_sha256",
-)
 
 
 def round_ratio(value: float) -> float:
@@ -59,7 +52,7 @@ def prediction_rows(
     payload: dict[str, Any],
     prediction: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    prediction = prediction if prediction is not None else (payload.get("prediction") or {})
+    prediction = prediction if prediction is not None else (prediction_for_method(payload) or {})
     horse_lookup = {horse["horse_number"]: horse for horse in payload.get("horses", [])}
     rows = []
     for item in prediction.get("horses", []):
@@ -175,7 +168,7 @@ def calculate_value_pre(
     config: dict[str, Any],
     prediction: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
-    prediction = prediction if prediction is not None else payload.get("prediction")
+    prediction = prediction if prediction is not None else prediction_for_method(payload)
     if not prediction:
         return None
 
@@ -316,7 +309,7 @@ def calculate_dutching_pre(
     config: dict[str, Any],
     prediction: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
-    prediction = prediction if prediction is not None else payload.get("prediction")
+    prediction = prediction if prediction is not None else prediction_for_method(payload)
     if not prediction:
         return None
 
@@ -425,7 +418,7 @@ def calculate_value_post(
     payload: dict[str, Any],
     simulation: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
-    simulation = simulation if simulation is not None else (payload.get("simulation") or {})
+    simulation = simulation if simulation is not None else next((linked_record(payload, "simulation", e["id"]).get("general", {}).get("win", {}) for e in prediction_entries(payload) if e.get("general")), {})
     value = simulation.get("value") or {}
     return calculate_post(value.get("pre"), payload.get("result"))
 
@@ -434,49 +427,36 @@ def calculate_dutching_post(
     payload: dict[str, Any],
     simulation: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
-    simulation = simulation if simulation is not None else (payload.get("simulation") or {})
+    simulation = simulation if simulation is not None else next((linked_record(payload, "simulation", e["id"]).get("general", {}).get("win", {}) for e in prediction_entries(payload) if e.get("general")), {})
     dutching = simulation.get("dutching") or {}
     return calculate_post(dutching.get("pre"), payload.get("result"))
 
 
-def calculate_pre_simulation(payload: dict[str, Any], config: dict[str, Any]) -> dict[str, Any] | None:
-    prediction = payload.get("prediction")
-    if not prediction:
+def calculate_pre_simulation(payload: dict[str, Any], config: dict[str, Any]) -> list[dict[str, Any]] | None:
+    payload = ensure_race_payload(payload)
+    if not any(entry.get(method) for entry in payload["prediction"] for method in ("general", "statistical")):
         return None
-    existing = copy.deepcopy(payload.get("simulation") or {})
-    value_pre = (existing.get("value") or {}).get("pre") or calculate_value_pre(payload, config, prediction)
-    dutching_pre = (existing.get("dutching") or {}).get("pre") or calculate_dutching_pre(payload, config, prediction)
-    if value_pre is None or dutching_pre is None:
-        return None
-    existing.setdefault("value", {})["pre"] = value_pre
-    existing.setdefault("dutching", {})["pre"] = dutching_pre
-    existing["value"].setdefault("post", None)
-    existing["dutching"].setdefault("post", None)
-    variants = existing.setdefault("variants", [])
-    for variant_prediction in prediction_variants(payload):
-        saved = find_variant(variants, variant_prediction.get("method"), variant_prediction.get("model_provider"), variant_prediction.get("model_name")) or {}
-        variant_value_pre = (saved.get("value") or {}).get("pre") or calculate_value_pre(payload, config, variant_prediction)
-        variant_dutching_pre = (saved.get("dutching") or {}).get("pre") or calculate_dutching_pre(payload, config, variant_prediction)
-        if variant_value_pre is None or variant_dutching_pre is None:
-            continue
-        variant = saved or {
-            key: variant_prediction[key]
-            for key in SIMULATION_VARIANT_IDENTITY_KEYS
-            if variant_prediction.get(key) is not None
-        }
-        for name, pre in (("value", variant_value_pre), ("dutching", variant_dutching_pre)):
-            variant.setdefault(name, {})["pre"] = pre
-            variant[name].setdefault("post", None)
-        if not saved:
-            variants.append(variant)
-        if not any(((variant.get("quinella") or {}).get(name) or {}).get("pre") is not None for name in ("value", "dutching")):
-            quinella = calculate_quinella_pre(payload, config, variant_prediction)
-            if quinella is not None:
-                variant["quinella"] = quinella
-    if not any(((existing.get("quinella") or {}).get(name) or {}).get("pre") is not None for name in ("value", "dutching")):
-        quinella = calculate_quinella_pre(payload, config, prediction)
-        if quinella is not None:
-            existing["quinella"] = quinella
+    existing = copy.deepcopy(payload["simulation"])
+    for entry in payload["prediction"]:
+        saved = next((item for item in existing if item["prediction_id"] == entry["id"]), None)
+        if saved is None:
+            saved = {"prediction_id": entry["id"]}
+            existing.append(saved)
+        for method in ("general", "statistical"):
+            prediction = entry.get(method)
+            if not prediction:
+                continue
+            simulation = saved.setdefault(method, {})
+            win = simulation.setdefault("win", {})
+            for purchase, calculate in (("value", calculate_value_pre), ("dutching", calculate_dutching_pre)):
+                phases = win.setdefault(purchase, {"pre": None, "post": None})
+                if phases.get("pre") is None:
+                    phases["pre"] = calculate(payload, config, prediction)
+                phases.setdefault("post", None)
+            if not any(((simulation.get("quinella") or {}).get(name) or {}).get("pre") is not None for name in ("value", "dutching")):
+                quinella = calculate_quinella_pre(payload, config, prediction)
+                if quinella is not None:
+                    simulation["quinella"] = quinella
     return existing
 
 
@@ -498,41 +478,34 @@ def simulate_file(path: Path, config: dict[str, Any], mode: str, job_name: str, 
             logger,
             job_name,
             race_id,
-            f"simulation value/dutching pre updated ({len(simulation['variants']) + 1} predictions)",
+            f"simulation pre updated ({len(simulation)} AI entries)",
         )
         return True
 
-    value_post = calculate_value_post(payload)
-    dutching_post = calculate_dutching_post(payload)
-    if value_post is None or dutching_post is None:
+    updated = False
+    for entry in payload["simulation"]:
+        for method in ("general", "statistical"):
+            simulation = entry.get(method) or {}
+            win = simulation.get("win") or {}
+            for purchase in ("value", "dutching"):
+                phases = win.get(purchase) or {}
+                post = calculate_post(phases.get("pre"), payload.get("result"))
+                if post is not None:
+                    phases["post"] = post
+                    updated = True
+            quinella = simulation.get("quinella")
+            if not quinella or quinella.get("status") != "ready":
+                continue
+            for purchase in ("value", "dutching"):
+                if quinella[purchase].get("post") is None:
+                    quinella[purchase]["post"] = calculate_quinella_post(quinella[purchase].get("pre"), payload.get("result"))
+                updated = updated or quinella[purchase].get("post") is not None
+            quinella["post_status"] = "settled" if all(quinella[m].get("post") is not None for m in ("value", "dutching")) else "awaiting_payouts"
+    if not updated:
         log_job(logger, job_name, race_id, "simulation post skipped: pre/result missing")
         return False
-    payload["simulation"]["value"]["post"] = value_post
-    payload["simulation"]["dutching"]["post"] = dutching_post
-    updated_variants = 0
-    for variant in simulation_variants(payload):
-        variant_value_post = calculate_value_post(payload, variant)
-        variant_dutching_post = calculate_dutching_post(payload, variant)
-        if variant_value_post is None or variant_dutching_post is None:
-            continue
-        variant["value"]["post"] = variant_value_post
-        variant["dutching"]["post"] = variant_dutching_post
-        updated_variants += 1
-    for simulation in [payload["simulation"], *simulation_variants(payload)]:
-        quinella = simulation.get("quinella")
-        if not quinella or quinella.get("status") != "ready":
-            continue
-        for method in ("value", "dutching"):
-            if quinella[method].get("post") is None:
-                quinella[method]["post"] = calculate_quinella_post(quinella[method].get("pre"), payload.get("result"))
-        quinella["post_status"] = "settled" if all(quinella[m].get("post") is not None for m in ("value", "dutching")) else "awaiting_payouts"
     save_race_json(path, payload)
-    log_job(
-        logger,
-        job_name,
-        race_id,
-        f"simulation value/dutching post updated ({updated_variants + 1} predictions)",
-    )
+    log_job(logger, job_name, race_id, "simulation post updated")
     return True
 
 

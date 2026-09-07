@@ -10,7 +10,7 @@ from typing import Any
 from llm_client import LLMClient
 from utils import (
     STATISTICAL_PREDICTION_METHOD,
-    find_variant,
+    runtime_prediction_entry,
     list_race_files,
     load_config,
     load_race_json,
@@ -26,7 +26,6 @@ from utils import (
     save_race_json,
     set_race_status,
     setup_logger,
-    prediction_variants,
 )
 
 STATISTICAL_PROMPT_FILE = "prompt_prediction_statistical.txt"
@@ -35,9 +34,6 @@ STATISTICAL_EXCLUDED_FIELD_NAMES = {
     "source_url",
 }
 STATISTICAL_AUDIT_FIELDS = (
-    "method",
-    "model_provider",
-    "model_name",
     "predicted_at",
     "prompt_sha256",
     "prediction_input_sha256",
@@ -337,11 +333,7 @@ def generate_prediction(
     prediction = normalize_prediction_response(response, horses)
     if config["llm_provider"] == "codex" and not prediction.get("optional_summary"):
         raise ValueError("Codex prediction summary is missing")
-    prediction["model_provider"] = config["llm_provider"]
-    prediction["model_name"] = config["llm_model"]
     prediction["predicted_at"] = now_jst_iso()
-    if method is not None:
-        prediction["method"] = method
     if prompt_template is not None:
         prediction["prompt_sha256"] = sha256_text(prompt_template)
         prediction["prediction_input_sha256"] = prediction_input_sha256(prediction_input)
@@ -366,8 +358,9 @@ def predict_file(
         return False
 
     try:
-        if payload.get("prediction"):
-            normalize_prediction_response(payload["prediction"], payload["horses"])
+        existing = (runtime_prediction_entry(payload, config) or {}).get("general")
+        if existing:
+            normalize_prediction_response(existing, payload["horses"])
             log_job(logger, job_name, race_id, "prediction reused: existing prediction is valid")
             return True
 
@@ -380,7 +373,7 @@ def predict_file(
             "prompt_prediction.txt",
             root,
         )
-        payload["prediction"] = prediction
+        runtime_prediction_entry(payload, config, create=True)["general"] = prediction
         set_race_status(payload, pre_status="prediction_imported")
         save_race_json(path, payload)
         log_job(logger, job_name, race_id, "prediction updated")
@@ -403,18 +396,13 @@ def predict_statistical_file(
         return False
 
     race_id = payload["meta"].get("race_id")
-    prediction = payload.get("prediction")
-    if not isinstance(prediction, dict) or not payload.get("horses"):
-        log_job(logger, job_name, race_id, "statistical prediction skipped: traditional prediction or horses missing")
+    if not payload.get("horses"):
+        log_job(logger, job_name, race_id, "statistical prediction skipped: horses missing")
         return False
 
     try:
-        existing = find_variant(
-            prediction_variants(payload),
-            STATISTICAL_PREDICTION_METHOD,
-            config["llm_provider"],
-            config["llm_model"],
-        )
+        entry = runtime_prediction_entry(payload, config)
+        existing = (entry or {}).get("statistical")
         if existing is not None:
             normalize_prediction_response(existing, payload["horses"])
             validate_statistical_prediction_text(existing)
@@ -439,11 +427,7 @@ def predict_statistical_file(
             statistical["prediction_input_sha256"] = prediction_input_sha256(prediction_input)
         validate_statistical_prediction_text(statistical)
         validate_statistical_prediction_metadata(statistical)
-        variants = prediction.get("variants")
-        if not isinstance(variants, list):
-            variants = []
-            prediction["variants"] = variants
-        variants.append(statistical)
+        runtime_prediction_entry(payload, config, create=True)["statistical"] = statistical
         save_race_json(path, payload)
         log_job(logger, job_name, race_id, "statistical prediction updated")
         return True
@@ -496,12 +480,8 @@ def build_pending_statistical_inputs(
         if not payload:
             continue
         race_id = str((payload.get("meta") or {}).get("race_id") or "")
-        existing = find_variant(
-            prediction_variants(payload),
-            STATISTICAL_PREDICTION_METHOD,
-            config["llm_provider"],
-            config["llm_model"],
-        )
+        entry = runtime_prediction_entry(payload, config)
+        existing = (entry or {}).get("statistical")
         if existing is not None:
             continue
         ensure_statistical_prediction_is_pre_race(payload)

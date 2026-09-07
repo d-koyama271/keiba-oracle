@@ -18,7 +18,7 @@ import run_post_collect  # noqa: E402
 import watcher  # noqa: E402
 from evaluation import build_evaluation, evaluate_file  # noqa: E402
 from render import build_environment, build_race_context  # noqa: E402
-from utils import load_race_json, save_race_json  # noqa: E402
+from utils import ensure_race_payload, load_race_json, save_race_json  # noqa: E402
 
 
 def make_payload(*, missing_odds: bool = False) -> dict:
@@ -108,43 +108,43 @@ class EvaluationMetricTests(unittest.TestCase):
         evaluation = build_evaluation(make_payload())
 
         self.assertEqual(
-            evaluation["winner"],
+            evaluation[0]["general"]["winner"],
             {"horse_number": 2, "predicted_probability": 0.4, "predicted_rank": 2},
         )
-        self.assertAlmostEqual(evaluation["metrics"]["log_loss"], -math.log(0.4), places=6)
-        self.assertEqual(evaluation["metrics"]["brier_score"], 0.186667)
-        self.assertFalse(evaluation["metrics"]["top1_hit"])
-        self.assertTrue(evaluation["metrics"]["top3_hit"])
-        self.assertTrue(evaluation["metrics"]["top5_hit"])
+        self.assertAlmostEqual(evaluation[0]["general"]["metrics"]["log_loss"], -math.log(0.4), places=6)
+        self.assertEqual(evaluation[0]["general"]["metrics"]["brier_score"], 0.186667)
+        self.assertFalse(evaluation[0]["general"]["metrics"]["top1_hit"])
+        self.assertTrue(evaluation[0]["general"]["metrics"]["top3_hit"])
+        self.assertTrue(evaluation[0]["general"]["metrics"]["top5_hit"])
 
-        market = evaluation["market_baseline"]
+        market = evaluation[0]["general"]["market_baseline"]
         self.assertTrue(market["available"])
         self.assertEqual(market["winner_rank"], 2)
         self.assertEqual(market["winner_probability"], 0.263158)
         self.assertEqual(
             market["model_log_loss_difference"],
-            round(evaluation["metrics"]["log_loss"] - market["log_loss"], 6),
+            round(evaluation[0]["general"]["metrics"]["log_loss"] - market["log_loss"], 6),
         )
         self.assertEqual(
             market["model_brier_difference"],
-            round(evaluation["metrics"]["brier_score"] - market["brier_score"], 6),
+            round(evaluation[0]["general"]["metrics"]["brier_score"] - market["brier_score"], 6),
         )
         self.assertTrue(market["odds_recorded_after_start"])
         self.assertIsNotNone(market["comparison_note"])
 
         self.assertEqual(
-            evaluation["simulation_results"]["value"],
+            evaluation[0]["general"]["simulation_results"]["value"],
             {"total_stake": 0, "total_return": 0, "profit": 0, "roi": None, "hit": False},
         )
         self.assertEqual(
-            evaluation["simulation_results"]["dutching"],
+            evaluation[0]["general"]["simulation_results"]["dutching"],
             {"total_stake": 1000, "total_return": 4000, "profit": 3000, "roi": 3.0, "hit": True},
         )
 
     def test_market_is_unavailable_when_any_odds_are_missing(self) -> None:
         evaluation = build_evaluation(make_payload(missing_odds=True))
 
-        self.assertEqual(evaluation["market_baseline"], {"available": False})
+        self.assertEqual(evaluation[0]["general"]["market_baseline"], {"available": False})
 
     def test_statistical_variant_uses_same_metrics_without_simulation_results(self) -> None:
         payload = make_payload()
@@ -165,11 +165,9 @@ class EvaluationMetricTests(unittest.TestCase):
         ]
 
         evaluation = build_evaluation(payload)
-        statistical = evaluation["variants"][0]
+        statistical = evaluation[-1]["statistical"]
 
-        self.assertEqual(statistical["method"], "statistical")
-        self.assertEqual(statistical["model_provider"], "codex")
-        self.assertEqual(statistical["model_name"], "gpt-test")
+        self.assertEqual(evaluation[-1]["prediction_id"], "p2")
         self.assertEqual(
             statistical["winner"],
             {"horse_number": 2, "predicted_probability": 0.6, "predicted_rank": 1},
@@ -181,7 +179,7 @@ class EvaluationMetricTests(unittest.TestCase):
         self.assertEqual(statistical["metrics"]["brier_score"], 0.08)
         self.assertTrue(statistical["market_baseline"]["available"])
         self.assertNotIn("simulation_results", statistical)
-        self.assertIn("simulation_results", evaluation)
+        self.assertIn("simulation_results", evaluation[0]["general"])
 
     def test_evaluate_file_preserves_prediction_result_and_pre(self) -> None:
         payload = make_payload()
@@ -202,10 +200,10 @@ class EvaluationMetricTests(unittest.TestCase):
             finally:
                 close_logger("test-evaluation")
 
-        self.assertEqual(loaded["prediction"], prediction_before)
+        self.assertEqual(loaded["prediction"], ensure_race_payload({"prediction": prediction_before})["prediction"])
         self.assertEqual(loaded["result"], result_before)
-        self.assertEqual(loaded["simulation"]["value"]["pre"], pre_before["value"])
-        self.assertEqual(loaded["simulation"]["dutching"]["pre"], pre_before["dutching"])
+        self.assertEqual(loaded["simulation"][0]["general"]["win"]["value"]["pre"], pre_before["value"])
+        self.assertEqual(loaded["simulation"][0]["general"]["win"]["dutching"]["pre"], pre_before["dutching"])
         self.assertIsNotNone(loaded["evaluation"])
         self.assertNotIn("feedback", loaded)
 
@@ -279,7 +277,7 @@ class EvaluationFlowTests(unittest.TestCase):
         )
         rendered = build_environment(ROOT).get_template("race.html.j2").render(**context)
         soup = BeautifulSoup(rendered, "html.parser")
-        evaluation_grid = soup.select_one("#result-traditional .metric-grid")
+        evaluation_grid = soup.select_one("#result-general .metric-grid")
 
         self.assertIsNotNone(evaluation_grid)
         self.assertGreater(len(evaluation_grid.find_all("div", recursive=False)), 0)

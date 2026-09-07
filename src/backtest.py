@@ -9,15 +9,15 @@ from typing import Any
 from simulate import calculate_dutching_pre, calculate_post, calculate_value_pre
 from utils import (
     STATISTICAL_PREDICTION_METHOD,
-    TRADITIONAL_PREDICTION_METHOD,
+    GENERAL_PREDICTION_METHOD,
     list_race_files,
     load_config,
     load_race_json,
-    prediction_variants,
+    prediction_for_method,
 )
 
 METHOD_LABELS = {
-    TRADITIONAL_PREDICTION_METHOD: "総合AI予想",
+    GENERAL_PREDICTION_METHOD: "総合AI予想",
     STATISTICAL_PREDICTION_METHOD: "統計重視予想",
 }
 SIMULATION_LABELS = {
@@ -43,23 +43,6 @@ def empty_metrics() -> dict[str, Any]:
         "profit": 0,
         "return_rate": None,
     }
-
-
-def prediction_for_method(
-    payload: dict[str, Any],
-    method: str,
-) -> dict[str, Any] | None:
-    if method == TRADITIONAL_PREDICTION_METHOD:
-        prediction = payload.get("prediction")
-        return prediction if isinstance(prediction, dict) else None
-    return next(
-        (
-            item
-            for item in prediction_variants(payload)
-            if item.get("method") == method
-        ),
-        None,
-    )
 
 
 def has_complete_result(payload: dict[str, Any]) -> bool:

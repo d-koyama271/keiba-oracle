@@ -231,13 +231,13 @@
       <p class="small">ChatGPTが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。</p>
     </div>
 {% set method_summaries = evaluation_summary.get("methods", {}) if evaluation_summary else {} %}
-{% set traditional_summary = method_summaries.get("traditional") %}
+{% set general_summary = method_summaries.get("general") %}
 {% set statistical_summary = method_summaries.get("statistical") %}
-{% set traditional_overall = traditional_summary.get("overall") if traditional_summary else (evaluation_summary.get("overall") if evaluation_summary else none) %}
-{% set traditional_simulation = traditional_summary.get("simulation") if traditional_summary else (evaluation_summary.get("simulation") if evaluation_summary else none) %}
+{% set general_overall = general_summary.get("overall") if general_summary else (evaluation_summary.get("overall") if evaluation_summary else none) %}
+{% set general_simulation = general_summary.get("simulation") if general_summary else (evaluation_summary.get("simulation") if evaluation_summary else none) %}
 {% set statistical_overall = statistical_summary.get("overall") if statistical_summary else none %}
 {% set statistical_simulation = statistical_summary.get("simulation") if statistical_summary else none %}
-{{ performance_panel("総合AI予想の予測成績", prediction_method_descriptions.get("traditional", ""), traditional_overall, traditional_simulation) }}
+{{ performance_panel("総合AI予想の予測成績", prediction_method_descriptions.get("general", ""), general_overall, general_simulation) }}
 {{ performance_panel("統計重視予想の予測成績", prediction_method_descriptions.get("statistical", ""), statistical_overall, statistical_simulation) }}
     <div class="panel">
       <h2>レース一覧</h2>

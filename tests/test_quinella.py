@@ -40,7 +40,7 @@ CAPTURED = "2026-09-05T12:00:00+09:00"
 def payload_with_odds() -> dict:
     payload = make_payload([(1, .5, 3.0), (2, .3, 5.0), (3, .2, 8.0)])
     payload["race"].update(date="2026-09-05", start_time="15:30")
-    payload["prediction"].update(method="traditional", model_provider="codex", model_name="test", predicted_at=CAPTURED)
+    payload["prediction"].update(method="general", model_provider="codex", model_name="test", predicted_at=CAPTURED)
     variant = copy.deepcopy(payload["prediction"])
     variant["method"] = "statistical"
     for horse, probability in zip(variant["horses"], [.2, .3, .5]):
@@ -56,7 +56,7 @@ def payload_with_odds() -> dict:
             {"horse_numbers": [2, 3], "odds": 8.0},
         ],
     }
-    return payload
+    return ensure_race_payload(payload)
 
 
 def result_html(positions=(1, 2, 3), pairs=((1, 2),), amounts=(700,), *, mobile=False) -> str:
@@ -129,13 +129,13 @@ class OddsTests(unittest.TestCase):
                     simulation = calculate_pre_simulation(payload, config)
                 self.assertEqual(payload["prediction"], before["prediction"])
                 self.assertEqual(payload["horses"], before["horses"])
-                for new, old in zip((simulation, *simulation["variants"]),
-                                    (before["simulation"], *before["simulation"]["variants"])):
+                for new, old in zip((simulation[0]["general"], simulation[0]["statistical"]),
+                                    (before["simulation"][0]["general"], before["simulation"][0]["statistical"])):
                     self.assertEqual(old["quinella"]["status"], "unavailable")
                     self.assertEqual(new["quinella"]["status"], "ready")
                     self.assertEqual(new["quinella"]["odds_snapshot"], snapshot)
                     for method in ("value", "dutching"):
-                        self.assertEqual(new[method], old[method])
+                        self.assertEqual(new["win"][method], old["win"][method])
                         self.assertIsNotNone(new["quinella"][method]["pre"])
 
     def test_invalid_odds_reject_the_entire_pair_snapshot(self):
@@ -171,7 +171,7 @@ class ProbabilityAndPurchaseTests(unittest.TestCase):
         payload["horses"][0]["win_odds"] = None
         before = copy.deepcopy(payload)
         for exponent in (1.0, .81):
-            rows = harville_probabilities(payload["horses"], payload["prediction"], exponent)
+            rows = harville_probabilities(payload["horses"], payload["prediction"][0]["general"], exponent)
             self.assertAlmostEqual(sum(row["probability"] for row in rows), 1)
             self.assertEqual([r["horse_numbers"] for r in rows], [[1, 2], [1, 3], [2, 3]])
             if exponent == 1:
@@ -181,14 +181,14 @@ class ProbabilityAndPurchaseTests(unittest.TestCase):
     def test_invalid_prediction_is_not_normalized_or_imputed(self):
         for values in ([1, 0, 0], [.5, .3, .1], [-.1, .6, .5], [float("nan"), .3, .2], [True, 0, 0]):
             payload = payload_with_odds()
-            for horse, value in zip(payload["prediction"]["horses"], values):
+            for horse, value in zip(payload["prediction"][0]["general"]["horses"], values):
                 horse["win_probability"] = value
             with self.subTest(values=values), self.assertRaises(ValueError):
-                harville_probabilities(payload["horses"], payload["prediction"], .81)
+                harville_probabilities(payload["horses"], payload["prediction"][0]["general"], .81)
         payload = payload_with_odds()
-        payload["prediction"]["horses"][0]["horse_number"] = 8
+        payload["prediction"][0]["general"]["horses"][0]["horse_number"] = 8
         with self.assertRaises(ValueError):
-            harville_probabilities(payload["horses"], payload["prediction"], .81)
+            harville_probabilities(payload["horses"], payload["prediction"][0]["general"], .81)
 
     def test_value_reuses_kelly_allocator_without_forced_unit(self):
         settings = {"ev_threshold": 1.10, "kelly_fraction": .8}
@@ -338,31 +338,31 @@ class FlowAndSummaryTests(unittest.TestCase):
         old_config = copy.deepcopy(config)
         old_config["simulation"].pop("quinella")
         payload["simulation"] = calculate_pre_simulation(payload, old_config)
-        for simulation in [payload["simulation"], *payload["simulation"]["variants"]]:
+        for simulation in [payload["simulation"][0]["general"], payload["simulation"][0]["statistical"]]:
             for method in ("value", "dutching"):
-                simulation[method]["post"] = {"saved_history": True}
+                simulation["win"][method]["post"] = {"saved_history": True}
         before = copy.deepcopy(payload)
         config["simulation"]["value"]["kelly_fraction"] = .01
         with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
             updated = calculate_pre_simulation(payload, config)
-        for old, new in zip([before["simulation"], *before["simulation"]["variants"]], [updated, *updated["variants"]]):
+        for old, new in zip([before["simulation"][0]["general"], before["simulation"][0]["statistical"]], [updated[0]["general"], updated[0]["statistical"]]):
             self.assertEqual(new["quinella"]["status"], "ready")
             for method in ("value", "dutching"):
-                self.assertEqual(new[method], old[method])
+                self.assertEqual(new["win"][method], old["win"][method])
         self.assertEqual(payload, before)
 
     @patch("run_pre_collect.setup_logger", return_value=logging.getLogger("test-quinella-export"))
     def test_pre_input_initialization_keeps_quinella_and_excludes_it_from_input(self, _logger):
         config, payload = load_config(), payload_with_odds()
-        payload["prediction"] = None
-        payload["simulation"]["quinella"] = {"status": "unavailable", "reason": "odds_unavailable"}
+        payload["prediction"][0]["general"] = None
+        payload["simulation"][0]["general"]["quinella"] = {"status": "unavailable", "reason": "odds_unavailable"}
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             path = root / "race.json"
             save_race_json(path, payload)
             with patch("run_pre_collect.outbox_chat_input_dir", return_value=root / "input"):
                 exported = export_prediction_chat_input([path], config, "test-export")
-            self.assertEqual(load_race_json(path)["simulation"]["quinella"], payload["simulation"]["quinella"])
+            self.assertEqual(load_race_json(path)["simulation"][0]["general"]["quinella"], payload["simulation"][0]["general"]["quinella"])
             self.assertNotIn("quinella_odds", json.loads(exported[0].read_text(encoding="utf-8"))["race"])
 
     def test_both_ai_pre_freeze_and_old_config_compatibility(self):
@@ -371,18 +371,18 @@ class FlowAndSummaryTests(unittest.TestCase):
         with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
             simulation = calculate_pre_simulation(payload, config)
         self.assertEqual(payload, before)
-        for sim in (simulation, simulation["variants"][0]):
+        for sim in (simulation[0]["general"], simulation[0]["statistical"]):
             self.assertEqual(sim["quinella"]["status"], "ready")
             for method in ("value", "dutching"):
                 self.assertEqual(sim["quinella"][method]["pre"]["budget"], config["simulation"]["budget"])
                 self.assertEqual(sim["quinella"][method]["pre"]["settings"], config["simulation"]["quinella"][method])
-        self.assertNotEqual(simulation["quinella"]["probabilities"], simulation["variants"][0]["quinella"]["probabilities"])
+        self.assertNotEqual(simulation[0]["general"]["quinella"]["probabilities"], simulation[0]["statistical"]["quinella"]["probabilities"])
         payload["simulation"] = simulation
         config["simulation"]["budget"] = 9000
         payload["race"]["quinella_odds"]["pairs"][0]["odds"] = 1000
         with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
             self.assertEqual(calculate_pre_simulation(payload, config), simulation)
-        del payload["simulation"]["quinella"]
+        del payload["simulation"][0]["general"]["quinella"]
         del config["simulation"]["quinella"]
         self.assertNotIn("quinella", calculate_pre_simulation(payload, config))
 
@@ -392,12 +392,12 @@ class FlowAndSummaryTests(unittest.TestCase):
             payload = payload_with_odds()
             payload["result"] = result
             with patch("quinella.now_jst", return_value=parse_jst_datetime(now)):
-                self.assertIsNone(calculate_quinella_pre(payload, config, payload["prediction"]))
+                self.assertIsNone(calculate_quinella_pre(payload, config, payload["prediction"][0]["general"]))
         for changes in ({"pairs": []}, {"api_status": "result"}, {"available": False}, {"official_datetime": "2026-09-05 15:40:00"}):
             payload = payload_with_odds()
             payload["race"]["quinella_odds"].update(changes)
             with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
-                pre = calculate_quinella_pre(payload, config, payload["prediction"])
+                pre = calculate_quinella_pre(payload, config, payload["prediction"][0]["general"])
             self.assertEqual(pre["status"], "unavailable")
             self.assertIsNone(pre["value"]["pre"])
 
@@ -418,9 +418,9 @@ class FlowAndSummaryTests(unittest.TestCase):
                 del config["simulation"]["quinella"]["harville_lambda"]
             with self.subTest(exponent=exponent), patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
                 simulation = calculate_pre_simulation(payload, config)
-            self.assertIsNotNone(simulation["value"]["pre"])
-            self.assertEqual(simulation["quinella"]["status"], "unavailable")
-            self.assertIsNone(simulation["quinella"]["value"]["pre"])
+            self.assertIsNotNone(simulation[0]["general"]["win"]["value"]["pre"])
+            self.assertEqual(simulation[0]["general"]["quinella"]["status"], "unavailable")
+            self.assertIsNone(simulation[0]["general"]["quinella"]["value"]["pre"])
 
     @patch("simulate.setup_logger", return_value=logging.getLogger("test-quinella-post"))
     def test_save_load_and_post_preserve_pre_and_prediction(self, _logger):
@@ -435,10 +435,10 @@ class FlowAndSummaryTests(unittest.TestCase):
             self.assertTrue(simulate_file(path, config, "post", "test-quinella-pending", root))
             pending = load_race_json(path)
             self.assertIsNotNone(build_evaluation(pending))
-            for sim in [pending["simulation"], *pending["simulation"]["variants"]]:
+            for sim in [pending["simulation"][0]["general"], pending["simulation"][0]["statistical"]]:
                 self.assertEqual(sim["quinella"]["post_status"], "awaiting_payouts")
                 for method in ("value", "dutching"):
-                    self.assertIsNotNone(sim[method]["post"])
+                    self.assertIsNotNone(sim["win"][method]["post"])
                     self.assertIsNone(sim["quinella"][method]["post"])
             pending["result"] = parse_result(result_html())
             save_race_json(path, pending)
@@ -446,16 +446,16 @@ class FlowAndSummaryTests(unittest.TestCase):
             saved = load_race_json(path)
             self.assertEqual(saved["prediction"], before["prediction"])
             self.assertEqual(saved["horses"], before["horses"])
-            for old, new in zip([before["simulation"], *before["simulation"]["variants"]], [saved["simulation"], *saved["simulation"]["variants"]]):
+            for old, new in zip([before["simulation"][0]["general"], before["simulation"][0]["statistical"]], [saved["simulation"][0]["general"], saved["simulation"][0]["statistical"]]):
                 for method in ("value", "dutching"):
-                    self.assertEqual(new[method]["pre"], old[method]["pre"])
+                    self.assertEqual(new["win"][method]["pre"], old["win"][method]["pre"])
                     self.assertEqual(new["quinella"][method]["pre"], old["quinella"][method]["pre"])
                     self.assertEqual(new["quinella"][method]["post"]["status"], "settled")
             saved["result"]["payouts"]["quinella"] = []
             save_race_json(path, saved)
             simulate_file(path, config, "post", "test-quinella-retry", root)
             retried = load_race_json(path)
-            self.assertEqual(retried["simulation"]["quinella"], saved["simulation"]["quinella"])
+            self.assertEqual(retried["simulation"][0]["general"]["quinella"], saved["simulation"][0]["general"]["quinella"])
 
     def test_aggregate_settled_only_independent_ai_and_refund_not_hit(self):
         payload = payload_with_odds()
@@ -463,11 +463,11 @@ class FlowAndSummaryTests(unittest.TestCase):
         bought = {"status": "purchased", "total_stake": 100, "selections": [{"horse_numbers": [1, 2], "stake": 100}]}
         refunded = {"status": "purchased", "total_stake": 100, "selections": [{"horse_numbers": [1, 3], "stake": 100}]}
         empty = {"status": "no_purchase", "total_stake": 0, "selections": []}
-        payload["simulation"]["quinella"] = {"status": "ready", "dutching": {"pre": bought, "post": calculate_quinella_post(bought, result)}, "value": {"pre": empty, "post": calculate_quinella_post(empty, result)}}
-        payload["simulation"]["variants"] = [{"method": "statistical", "model_provider": "codex", "model_name": "test", "quinella": {"status": "ready", "dutching": {"pre": refunded, "post": calculate_quinella_post(refunded, result)}}}]
+        payload["simulation"][0]["general"]["quinella"] = {"status": "ready", "dutching": {"pre": bought, "post": calculate_quinella_post(bought, result)}, "value": {"pre": empty, "post": calculate_quinella_post(empty, result)}}
+        payload["simulation"][0]["statistical"] = {"quinella": {"status": "ready", "dutching": {"pre": refunded, "post": calculate_quinella_post(refunded, result)}}}
         pending = copy.deepcopy(payload)
-        pending["simulation"]["quinella"]["dutching"]["post"] = None
-        pending["simulation"]["variants"] = []
+        pending["simulation"][0]["general"]["quinella"]["dutching"]["post"] = None
+        pending["simulation"][0].pop("statistical")
         summary = build_evaluation_summary([payload, pending, payload_with_odds()])
         traditional = summary["simulation"]["quinella"]["dutching"]
         statistical = summary["methods"]["statistical"]["simulation"]["quinella"]["dutching"]
@@ -484,15 +484,15 @@ class HtmlAndBrowserCalculationTests(unittest.TestCase):
         payload["race"]["weather"] = "晴"
         with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
             payload["simulation"] = calculate_pre_simulation(payload, load_config())
-        for simulation in [payload["simulation"], *payload["simulation"]["variants"]]:
-            simulation["dutching"]["pre"]["settings"]["require_profit_if_hit"] = True
+        for simulation in [payload["simulation"][0]["general"], payload["simulation"][0]["statistical"]]:
+            simulation["win"]["dutching"]["pre"]["settings"]["require_profit_if_hit"] = True
             simulation["quinella"]["dutching"]["pre"]["settings"]["require_profit_if_hit"] = True
         before = copy.deepcopy(payload)
         rendered = build_environment(ROOT).get_template("race.html.j2").render(**build_race_context(payload))
         soup = BeautifulSoup(rendered, "html.parser")
         for tooltip in soup.select(".term-tooltip"):
             tooltip.decompose()
-        for ai in ("traditional", "statistical"):
+        for ai in ("general", "statistical"):
             win_panels = soup.select(f"#purchase-{ai}-win .simulation-panel")
             pair_panels = soup.select(f"#purchase-{ai}-quinella .simulation-panel")
             self.assertEqual(
@@ -528,8 +528,8 @@ class HtmlAndBrowserCalculationTests(unittest.TestCase):
                 with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
                     payload["simulation"] = calculate_pre_simulation(payload, load_config())
                 payload["result"] = parse_result(result_html())
-                for simulation in [payload["simulation"], *payload["simulation"]["variants"]]:
-                    for ticket in (simulation, simulation["quinella"]):
+                for simulation in [payload["simulation"][0]["general"], payload["simulation"][0]["statistical"]]:
+                    for ticket in (simulation["win"], simulation["quinella"]):
                         for method in ("value", "dutching"):
                             ticket[method]["post"] = {
                                 "total_stake": stake, "total_refund": refund, "total_return": refund,
@@ -537,7 +537,7 @@ class HtmlAndBrowserCalculationTests(unittest.TestCase):
                                 "selections": [{"horse_number": 1, "horse_numbers": [1, 2], "stake": stake, "hit": hit, "refund": refund, "payout": 0, "return": refund}] if stake else [],
                             }
                 soup = BeautifulSoup(template.render(**build_race_context(payload), page_kind="result"), "html.parser")
-                for ai in ("traditional", "statistical"):
+                for ai in ("general", "statistical"):
                     result_method = soup.select_one(f"#result-{ai}")
                     self.assertEqual(
                         [tab.get_text(strip=True) for tab in result_method.select(":scope > .ticket-tabs .ai-method-tab")],
@@ -605,18 +605,18 @@ class HtmlAndBrowserCalculationTests(unittest.TestCase):
             pre_path = stage / "races/2026-09-05/nakayama_11r.html"
             soup = BeautifulSoup(pre_path.read_text(encoding="utf-8"), "html.parser")
             self.assertFalse(pre_path.with_name("nakayama_11r_result.html").exists())
-            for ai in ("traditional", "statistical"):
+            for ai in ("general", "statistical"):
                 self.assertFalse(soup.select_one(f'#purchase-{ai}-win').has_attr("hidden"))
                 self.assertTrue(soup.select_one(f'#purchase-{ai}-quinella').has_attr("hidden"))
                 self.assertEqual(len(soup.select(f'#purchase-{ai}-quinella [data-quinella-method]')), 2)
             data = json.loads(soup.select_one("#custom-simulator-data").string)
-            self.assertEqual(data["methods"]["traditional"]["quinella"]["value"]["settings"]["kelly_fraction"], .8)
-            self.assertEqual(data["methods"]["traditional"]["quinella"]["pairs"][0]["odds"], original["race"]["quinella_odds"]["pairs"][0]["odds"])
-            self.assertEqual([r["probability"] for r in data["methods"]["traditional"]["quinella"]["pairs"]], [r["probability"] for r in original["simulation"]["quinella"]["probabilities"]])
+            self.assertEqual(data["methods"]["general"]["quinella"]["value"]["settings"]["kelly_fraction"], .8)
+            self.assertEqual(data["methods"]["general"]["quinella"]["pairs"][0]["odds"], original["race"]["quinella_odds"]["pairs"][0]["odds"])
+            self.assertEqual([r["probability"] for r in data["methods"]["general"]["quinella"]["pairs"]], [r["probability"] for r in original["simulation"][0]["general"]["quinella"]["probabilities"]])
             payload["result"] = parse_result(result_html())
-            for simulation in [payload["simulation"], *payload["simulation"]["variants"]]:
+            for simulation in [payload["simulation"][0]["general"], payload["simulation"][0]["statistical"]]:
                 for method in ("value", "dutching"):
-                    simulation[method]["post"] = calculate_post(simulation[method]["pre"], payload["result"])
+                    simulation["win"][method]["post"] = calculate_post(simulation["win"][method]["pre"], payload["result"])
             payload["evaluation"] = build_evaluation(payload)
             save_race_json(path, payload)
             stored = path.read_bytes()

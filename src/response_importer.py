@@ -8,6 +8,8 @@ from typing import Any
 from predict import normalize_prediction_response
 from utils import (
     find_race_file_by_race_id,
+    prediction_for_method,
+    runtime_prediction_entry,
     load_config,
     load_race_json,
     log_job,
@@ -41,7 +43,7 @@ def import_prediction_response(path: Path, config: dict[str, Any], job_name: str
     race_payload = load_race_json(race_path)
     if not race_payload:
         raise FileNotFoundError(f"race json missing: {race_path}")
-    if race_payload.get("prediction"):
+    if prediction_for_method(race_payload, "general"):
         raise ValueError(f"prediction already exists for race_id={race_id}")
 
     response = payload.get("prediction", payload)
@@ -54,7 +56,8 @@ def import_prediction_response(path: Path, config: dict[str, Any], job_name: str
         response.get("model_name") or response_meta.get("model_name") or "manual-import"
     )
     normalized["predicted_at"] = now_jst_iso()
-    race_payload["prediction"] = normalized
+    imported_config = {**config, "llm_provider": normalized.pop("model_provider"), "llm_model": normalized.pop("model_name"), "llm_reasoning_effort": None}
+    runtime_prediction_entry(race_payload, imported_config, create=True)["general"] = normalized
     set_race_status(race_payload, pre_status="prediction_imported")
     save_race_json(race_path, race_payload)
     log_job(logger, job_name, race_id, f"prediction imported <- {path}")

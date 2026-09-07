@@ -117,24 +117,22 @@ python src/run_post.py --date 2026-04-14
   "meta": {},
   "race": {},
   "horses": [],
-  "prediction": null,
-  "simulation": {
-    "value": {
-      "pre": null,
-      "post": null
-    },
-    "dutching": {
-      "pre": null,
-      "post": null
-    },
-    "variants": []
-  },
+  "prediction": [],
+  "simulation": [],
   "result": null,
-  "evaluation": null
+  "evaluation": []
 }
 ```
 
-`schema_version` は `9` です。既存の `prediction` 本体は総合AI予想（内部識別子 `traditional`）のまま維持し、追加方式は `prediction.variants` に保存します。統計重視予想は `method: statistical` と `model_provider` / `model_name` で識別します。既存predictionに `method` がない場合は総合AI予想として扱い、過去JSONへのバックフィルは行いません。追加方式の購入シミュレーションは `simulation.variants`、結果評価は `evaluation.variants` へ同じ識別情報とともに保存します。結果取得時に全出走馬の確定単勝オッズが揃った場合のみ、予想時点の `horses[].win_odds` を変更せず `result.final_win_odds` へ保存します。馬連の追加キーがない旧JSONも読み込み可能で、一括移行は行いません。
+`meta.schema_version` は `10` です。`prediction[]` の各要素はレース内参照ID（現在は `p1`）とAI情報、独立した `general`（総合AI予想）／`statistical`（統計重視予想）を持ちます。片方のみの生成・表示・シミュレーション・評価も可能で、生成順には依存しません。AI情報は親に一度だけ保存し、`provider` は `OpenAI`、`family` は `GPT`、`model`／`runtime_provider`／`reasoning_effort` はそれぞれ設定の `llm_model`／`llm_provider`／`llm_reasoning_effort` に対応します。AI名やモデル名をJSONキーや参照IDには使用しません。
+
+`simulation[]` と `evaluation[]` は `prediction_id` で予想へ対応付けます。simulationは `general`／`statistical` → `win`／`quinella` → `value`／`dutching` → `pre`／`post` の階層、evaluationは `general`／`statistical` 配下に従来の評価を保持します。
+
+予想IDはAI実行設定のスナップショットを識別します。`provider`／`family`／`model`／`runtime_provider`／`reasoning_effort` がすべて一致するentryを再利用し、対象方式が未保存ならそこへ追加します。一致するentryがない場合のみ新しいIDを作成します。予想日時やプロンプト・入力のハッシュはIDの同一性判定に使用しません。
+
+schema v9以前は読み込み時に、本体を `general`、`variants` 内の統計重視予想を `statistical` へ正規化します。予想・simulation・evaluationを同じIDへ対応付け、保存済み確率・オッズ・計算結果・評価値は維持します。旧データに記録されていないAI情報は現在設定で補完しません。読み込みだけでは元ファイルを変更せず、通常処理で保存する場合にv10形式になります。一括移行・バックフィルは行いません。
+
+結果取得時に全出走馬の確定単勝オッズが揃った場合のみ、予想時点の `horses[].win_odds` を変更せず `result.final_win_odds` へ保存します。馬連の追加キーがない旧JSONも読み込み可能です。
 
 `race` には取得時点の `weather` と正規化した `class_grade` を保存します。各馬の `past_runs` は対象レース自身を除外した直近5走で、走破タイム、ペース、馬体重、当時の人気・オッズなどの詳細を含みます。
 
@@ -153,9 +151,11 @@ python src/run_post.py --date 2026-04-14
 5. `render.py` で予想ページと index を生成
 6. `publish.py` で `public/` を更新
 
+各レースで片方の予想方式だけ成功した場合も、成功した方式のシミュレーション・表示・公開を継続します。両方式とも失敗したレースは処理対象から除外し、全レースが失敗した場合は公開せずエラーで終了します。
+
 Codex は一時作業ディレクトリ内の読み取り専用・構造化出力モードで実行され、プロンプトに埋め込んだ確定済み予想入力 JSON だけを予想材料にします。Web、リポジトリ内ファイル、公開済み HTML、結果、過去の別予想、評価データは参照させません。
 
-正常に保存した新規予想には `model_provider`、`model_name`、`predicted_at` に加え、実際に使用したプロンプトと安定化した予想入力 JSON の `prompt_sha256`、`prediction_input_sha256` を記録します。過去予想へは補完しません。通常フローを再実行しても、有効な既存予想は再生成・上書きせず、そのままシミュレーション以降へ渡します。
+正常に保存した新規予想の `general`／`statistical` には `horses`、`optional_summary`、`predicted_at` に加え、実際に使用したプロンプトと安定化した予想入力 JSON の `prompt_sha256`、`prediction_input_sha256` を記録します。過去予想へは補完しません。通常フローの再実行では、現在のAI実行設定に一致するentryの有効な予想を再利用します。設定変更時も以前のentryは上書きしません。
 
 統計重視予想は `config/prompt_prediction_statistical.txt` を使用します。今回・過去走のオッズ、人気、オッズ取得元・時刻・URL、市場由来の順位・確率を再帰的に除外し、レース条件、過去成績、走破タイム、着差、通過順、上がり、馬体重、`career_summaries` などの客観データだけを渡します。`prediction`、`simulation`、`result`、`evaluation` は入力に含めません。結果取得済みまたは発走済みのレースへ統計予想を後付けしません。
 
@@ -170,18 +170,18 @@ Codex は一時作業ディレクトリ内の読み取り専用・構造化出�
 
 ## 購入シミュレーション
 
-単勝の購入シミュレーションは次の2方式です。総合AI予想のレース前想定と収支は従来どおり `simulation.*.pre/post`、統計重視予想分は `simulation.variants` に保存します。レース結果を取得しても各 `pre` は変更しません。
+単勝の購入シミュレーションは次の2方式です。レース前想定と収支は `simulation[].general.win`／`simulation[].statistical.win` の各購入方式の `pre/post` に保存します。レース結果を取得しても各 `pre` は変更しません。
 
 - `value`: 予測勝率と単勝オッズから EV と fractional Kelly を計算します。理論購入額が予算を超える場合だけ比例縮小し、余った予算の強制配分は行いません。
 - `dutching`（画面表示: 単勝分配方式）: 予測勝率上位を1頭から設定上限まで評価し、逆オッズ配分を購入単位へ丸めます。カバー確率、グループ期待値、的中時最低利益を満たす候補からグループ期待値が最大の頭数を採用します。
 
-予想ページではAI予想と正式シミュレーションを総合AI予想／統計重視予想のタブで切り替えます。購入シミュレーション・カスタム・購入結果には、その下に単勝／馬連の券種タブがあります。初期表示は総合AI予想・単勝です。AI予想表は券種にかかわらず各馬の1着確率を表示します。カスタムでは選択中のAI・券種の保存済み確率、オッズ、設定を使い、自動選択に加え確認用の固定頭数・固定組数を指定できます。入力値と計算結果はrace JSON、正式な収支、localStorage、Cookieへ保存されません。馬連の確率はPythonで算出した保存値を埋め込み、ブラウザで再推定しません。
+予想ページではAI予想と正式シミュレーションを総合AI予想／統計重視予想のタブで切り替えます。購入シミュレーション・カスタム・購入結果には、その下に単勝／馬連の券種タブがあります。初期表示は総合AI予想（統計重視のみの場合は統計重視予想）・単勝です。AI予想表は券種にかかわらず各馬の1着確率を表示します。カスタムでは選択中のAI・券種の保存済み確率、オッズ、設定を使い、自動選択に加え確認用の固定頭数・固定組数を指定できます。入力値と計算結果はrace JSON、正式な収支、localStorage、Cookieへ保存されません。馬連の確率はPythonで算出した保存値を埋め込み、ブラウザで再推定しません。
 
 ### 馬連
 
 総合AI／統計重視 × 単勝／馬連 × 分配／期待値の8通りは、各々が共通予算上限3,000円・購入単位100円の独立した仮想シミュレーションです。8通りへ予算を分割したり、1つの実運用収支へ合算したりしません。
 
-`simulation.quinella` の既定条件は次の通りです。最適化済みの設定ではありません。
+`config/app.yaml` の `simulation.quinella` の条件は次の通りです。最適化済みの設定ではありません。
 
 | 項目 | 値 |
 | --- | ---: |
@@ -204,7 +204,7 @@ P(i,j) = p_i * p_j^lambda / sum(k != i, p_k^lambda)
 
 全ペア合計を許容誤差1e-6以内で検証し、単勝オッズによる対象除外や候補内の再正規化は行いません。馬連valueは既存のEV・Kelly計算と比例縮小・購入単位切り捨てを再利用します。馬連dutchingは確率上位1～設定上限組数を評価し、各組へ1単位を配分後、想定払戻が最小の組へ順に残りを配ります。確率同率や払戻同額は馬番ペアの数値昇順です。条件適合候補をグループEV最大、カバー確率最大、組数最小の順で選びます。最低利益率の基準は実際の合計購入額です。
 
-保存先は `simulation.quinella` と `simulation.variants[].quinella` です。`probabilities`、`harville_lambda`、`odds_snapshot` を方式間で共有し、その配下に `value.pre/post` と `dutching.pre/post` を持ちます。preには予算・購入単位・設定・ペアごとの購入値・候補評価を保持します。`status: ready` の中でpreの `purchased` / `no_purchase` を区別し、計算不可は `status: unavailable` と理由を保存してpreを `null` にします。結果待ちは `post_status: awaiting_result`、払戻未確定は `awaiting_payouts`、確定後は `settled` です。保存済みpreは単勝・馬連とも再実行で上書きしません。新規馬連preは発走前・結果未取得時に限定し、過去へのバックフィルは行いません。
+保存先は `simulation[].general.quinella` と `simulation[].statistical.quinella` です。`probabilities`、`harville_lambda`、`odds_snapshot` を方式間で共有し、その配下に `value.pre/post` と `dutching.pre/post` を持ちます。preには予算・購入単位・設定・ペアごとの購入値・候補評価を保持します。`status: ready` の中でpreの `purchased` / `no_purchase` を区別し、計算不可は `status: unavailable` と理由を保存してpreを `null` にします。結果待ちは `post_status: awaiting_result`、払戻未確定は `awaiting_payouts`、確定後は `settled` です。保存済みpreは単勝・馬連とも再実行で上書きしません。新規馬連preは発走前・結果未取得時に限定し、過去へのバックフィルは行いません。
 
 結果ページの馬連払戻DOMを組番と金額の対応を維持して読み、`result.payouts.quinella` に `horse_numbers` と `payout_per_100` を保存します。同着時は全払戻組を照合し、`result.quinella_settlement` に完全性・確定した取消／除外の馬番を保持します。中止・失格は返還しません。postは実払戻一覧だけで的中を判定し、当初購入額 `total_stake`、返還 `total_refund`、的中払戻＋返還 `total_return`、損益 `profit` を保存します。`roi` は損益／当初購入額（購入0円なら0）です。払戻や返還情報が不完全ならpostは `null` のままとし、外れとして確定せず、単勝結果の処理を継続します。保存済みの正常な馬連結果・postを取得失敗で消しません。全面中止など払戻一覧を確認できないケースも未確定として残します。
 
@@ -212,20 +212,20 @@ P(i,j) = p_i * p_j^lambda / sum(k != i, p_k^lambda)
 
 ## 予測評価
 
-結果取得後、各race JSONの `evaluation` に次を保存します。
+結果取得後、各race JSONの `evaluation[].general`／`evaluation[].statistical` に次を保存します。
 
 - 勝ち馬の予測確率と予測順位。順位は勝率降順、同率は馬番昇順です。
 - `log_loss`: `-log(max(勝ち馬確率, 1e-12))`
 - `brier_score`: 全出走馬の二乗誤差の平均
 - `top1_hit` / `top3_hit` / `top5_hit`
 - 単勝オッズの逆数を全馬で正規化した市場ベースライン。差分はモデル指標から市場指標を引きます。
-- `simulation.value.post` と `simulation.dutching.post` の収支要約
+- 総合AI予想の `win.value.post` と `win.dutching.post` の収支要約
 
-トップレベルの `evaluation` は総合AI予想の評価です。統計重視予想には同じ勝ち馬確率・順位、Top1/3/5、Log Loss、Brier Score、市場ベースライン比較を計算して `evaluation.variants` へ保存します。統計重視予想の評価にはシミュレーション収支を混在させません。
+総合AI予想と統計重視予想に同じ勝ち馬確率・順位、Top1/3/5、Log Loss、Brier Score、市場ベースライン比較を独立して計算し、対応する `prediction_id` の `general`／`statistical` へ保存します。統計重視予想の評価にはシミュレーション収支を混在させません。
 
 有効な単勝オッズが全馬分そろわない場合、`market_baseline.available` は `false` です。発走後に記録されたオッズを使用した比較には `odds_recorded_after_start: true` と注記を保存します。購入なしの評価用ROIは `null` です。
 
-`data/evaluation_summary.json` は正常な `evaluation` があるrace JSONだけから再生成する派生データです。既存のトップレベル集計と `simulation` は総合AI予想の意味を維持します。`methods.traditional` と `methods.statistical` に方式別のTop1・Top3・Top5成績、Log Loss・Brier Score、確率校正、条件別精度を保存し、各方式の `simulation` は保存済みpostだけを集計します。`paired_comparison` は両方式の評価がそろう同一レースだけを母数とし、Log Loss・Brier Score差は `statistical - traditional`（負なら統計重視予想が優位）です。race JSONへは書き戻さず、発走後オッズのレースは正式な市場比較から除外します。任意に再集計する場合は次を実行します。
+`data/evaluation_summary.json` は正常な `evaluation` があるrace JSONだけから再生成する派生データです。既存のトップレベル集計と `simulation` は総合AI予想の意味を維持します。`methods.general` と `methods.statistical` に方式別のTop1・Top3・Top5成績、Log Loss・Brier Score、確率校正、条件別精度を保存し、各方式の `simulation` は保存済みpostだけを集計します。`paired_comparison` は両方式の評価がそろう同一レース・同一 `prediction_id` だけを母数とし、Log Loss・Brier Score差は `statistical - general`（負なら統計重視予想が優位）です。race JSONへは書き戻さず、発走後オッズのレースは正式な市場比較から除外します。任意に再集計する場合は次を実行します。
 
 ```bash
 python src/evaluation_summary.py

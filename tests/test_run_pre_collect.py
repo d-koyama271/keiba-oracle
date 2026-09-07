@@ -621,11 +621,7 @@ class MultipleRaceGenerationTests(unittest.TestCase):
                 self.assertEqual(chat_input["meta"]["race_id"], payload["meta"]["race_id"])
                 self.assertEqual(chat_input["race"], payload["race"])
                 self.assertEqual(chat_input["horses"], payload["horses"])
-                self.assertEqual(payload["simulation"], {
-                    "value": {"pre": None, "post": None},
-                    "dutching": {"pre": None, "post": None},
-                    "variants": [],
-                })
+                self.assertEqual(payload["simulation"], [])
                 other_id = next(race_id for race_id in race_ids if race_id != payload["meta"]["race_id"])
                 self.assertNotIn(other_id, json.dumps(chat_input, ensure_ascii=False))
 

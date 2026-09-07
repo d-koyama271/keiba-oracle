@@ -30,7 +30,7 @@ from simulate import (  # noqa: E402
     select_best_dutching,
     simulate_file,
 )
-from utils import load_config, load_race_json, save_race_json  # noqa: E402
+from utils import ensure_race_payload, load_config, load_race_json, save_race_json  # noqa: E402
 
 
 def make_config(
@@ -91,6 +91,8 @@ def make_payload(rows: list[tuple[int, float, float]]) -> dict:
             for number, _, odds in rows
         ],
         "prediction": {
+            "model_provider": "codex",
+            "model_name": "gpt-test",
             "horses": [
                 {
                     "horse_number": number,
@@ -155,14 +157,15 @@ class ValueSimulationTests(unittest.TestCase):
                 ],
             }
         ]
+        payload = ensure_race_payload(payload)
         payload["simulation"] = calculate_pre_simulation(payload, config)
 
         self.assertEqual(
-            payload["simulation"]["value"]["pre"]["settings"]["kelly_fraction"],
+            payload["simulation"][0]["general"]["win"]["value"]["pre"]["settings"]["kelly_fraction"],
             0.75,
         )
         self.assertEqual(
-            payload["simulation"]["variants"][0]["value"]["pre"]["settings"]["kelly_fraction"],
+            payload["simulation"][0]["statistical"]["win"]["value"]["pre"]["settings"]["kelly_fraction"],
             0.75,
         )
 
@@ -524,17 +527,17 @@ class PostAndStructureTests(unittest.TestCase):
             try:
                 self.assertTrue(simulate_file(path, config, "pre", logger_name, root))
                 pre_payload = load_race_json(path)
-                self.assertIsNotNone(pre_payload["simulation"]["value"]["pre"])
-                self.assertIsNotNone(pre_payload["simulation"]["dutching"]["pre"])
-                self.assertIsNone(pre_payload["simulation"]["value"]["post"])
-                self.assertIsNone(pre_payload["simulation"]["dutching"]["post"])
+                self.assertIsNotNone(pre_payload["simulation"][0]["general"]["win"]["value"]["pre"])
+                self.assertIsNotNone(pre_payload["simulation"][0]["general"]["win"]["dutching"]["pre"])
+                self.assertIsNone(pre_payload["simulation"][0]["general"]["win"]["value"]["post"])
+                self.assertIsNone(pre_payload["simulation"][0]["general"]["win"]["dutching"]["post"])
 
                 pre_payload["result"] = make_result(1, 400, [1, 2, 3, 4, 5])
                 save_race_json(path, pre_payload)
                 self.assertTrue(simulate_file(path, config, "post", logger_name, root))
                 post_payload = load_race_json(path)
-                self.assertIsNotNone(post_payload["simulation"]["value"]["post"])
-                self.assertIsNotNone(post_payload["simulation"]["dutching"]["post"])
+                self.assertIsNotNone(post_payload["simulation"][0]["general"]["win"]["value"]["post"])
+                self.assertIsNotNone(post_payload["simulation"][0]["general"]["win"]["dutching"]["post"])
             finally:
                 logger = logging.getLogger(f"keiba_oracle.{logger_name}")
                 for handler in list(logger.handlers):
@@ -569,16 +572,15 @@ class PostAndStructureTests(unittest.TestCase):
             try:
                 self.assertTrue(simulate_file(path, config, "pre", logger_name, root))
                 pre_payload = load_race_json(path)
-                variants = pre_payload["simulation"]["variants"]
+                variants = [pre_payload["simulation"][0]["statistical"]["win"]]
                 self.assertEqual(len(variants), 1)
-                self.assertEqual(variants[0]["method"], "statistical")
                 self.assertIsNotNone(variants[0]["value"]["pre"])
                 self.assertIsNotNone(variants[0]["dutching"]["pre"])
                 self.assertIsNone(variants[0]["value"]["post"])
                 self.assertIsNone(variants[0]["dutching"]["post"])
                 all_pre_before = {
-                    "traditional_value": copy.deepcopy(pre_payload["simulation"]["value"]["pre"]),
-                    "traditional_dutching": copy.deepcopy(pre_payload["simulation"]["dutching"]["pre"]),
+                    "traditional_value": copy.deepcopy(pre_payload["simulation"][0]["general"]["win"]["value"]["pre"]),
+                    "traditional_dutching": copy.deepcopy(pre_payload["simulation"][0]["general"]["win"]["dutching"]["pre"]),
                     "statistical_value": copy.deepcopy(variants[0]["value"]["pre"]),
                     "statistical_dutching": copy.deepcopy(variants[0]["dutching"]["pre"]),
                 }
@@ -587,11 +589,11 @@ class PostAndStructureTests(unittest.TestCase):
                 save_race_json(path, pre_payload)
                 self.assertTrue(simulate_file(path, config, "post", logger_name, root))
                 post_payload = load_race_json(path)
-                statistical = post_payload["simulation"]["variants"][0]
+                statistical = post_payload["simulation"][0]["statistical"]["win"]
                 self.assertIsNotNone(statistical["value"]["post"])
                 self.assertIsNotNone(statistical["dutching"]["post"])
-                self.assertEqual(post_payload["simulation"]["value"]["pre"], all_pre_before["traditional_value"])
-                self.assertEqual(post_payload["simulation"]["dutching"]["pre"], all_pre_before["traditional_dutching"])
+                self.assertEqual(post_payload["simulation"][0]["general"]["win"]["value"]["pre"], all_pre_before["traditional_value"])
+                self.assertEqual(post_payload["simulation"][0]["general"]["win"]["dutching"]["pre"], all_pre_before["traditional_dutching"])
                 self.assertEqual(statistical["value"]["pre"], all_pre_before["statistical_value"])
                 self.assertEqual(statistical["dutching"]["pre"], all_pre_before["statistical_dutching"])
             finally:
@@ -661,33 +663,35 @@ class PostAndStructureTests(unittest.TestCase):
 
     def test_new_json_structure_post_and_reload(self) -> None:
         payload = make_payload(DUTCHING_ROWS)
+        payload = ensure_race_payload(payload)
         payload["simulation"] = calculate_pre_simulation(payload, make_config(budget=1000))
         pre_before = copy.deepcopy(payload["simulation"])
         payload["result"] = make_result(1, 400, [1, 2, 3, 4, 5])
-        payload["simulation"]["value"]["post"] = calculate_value_post(payload)
-        payload["simulation"]["dutching"]["post"] = calculate_dutching_post(payload)
+        payload["simulation"][0]["general"]["win"]["value"]["post"] = calculate_value_post(payload)
+        payload["simulation"][0]["general"]["win"]["dutching"]["post"] = calculate_dutching_post(payload)
 
-        self.assertEqual(set(payload["simulation"]), {"value", "dutching", "variants"})
+        self.assertEqual(set(payload["simulation"][0]), {"prediction_id", "general"})
         self.assertNotIn("pre", payload["simulation"])
         self.assertNotIn("post", payload["simulation"])
-        self.assertEqual(payload["simulation"]["value"]["pre"], pre_before["value"]["pre"])
-        self.assertEqual(payload["simulation"]["dutching"]["pre"], pre_before["dutching"]["pre"])
+        self.assertEqual(payload["simulation"][0]["general"]["win"]["value"]["pre"], pre_before[0]["general"]["win"]["value"]["pre"])
+        self.assertEqual(payload["simulation"][0]["general"]["win"]["dutching"]["pre"], pre_before[0]["general"]["win"]["dutching"]["pre"])
 
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "race.json"
             save_race_json(path, payload)
             loaded = load_race_json(path)
-        self.assertEqual(set(loaded["simulation"]), {"value", "dutching", "variants"})
-        self.assertIsNotNone(loaded["simulation"]["value"]["post"])
-        self.assertIsNotNone(loaded["simulation"]["dutching"]["post"])
+        self.assertEqual(set(loaded["simulation"][0]["general"]["win"]), {"value", "dutching"})
+        self.assertIsNotNone(loaded["simulation"][0]["general"]["win"]["value"]["post"])
+        self.assertIsNotNone(loaded["simulation"][0]["general"]["win"]["dutching"]["post"])
 
 class HtmlAndJavaScriptTests(unittest.TestCase):
     def full_payload(self) -> dict:
         payload = make_payload(DUTCHING_ROWS)
+        payload = ensure_race_payload(payload)
         payload["simulation"] = calculate_pre_simulation(payload, make_config(budget=1000))
         payload["result"] = make_result(1, 400, [1, 2, 3, 4, 5])
-        payload["simulation"]["value"]["post"] = calculate_value_post(payload)
-        payload["simulation"]["dutching"]["post"] = calculate_dutching_post(payload)
+        payload["simulation"][0]["general"]["win"]["value"]["post"] = calculate_value_post(payload)
+        payload["simulation"][0]["general"]["win"]["dutching"]["post"] = calculate_dutching_post(payload)
         payload["evaluation"] = build_evaluation(payload)
         return payload
 
@@ -727,6 +731,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
                 ],
             }
         ]
+        payload = ensure_race_payload(payload)
         payload["simulation"] = calculate_pre_simulation(payload, make_config(budget=1000))
 
         rendered = self.render_page(payload)
@@ -735,11 +740,11 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         simulation_panels = soup.select('[id^="simulation-"][data-ai-panel]')
         self.assertEqual(
             [panel["data-ai-method"] for panel in prediction_panels],
-            ["traditional", "statistical"],
+            ["general", "statistical"],
         )
         self.assertEqual(
             [panel["data-ai-method"] for panel in simulation_panels],
-            ["traditional", "statistical"],
+            ["general", "statistical"],
         )
         self.assertFalse(prediction_panels[0].has_attr("hidden"))
         self.assertTrue(prediction_panels[1].has_attr("hidden"))
@@ -797,11 +802,11 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         self.assertIsNotNone(result_section.select_one(".result-method-tabs"))
         self.assertEqual(
             [panel["data-ai-method"] for panel in result_panels],
-            ["traditional", "statistical"],
+            ["general", "statistical"],
         )
 
         embedded = json.loads(soup.select_one("#custom-simulator-data").string)
-        self.assertEqual(set(embedded["methods"]), {"traditional", "statistical"})
+        self.assertEqual(set(embedded["methods"]), {"general", "statistical"})
         self.assertEqual(
             [row["win_probability"] for row in embedded["methods"]["statistical"]["horses"]],
             statistical_probabilities,
@@ -845,21 +850,21 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         self.assertTrue(method_options[0].has_attr("selected"))
         self.assertEqual(
             int(custom.select_one('input[name="budget"]')["value"]),
-            payload["simulation"]["value"]["pre"]["budget"],
+            payload["simulation"][0]["general"]["win"]["value"]["pre"]["budget"],
         )
         self.assertEqual(
             float(custom.select_one('input[name="ev_threshold"]')["value"]),
-            payload["simulation"]["value"]["pre"]["settings"]["ev_threshold"],
+            payload["simulation"][0]["general"]["win"]["value"]["pre"]["settings"]["ev_threshold"],
         )
         self.assertEqual(
             float(custom.select_one('input[name="min_profit_rate"]')["value"]) / 100,
-            payload["simulation"]["dutching"]["pre"]["settings"]["min_profit_rate"],
+            payload["simulation"][0]["general"]["win"]["dutching"]["pre"]["settings"]["min_profit_rate"],
         )
 
         embedded = json.loads(soup.select_one("#custom-simulator-data").string)
         self.assertEqual(set(embedded), {"stake_unit", "horses", "methods", "display"})
         self.assertTrue(all(set(item) == {"horse_number", "win_probability", "win_odds"} for item in embedded["horses"]))
-        self.assertEqual(set(embedded["methods"]), {"traditional"})
+        self.assertEqual(set(embedded["methods"]), {"general"})
         self.assertNotIn("localStorage", rendered)
         self.assertNotIn("document.cookie", rendered)
         self.assertNotIn("fetch(", rendered)
@@ -898,7 +903,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
 
     def test_legacy_dutching_settings_render_without_recalculation(self) -> None:
         payload = self.full_payload()
-        del payload["simulation"]["dutching"]["pre"]["settings"]["min_profit_rate"]
+        del payload["simulation"][0]["general"]["win"]["dutching"]["pre"]["settings"]["min_profit_rate"]
         simulation_before = copy.deepcopy(payload["simulation"])
 
         rendered = build_environment(ROOT).get_template("race.html.j2").render(
@@ -989,6 +994,7 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         payload = make_payload(
             [(1, 0.02, 60.0), (2, 0.39, 3.0), (3, 0.2, 4.0), (4, 0.1, None)]
         )
+        payload = ensure_race_payload(payload)
         payload["simulation"] = calculate_pre_simulation(payload, make_config())
         simulation_before = copy.deepcopy(payload["simulation"])
 
@@ -1021,9 +1027,10 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
         reasons = []
         for payload, config in cases:
             with self.subTest(config=config):
+                payload = ensure_race_payload(payload)
                 payload["simulation"] = calculate_pre_simulation(payload, config)
                 context = build_race_context(payload)
-                self.assertEqual(payload["simulation"]["value"]["pre"]["selections"], [])
+                self.assertEqual(payload["simulation"][0]["general"]["win"]["value"]["pre"]["selections"], [])
                 self.assertTrue(context["value_no_purchase_reason"])
                 reasons.append(context["value_no_purchase_reason"])
 
@@ -1140,11 +1147,11 @@ class HtmlAndJavaScriptTests(unittest.TestCase):
             make_config(min_group_expected_value=2.0),
         )
         payload["result"] = make_result(1, 150, [1, 2])
-        payload["simulation"]["value"]["post"] = calculate_value_post(payload)
-        payload["simulation"]["dutching"]["post"] = calculate_dutching_post(payload)
+        payload["simulation"][0]["general"]["win"]["value"]["post"] = calculate_value_post(payload)
+        payload["simulation"][0]["general"]["win"]["dutching"]["post"] = calculate_dutching_post(payload)
         rendered = self.render_page(payload, "result")
         soup = BeautifulSoup(rendered, "html.parser")
-        simulation_panels = soup.select('#settlement-traditional-win > .result-panel')
+        simulation_panels = soup.select('#settlement-general-win > .result-panel')
 
         self.assertEqual(len(simulation_panels), 2)
         for panel in simulation_panels:

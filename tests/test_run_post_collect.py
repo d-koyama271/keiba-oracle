@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import collect  # noqa: E402
 import run_post_collect  # noqa: E402
-from utils import atomic_write_json, load_race_json  # noqa: E402
+from utils import ensure_race_payload, atomic_write_json, load_race_json  # noqa: E402
 
 
 def race_payload(race_id: str, horse_count: int = 14) -> dict:
@@ -73,7 +73,7 @@ class ResultCollectionTests(unittest.TestCase):
             self.assertIn("race_id=202604020207", fetch.call_args.args[1])
             self.assertEqual(after["result"], result)
             for key in ("race", "horses", "prediction", "simulation"):
-                self.assertEqual(after[key], before[key])
+                self.assertEqual(after[key], ensure_race_payload(before)[key])
 
     def test_incomplete_result_is_not_saved(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
