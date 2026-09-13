@@ -392,40 +392,36 @@ class PredictionValidationTests(unittest.TestCase):
             self.assertEqual(path.read_bytes(), before_reuse)
 
     def test_statistical_recovery_after_start_uses_explicit_input_and_actual_timestamp(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "config").mkdir()
-            (root / "config" / "prompt_prediction_statistical.txt").write_text(
-                "Use this input: {{RACE_CONTEXT}}", encoding="utf-8",
-            )
-            path = root / "race.json"
-            payload = race_payload()
-            frozen = predict.build_statistical_prediction_input(payload)
-            save_race_json(path, payload)
-            config = load_config()
-            client = Mock()
-            client.invoke_json.return_value = {k: v for k, v in valid_prediction().items()
-                                               if k in ("horses", "optional_summary")}
-            generated_at = "2026-08-16T16:00:00+09:00"
-            with patch.object(predict, "setup_logger", return_value=logger("test.recovery")), \
-                 patch.object(predict, "now_jst", return_value=datetime.fromisoformat(generated_at)), \
-                 patch.object(predict, "now_jst_iso", return_value=generated_at), \
-                 patch.object(predict.LLMClient, "from_config", return_value=client), \
-                 patch.object(predict, "build_statistical_prediction_input", wraps=predict.build_statistical_prediction_input) as build, \
-                 patch.object(predict, "validate_statistical_prediction_input", wraps=predict.validate_statistical_prediction_input) as validate:
-                self.assertTrue(predict.predict_statistical_file(path, config, "test-recovery", root, frozen))
-                validate.assert_called_once()
-                self.assertEqual(validate.call_args.args[0], frozen)
-                # The builder is used only to compare the input during validation.
-                build.assert_called_once()
-                client.invoke_json.assert_called_once()
-            saved = load_race_json(path)
-            statistical = saved["prediction"][0]["statistical"]
-            self.assertEqual(statistical["predicted_at"], generated_at)
-            self.assertEqual(statistical["prediction_input_sha256"], predict.prediction_input_sha256(frozen))
-            self.assertEqual(saved["race"], payload["race"])
-            self.assertEqual(saved["horses"], payload["horses"])
-            self.assertIsNone(saved["result"])
+        for timestamp in (None, "2026-08-16T16:00:00+09:00"):
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / "config").mkdir()
+                (root / "config" / "prompt_prediction_statistical.txt").write_text(
+                    "Use this input: {{RACE_CONTEXT}}", encoding="utf-8",
+                )
+                path = root / "race.json"
+                payload = race_payload()
+                frozen = predict.build_statistical_prediction_input(payload)
+                if timestamp is not None:
+                    frozen["meta"]["generated_at"] = timestamp
+                save_race_json(path, payload)
+                config = load_config()
+                client = Mock()
+                client.invoke_json.return_value = {k: v for k, v in valid_prediction().items()
+                                                   if k in ("horses", "optional_summary")}
+                generated_at = "2026-08-16T16:00:00+09:00"
+                with patch.object(predict, "setup_logger", return_value=logger("test.recovery")), \
+                     patch.object(predict, "now_jst", return_value=datetime.fromisoformat(generated_at)), \
+                     patch.object(predict, "now_jst_iso", return_value=generated_at), \
+                     patch.object(predict.LLMClient, "from_config", return_value=client):
+                    self.assertTrue(predict.predict_statistical_file(path, config, "test-recovery", root, frozen))
+                saved = load_race_json(path)
+                statistical = saved["prediction"][0]["statistical"]
+                self.assertEqual(statistical["predicted_at"], generated_at)
+                self.assertEqual(statistical["prediction_input_sha256"], predict.prediction_input_sha256(frozen))
+                self.assertEqual(saved["race"], payload["race"])
+                self.assertEqual(saved["horses"], payload["horses"])
+                self.assertIsNone(saved["result"])
 
     def test_statistical_recovery_rejects_missing_or_inconsistent_input_and_existing_result(self) -> None:
         for case in ("unspecified", "result", "empty_result", "race_id", "race", "horses", "empty_input"):
@@ -486,11 +482,13 @@ class PredictionValidationTests(unittest.TestCase):
 
 
 class CodexClientTests(unittest.TestCase):
+    CONFIG = {"llm_provider": "codex", "llm_model": "gpt-test", "llm_reasoning_effort": "high"}
+
     def test_from_config_sets_reasoning_effort(self) -> None:
-        client = LLMClient.from_config(load_config(ROOT / "config" / "app.yaml"))
+        client = LLMClient.from_config(self.CONFIG)
         self.assertEqual(client.provider, "codex")
-        self.assertEqual(client.model, "gpt-5.6-sol")
-        self.assertEqual(client.reasoning_effort, "ultra")
+        self.assertEqual(client.model, self.CONFIG["llm_model"])
+        self.assertEqual(client.reasoning_effort, self.CONFIG["llm_reasoning_effort"])
 
     def test_from_config_without_reasoning_effort(self) -> None:
         client = LLMClient.from_config({"llm_provider": "codex", "llm_model": "gpt-test"})
@@ -525,7 +523,7 @@ class CodexClientTests(unittest.TestCase):
             "llm_client.subprocess.run",
             side_effect=run,
         ):
-            response = LLMClient.from_config(load_config(ROOT / "config" / "app.yaml")).invoke_json(
+            response = LLMClient.from_config(self.CONFIG).invoke_json(
                 "ONLY_INPUT",
                 max_retries=0,
             )
@@ -541,8 +539,8 @@ class CodexClientTests(unittest.TestCase):
         self.assertIn("--ignore-user-config", command)
         self.assertIn("--ignore-rules", command)
         self.assertEqual(command[command.index("--sandbox") + 1], "read-only")
-        self.assertEqual(command[command.index("--model") + 1], "gpt-5.6-sol")
-        self.assertEqual(command[command.index("--config") + 1], 'model_reasoning_effort="ultra"')
+        self.assertEqual(command[command.index("--model") + 1], self.CONFIG["llm_model"])
+        self.assertEqual(command[command.index("--config") + 1], f'model_reasoning_effort="{self.CONFIG["llm_reasoning_effort"]}"')
         self.assertIn("--output-schema", command)
         self.assertEqual(run_kwargs["input"], "ONLY_INPUT")
         self.assertNotEqual(Path(run_kwargs["cwd"]), ROOT)

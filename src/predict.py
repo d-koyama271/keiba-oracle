@@ -245,7 +245,8 @@ def validate_statistical_prediction_input(
     if meta.get("method") != STATISTICAL_PREDICTION_METHOD:
         raise ValueError("statistical prediction input method is invalid")
     expected = build_statistical_prediction_input(race_payload)
-    if prediction_input != expected:
+    comparable = {**prediction_input, "meta": {k: v for k, v in meta.items() if k != "generated_at"}}
+    if comparable != expected:
         raise ValueError("statistical prediction input does not match sanitized race JSON")
 
 
