@@ -550,7 +550,7 @@
       
       <div class="ai-method-tabs result-method-tabs" role="tablist" aria-label="結果を比較するAI予想方式">
         
-        <button type="button" class="ai-method-tab" role="tab" data-ai-tab data-ai-method="traditional" aria-controls="result-traditional" aria-selected="true" tabindex="0">総合AI予想</button>
+        <button type="button" class="ai-method-tab" role="tab" data-ai-tab data-ai-method="general" aria-controls="result-general" aria-selected="true" tabindex="0">総合AI予想</button>
         
         <button type="button" class="ai-method-tab" role="tab" data-ai-tab data-ai-method="statistical" aria-controls="result-statistical" aria-selected="false" tabindex="-1">統計重視予想</button>
         
@@ -561,7 +561,7 @@
       
       
       
-      <div class="ai-method-panel result-method-content" id="result-traditional" role="tabpanel" data-ai-panel data-ai-method="traditional">
+      <div class="ai-method-panel result-method-content" id="result-general" role="tabpanel" data-ai-panel data-ai-method="general">
         
         <div class="panel result-panel">
           <h3 class="result-comparison-title">
@@ -831,10 +831,10 @@
         
 
         <div class="ai-method-tabs ticket-tabs" role="tablist" aria-label="シミュレーションの券種">
-  <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="win" aria-controls="settlement-traditional-win" aria-selected="true" tabindex="0">単勝</button>
-  <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="quinella" aria-controls="settlement-traditional-quinella" aria-selected="false" tabindex="-1">馬連</button>
+  <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="win" aria-controls="settlement-general-win" aria-selected="true" tabindex="0">単勝</button>
+  <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="quinella" aria-controls="settlement-general-quinella" aria-selected="false" tabindex="-1">馬連</button>
 </div>
-        <div id="settlement-traditional-win" data-ticket-panel="win" role="tabpanel">
+        <div id="settlement-general-win" data-ticket-panel="win" role="tabpanel">
         
 
         
@@ -856,7 +856,7 @@
         </div>
         
         </div>
-        <div id="settlement-traditional-quinella" data-ticket-panel="quinella" role="tabpanel" hidden>
+        <div id="settlement-general-quinella" data-ticket-panel="quinella" role="tabpanel" hidden>
           
 <p class="small">馬連的中確率は各馬の1着確率から算出した、同着を考慮しない近似値です。</p>
 
@@ -1283,7 +1283,7 @@
         });
       }
       if (aiMethodTabs.length) {
-        activateAiMethod("traditional");
+        activateAiMethod(aiMethodTabs[0].dataset.aiMethod);
       }
 
       const tooltipTriggers = Array.from(document.querySelectorAll(".tooltip-trigger"));
