@@ -249,14 +249,16 @@ def validate_statistical_prediction_input(
         raise ValueError("statistical prediction input does not match sanitized race JSON")
 
 
-def ensure_statistical_prediction_is_pre_race(payload: dict[str, Any]) -> None:
+def ensure_statistical_prediction_is_pre_race(
+    payload: dict[str, Any], *, allow_after_start: bool = False,
+) -> None:
     if payload.get("result") is not None:
         raise ValueError("statistical prediction cannot be generated after result collection")
     race = payload.get("race") or {}
     start = race_start_datetime(race.get("date"), race.get("start_time"))
     if start is None:
         raise ValueError("statistical prediction requires a race start datetime")
-    if now_jst() >= start:
+    if not allow_after_start and now_jst() >= start:
         raise ValueError("statistical prediction cannot be generated after race start")
 
 
@@ -410,8 +412,9 @@ def predict_statistical_file(
             log_job(logger, job_name, race_id, "statistical prediction reused: existing prediction is valid")
             return True
 
-        ensure_statistical_prediction_is_pre_race(payload)
-        prediction_input = prediction_input or build_statistical_prediction_input(payload)
+        ensure_statistical_prediction_is_pre_race(payload, allow_after_start=prediction_input is not None)
+        if prediction_input is None:
+            prediction_input = build_statistical_prediction_input(payload)
         validate_statistical_prediction_input(prediction_input, payload)
         statistical = generate_prediction(
             config,

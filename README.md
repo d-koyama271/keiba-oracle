@@ -157,7 +157,7 @@ Codex は一時作業ディレクトリ内の読み取り専用・構造化出�
 
 正常に保存した新規予想の `general`／`statistical` には `horses`、`optional_summary`、`predicted_at` に加え、実際に使用したプロンプトと安定化した予想入力 JSON の `prompt_sha256`、`prediction_input_sha256` を記録します。過去予想へは補完しません。通常フローの再実行では、現在のAI実行設定に一致するentryの有効な予想を再利用します。設定変更時も以前のentryは上書きしません。
 
-統計重視予想は `config/prompt_prediction_statistical.txt` を使用します。今回・過去走のオッズ、人気、オッズ取得元・時刻・URL、市場由来の順位・確率を再帰的に除外し、レース条件、過去成績、走破タイム、着差、通過順、上がり、馬体重、`career_summaries` などの客観データだけを渡します。`prediction`、`simulation`、`result`、`evaluation` は入力に含めません。結果取得済みまたは発走済みのレースへ統計予想を後付けしません。
+統計重視予想は `config/prompt_prediction_statistical.txt` を使用します。今回・過去走のオッズ、人気、オッズ取得元・時刻・URL、市場由来の順位・確率を再帰的に除外し、レース条件、過去成績、走破タイム、着差、通過順、上がり、馬体重、`career_summaries` などの客観データだけを渡します。`prediction`、`simulation`、`result`、`evaluation` は入力に含めません。通常は発走後の生成を禁止しますが、発走前に確定したinputを明示指定した復旧では、race JSONとの整合性検証後に生成可能です。結果取得済みの場合は引き続き拒否し、`predicted_at` は実際の生成時刻を記録します。
 
 `run_post.py`
 

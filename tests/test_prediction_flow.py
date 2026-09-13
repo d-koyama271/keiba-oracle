@@ -9,7 +9,7 @@ import unittest
 from datetime import datetime
 from logging import NullHandler, getLogger
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -390,6 +390,71 @@ class PredictionValidationTests(unittest.TestCase):
                     predict.predict_statistical_file(path, config, "test-statistical-reuse", root)
                 )
             self.assertEqual(path.read_bytes(), before_reuse)
+
+    def test_statistical_recovery_after_start_uses_explicit_input_and_actual_timestamp(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "config").mkdir()
+            (root / "config" / "prompt_prediction_statistical.txt").write_text(
+                "Use this input: {{RACE_CONTEXT}}", encoding="utf-8",
+            )
+            path = root / "race.json"
+            payload = race_payload()
+            frozen = predict.build_statistical_prediction_input(payload)
+            save_race_json(path, payload)
+            config = load_config()
+            client = Mock()
+            client.invoke_json.return_value = {k: v for k, v in valid_prediction().items()
+                                               if k in ("horses", "optional_summary")}
+            generated_at = "2026-08-16T16:00:00+09:00"
+            with patch.object(predict, "setup_logger", return_value=logger("test.recovery")), \
+                 patch.object(predict, "now_jst", return_value=datetime.fromisoformat(generated_at)), \
+                 patch.object(predict, "now_jst_iso", return_value=generated_at), \
+                 patch.object(predict.LLMClient, "from_config", return_value=client), \
+                 patch.object(predict, "build_statistical_prediction_input", wraps=predict.build_statistical_prediction_input) as build, \
+                 patch.object(predict, "validate_statistical_prediction_input", wraps=predict.validate_statistical_prediction_input) as validate:
+                self.assertTrue(predict.predict_statistical_file(path, config, "test-recovery", root, frozen))
+                validate.assert_called_once()
+                self.assertEqual(validate.call_args.args[0], frozen)
+                # The builder is used only to compare the input during validation.
+                build.assert_called_once()
+                client.invoke_json.assert_called_once()
+            saved = load_race_json(path)
+            statistical = saved["prediction"][0]["statistical"]
+            self.assertEqual(statistical["predicted_at"], generated_at)
+            self.assertEqual(statistical["prediction_input_sha256"], predict.prediction_input_sha256(frozen))
+            self.assertEqual(saved["race"], payload["race"])
+            self.assertEqual(saved["horses"], payload["horses"])
+            self.assertIsNone(saved["result"])
+
+    def test_statistical_recovery_rejects_missing_or_inconsistent_input_and_existing_result(self) -> None:
+        for case in ("unspecified", "result", "empty_result", "race_id", "race", "horses", "empty_input"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "race.json"
+                payload = race_payload()
+                frozen = predict.build_statistical_prediction_input(payload)
+                if case == "unspecified":
+                    frozen = None
+                elif case == "result":
+                    payload["result"] = {"horses": [{"horse_number": 1, "finish_position": 1}]}
+                elif case == "empty_result":
+                    payload["result"] = {}
+                elif case == "race_id":
+                    frozen["meta"]["race_id"] = "wrong-race"
+                elif case == "race":
+                    frozen["race"]["start_time"] = "14:00"
+                elif case == "horses":
+                    frozen["horses"][0]["horse_name"] = "wrong-horse"
+                else:
+                    frozen = {}
+                save_race_json(path, payload)
+                before = path.read_bytes()
+                with patch.object(predict, "setup_logger", return_value=logger("test.recovery.reject")), \
+                     patch.object(predict, "now_jst", return_value=datetime(2026, 8, 16, 16, 0, tzinfo=JST)), \
+                     patch.object(predict.LLMClient, "from_config") as client:
+                    self.assertFalse(predict.predict_statistical_file(path, load_config(), "test-recovery", Path(directory), frozen))
+                    client.assert_not_called()
+                self.assertEqual(path.read_bytes(), before)
 
     def test_statistical_prediction_is_not_backfilled_after_result(self) -> None:
         payload = race_payload(valid_prediction())
