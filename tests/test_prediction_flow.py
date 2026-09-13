@@ -556,6 +556,25 @@ class CodexClientTests(unittest.TestCase):
         self.assertEqual(run_kwargs["env"]["HOME"], r"C:\Users\runner")
         self.assertNotIn("CODEX_HOME", run_kwargs["env"])
 
+    def test_codex_cli_uses_existing_profile_directory_only_when_needed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory)
+            candidate = profile / ".codex"
+            for exists in (False, True):
+                if exists:
+                    candidate.mkdir()
+                for codex_home in (None, "", "existing-home"):
+                    with self.subTest(exists=exists, codex_home=codex_home):
+                        environment = {"USERPROFILE": str(profile)}
+                        if codex_home is not None:
+                            environment["CODEX_HOME"] = codex_home
+                        before = dict(environment)
+                        _, kwargs, _ = self._invoke_codex_with_environment(environment)
+                        expected = codex_home if codex_home else (str(candidate) if exists else codex_home)
+                        self.assertEqual(kwargs["env"].get("CODEX_HOME"), expected)
+                        self.assertEqual(candidate.is_dir(), exists)
+                        self.assertEqual(environment, before)
+
     def test_codex_cli_keeps_existing_home_and_codex_home(self) -> None:
         _, run_kwargs, _ = self._invoke_codex_with_environment(
             {

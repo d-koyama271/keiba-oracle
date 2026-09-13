@@ -46,6 +46,10 @@ class LLMClient:
         environment = os.environ.copy()
         if not environment.get("HOME") and environment.get("USERPROFILE"):
             environment["HOME"] = environment["USERPROFILE"]
+        if not environment.get("CODEX_HOME") and environment.get("USERPROFILE"):
+            codex_home = Path(environment["USERPROFILE"]) / ".codex"
+            if codex_home.is_dir():
+                environment["CODEX_HOME"] = str(codex_home)
 
         schema = {
             "type": "object",
