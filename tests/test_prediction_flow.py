@@ -431,7 +431,7 @@ class CodexClientTests(unittest.TestCase):
         client = LLMClient.from_config({"llm_provider": "codex", "llm_model": "gpt-test"})
         self.assertIsNone(client.reasoning_effort)
 
-    def test_codex_cli_is_isolated_and_uses_structured_output(self) -> None:
+    def _invoke_codex_with_environment(self, environment: dict[str, str]) -> tuple[list[str], dict, dict]:
         commands: list[list[str]] = []
         run_kwargs: dict = {}
 
@@ -452,14 +452,26 @@ class CodexClientTests(unittest.TestCase):
             )
             return subprocess.CompletedProcess(command, 0, "", "")
 
-        with patch("llm_client.shutil.which", return_value="codex"), patch(
+        with patch.dict(
+            "llm_client.os.environ",
+            environment,
+            clear=True,
+        ), patch("llm_client.shutil.which", return_value="codex"), patch(
             "llm_client.subprocess.run",
             side_effect=run,
         ):
-            client = LLMClient.from_config(load_config(ROOT / "config" / "app.yaml"))
-            response = client.invoke_json("ONLY_INPUT", max_retries=0)
+            response = LLMClient.from_config(load_config(ROOT / "config" / "app.yaml")).invoke_json(
+                "ONLY_INPUT",
+                max_retries=0,
+            )
 
-        command = commands[0]
+        return commands[0], run_kwargs, response
+
+    def test_codex_cli_is_isolated_and_uses_structured_output(self) -> None:
+        command, run_kwargs, response = self._invoke_codex_with_environment(
+            {"USERPROFILE": r"C:\Users\runner"}
+        )
+
         self.assertIn("--ephemeral", command)
         self.assertIn("--ignore-user-config", command)
         self.assertIn("--ignore-rules", command)
@@ -469,7 +481,29 @@ class CodexClientTests(unittest.TestCase):
         self.assertIn("--output-schema", command)
         self.assertEqual(run_kwargs["input"], "ONLY_INPUT")
         self.assertNotEqual(Path(run_kwargs["cwd"]), ROOT)
+        self.assertEqual(run_kwargs["env"]["HOME"], r"C:\Users\runner")
+        self.assertNotIn("CODEX_HOME", run_kwargs["env"])
         self.assertEqual(response["horses"][0]["horse_number"], 1)
+
+    def test_codex_cli_supplements_empty_home_from_userprofile(self) -> None:
+        _, run_kwargs, _ = self._invoke_codex_with_environment(
+            {"USERPROFILE": r"C:\Users\runner", "HOME": ""}
+        )
+
+        self.assertEqual(run_kwargs["env"]["HOME"], r"C:\Users\runner")
+        self.assertNotIn("CODEX_HOME", run_kwargs["env"])
+
+    def test_codex_cli_keeps_existing_home_and_codex_home(self) -> None:
+        _, run_kwargs, _ = self._invoke_codex_with_environment(
+            {
+                "USERPROFILE": r"C:\Users\runner",
+                "HOME": r"C:\custom-home",
+                "CODEX_HOME": r"C:\custom-codex-home",
+            }
+        )
+
+        self.assertEqual(run_kwargs["env"]["HOME"], r"C:\custom-home")
+        self.assertEqual(run_kwargs["env"]["CODEX_HOME"], r"C:\custom-codex-home")
 
 
 class FlowAndCompatibilityTests(unittest.TestCase):

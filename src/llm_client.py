@@ -43,6 +43,10 @@ class LLMClient:
         if not executable:
             raise RuntimeError("Codex CLI is not available on PATH")
 
+        environment = os.environ.copy()
+        if "HOME" not in environment and environment.get("USERPROFILE"):
+            environment["HOME"] = environment["USERPROFILE"]
+
         schema = {
             "type": "object",
             "additionalProperties": False,
@@ -113,6 +117,7 @@ class LLMClient:
                 encoding="utf-8",
                 timeout=600,
                 check=False,
+                env=environment,
             )
             if completed.returncode != 0:
                 error = (completed.stderr or completed.stdout).strip()
