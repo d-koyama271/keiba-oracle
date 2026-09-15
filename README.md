@@ -144,6 +144,8 @@ schema v9以前は読み込み時に、本体を `general`、`variants` 内の�
 
 `run_pre.py`
 
+`--phase statistical` は収集後に統計重視予想のみ生成・公開し、総合用inputの確定とsimulationは行いません。`--phase general` は再収集時点の総合用inputを確定して総合予想のみ生成し、保存済みの両予想方式でpre simulation・公開を行います。`--phase all`（省略時）は以下の一括処理です。各フェーズで `--date YYYY-MM-DD` を指定できます。
+
 1. `collect.py` で対象レース情報を取得
 2. 予想開始時点の `meta` / `race` / `horses` を確定し、総合AI予想入力と、市場情報を除いた統計重視予想入力を独立して作成
 3. `predict.py` から Codex を実行し、総合AI予想と統計重視予想の各馬の 1 着確率・理由・総括を検証して保存

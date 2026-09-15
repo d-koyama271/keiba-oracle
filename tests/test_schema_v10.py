@@ -309,6 +309,89 @@ class SchemaV10Tests(unittest.TestCase):
                 self.assertEqual(len(run_pre_collect.export_prediction_chat_input([path], config, "snapshot")), 1)
                 self.assertEqual(load_race_json(path)["prediction"], payload["prediction"])
 
+    def test_statistical_then_general_phases_collect_separately_and_preserve_predictions(self):
+        with tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
+            root = Path(directory)
+            config = load_config()
+            config.update(data_dir=str(root / "data"), public_dir=str(root / "public"))
+            path = root / "data/races/2026-08-16/test_11r.json"
+            collections = []
+
+            def collect(config, target_date, job_name):
+                payload = load_race_json(path) or race_payload()
+                payload["horses"][0]["win_odds"] = 2.0 + len(collections)
+                save_race_json(path, payload)
+                collections.append(payload["horses"][0]["win_odds"])
+                return "2026-08-16", [path]
+
+            client = Mock()
+            client.invoke_json.return_value = {k: v for k, v in valid_prediction().items()
+                                               if k in ("horses", "optional_summary")}
+            for module in ("run_pre", "run_pre_collect", "predict", "simulate"):
+                stack.enter_context(patch(f"{module}.setup_logger", return_value=logger(f"phase-{module}")))
+            stack.enter_context(patch.object(run_pre_collect, "collect_pre_races", side_effect=collect))
+            stack.enter_context(patch.object(run_pre_collect, "outbox_chat_input_dir", return_value=root / "outbox"))
+            stack.enter_context(patch.object(predict.LLMClient, "from_config", return_value=client))
+            stack.enter_context(patch.object(predict, "now_jst", return_value=parse_jst_datetime("2026-08-16T12:00:00+09:00")))
+
+            with patch.object(run_pre_collect, "export_prediction_chat_input") as export, \
+                 patch.object(run_pre, "predict_paths") as general, \
+                 patch.object(run_pre, "simulate_paths") as simulate:
+                self.assertEqual(run_pre.run_pre_flow(config, "2026-08-16", phase="statistical"), [path])
+                export.assert_not_called()
+                general.assert_not_called()
+                simulate.assert_not_called()
+            first = load_race_json(path)
+            self.assertNotIn("general", first["prediction"][0])
+            self.assertEqual(first["simulation"], [])
+            self.assertFalse((root / "outbox").exists())
+            self.assertTrue((root / "public/index.html").exists())
+
+            with patch.object(run_pre, "predict_statistical_paths") as statistical, \
+                 patch.object(run_pre, "build_pending_statistical_inputs") as statistical_input:
+                self.assertEqual(run_pre.run_pre_flow(config, "2026-08-16", phase="general"), [path])
+                statistical.assert_not_called()
+                statistical_input.assert_not_called()
+            second = load_race_json(path)
+            self.assertEqual(second["prediction"][0]["statistical"], first["prediction"][0]["statistical"])
+            self.assertIn("general", second["prediction"][0])
+            for method in ("general", "statistical"):
+                self.assertIsNotNone(second["simulation"][0][method]["win"]["value"]["pre"])
+                self.assertIsNotNone(second["simulation"][0][method]["win"]["dutching"]["pre"])
+            finalized = json.loads((root / "outbox/test_11r.json").read_text(encoding="utf-8"))
+            self.assertEqual(finalized["horses"][0]["win_odds"], 3.0)
+
+            with patch.object(run_pre_collect, "export_prediction_chat_input") as export, \
+                 patch.object(run_pre, "predict_paths") as general, \
+                 patch.object(run_pre, "simulate_paths") as simulate:
+                run_pre.run_pre_flow(config, "2026-08-16", phase="statistical")
+                export.assert_not_called()
+                general.assert_not_called()
+                simulate.assert_not_called()
+            third = load_race_json(path)
+            self.assertEqual(third["prediction"], second["prediction"])
+            self.assertEqual(third["simulation"], second["simulation"])
+            self.assertEqual(collections, [2.0, 3.0, 4.0])
+            with patch.object(predict.LLMClient, "from_config", side_effect=AssertionError("saved predictions must be reused")), \
+                 patch.object(run_pre, "predict_statistical_paths") as statistical:
+                run_pre.run_pre_flow(config, "2026-08-16", phase="general")
+                statistical.assert_not_called()
+            reused = load_race_json(path)
+            self.assertEqual(reused["prediction"], second["prediction"])
+            self.assertEqual(reused["simulation"], second["simulation"])
+            self.assertEqual(collections, [2.0, 3.0, 4.0, 5.0])
+
+    def test_pre_cli_phase_defaults_to_all_and_accepts_each_phase(self):
+        for phase in (None, "all", "statistical", "general"):
+            with self.subTest(phase=phase):
+                argv = ["run_pre.py", "--date", "2026-08-16"]
+                if phase is not None:
+                    argv += ["--phase", phase]
+                with patch("sys.argv", argv), patch.object(run_pre, "load_config", return_value={}), \
+                     patch.object(run_pre, "run_pre_flow") as flow:
+                    run_pre.main()
+                    flow.assert_called_once_with({}, "2026-08-16", phase=phase or "all")
+
     def test_pre_flow_publishes_successful_races_and_excludes_both_failed(self):
         with tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
             root = Path(directory)

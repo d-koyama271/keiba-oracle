@@ -240,8 +240,15 @@ def run_pre_collect_flow(
     config: dict,
     target_date_value: str | None,
     job_name: str,
+    *, phase: str = "all",
 ) -> tuple[list[Path], list[Path]]:
+    if phase not in ("all", "general", "statistical"):
+        raise ValueError(f"Unsupported pre phase: {phase}")
     target_date, paths = collect_pre_races(config, target_date_value, job_name)
+    if phase == "statistical":
+        if not paths:
+            raise SystemExit(f"No race JSON updated for {target_date}")
+        return paths, []
     exported = export_prediction_chat_input(paths, config, job_name)
     if not paths:
         raise SystemExit(f"No race JSON updated for {target_date}")
