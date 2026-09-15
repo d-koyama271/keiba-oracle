@@ -110,6 +110,8 @@ python src/run_post.py --date 2026-04-14
 - 一覧ページ: `public/index.html`
 - 全体評価集計: `data/evaluation_summary.json`
 
+自動運用の失敗・再試行状態は、`src/automation_state.py` の `load_automation_state`／`record_failure`／`clear_phase_state` で扱います。保存先は `data_dir/automation/YYYY-MM-DD/<race JSONと同じstem>.json` です。`statistical`／`general`／`result` の失敗情報だけを保存し、完了判定はrace JSONを参照します。失敗記録ごとにそのphaseのattemptsを加算し、`retry_wait` は `next_retry_at` 必須、`blocked` はnullとします。不正なstateはエラーとし、clearは指定phaseだけを削除します。この状態管理は通常フロー・resumeにはまだ接続していません。`data/automation/` はGit管理対象外です。
+
 各レース JSON のトップレベルは固定です。
 
 ```json
