@@ -589,6 +589,13 @@ class CodexClientTests(unittest.TestCase):
 
 
 class FlowAndCompatibilityTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        patcher = patch.object(run_pre, "outbox_chat_input_dir", return_value=Path(directory.name))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_export_does_not_clear_existing_prediction(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -144,6 +144,8 @@ schema v9以前は読み込み時に、本体を `general`、`variants` 内の�
 
 `run_pre.py`
 
+失敗後の再開は `python src/run_pre.py --date YYYY-MM-DD --phase general --resume` または `--phase statistical --resume` を使用します。再収集せず、`outbox/chat_input/prediction/<race>.json`（general）／`<race>.statistical.json`（statistical）を読み込みます。statistical inputもCodex実行前に保存します。対象日の該当inputがない場合は失敗し、現在のrace JSONから作り直しません。`--resume` には日付と単独フェーズの指定が必要です。通常のgeneral実行は従来どおり再収集・input確定を行います。
+
 `--phase statistical` は収集後に統計重視予想のみ生成・公開し、総合用inputの確定とsimulationは行いません。`--phase general` は再収集時点の総合用inputを確定して総合予想のみ生成し、保存済みの両予想方式でpre simulation・公開を行います。`--phase all`（省略時）は以下の一括処理です。各フェーズで `--date YYYY-MM-DD` を指定できます。
 
 1. `collect.py` で対象レース情報を取得

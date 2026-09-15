@@ -407,7 +407,7 @@ class DefaultRaceSelectionTests(unittest.TestCase):
             run_flow = stack.enter_context(patch.object(run_pre, "run_pre_flow"))
             run_pre.main()
 
-        run_flow.assert_called_once_with(config, "2026-08-30", phase="all")
+        run_flow.assert_called_once_with(config, "2026-08-30", phase="all", resume=False)
 
     def test_collect_cli_date_pre_uses_pre_collection_mode(self) -> None:
         config = {"target_races": ["中京", "新潟"]}

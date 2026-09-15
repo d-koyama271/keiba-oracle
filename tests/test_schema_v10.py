@@ -29,6 +29,11 @@ from utils import (
 
 class SchemaV10Tests(unittest.TestCase):
     def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        patcher = patch.object(run_pre, "outbox_chat_input_dir", return_value=Path(directory.name))
+        patcher.start()
+        self.addCleanup(patcher.stop)
         for module in ("simulate", "evaluation", "evaluation_summary"):
             patcher = patch(f"{module}.setup_logger", return_value=logger(f"schema-{module}"))
             patcher.start()
@@ -331,6 +336,7 @@ class SchemaV10Tests(unittest.TestCase):
                 stack.enter_context(patch(f"{module}.setup_logger", return_value=logger(f"phase-{module}")))
             stack.enter_context(patch.object(run_pre_collect, "collect_pre_races", side_effect=collect))
             stack.enter_context(patch.object(run_pre_collect, "outbox_chat_input_dir", return_value=root / "outbox"))
+            stack.enter_context(patch.object(run_pre, "outbox_chat_input_dir", return_value=root / "outbox"))
             stack.enter_context(patch.object(predict.LLMClient, "from_config", return_value=client))
             stack.enter_context(patch.object(predict, "now_jst", return_value=parse_jst_datetime("2026-08-16T12:00:00+09:00")))
 
@@ -344,7 +350,8 @@ class SchemaV10Tests(unittest.TestCase):
             first = load_race_json(path)
             self.assertNotIn("general", first["prediction"][0])
             self.assertEqual(first["simulation"], [])
-            self.assertFalse((root / "outbox").exists())
+            self.assertFalse((root / "outbox/test_11r.json").exists())
+            self.assertTrue((root / "outbox/test_11r.statistical.json").exists())
             self.assertTrue((root / "public/index.html").exists())
 
             with patch.object(run_pre, "predict_statistical_paths") as statistical, \
@@ -390,7 +397,62 @@ class SchemaV10Tests(unittest.TestCase):
                 with patch("sys.argv", argv), patch.object(run_pre, "load_config", return_value={}), \
                      patch.object(run_pre, "run_pre_flow") as flow:
                     run_pre.main()
-                    flow.assert_called_once_with({}, "2026-08-16", phase=phase or "all")
+                    flow.assert_called_once_with({}, "2026-08-16", phase=phase or "all", resume=False)
+
+    def test_resume_reuses_saved_input_after_failure_without_collection(self):
+        for phase in ("general", "statistical"):
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
+                root = Path(directory)
+                config = load_config()
+                config.update(data_dir=str(root / "data"), public_dir=str(root / "public"))
+                path = root / "data/races/2026-08-16/test_11r.json"
+                save_race_json(path, race_payload())
+                for module in ("run_pre", "run_pre_collect", "predict", "simulate"):
+                    stack.enter_context(patch(f"{module}.setup_logger", return_value=logger(f"resume-{module}")))
+                for module in (run_pre, run_pre_collect):
+                    stack.enter_context(patch.object(module, "outbox_chat_input_dir", return_value=root / "outbox"))
+                collect = stack.enter_context(patch.object(run_pre_collect, "collect_pre_races", return_value=("2026-08-16", [path])))
+                clock = stack.enter_context(patch.object(predict, "now_jst", return_value=parse_jst_datetime("2026-08-16T12:00:00+09:00")))
+                client = Mock()
+                client.invoke_json.side_effect = RuntimeError("test runtime failure")
+                stack.enter_context(patch.object(predict.LLMClient, "from_config", return_value=client))
+                with self.assertRaisesRegex(RuntimeError, "prediction generation failed"):
+                    run_pre.run_pre_flow(config, "2026-08-16", phase=phase)
+                collect.assert_called_once()
+                suffix = ".statistical.json" if phase == "statistical" else ".json"
+                input_path = root / f"outbox/test_11r{suffix}"
+                frozen_bytes = input_path.read_bytes()
+                frozen = json.loads(frozen_bytes)
+                failed_prompt = client.invoke_json.call_args.args[0]
+                self.assertIn(json.dumps(frozen, ensure_ascii=False, indent=2), failed_prompt)
+                collect.side_effect = AssertionError("resume must not collect")
+                clock.return_value = parse_jst_datetime("2026-08-16T16:00:00+09:00")
+                client.invoke_json.side_effect = None
+                client.invoke_json.return_value = {k: v for k, v in valid_prediction().items()
+                                                   if k in ("horses", "optional_summary")}
+                with patch.object(run_pre, "build_pending_statistical_inputs", side_effect=AssertionError("resume must not rebuild input")):
+                    self.assertEqual(run_pre.run_pre_flow(config, "2026-08-16", phase=phase, resume=True), [path])
+                self.assertEqual(client.invoke_json.call_args.args[0], failed_prompt)
+                self.assertEqual(input_path.read_bytes(), frozen_bytes)
+                saved = load_race_json(path)
+                self.assertEqual(saved["prediction"][0][phase]["prediction_input_sha256"], predict.prediction_input_sha256(frozen))
+                client.invoke_json.side_effect = AssertionError("saved prediction must be reused")
+                with patch.object(run_pre, "publish_site", wraps=run_pre.publish_site) as publish:
+                    self.assertEqual(run_pre.run_pre_flow(config, "2026-08-16", phase=phase, resume=True), [path])
+                    publish.assert_called_once()
+                self.assertEqual(load_race_json(path)["prediction"], saved["prediction"])
+                input_path.unlink()
+                before = path.read_bytes()
+                with self.assertRaisesRegex(FileNotFoundError, "Saved prediction input missing"):
+                    run_pre.run_pre_flow(config, "2026-08-16", phase=phase, resume=True)
+                self.assertEqual(path.read_bytes(), before)
+
+    def test_resume_rejects_all_phase_or_missing_date(self):
+        for phase, date in (("all", "2026-08-16"), ("statistical", None), ("general", None)):
+            with self.subTest(phase=phase, date=date), patch.object(run_pre, "run_pre_collect_flow") as collect:
+                with self.assertRaisesRegex(ValueError, "resume requires"):
+                    run_pre.run_pre_flow({}, date, phase=phase, resume=True)
+                collect.assert_not_called()
 
     def test_pre_flow_publishes_successful_races_and_excludes_both_failed(self):
         with tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
