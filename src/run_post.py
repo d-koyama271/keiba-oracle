@@ -9,11 +9,12 @@ from utils import load_config, parse_target_date
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--date", default=None)
+    parser.add_argument("--race-id", default=None)
     args = parser.parse_args()
 
     config = load_config()
     target_date = parse_target_date(args.date)
-    run_post_flow(config, target_date, "post")
+    run_post_flow(config, target_date, "post", **({"race_id": args.race_id} if args.race_id is not None else {}))
 
 
 if __name__ == "__main__":

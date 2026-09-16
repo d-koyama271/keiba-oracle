@@ -454,6 +454,70 @@ class SchemaV10Tests(unittest.TestCase):
                     run_pre.run_pre_flow({}, date, phase=phase, resume=True)
                 collect.assert_not_called()
 
+    def test_race_id_limits_pre_and_resume_without_touching_other_race(self):
+        from utils import race_html_path, race_result_html_path
+
+        for phase in ("statistical", "general", "all"):
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
+                root = Path(directory)
+                config = load_config()
+                config.update(data_dir=str(root / "data"), public_dir=str(root / "public"))
+                target = root / "data/races/2026-08-16/sapporo_11r.json"
+                other = target.with_name("hakodate_11r.json")
+                payload = race_payload()
+                race_id = payload["meta"]["race_id"]
+                save_race_json(target, payload)
+                other_payload = race_payload(valid_prediction())
+                other_payload["meta"]["race_id"] = "202602010111"
+                other_payload["race"]["track"] = "函館"
+                save_race_json(other, other_payload)
+                before = other.read_bytes()
+                outbox = root / "outbox"
+                outbox.mkdir()
+                other_input = outbox / "hakodate_11r.json"
+                other_input.write_bytes(b"unrelated input must not be read or changed")
+                other_pages = [root / "public" / factory("2026-08-16", "函館", 11)
+                               for factory in (race_html_path, race_result_html_path)]
+                for page in other_pages:
+                    page.parent.mkdir(parents=True, exist_ok=True)
+                    page.write_bytes(b"existing unrelated HTML")
+                for module in ("run_pre", "run_pre_collect", "predict", "simulate"):
+                    stack.enter_context(patch(f"{module}.setup_logger", return_value=logger(f"single-{module}")))
+                for module in (run_pre, run_pre_collect):
+                    stack.enter_context(patch.object(module, "outbox_chat_input_dir", return_value=outbox))
+                collect = stack.enter_context(patch.object(run_pre_collect, "collect_races", return_value=[target]))
+                select = stack.enter_context(patch.object(run_pre_collect, "select_default_races"))
+                client = Mock()
+                client.invoke_json.return_value = {k: v for k, v in valid_prediction().items()
+                                                   if k in ("horses", "optional_summary")}
+                stack.enter_context(patch.object(predict.LLMClient, "from_config", return_value=client))
+                stack.enter_context(patch.object(predict, "now_jst", return_value=parse_jst_datetime("2026-08-16T12:00:00+09:00")))
+                self.assertEqual(run_pre.run_pre_flow(config, "2026-08-16", phase=phase, race_id=race_id), [target])
+                collect.assert_called_once_with(config, "pre", "2026-08-16", "pre", selected_race_ids=[race_id])
+                select.assert_not_called()
+                self.assertEqual(client.invoke_json.call_count, 2 if phase == "all" else 1)
+                collect.side_effect = AssertionError("resume must not collect")
+                client.invoke_json.side_effect = AssertionError("existing prediction must be reused")
+                resume_phase = "general" if phase == "all" else phase
+                self.assertEqual(run_pre.run_pre_flow(config, "2026-08-16", phase=resume_phase, resume=True, race_id=race_id), [target])
+                self.assertEqual(other.read_bytes(), before)
+                self.assertEqual(other_input.read_bytes(), b"unrelated input must not be read or changed")
+                for page in other_pages:
+                    self.assertEqual(page.read_bytes(), b"existing unrelated HTML")
+                with self.assertRaises(FileNotFoundError):
+                    run_pre.run_pre_flow(config, "2026-08-16", phase=resume_phase, resume=True, race_id="202601010199")
+                collect.side_effect = None
+                collect.return_value = []
+                with self.assertRaisesRegex(SystemExit, "No race JSON updated"):
+                    run_pre.run_pre_flow(config, "2026-08-16", phase=phase, race_id="202601010199")
+
+    def test_pre_cli_forwards_race_id_with_resume(self):
+        with patch("sys.argv", ["pre", "--date", "2026-08-16", "--phase", "general", "--resume", "--race-id", "202601010111"]), \
+             patch.object(run_pre, "load_config", return_value={}), patch.object(run_pre, "run_pre_flow") as flow:
+            run_pre.main()
+            flow.assert_called_once_with({}, "2026-08-16", phase="general", resume=True, race_id="202601010111")
+
+
     def test_pre_flow_publishes_successful_races_and_excludes_both_failed(self):
         with tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
             root = Path(directory)

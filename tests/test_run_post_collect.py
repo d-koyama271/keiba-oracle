@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import collect  # noqa: E402
 import run_post_collect  # noqa: E402
+import run_post  # noqa: E402
 from utils import ensure_race_payload, atomic_write_json, load_race_json  # noqa: E402
 
 
@@ -41,6 +42,52 @@ class ResultCollectionTests(unittest.TestCase):
         self.logger = logging.getLogger(f"test.{self.id()}")
         self.logger.handlers.clear()
         self.logger.addHandler(logging.NullHandler())
+
+    def test_post_race_id_collects_only_selected_race_and_missing_id_fails(self):
+        with tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
+            root = Path(directory)
+            config = {"data_dir": str(root / "data")}
+            target = root / "data/races/2026-07-26/niigata_7r.json"
+            other = target.with_name("chukyo_7r.json")
+            race_id = "202604020207"
+            atomic_write_json(target, race_payload(race_id))
+            atomic_write_json(other, race_payload("202607020207"))
+            before = other.read_bytes()
+            result = {
+                "horses": [{"horse_number": n, "finish_position": n} for n in range(1, 15)],
+                "finish_order": list(range(1, 15)),
+                "payouts": {"win": [{"horse_number": 1, "payout_per_100": 480}]},
+            }
+            stack.enter_context(patch.object(collect, "setup_logger", return_value=self.logger))
+            stack.enter_context(patch.object(run_post_collect, "setup_logger", return_value=self.logger))
+            fetch = stack.enter_context(patch.object(collect, "fetch_html", return_value="<html></html>"))
+            stack.enter_context(patch.object(collect, "parse_result", return_value=result))
+            simulate = stack.enter_context(patch.object(run_post_collect, "simulate_paths", return_value=[target]))
+            publish = stack.enter_context(patch.object(run_post_collect, "publish_post_results", return_value=[target]))
+            self.assertEqual(run_post_collect.run_post_flow(config, "2026-07-26", "post", race_id=race_id), [target])
+            fetch.assert_called_once()
+            self.assertIn(f"race_id={race_id}", fetch.call_args.args[1])
+            simulate.assert_called_once_with([target], config, "post", "post")
+            publish.assert_called_once_with([target], config, "post", race_id=race_id)
+            self.assertEqual(other.read_bytes(), before)
+            self.assertIsNotNone(load_race_json(target)["result"])
+            with self.assertRaises(FileNotFoundError):
+                run_post_collect.run_post_flow(config, "2026-07-26", "post", race_id="202604020299")
+            self.assertEqual(fetch.call_count, 1)
+
+    def test_post_clis_forward_optional_race_id(self):
+        for module, job in ((run_post, "post"), (run_post_collect, "post_collect")):
+            for race_id in (None, "202604020207"):
+                with self.subTest(module=module.__name__, race_id=race_id):
+                    argv = ["post", "--date", "2026-07-26"]
+                    kwargs = {}
+                    if race_id:
+                        argv += ["--race-id", race_id]
+                        kwargs["race_id"] = race_id
+                    with patch.object(sys, "argv", argv), patch.object(module, "load_config", return_value={}), \
+                         patch.object(module, "run_post_flow") as flow:
+                        module.main()
+                        flow.assert_called_once_with({}, "2026-07-26", job, **kwargs)
 
     def test_result_collection_updates_only_result_for_existing_race_id(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

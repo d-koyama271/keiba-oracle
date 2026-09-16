@@ -612,6 +612,7 @@ def render_site(
     job_name: str,
     race_date: str | None = None,
     root: Path | None = None,
+    *, race_id: str | None = None,
 ) -> Path:
     root = root or repo_root()
     env = build_environment(root)
@@ -628,7 +629,7 @@ def render_site(
         ensure_dir(output_dir)
 
     managed_races_dir = output_dir / "races"
-    if managed_races_dir.exists():
+    if race_id is None and managed_races_dir.exists():
         for managed_html in managed_races_dir.rglob("*.html"):
             managed_html.unlink()
     ensure_dir(managed_races_dir)
@@ -645,6 +646,16 @@ def render_site(
         race = payload["race"]
         prediction_path = race_html_path(race["date"], race["track"], race["race_number"])
         result_path = race_result_html_path(race["date"], race["track"], race["race_number"])
+        selected = race_id is None or payload["meta"].get("race_id") == race_id
+        if not selected:
+            if not (output_dir / prediction_path).exists():
+                continue
+            context["has_result_page"] = (output_dir / result_path).exists()
+            context["status"] = "result_published" if context["has_result_page"] else "prediction_only"
+            context["status_label"] = status_label(context["status"])
+            context["status_class"] = status_class(context["status"])
+        elif race_id is not None and not context["has_result_page"]:
+            (output_dir / result_path).unlink(missing_ok=True)
         page_links = {
             "prediction_page_name": prediction_path.name,
             "result_page_name": result_path.name if context["has_result_page"] else None,
@@ -659,8 +670,9 @@ def render_site(
         }
         prediction_target = output_dir / prediction_path
         ensure_dir(prediction_target.parent)
-        prediction_target.write_bytes(rendered_html_bytes(race_template.render(**prediction_context)))
-        if context["has_result_page"]:
+        if selected:
+            prediction_target.write_bytes(rendered_html_bytes(race_template.render(**prediction_context)))
+        if selected and context["has_result_page"]:
             result_context = {
                 **context,
                 **page_links,

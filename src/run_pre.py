@@ -27,7 +27,7 @@ from utils import (
 )
 
 
-def run_pre_flow(config: dict, target_date: str | None, job_name: str = "pre", *, phase: str = "all", resume: bool = False) -> list[Path]:
+def run_pre_flow(config: dict, target_date: str | None, job_name: str = "pre", *, phase: str = "all", resume: bool = False, race_id: str | None = None) -> list[Path]:
     if phase not in ("all", "general", "statistical"):
         raise ValueError(f"Unsupported pre phase: {phase}")
     if resume and (phase == "all" or not target_date):
@@ -35,6 +35,10 @@ def run_pre_flow(config: dict, target_date: str | None, job_name: str = "pre", *
     logger = setup_logger(job_name, config)
     if resume:
         paths = list_race_files(config, target_date)
+        if race_id is not None:
+            paths = [path for path in paths if (load_race_json(path) or {}).get("meta", {}).get("race_id") == race_id]
+            if not paths:
+                raise FileNotFoundError(f"No race JSON found for {target_date}: {race_id}")
         if not paths:
             raise RuntimeError(f"No race JSON found for resume: {target_date}")
         suffix = ".statistical.json" if phase == "statistical" else ".json"
@@ -47,9 +51,9 @@ def run_pre_flow(config: dict, target_date: str | None, job_name: str = "pre", *
         if set(saved_inputs) != race_ids:
             raise RuntimeError("resume input race IDs do not match target races")
     elif phase == "statistical":
-        paths, input_paths = run_pre_collect_flow(config, target_date, job_name, phase=phase)
+        paths, input_paths = run_pre_collect_flow(config, target_date, job_name, phase=phase, **({"race_id": race_id} if race_id is not None else {}))
     else:
-        paths, input_paths = run_pre_collect_flow(config, target_date, job_name)
+        paths, input_paths = run_pre_collect_flow(config, target_date, job_name, **({"race_id": race_id} if race_id is not None else {}))
     prediction_inputs = (saved_inputs if resume else load_prediction_inputs(input_paths)) if phase != "statistical" else {}
     statistical_inputs = saved_inputs if resume and phase == "statistical" else {}
     if phase != "general" and not resume:
@@ -107,7 +111,7 @@ def run_pre_flow(config: dict, target_date: str | None, job_name: str = "pre", *
         set_race_status(payload, pre_status="published")
         save_race_json(path, payload)
 
-    render_site(config, job_name, None)
+    render_site(config, job_name, None, **({"race_id": race_id} if race_id is not None else {}))
     public_path = publish_site(config)
     log_job(logger, job_name, None, f"published site -> {public_path}")
     return published_paths
@@ -118,12 +122,13 @@ def main() -> None:
     parser.add_argument("--date", default=None)
     parser.add_argument("--phase", choices=("statistical", "general", "all"), default="all")
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--race-id", default=None)
     args = parser.parse_args()
     if args.resume and (args.phase == "all" or not args.date):
         parser.error("--resume requires --date and --phase general or statistical")
 
     config = load_config()
-    run_pre_flow(config, args.date, phase=args.phase, resume=args.resume)
+    run_pre_flow(config, args.date, phase=args.phase, resume=args.resume, **({"race_id": args.race_id} if args.race_id is not None else {}))
 
 
 if __name__ == "__main__":

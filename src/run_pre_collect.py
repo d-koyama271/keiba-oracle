@@ -175,10 +175,15 @@ def export_prediction_chat_input(paths: list[Path], config: dict, job_name: str)
     return exported
 
 
-def collect_pre_races(config: dict, target_date_value: str | None, job_name: str) -> tuple[str, list[Path]]:
+def collect_pre_races(config: dict, target_date_value: str | None, job_name: str, *, race_id: str | None = None) -> tuple[str, list[Path]]:
     selected_races = None
     selected_race_ids = None
-    if target_date_value:
+    if race_id is not None:
+        if len(race_id) != 12 or not race_id.isdigit():
+            raise ValueError("race_id must be 12 digits")
+        target_date = parse_target_date(target_date_value)
+        selected_race_ids = [race_id]
+    elif target_date_value:
         target_date = parse_target_date(target_date_value)
     else:
         try:
@@ -240,11 +245,11 @@ def run_pre_collect_flow(
     config: dict,
     target_date_value: str | None,
     job_name: str,
-    *, phase: str = "all",
+    *, phase: str = "all", race_id: str | None = None,
 ) -> tuple[list[Path], list[Path]]:
     if phase not in ("all", "general", "statistical"):
         raise ValueError(f"Unsupported pre phase: {phase}")
-    target_date, paths = collect_pre_races(config, target_date_value, job_name)
+    target_date, paths = collect_pre_races(config, target_date_value, job_name, **({"race_id": race_id} if race_id is not None else {}))
     if phase == "statistical":
         if not paths:
             raise SystemExit(f"No race JSON updated for {target_date}")
