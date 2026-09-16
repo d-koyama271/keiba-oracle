@@ -144,6 +144,8 @@ schema v9以前は読み込み時に、本体を `general`、`variants` 内の�
 
 ## ジョブの流れ
 
+`python src/scheduler.py` はJSTの今日・明日の開催データから、`target_races` 内の重賞と各フェーズの予定日時を表示します。曜日判定や11Rへのfallbackは行いません。予定は `automation.statistical_time`（前日の時刻）、`automation.general_minutes_before_start`（発走何分前）、`automation.result_minutes_after_start`（発走何分後）から毎回計算します。既存の `odds_reference_minutes_before_start` とは別設定です。この段階では予定を保存せず、予想・結果取得・retry・公開も実行しません。
+
 `run_pre.py`
 
 失敗後の再開は `python src/run_pre.py --date YYYY-MM-DD --phase general --resume` または `--phase statistical --resume` を使用します。再収集せず、`outbox/chat_input/prediction/<race>.json`（general）／`<race>.statistical.json`（statistical）を読み込みます。statistical inputもCodex実行前に保存します。対象日の該当inputがない場合は失敗し、現在のrace JSONから作り直しません。`--resume` には日付と単独フェーズの指定が必要です。通常のgeneral実行は従来どおり再収集・input確定を行います。

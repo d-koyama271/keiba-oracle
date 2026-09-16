@@ -10,6 +10,10 @@ target_races:
   - 阪神
   - 小倉
 odds_reference_minutes_before_start: 60
+automation:
+  statistical_time: "18:00"
+  general_minutes_before_start: 45
+  result_minutes_after_start: 15
 simulation:
   budget: 3000
   stake_unit: 100
