@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import errno
+import os
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -10,7 +13,7 @@ from collect import SHUTUBA_URL, discover_race_ids, fetch_html, parse_race_overv
 from automation_state import clear_phase_state, load_automation_state, record_failure
 from run_pre import run_pre_flow
 from run_post_collect import run_post_flow
-from utils import (JST, load_config, load_race_json, now_jst, outbox_chat_input_dir,
+from utils import (JST, data_dir, load_config, load_race_json, now_jst, outbox_chat_input_dir,
                    parse_jst_datetime, prediction_for_method, race_json_path,
                    race_start_datetime, track_name_from_race_id)
 
@@ -150,22 +153,57 @@ def execute_phases(races: list[dict], config: dict, now: datetime | None = None,
                            next_retry_at=None if blocked else retry_at.isoformat(), root=root)
 
 
+@contextmanager
+def scheduler_lock(config: dict):
+    path = data_dir(config) / "automation" / "scheduler.lock"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a+b") as handle:
+        if os.name == "nt":
+            import msvcrt
+        else:
+            import fcntl
+        try:
+            if os.name == "nt":
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            if exc.errno not in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
+                raise
+            yield False
+            return
+        try:
+            yield True
+        finally:
+            if os.name == "nt":
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
-    config, current = load_config(), now_jst()
-    races = discover_scheduled_races(config, current)
-    decisions = decide_phases(races, config, current)
-    for item in races:
-        race = item["race"]
-        print(f"{race['date']} {race['track']}{race['race_number']}R {race['race_name']}")
-        for decision in decisions:
-            if decision["race_id"] == item["race_id"]:
-                status = decision["mode"] if decision["runnable"] else decision["reason"]
-                print(f"{decision['phase']}: {decision['scheduled_at']:%Y-%m-%d %H:%M} JST ({status})")
-    if args.execute:
-        execute_phases(races, config)
+    config = load_config()
+    with scheduler_lock(config) if args.execute else nullcontext(True) as acquired:
+        if not acquired:
+            print("別のschedulerが実行中のためskipします。")
+            return
+        current = now_jst()
+        races = discover_scheduled_races(config, current)
+        decisions = decide_phases(races, config, current)
+        for item in races:
+            race = item["race"]
+            print(f"{race['date']} {race['track']}{race['race_number']}R {race['race_name']}")
+            for decision in decisions:
+                if decision["race_id"] == item["race_id"]:
+                    status = decision["mode"] if decision["runnable"] else decision["reason"]
+                    print(f"{decision['phase']}: {decision['scheduled_at']:%Y-%m-%d %H:%M} JST ({status})")
+        if args.execute:
+            execute_phases(races, config)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -231,10 +232,11 @@ class SchedulerTests(unittest.TestCase):
                 self.assertEqual(pre_mock.call_count, 2)
 
     def test_cli_is_read_only_unless_execute_and_retry_config_validation(self):
-        with patch.object(sys, "argv", ["scheduler.py"]), \
+        with tempfile.TemporaryDirectory() as tmp, patch.object(sys, "argv", ["scheduler.py"]), \
              patch.object(scheduler, "load_config", return_value=self.config), \
              patch.object(scheduler, "discover_scheduled_races", return_value=[]), \
              patch.object(scheduler, "execute_phases") as execute:
+            self.config["data_dir"] = tmp
             scheduler.main()
             execute.assert_not_called()
             with patch.object(sys, "argv", ["scheduler.py", "--execute"]):
@@ -264,6 +266,75 @@ class SchedulerTests(unittest.TestCase):
             self.assertEqual(set(state["phases"]), {"statistical"})
             self.assertEqual(state["phases"]["statistical"]["status"], "blocked")
             self.assertEqual(state["phases"]["statistical"]["attempts"], 1)
+
+    def test_cli_lock_scope_skip_and_exception_release(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.config["data_dir"] = tmp
+            state_path = Path(tmp) / "automation" / "sentinel.json"
+            atomic_write_json(state_path, {"unchanged": True})
+            before = state_path.read_bytes()
+            with patch.object(scheduler, "load_config", return_value=self.config), \
+                 patch.object(scheduler, "discover_scheduled_races", return_value=[]) as discover, \
+                 patch.object(scheduler, "execute_phases") as execute:
+                with patch.object(sys, "argv", ["scheduler.py"]), \
+                     patch.object(scheduler, "scheduler_lock", side_effect=AssertionError("display must not lock")):
+                    scheduler.main()
+                execute.assert_not_called()
+                discover.reset_mock()
+                with patch.object(sys, "argv", ["scheduler.py", "--execute"]):
+                    with scheduler.scheduler_lock(self.config) as acquired:
+                        self.assertTrue(acquired)
+                        with patch("builtins.print") as output:
+                            self.assertIsNone(scheduler.main())
+                            output.assert_called_once()
+                        discover.assert_not_called()
+                        execute.assert_not_called()
+                        self.assertEqual(state_path.read_bytes(), before)
+                    def fail_inside_lock(*args):
+                        with scheduler.scheduler_lock(self.config) as acquired:
+                            self.assertFalse(acquired)
+                        raise RuntimeError("execution failed")
+                    execute.side_effect = fail_inside_lock
+                    def discover_inside_lock(*args):
+                        with scheduler.scheduler_lock(self.config) as acquired:
+                            self.assertFalse(acquired)
+                        return []
+                    discover.side_effect = discover_inside_lock
+                    with self.assertRaisesRegex(RuntimeError, "execution failed"):
+                        scheduler.main()
+                    execute.side_effect = None
+                    scheduler.main()
+                    self.assertEqual(execute.call_count, 2)
+                with scheduler.scheduler_lock(self.config) as acquired:
+                    self.assertTrue(acquired)
+
+    def test_process_lock_contention_and_abnormal_exit_release(self):
+        code = """
+import sys
+sys.path.insert(0, sys.argv[1])
+from scheduler import scheduler_lock
+with scheduler_lock({'data_dir': sys.argv[2]}) as acquired:
+    print('entered' if acquired else 'skipped', flush=True)
+    if acquired and sys.argv[3] == 'hold':
+        sys.stdin.readline()
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            args = [sys.executable, "-c", code, str(ROOT / "src"), tmp]
+            with subprocess.Popen(args + ["hold"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE, text=True) as first:
+                try:
+                    self.assertEqual(first.stdout.readline().strip(), "entered")
+                    second = subprocess.run(args + ["once"], capture_output=True, text=True, timeout=15)
+                    self.assertEqual(second.returncode, 0, second.stderr)
+                    self.assertEqual(second.stdout.strip(), "skipped")
+                finally:
+                    first.kill()
+                    first.communicate(timeout=15)
+            # The file remains, but killing its owner released the OS lock.
+            self.assertTrue((Path(tmp) / "automation" / "scheduler.lock").exists())
+            following = subprocess.run(args + ["once"], capture_output=True, text=True, timeout=15)
+            self.assertEqual(following.returncode, 0, following.stderr)
+            self.assertEqual(following.stdout.strip(), "entered")
 
 
 if __name__ == "__main__":
