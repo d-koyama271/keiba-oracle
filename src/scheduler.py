@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import argparse
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import requests
 
 from collect import SHUTUBA_URL, discover_race_ids, fetch_html, parse_race_overview
-from automation_state import load_automation_state
+from automation_state import clear_phase_state, load_automation_state, record_failure
+from run_pre import run_pre_flow
+from run_post_collect import run_post_flow
 from utils import (JST, load_config, load_race_json, now_jst, outbox_chat_input_dir,
                    parse_jst_datetime, prediction_for_method, race_json_path,
                    race_start_datetime, track_name_from_race_id)
@@ -76,6 +79,8 @@ def decide_phases(races: list[dict], config: dict, now: datetime | None = None,
                 reason = "completed"
             elif record.get("status") == "blocked":
                 reason = "blocked"
+            elif phase == "result" and not any(prediction_for_method(payload, method) for method in ("general", "statistical")):
+                reason = "no_prediction"
             elif phase != "result" and payload.get("result"):
                 reason = "result_exists"
             elif phase != "result" and current >= start and not saved_input:
@@ -92,7 +97,63 @@ def decide_phases(races: list[dict], config: dict, now: datetime | None = None,
     return decisions
 
 
+def execute_phases(races: list[dict], config: dict, now: datetime | None = None,
+                   root: Path | None = None) -> None:
+    settings = config["automation"]
+    for key in ("retry_interval_minutes", "max_attempts", "result_retry_interval_minutes", "result_max_attempts"):
+        if type(settings.get(key)) is not int or settings[key] <= 0:
+            raise ValueError(f"automation.{key} must be a positive integer")
+    seen = set()
+    for item in races:
+        race, race_id = item["race"], item["race_id"]
+        path = race_json_path(config, race["date"], race["track"], race["race_number"], root)
+        for phase in ("statistical", "general", "result"):
+            key = (race_id, phase)
+            if key in seen:
+                continue
+            seen.add(key)
+            # Refresh both time and saved artifacts after each preceding phase.
+            decision = next(d for d in decide_phases([item], config, now, root) if d["phase"] == phase)
+            if decision["reason"] == "completed":
+                clear_phase_state(path, config, phase, root)
+                continue
+            if decision["reason"] == "missed_execution_window":
+                record_failure(path, config, race_id, phase, "missed_execution_window", status="blocked", root=root)
+                continue
+            if not decision["runnable"]:
+                continue
+            error = None
+            try:
+                if phase == "result":
+                    run_post_flow(config, race["date"], "post", race_id=race_id)
+                else:
+                    run_pre_flow(config, race["date"], phase=phase,
+                                 resume=decision["mode"] == "resume", race_id=race_id)
+                payload = load_race_json(path) or {}
+                completed = bool(payload.get("result")) if phase == "result" else bool(prediction_for_method(payload, phase))
+                if payload.get("meta", {}).get("race_id") != race_id or not completed:
+                    error = f"{phase} artifact missing after execution"
+            except (Exception, SystemExit) as exc:
+                error = f"{type(exc).__name__}: {exc}"
+            if error is None:
+                clear_phase_state(path, config, phase, root)
+                continue
+            state = load_automation_state(path, config, root) or {}
+            attempts = state.get("phases", {}).get(phase, {}).get("attempts", 0)
+            prefix = "result_" if phase == "result" else ""
+            blocked = attempts + 1 >= settings[f"{prefix}max_attempts"]
+            current = now if now is not None else now_jst()
+            current = current.replace(tzinfo=JST) if current.tzinfo is None else current.astimezone(JST)
+            retry_at = current + timedelta(minutes=settings[f"{prefix}retry_interval_minutes"])
+            record_failure(path, config, race_id, phase, error,
+                           status="blocked" if blocked else "retry_wait",
+                           next_retry_at=None if blocked else retry_at.isoformat(), root=root)
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--execute", action="store_true")
+    args = parser.parse_args()
     config, current = load_config(), now_jst()
     races = discover_scheduled_races(config, current)
     decisions = decide_phases(races, config, current)
@@ -103,6 +164,8 @@ def main() -> None:
             if decision["race_id"] == item["race_id"]:
                 status = decision["mode"] if decision["runnable"] else decision["reason"]
                 print(f"{decision['phase']}: {decision['scheduled_at']:%Y-%m-%d %H:%M} JST ({status})")
+    if args.execute:
+        execute_phases(races, config)
 
 
 if __name__ == "__main__":

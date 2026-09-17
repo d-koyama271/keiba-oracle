@@ -148,6 +148,8 @@ schema v9以前は読み込み時に、本体を `general`、`variants` 内の�
 
 `decide_phases()` はrace JSONの完了状態、automation state、保存済みinputを参照し、各レース・phaseの `scheduled_at`、`mode`（normal／resume）、`runnable`、`reason` を返します。完了済み・blocked・予定時刻前・retry待機中は対象外です。pre phaseは保存inputがあればresume、発走時刻以降にinputがなければ `missed_execution_window`、result取得済みなら対象外とします。race JSONやautomation stateへの書き込みは行いません。
 
+`python src/scheduler.py --execute` を指定すると、判定に従ってレース単位で既存pre／postフローを実行し、ローカルの `public/` まで更新します。resultは少なくとも一方のpredictionがある場合だけ実行します。実行後のrace JSONで成果物を確認し、成功したphaseの失敗stateをclearします。失敗時は `automation.retry_interval_minutes`／`max_attempts`、resultでは `result_retry_interval_minutes`／`result_max_attempts` に従ってretry待機またはblockedを記録します。これらは正の整数です。発走時刻以降にinputがないpre phaseは実行せず即blockedとし、既にblockedのphaseは再記録しません。各phaseは1回の起動で最大1回実行し、自動待機ループやリモートデプロイは行いません。`--execute` なしでは表示のみで、stateや `public/` を変更しません。
+
 `run_pre.py`
 
 `run_pre.py`、`run_post.py`、`run_post_collect.py` は `--race-id <race_id>` で対象を1レースに限定できます。preの各phaseとresumeでも指定でき、対象外のレースのinput・予想・結果・公開済みHTMLは更新しません。トップページと結果集計は対象レースの更新を反映します。省略時は従来の日付単位処理です。resume／postで対象日のrace JSONが見つからない場合はエラーになります。
