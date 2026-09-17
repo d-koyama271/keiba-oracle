@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import requests
 
 from collect import SHUTUBA_URL, discover_race_ids, fetch_html, parse_race_overview
-from utils import JST, load_config, now_jst, race_start_datetime, track_name_from_race_id
+from automation_state import load_automation_state
+from utils import (JST, load_config, load_race_json, now_jst, outbox_chat_input_dir,
+                   parse_jst_datetime, prediction_for_method, race_json_path,
+                   race_start_datetime, track_name_from_race_id)
 
 
 def calculate_phase_times(race: dict, config: dict) -> dict[str, datetime]:
@@ -45,12 +49,60 @@ def discover_scheduled_races(config: dict, now: datetime | None = None) -> list[
     return races
 
 
+def decide_phases(races: list[dict], config: dict, now: datetime | None = None,
+                  root: Path | None = None) -> list[dict]:
+    current = now if now is not None else now_jst()
+    current = current.replace(tzinfo=JST) if current.tzinfo is None else current.astimezone(JST)
+    decisions = []
+    for item in races:
+        race, race_id = item["race"], item["race_id"]
+        path = race_json_path(config, race["date"], race["track"], race["race_number"], root)
+        payload = load_race_json(path) or {}
+        state = load_automation_state(path, config, root)
+        if payload and payload["meta"].get("race_id") != race_id:
+            raise ValueError("race JSON race_id mismatch")
+        if state and state["race_id"] != race_id:
+            raise ValueError("automation state race_id mismatch")
+        start = race_start_datetime(race["date"], race["start_time"])
+        for phase, scheduled_at in calculate_phase_times(race, config).items():
+            saved_input = phase != "result" and (
+                outbox_chat_input_dir("prediction", root)
+                / f"{path.stem}{'.statistical' if phase == 'statistical' else ''}.json"
+            ).is_file()
+            record = (state or {}).get("phases", {}).get(phase, {})
+            completed = bool(payload.get("result")) if phase == "result" else bool(prediction_for_method(payload, phase))
+            reason = None
+            if completed:
+                reason = "completed"
+            elif record.get("status") == "blocked":
+                reason = "blocked"
+            elif phase != "result" and payload.get("result"):
+                reason = "result_exists"
+            elif phase != "result" and current >= start and not saved_input:
+                reason = "missed_execution_window"
+            elif current < scheduled_at:
+                reason = "not_scheduled_yet"
+            elif record.get("status") == "retry_wait" and current < parse_jst_datetime(record["next_retry_at"]):
+                reason = "retry_wait"
+            decisions.append({
+                "race_id": race_id, "date": race["date"], "phase": phase,
+                "scheduled_at": scheduled_at, "mode": "resume" if saved_input else "normal",
+                "runnable": reason is None, "reason": reason,
+            })
+    return decisions
+
+
 def main() -> None:
-    for item in discover_scheduled_races(load_config()):
+    config, current = load_config(), now_jst()
+    races = discover_scheduled_races(config, current)
+    decisions = decide_phases(races, config, current)
+    for item in races:
         race = item["race"]
         print(f"{race['date']} {race['track']}{race['race_number']}R {race['race_name']}")
-        for phase, scheduled_at in item["scheduled_at"].items():
-            print(f"{phase}: {scheduled_at:%Y-%m-%d %H:%M} JST")
+        for decision in decisions:
+            if decision["race_id"] == item["race_id"]:
+                status = decision["mode"] if decision["runnable"] else decision["reason"]
+                print(f"{decision['phase']}: {decision['scheduled_at']:%Y-%m-%d %H:%M} JST ({status})")
 
 
 if __name__ == "__main__":

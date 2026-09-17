@@ -144,7 +144,9 @@ schema v9以前は読み込み時に、本体を `general`、`variants` 内の�
 
 ## ジョブの流れ
 
-`python src/scheduler.py` はJSTの今日・明日の開催データから、`target_races` 内の重賞と各フェーズの予定日時を表示します。曜日判定や11Rへのfallbackは行いません。予定は `automation.statistical_time`（前日の時刻）、`automation.general_minutes_before_start`（発走何分前）、`automation.result_minutes_after_start`（発走何分後）から毎回計算します。既存の `odds_reference_minutes_before_start` とは別設定です。この段階では予定を保存せず、予想・結果取得・retry・公開も実行しません。
+`python src/scheduler.py` はJSTの今日・明日の開催データから、`target_races` 内の重賞と各フェーズの予定日時・現在の実行可否を表示します。曜日判定や11Rへのfallbackは行いません。予定は `automation.statistical_time`（前日の時刻）、`automation.general_minutes_before_start`（発走何分前）、`automation.result_minutes_after_start`（発走何分後）から毎回計算します。既存の `odds_reference_minutes_before_start` とは別設定です。この段階では予定を保存せず、予想・結果取得・retry・公開も実行しません。
+
+`decide_phases()` はrace JSONの完了状態、automation state、保存済みinputを参照し、各レース・phaseの `scheduled_at`、`mode`（normal／resume）、`runnable`、`reason` を返します。完了済み・blocked・予定時刻前・retry待機中は対象外です。pre phaseは保存inputがあればresume、発走時刻以降にinputがなければ `missed_execution_window`、result取得済みなら対象外とします。race JSONやautomation stateへの書き込みは行いません。
 
 `run_pre.py`
 
