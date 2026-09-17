@@ -9,10 +9,6 @@ from utils import load_config, parse_target_date, public_dir, repo_root, stage_d
 
 def publish_site(config: dict, root: Path | None = None) -> Path:
     root = root or repo_root()
-    mode = config.get("publish_mode", "github_pages")
-    if mode != "github_pages":
-        raise ValueError(f"Unsupported publish_mode: {mode}")
-
     source_dir = stage_dir(config, root)
     if not source_dir.exists():
         raise FileNotFoundError(f"render output not found: {source_dir}")

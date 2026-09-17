@@ -12,6 +12,7 @@ import requests
 from collect import SHUTUBA_URL, discover_race_ids, fetch_html, parse_race_overview
 from automation_state import clear_phase_state, load_automation_state, record_failure
 from run_pre import run_pre_flow
+from deploy import deploy_site
 from run_post_collect import run_post_flow
 from utils import (JST, data_dir, load_config, load_race_json, now_jst, outbox_chat_input_dir,
                    parse_jst_datetime, prediction_for_method, race_json_path,
@@ -204,6 +205,7 @@ def main() -> None:
                     print(f"{decision['phase']}: {decision['scheduled_at']:%Y-%m-%d %H:%M} JST ({status})")
         if args.execute:
             execute_phases(races, config)
+            deploy_site(config)
 
 
 if __name__ == "__main__":

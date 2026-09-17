@@ -235,13 +235,16 @@ class SchedulerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, patch.object(sys, "argv", ["scheduler.py"]), \
              patch.object(scheduler, "load_config", return_value=self.config), \
              patch.object(scheduler, "discover_scheduled_races", return_value=[]), \
-             patch.object(scheduler, "execute_phases") as execute:
+             patch.object(scheduler, "execute_phases") as execute, \
+             patch.object(scheduler, "deploy_site") as deploy:
             self.config["data_dir"] = tmp
             scheduler.main()
             execute.assert_not_called()
+            deploy.assert_not_called()
             with patch.object(sys, "argv", ["scheduler.py", "--execute"]):
                 scheduler.main()
             execute.assert_called_once_with([], self.config)
+            deploy.assert_called_once_with(self.config)
         for key in ("retry_interval_minutes", "max_attempts", "result_retry_interval_minutes", "result_max_attempts"):
             for invalid in (0, -1, True, "3", 1.5, None):
                 config = copy.deepcopy(self.config)
@@ -275,7 +278,8 @@ class SchedulerTests(unittest.TestCase):
             before = state_path.read_bytes()
             with patch.object(scheduler, "load_config", return_value=self.config), \
                  patch.object(scheduler, "discover_scheduled_races", return_value=[]) as discover, \
-                 patch.object(scheduler, "execute_phases") as execute:
+                 patch.object(scheduler, "execute_phases") as execute, \
+                 patch.object(scheduler, "deploy_site") as deploy:
                 with patch.object(sys, "argv", ["scheduler.py"]), \
                      patch.object(scheduler, "scheduler_lock", side_effect=AssertionError("display must not lock")):
                     scheduler.main()
@@ -289,6 +293,7 @@ class SchedulerTests(unittest.TestCase):
                             output.assert_called_once()
                         discover.assert_not_called()
                         execute.assert_not_called()
+                        deploy.assert_not_called()
                         self.assertEqual(state_path.read_bytes(), before)
                     def fail_inside_lock(*args):
                         with scheduler.scheduler_lock(self.config) as acquired:
@@ -305,6 +310,14 @@ class SchedulerTests(unittest.TestCase):
                     execute.side_effect = None
                     scheduler.main()
                     self.assertEqual(execute.call_count, 2)
+                    def fail_deploy(*args):
+                        with scheduler.scheduler_lock(self.config) as acquired:
+                            self.assertFalse(acquired)
+                        raise RuntimeError("push failed")
+                    deploy.side_effect = fail_deploy
+                    with self.assertRaisesRegex(RuntimeError, "push failed"):
+                        scheduler.main()
+                    self.assertEqual(state_path.read_bytes(), before)
                 with scheduler.scheduler_lock(self.config) as acquired:
                     self.assertTrue(acquired)
 

@@ -148,7 +148,7 @@ schema v9以前は読み込み時に、本体を `general`、`variants` 内の�
 
 `decide_phases()` はrace JSONの完了状態、automation state、保存済みinputを参照し、各レース・phaseの `scheduled_at`、`mode`（normal／resume）、`runnable`、`reason` を返します。完了済み・blocked・予定時刻前・retry待機中は対象外です。pre phaseは保存inputがあればresume、発走時刻以降にinputがなければ `missed_execution_window`、result取得済みなら対象外とします。race JSONやautomation stateへの書き込みは行いません。
 
-`python src/scheduler.py --execute` を指定すると、判定に従ってレース単位で既存pre／postフローを実行し、ローカルの `public/` まで更新します。resultは少なくとも一方のpredictionがある場合だけ実行します。実行後のrace JSONで成果物を確認し、成功したphaseの失敗stateをclearします。失敗時は `automation.retry_interval_minutes`／`max_attempts`、resultでは `result_retry_interval_minutes`／`result_max_attempts` に従ってretry待機またはblockedを記録します。これらは正の整数です。発走時刻以降にinputがないpre phaseは実行せず即blockedとし、既にblockedのphaseは再記録しません。各phaseは1回の起動で最大1回実行し、自動待機ループやリモートデプロイは行いません。`--execute` なしでは表示のみで、stateや `public/` を変更しません。
+`python src/scheduler.py --execute` を指定すると、判定に従ってレース単位で既存pre／postフローを実行し、ローカルの `public/` まで更新します。resultは少なくとも一方のpredictionがある場合だけ実行します。実行後のrace JSONで成果物を確認し、成功したphaseの失敗stateをclearします。失敗時は `automation.retry_interval_minutes`／`max_attempts`、resultでは `result_retry_interval_minutes`／`result_max_attempts` に従ってretry待機またはblockedを記録します。これらは正の整数です。発走時刻以降にinputがないpre phaseは実行せず即blockedとし、既にblockedのphaseは再記録しません。各phaseは1回の起動で最大1回実行し、自動待機ループは行いません。`--execute` なしでは表示のみで、stateや `public/` を変更しません。
 
 `--execute` は `data_dir/automation/scheduler.lock` のOS管理の非ブロッキングlockで重賞検知から実処理全体を保護します。競合時は失敗stateを更新せず正常skipします。異常終了時もOSがlockを解放するため、残ったlockファイルの削除は不要です。確認表示のみの場合はlockを取得しません。
 
@@ -317,5 +317,9 @@ python -m unittest discover -s tests -v
 ```
 
 ## GitHub Pages
+
+`publish_site()` はホスティング先に依存せず、stageをローカル `public/` へ反映します。`deploy_site()` は `publish_mode` に応じて公開し、現在は `github_pages` のみ対応します。schedulerの `--execute` はphase処理後、処理件数が0件でも同じlock内でdeployを試みます。deploy失敗はraceの失敗回数に加算せず、次回起動で再試行します。
+
+GitHub Pagesへのdeployは `deployment.github_pages.remote`（実行元repoのremote名）と `branch` を使い、`data_dir/deploy/github_pages/` の専用cloneを毎回remoteへ同期してから、完成済み `public/` を完全コピーします。変更がある場合だけ `public/` をcommit／pushします。開発用working treeはcommit／resetしません。実行環境にはGitのcommit用ユーザー設定とremoteへのpush権限が必要です。
 
 この実装では `public/` を静的サイト出力先にしています。GitHub Actions の `Deploy Pages` workflow が `public/` を Pages artifact としてアップロードし、GitHub Pages へ配布します。Actions 側ではビルド処理を行いません。

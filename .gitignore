@@ -29,6 +29,7 @@ Thumbs.db
 # Runtime artifacts
 data/races/
 data/automation/
+data/deploy/
 data/_site_stage/
 inbox/
 outbox/
