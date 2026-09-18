@@ -27,6 +27,7 @@ Thumbs.db
 .idea/
 
 # Runtime artifacts
+public/
 data/races/
 data/automation/
 data/deploy/

@@ -318,6 +318,8 @@ python -m unittest discover -s tests -v
 
 ## GitHub Pages
 
+ソースコードは `main`、公開用 `public/` は `deploy-pages` で管理します。mainでは `public/` をGit管理せず、ローカルの生成物として保持します。公開先ブランチは初回のみ手動作成が必要です。GitHub Actionsのpushトリガーは `deploy-pages` の `public/**` を対象とします。
+
 `publish_site()` はホスティング先に依存せず、stageをローカル `public/` へ反映します。`deploy_site()` は `publish_mode` に応じて公開し、現在は `github_pages` のみ対応します。schedulerの `--execute` はphase処理後、処理件数が0件でも同じlock内でdeployを試みます。deploy失敗はraceの失敗回数に加算せず、次回起動で再試行します。
 
 GitHub Pagesへのdeployは `deployment.github_pages.remote`（実行元repoのremote名）と `branch` を使い、`data_dir/deploy/github_pages/` の専用cloneを毎回remoteへ同期してから、完成済み `public/` を完全コピーします。変更がある場合だけ `public/` をcommit／pushします。開発用working treeはcommit／resetしません。実行環境にはGitのcommit用ユーザー設定とremoteへのpush権限が必要です。

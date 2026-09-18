@@ -45,7 +45,7 @@ def deploy_site(config: dict, root: Path | None = None) -> None:
             raise ValueError("deploy public path escapes the dedicated clone")
         shutil.rmtree(target)
     shutil.copytree(source, target)
-    git("add", "-A", "--", "public")
+    git("add", "-f", "-A", "--", "public")
     if not git("diff", "--cached", "--name-only", "--", "public"):
         return
     git("commit", "-m", f"Publish site {now_jst():%Y-%m-%d %H:%M} JST")

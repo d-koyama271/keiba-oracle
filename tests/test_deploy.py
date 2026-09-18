@@ -32,13 +32,22 @@ class DeployTests(unittest.TestCase):
         (self.root / "public").mkdir()
         (self.root / "public" / "old.html").write_text("old")
         (self.root / "code.py").write_text("original")
-        self.git(self.root, "add", "code.py", "public")
+        (self.root / ".gitignore").write_text("public/\n")
+        self.git(self.root, "add", "code.py", ".gitignore")
         self.git(self.root, "commit", "-m", "initial")
         self.git(self.root, "remote", "add", "pages", str(self.remote))
         self.git(self.root, "push", "pages", "main")
+        self.main_head = self.git(self.remote, "rev-parse", "main")
+        self.git(self.root, "checkout", "-b", "deploy-pages")
+        self.git(self.root, "add", "-f", "public")
+        self.git(self.root, "commit", "-m", "initial public")
+        self.git(self.root, "push", "pages", "deploy-pages")
+        self.git(self.root, "checkout", "main")
+        (self.root / "public").mkdir(exist_ok=True)
+        (self.root / "public" / "old.html").write_text("old")
         self.config = {"data_dir": str(self.base / "runtime"), "public_dir": "public",
                        "publish_mode": "github_pages",
-                       "deployment": {"github_pages": {"remote": "pages", "branch": "main"}}}
+                       "deployment": {"github_pages": {"remote": "pages", "branch": "deploy-pages"}}}
         self.clone = self.base / "runtime" / "deploy" / "github_pages"
 
     def git(self, cwd, *args):
@@ -54,6 +63,9 @@ class DeployTests(unittest.TestCase):
                   self.git(self.root, "diff", "--cached"))
         deploy_site(self.config, self.root)
         self.assertTrue((self.clone / ".git").is_dir())
+        self.assertEqual(self.git(self.clone, "branch", "--show-current"), "deploy-pages")
+        self.assertEqual(self.git(self.clone, "check-ignore", "--no-index", "public/index.html"), "public/index.html")
+        self.assertEqual(self.git(self.remote, "rev-parse", "main"), self.main_head)
         self.assertEqual(self.git(self.clone, "show", "HEAD:code.py"), "original")
         self.assertFalse((self.clone / "public" / "old.html").exists())
         self.assertEqual((self.clone / "public" / "index.html").read_text(), "new")
@@ -69,11 +81,11 @@ class DeployTests(unittest.TestCase):
             self.assertFalse(any(c.args[0][1] in ("commit", "push") for c in run.call_args_list))
         self.assertEqual(self.git(self.clone, "rev-parse", "HEAD"), head)
         other = self.base / "other"
-        self.git(self.base, "clone", "-b", "main", str(self.remote), str(other))
+        self.git(self.base, "clone", "-b", "deploy-pages", str(self.remote), str(other))
         (other / "code.py").write_text("remote update")
         self.git(other, "add", "code.py")
         self.git(other, "commit", "-m", "remote change")
-        self.git(other, "push", "origin", "main")
+        self.git(other, "push", "origin", "deploy-pages")
         deploy_site(self.config, self.root)
         self.assertEqual((self.clone / "code.py").read_text(), "remote update")
 
@@ -90,10 +102,11 @@ class DeployTests(unittest.TestCase):
             with self.assertRaises(subprocess.CalledProcessError):
                 deploy_site(self.config, self.root)
         self.assertNotEqual(self.git(self.clone, "rev-parse", "HEAD"), original)
-        self.assertEqual(self.git(self.remote, "rev-parse", "main"), original)
+        self.assertEqual(self.git(self.remote, "rev-parse", "deploy-pages"), original)
         (self.root / "public" / "index.html").write_text("retry content")
         deploy_site(self.config, self.root)
-        self.assertEqual(self.git(self.remote, "show", "main:public/index.html"), "retry content")
+        self.assertEqual(self.git(self.remote, "show", "deploy-pages:public/index.html"), "retry content")
+        self.assertEqual(self.git(self.remote, "rev-parse", "main"), self.main_head)
         self.assertEqual(self.git(self.clone, "rev-parse", "HEAD^"), original)
 
     def test_publish_independent_and_unsupported_deploy(self):

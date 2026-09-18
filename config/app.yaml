@@ -43,7 +43,7 @@ publish_mode: github_pages
 deployment:
   github_pages:
     remote: origin
-    branch: main
+    branch: deploy-pages
 llm_provider: codex
 llm_model: gpt-5.6-sol
 llm_reasoning_effort: ultra
