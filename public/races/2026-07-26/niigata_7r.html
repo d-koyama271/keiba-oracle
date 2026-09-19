@@ -82,6 +82,7 @@
       font-size: 13px;
       font-weight: 700;
     }
+    .status-cancelled { background: #f8e3e3; color: #942f2f; border-color: #dbaaaa; }
     .status-prediction {
       background: var(--status-prediction-bg);
       color: var(--status-prediction-color);
@@ -519,7 +520,7 @@
     <div class="panel">
       <div class="page-badges">
         <span class="ai-badge">manual-chat</span>
-        <span class="status status-prediction">予想公開</span>
+        <span class="status status-prediction">直前予想公開</span>
       </div>
       <h1>新潟 7R 関屋記念</h1>
       <h2>レース基本情報</h2>
@@ -806,7 +807,7 @@
       
       
       
-      <div class="ai-method-panel simulation-method-content" id="simulation-general" role="tabpanel" data-ai-panel data-ai-method="general">
+      <div class="ai-method-panel simulation-method-content panel" id="simulation-general" role="tabpanel" data-ai-panel data-ai-method="general">
       <div class="ai-method-tabs ticket-tabs" role="tablist" aria-label="シミュレーションの券種">
   <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="win" aria-controls="purchase-general-win" aria-selected="true" tabindex="0">単勝</button>
   <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="quinella" aria-controls="purchase-general-quinella" aria-selected="false" tabindex="-1">馬連</button>
@@ -1946,12 +1947,15 @@
             trigger.setAttribute('aria-label', text || trigger.dataset.winLabel);
           });
         };
-        document.addEventListener("ticket-change", (event) => {
+        root.addEventListener("ticket-change", (event) => {
           activeTicket = event.detail.ticket;
           resetTicketDefaults();
           recalculate();
         });
         document.addEventListener("ai-method-change", (event) => {
+          if (!event.target?.classList?.contains("simulation-method-tabs")) {
+            return;
+          }
           const method = event.detail?.method;
           if (!method || !data.methods?.[method]) {
             return;
@@ -2039,55 +2043,73 @@
       }
     };
 
+    function directScopedPanels(tabList, selector) {
+      return Array.from(tabList.parentElement.children).filter((element) => element.matches(selector));
+    }
+
+    function activateTicketTabList(tabList, ticket) {
+      Array.from(tabList.querySelectorAll("[data-ticket-tab]")).forEach((tab) => {
+        const selected = tab.dataset.ticketTab === ticket;
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+      });
+      directScopedPanels(tabList, "[data-ticket-panel]").forEach((panel) => {
+        panel.hidden = panel.dataset.ticketPanel !== ticket;
+      });
+    }
+
+    function activateAiMethodTabList(tabList, method) {
+      Array.from(tabList.querySelectorAll("[data-ai-tab]")).forEach((tab) => {
+        const selected = tab.dataset.aiMethod === method;
+        tab.setAttribute("aria-selected", selected ? "true" : "false");
+        tab.tabIndex = selected ? 0 : -1;
+      });
+      directScopedPanels(tabList, "[data-ai-panel]").forEach((panel) => {
+        panel.hidden = panel.dataset.aiMethod !== method;
+      });
+    }
+
     (() => {
-      const ticketTabs = Array.from(document.querySelectorAll("[data-ticket-tab]"));
-      const activateTicket = (ticket) => {
-        ticketTabs.forEach((tab) => {
-          const selected = tab.dataset.ticketTab === ticket;
-          tab.setAttribute("aria-selected", String(selected));
-          tab.tabIndex = selected ? 0 : -1;
-        });
-        document.querySelectorAll("[data-ticket-panel]").forEach((panel) => { panel.hidden = panel.dataset.ticketPanel !== ticket; });
-        document.dispatchEvent(new CustomEvent("ticket-change", { detail: { ticket } }));
-      };
-      ticketTabs.forEach((tab) => {
-        tab.addEventListener("click", () => activateTicket(tab.dataset.ticketTab));
-        tab.addEventListener("keydown", (event) => {
-          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-          event.preventDefault();
-          const tabs = Array.from(tab.closest('[role="tablist"]').querySelectorAll('[data-ticket-tab]'));
-          const index = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (tabs.indexOf(tab) + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
-          activateTicket(tabs[index].dataset.ticketTab);
-          tabs[index].focus();
+      const ticketTabLists = Array.from(document.querySelectorAll(".ticket-tabs"));
+      ticketTabLists.forEach((tabList) => {
+        const tabs = Array.from(tabList.querySelectorAll("[data-ticket-tab]"));
+        const activateTicket = (ticket) => {
+          activateTicketTabList(tabList, ticket);
+          tabList.dispatchEvent(new CustomEvent("ticket-change", { bubbles: true, detail: { ticket } }));
+        };
+        tabs.forEach((tab) => {
+          tab.addEventListener("click", () => activateTicket(tab.dataset.ticketTab));
+          tab.addEventListener("keydown", (event) => {
+            if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+            event.preventDefault();
+            const index = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (tabs.indexOf(tab) + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+            activateTicket(tabs[index].dataset.ticketTab);
+            tabs[index].focus();
+          });
         });
       });
-      const aiMethodTabs = Array.from(document.querySelectorAll("[data-ai-tab]"));
-      const activateAiMethod = (method) => {
-        for (const tab of aiMethodTabs) {
-          const selected = tab.dataset.aiMethod === method;
-          tab.setAttribute("aria-selected", selected ? "true" : "false");
-          tab.tabIndex = selected ? 0 : -1;
+      const aiMethodTabLists = Array.from(document.querySelectorAll(".prediction-method-tabs, .simulation-method-tabs, .result-method-tabs"));
+      aiMethodTabLists.forEach((tabList) => {
+        const tabs = Array.from(tabList.querySelectorAll("[data-ai-tab]"));
+        const activateAiMethod = (method) => {
+          activateAiMethodTabList(tabList, method);
+          tabList.dispatchEvent(new CustomEvent("ai-method-change", { bubbles: true, detail: { method } }));
+        };
+        tabs.forEach((tab) => {
+          tab.addEventListener("click", () => activateAiMethod(tab.dataset.aiMethod));
+          tab.addEventListener("keydown", (event) => {
+            if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+            const offset = event.key === "ArrowRight" ? 1 : -1;
+            const target = tabs[(tabs.indexOf(tab) + offset + tabs.length) % tabs.length];
+            activateAiMethod(target.dataset.aiMethod);
+            target.focus();
+            event.preventDefault();
+          });
+        });
+        if (tabs.length) {
+          activateAiMethod(tabs[0].dataset.aiMethod);
         }
-        document.querySelectorAll("[data-ai-panel]").forEach((panel) => {
-          panel.hidden = panel.dataset.aiMethod !== method;
-        });
-        document.dispatchEvent(new CustomEvent("ai-method-change", { detail: { method } }));
-      };
-      for (const tab of aiMethodTabs) {
-        tab.addEventListener("click", () => activateAiMethod(tab.dataset.aiMethod));
-        tab.addEventListener("keydown", (event) => {
-          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-          const tabs = Array.from(tab.closest('[role="tablist"]').querySelectorAll("[data-ai-tab]"));
-          const offset = event.key === "ArrowRight" ? 1 : -1;
-          const target = tabs[(tabs.indexOf(tab) + offset + tabs.length) % tabs.length];
-          activateAiMethod(target.dataset.aiMethod);
-          target.focus();
-          event.preventDefault();
-        });
-      }
-      if (aiMethodTabs.length) {
-        activateAiMethod(aiMethodTabs[0].dataset.aiMethod);
-      }
+      });
 
       const tooltipTriggers = Array.from(document.querySelectorAll(".tooltip-trigger"));
       const closeTooltips = () => {
