@@ -61,7 +61,11 @@ class DeployTests(unittest.TestCase):
         (self.root / "public" / "index.html").write_text("new")
         before = (self.git(self.root, "status", "--porcelain"), self.git(self.root, "rev-parse", "HEAD"),
                   self.git(self.root, "diff", "--cached"))
-        deploy_site(self.config, self.root)
+        with patch("deploy.subprocess.run", wraps=subprocess.run) as run:
+            deploy_site(self.config, self.root)
+            self.assertTrue(run.call_args_list)
+            for call in run.call_args_list:
+                self.assertEqual(call.kwargs["creationflags"], subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
         self.assertTrue((self.clone / ".git").is_dir())
         self.assertEqual(self.git(self.clone, "branch", "--show-current"), "deploy-pages")
         self.assertEqual(self.git(self.clone, "check-ignore", "--no-index", "public/index.html"), "public/index.html")
@@ -78,7 +82,7 @@ class DeployTests(unittest.TestCase):
         self.git(self.remote, "config", "receive.denyNonFastForwards", "true")
         with patch("deploy.subprocess.run", wraps=subprocess.run) as run:
             deploy_site(self.config, self.root)
-            self.assertFalse(any(c.args[0][1] in ("commit", "push") for c in run.call_args_list))
+            self.assertFalse(any(c.args[0][1] in ("fetch", "commit", "push") for c in run.call_args_list))
         self.assertEqual(self.git(self.clone, "rev-parse", "HEAD"), head)
         other = self.base / "other"
         self.git(self.base, "clone", "-b", "deploy-pages", str(self.remote), str(other))
@@ -86,6 +90,7 @@ class DeployTests(unittest.TestCase):
         self.git(other, "add", "code.py")
         self.git(other, "commit", "-m", "remote change")
         self.git(other, "push", "origin", "deploy-pages")
+        (self.root / "public" / "index.html").write_text("updated public")
         deploy_site(self.config, self.root)
         self.assertEqual((self.clone / "code.py").read_text(), "remote update")
 
@@ -103,9 +108,8 @@ class DeployTests(unittest.TestCase):
                 deploy_site(self.config, self.root)
         self.assertNotEqual(self.git(self.clone, "rev-parse", "HEAD"), original)
         self.assertEqual(self.git(self.remote, "rev-parse", "deploy-pages"), original)
-        (self.root / "public" / "index.html").write_text("retry content")
         deploy_site(self.config, self.root)
-        self.assertEqual(self.git(self.remote, "show", "deploy-pages:public/index.html"), "retry content")
+        self.assertEqual(self.git(self.remote, "show", "deploy-pages:public/index.html"), "first attempt")
         self.assertEqual(self.git(self.remote, "rev-parse", "main"), self.main_head)
         self.assertEqual(self.git(self.clone, "rev-parse", "HEAD^"), original)
 

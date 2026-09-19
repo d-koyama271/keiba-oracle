@@ -159,7 +159,7 @@ class PredictionValidationTests(unittest.TestCase):
             captured: dict[str, str] = {}
 
             class FakeClient:
-                def invoke_json(self, prompt: str, max_retries: int = 2) -> dict:
+                def invoke_json(self, prompt: str) -> dict:
                     captured["prompt"] = prompt
                     return {
                         "horses": [
@@ -325,7 +325,7 @@ class PredictionValidationTests(unittest.TestCase):
             captured: dict[str, str] = {}
 
             class FakeClient:
-                def invoke_json(self, prompt: str, max_retries: int = 2) -> dict:
+                def invoke_json(self, prompt: str) -> dict:
                     captured["prompt"] = prompt
                     return {
                         "horses": [
@@ -525,7 +525,6 @@ class CodexClientTests(unittest.TestCase):
         ):
             response = LLMClient.from_config(self.CONFIG).invoke_json(
                 "ONLY_INPUT",
-                max_retries=0,
             )
 
         return commands[0], run_kwargs, response
@@ -543,10 +542,25 @@ class CodexClientTests(unittest.TestCase):
         self.assertEqual(command[command.index("--config") + 1], f'model_reasoning_effort="{self.CONFIG["llm_reasoning_effort"]}"')
         self.assertIn("--output-schema", command)
         self.assertEqual(run_kwargs["input"], "ONLY_INPUT")
+        self.assertEqual(run_kwargs["creationflags"], subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
         self.assertNotEqual(Path(run_kwargs["cwd"]), ROOT)
         self.assertEqual(run_kwargs["env"]["HOME"], r"C:\Users\runner")
         self.assertNotIn("CODEX_HOME", run_kwargs["env"])
         self.assertEqual(response["horses"][0]["horse_number"], 1)
+
+    def test_codex_failure_or_invalid_json_is_not_retried(self):
+        for invalid_json in (False, True):
+            with self.subTest(invalid_json=invalid_json):
+                def run(command, **kwargs):
+                    if invalid_json:
+                        Path(command[command.index("--output-last-message") + 1]).write_text("invalid JSON")
+                        return subprocess.CompletedProcess(command, 0, "", "")
+                    return subprocess.CompletedProcess(command, 1, "", "failed")
+                with patch("llm_client.shutil.which", return_value="codex"), \
+                     patch("llm_client.subprocess.run", side_effect=run) as invoke:
+                    with self.assertRaises((RuntimeError, ValueError)):
+                        LLMClient.from_config(self.CONFIG).invoke_json("test")
+                    self.assertEqual(invoke.call_count, 1)
 
     def test_codex_cli_supplements_empty_home_from_userprofile(self) -> None:
         _, run_kwargs, _ = self._invoke_codex_with_environment(
@@ -644,7 +658,7 @@ class FlowAndCompatibilityTests(unittest.TestCase):
             }
 
             class StatisticalClient:
-                def invoke_json(self, prompt: str, max_retries: int = 2) -> dict:
+                def invoke_json(self, prompt: str) -> dict:
                     return {
                         "horses": [
                             {"horse_number": 1, "win_probability": 0.2, "reason": "近走内容を評価。"},
@@ -692,7 +706,7 @@ class FlowAndCompatibilityTests(unittest.TestCase):
                     if item["horse_number"] == selection["horse_number"]
                 )
                 self.assertEqual(selection["predicted_probability"], expected)
-            self.assertEqual(saved["meta"]["pre_status"], "published")
+            self.assertEqual(saved["meta"]["pre_status"], "awaiting_prediction")
 
     def test_normal_pre_flow_generates_codex_prediction_then_publishes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -725,7 +739,7 @@ class FlowAndCompatibilityTests(unittest.TestCase):
             prompts: list[str] = []
 
             class FakeClient:
-                def invoke_json(self, prompt: str, max_retries: int = 2) -> dict:
+                def invoke_json(self, prompt: str) -> dict:
                     prompts.append(prompt)
                     statistical = '"method": "statistical"' in prompt
                     return {
@@ -795,7 +809,7 @@ class FlowAndCompatibilityTests(unittest.TestCase):
             )
             self.assertIsNotNone(saved["simulation"][0]["general"]["win"]["value"]["pre"])
             self.assertIsNotNone(saved["simulation"][0]["general"]["win"]["dutching"]["pre"])
-            self.assertEqual(saved["meta"]["pre_status"], "published")
+            self.assertEqual(saved["meta"]["pre_status"], "awaiting_prediction")
             self.assertIsNone(saved["result"])
             self.assertEqual(saved["evaluation"], [])
             render_site.assert_called_once()

@@ -100,14 +100,13 @@ class ResultCollectionTests(unittest.TestCase):
                 self.assertEqual(collect.collect_results({"data_dir": tmp}, "test-offline", [path]), [])
             self.assertEqual(path.read_bytes(), before)
 
-    def test_official_notice_fetch_uses_listing_and_saved_sources(self):
+    def test_official_notice_fetch_uses_listing_only(self):
         url = "https://info.netkeiba.com/?pid=info_detail&id=1"
-        saved = "https://info.netkeiba.com/?pid=info_detail&id=2"
         listing = f'<div class="InfoListBox"><a href="{url}">2026年02月08日 東京競馬の開催中止</a><a href="?pid=info_detail&id=3">2026年02月08日 システムメンテナンス</a></div>'
-        with patch.object(collect, "fetch_html", side_effect=[listing, "notice1", "notice2"]) as fetch:
-            records = collect.fetch_cancellation_notices(None, [saved], since="2026-02-08")
-        self.assertEqual(records, [(url, "notice1"), (saved, "notice2")])
-        self.assertEqual(fetch.call_count, 3)
+        with patch.object(collect, "fetch_html", side_effect=[listing, "notice1"]) as fetch:
+            records = collect.fetch_cancellation_notices(None, since="2026-02-08")
+        self.assertEqual(records, [(url, "notice1")])
+        self.assertEqual(fetch.call_count, 2)
 
     def test_notice_fetch_skips_old_and_confirmed_articles(self):
         confirmed = "https://info.netkeiba.com/?pid=info_detail&id=1"

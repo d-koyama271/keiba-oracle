@@ -83,10 +83,19 @@ def discover_cached_races(config: dict, now: datetime | None = None,
             times = calculate_phase_times(race, config)
             if race["date"] in dates and race["track"] in config["target_races"]:
                 cached.append({"race_id": item["race_id"], "race": race, "scheduled_at": times})
-        if cache["dates"] == dates and cache.get("target_races") == config["target_races"]:
+        evening = datetime.combine(current.date(), datetime.strptime(
+            config["automation"]["statistical_time"], "%H:%M").time(), tzinfo=JST)
+        if (cache["dates"] == dates and cache.get("target_races") == config["target_races"]
+                and not captured < evening <= current):
+            return cached
+        attempted = parse_jst_datetime(cache.get("discovery_attempted_at"))
+        if attempted is not None and timedelta(0) <= current - attempted < timedelta(hours=1):
             return cached
     except (FileNotFoundError, ValueError, KeyError, TypeError, AttributeError):
         cached = None
+    if cached is not None:
+        cache["discovery_attempted_at"] = current.isoformat()
+        atomic_write_json(path, cache)
     try:
         races = discover_scheduled_races(config, current)
     except (requests.RequestException, ValueError, KeyError, TypeError):
@@ -99,23 +108,16 @@ def discover_cached_races(config: dict, now: datetime | None = None,
         "target_races": config["target_races"],
         "races": [{"race_id": item["race_id"], "race": item["race"]} for item in races],
     })
+    restore_replacement_races(races, config, root)
     return races
 
 
-def update_race_cancellations(races: list[dict], config: dict, now: datetime,
-                              root: Path | None = None) -> None:
-    now = now.replace(tzinfo=JST) if now.tzinfo is None else now.astimezone(JST)
-    candidates = {}
+def restore_replacement_races(races: list[dict], config: dict, root: Path | None = None) -> None:
     cancelled = []
     for path in list_race_files(config, None, root):
         payload = load_race_json(path)
-        if not payload:
-            continue
-        if payload["race"].get("cancelled"):
+        if payload and payload["race"].get("cancelled"):
             cancelled.append(payload)
-        elif (payload["race"].get("date") == now.date().isoformat()
-              and payload["race"].get("track") in config["target_races"] and not payload.get("result")):
-            candidates[path] = payload
     # Replacement confirmation uses saved evidence and the discovered schedule only.
     for payload in cancelled:
         race = payload["race"]
@@ -129,6 +131,22 @@ def update_race_cancellations(races: list[dict], config: dict, now: datetime,
                 new_payload = ensure_race_payload(None, item["race_id"])
                 new_payload["race"] = {**replacement, "rescheduled_from": race["date"]}
                 save_race_json(new_path, new_payload)
+
+
+def update_race_cancellations(races: list[dict], config: dict, now: datetime,
+                              root: Path | None = None) -> None:
+    now = now.replace(tzinfo=JST) if now.tzinfo is None else now.astimezone(JST)
+    candidates = {}
+    cancelled = []
+    for path in list_race_files(config, now.date().isoformat(), root):
+        payload = load_race_json(path)
+        if not payload:
+            continue
+        if payload["race"].get("cancelled"):
+            cancelled.append(payload)
+        elif (payload["race"].get("date") == now.date().isoformat()
+              and payload["race"].get("track") in config["target_races"] and not payload.get("result")):
+            candidates[path] = payload
     for item in races:
         race = item["race"]
         if race["date"] != now.date().isoformat() or race["track"] not in config["target_races"]:
@@ -174,6 +192,17 @@ def update_race_cancellations(races: list[dict], config: dict, now: datetime,
         publish_post_results(changed, config, "cancellation", root)
 
 
+def result_phase_complete(payload: dict) -> bool:
+    if not payload.get("result"):
+        return False
+    for entry in payload.get("simulation") or []:
+        for method in ("general", "statistical"):
+            quinella = (entry.get(method) or {}).get("quinella") or {}
+            if quinella.get("status") == "ready" and quinella.get("post_status") != "settled":
+                return False
+    return True
+
+
 def decide_phases(races: list[dict], config: dict, now: datetime | None = None,
                   root: Path | None = None) -> list[dict]:
     current = now if now is not None else now_jst()
@@ -198,7 +227,7 @@ def decide_phases(races: list[dict], config: dict, now: datetime | None = None,
                 input_path = outbox_chat_input_dir("prediction", root) / f"{path.stem}{'.statistical' if phase == 'statistical' else ''}.json"
                 saved_input = json.loads(input_path.read_text(encoding="utf-8")).get("race", {}).get("date") == race["date"]
             record = (state or {}).get("phases", {}).get(phase, {})
-            completed = bool(payload.get("result")) if phase == "result" else bool(prediction_for_method(payload, phase))
+            completed = result_phase_complete(payload) if phase == "result" else bool(prediction_for_method(payload, phase))
             reason = None
             if payload.get("race", {}).get("cancelled"):
                 reason = "cancelled"
@@ -257,7 +286,7 @@ def execute_phases(races: list[dict], config: dict, now: datetime | None = None,
                     run_pre_flow(config, race["date"], phase=phase,
                                  resume=decision["mode"] == "resume", race_id=race_id)
                 payload = load_race_json(path) or {}
-                completed = bool(payload.get("result")) if phase == "result" else bool(prediction_for_method(payload, phase))
+                completed = result_phase_complete(payload) if phase == "result" else bool(prediction_for_method(payload, phase))
                 if payload.get("meta", {}).get("race_id") != race_id or not completed:
                     error = f"{phase} artifact missing after execution"
             except (Exception, SystemExit) as exc:

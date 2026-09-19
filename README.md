@@ -152,7 +152,9 @@ schema v9以前は読み込み時に、本体を `general`、`variants` 内の�
 
 `--execute` は `data_dir/automation/scheduler.lock` のOS管理の非ブロッキングlockで重賞検知から実処理全体を保護します。競合時は失敗stateを更新せず正常skipします。異常終了時もOSがlockを解放するため、残ったlockファイルの削除は不要です。確認表示のみの場合はlockを取得しません。
 
-`--execute` の重賞探索結果は `data_dir/automation/discovery_cache.json` に保存します。今日・明日の対象日と必要なレース情報が揃っていれば、時間経過だけでは再探索しません。キャッシュ未作成・破損・対象日不足・日付構成変更時に再探索します。`discovery_interval_minutes` は通常探索のTTLとして使用しません。phase判定・retry判定・deployは起動ごとに継続します。確認表示のみの場合は従来どおり探索し、キャッシュを書き込みません。
+`--execute` の重賞探索結果は `data_dir/automation/discovery_cache.json` に保存します。キャッシュ未作成・破損・対象日不足・日付構成変更時に探索し、同じ日でも当日の `statistical_time` 以降にまだ探索していなければ1回再探索します。それ以外はキャッシュを再利用します。正常な既存キャッシュがある場合、探索失敗後の再試行は1時間空けます。phase判定・retry判定・deployは起動ごとに継続します。確認表示のみの場合は従来どおり探索し、キャッシュを書き込みません。
+
+開催中止確認は当日の対象レースのうち未result・未cancelledだけを対象に最大1時間に1回行い、通信失敗時も同じ間隔を空けます。過去の中止記録は探索更新時だけ代替開催確認のために走査し、中止確定済み記事は再取得しません。
 
 `run_pre.py`
 
@@ -251,7 +253,7 @@ python src/evaluation_summary.py
 
 トップページの「総合AI予想の予測成績」と「統計重視予想の予測成績」はこの集計ファイルを読み込みます。統計重視予想の累計収支は、保存済みのsimulation postだけを集計します。ファイルがない場合は未算出として `-` を表示し、予想入力にはこの集計を含めません。
 
-状態はレース前入力生成後が `pre_status: awaiting_prediction`、予想公開後が `pre_status: published` です。`post_status` は結果待ちの `awaiting_result` から、結果・保存済み単勝simulationのpost・evaluation・結果HTML公開完了後に `published` となります。馬連の未確定状態は各 `quinella.post_status` に独立して保持します。
+完了判定は保存済みのprediction／resultを参照します。resultが保存済みでも、`status: ready` の馬連simulationがあれば全ての `quinella.post_status` が `settled` になるまでresult phaseを再試行します。
 
 ## Codex 予想フロー
 
@@ -304,7 +306,7 @@ prediction:
 ## 補足
 
 - `collect.py` は `netkeiba` の HTML 構造に依存します。取得に失敗したレースはスキップし、ログへ出します。
-- `predict.py` の Codex 応答が不正 JSON の場合は再試行します。
+- 1回のprediction実行でCodex CLIは1回だけ実行します。CLI失敗・不正JSONはphase失敗とし、自動運用の再試行はschedulerが管理します。
 - `prediction` がない場合は両方式の `pre` を作りません。
 - `result` がない場合は両方式の `post` を作りません。
 - `prediction`、`result`、両方式の `post` がそろわない場合は `evaluation` を作りません。
@@ -330,6 +332,6 @@ schedulerの `--execute` は今日の未完了・未中止レースがある場�
 
 `publish_site()` はホスティング先に依存せず、stageをローカル `public/` へ反映します。`deploy_site()` は `publish_mode` に応じて公開し、現在は `github_pages` のみ対応します。schedulerの `--execute` はphase処理後、処理件数が0件でも同じlock内でdeployを試みます。deploy失敗はraceの失敗回数に加算せず、次回起動で再試行します。
 
-GitHub Pagesへのdeployは `deployment.github_pages.remote`（実行元repoのremote名）と `branch` を使い、`data_dir/deploy/github_pages/` の専用cloneを毎回remoteへ同期してから、完成済み `public/` を完全コピーします。変更がある場合だけ `public/` をcommit／pushします。開発用working treeはcommit／resetしません。実行環境にはGitのcommit用ユーザー設定とremoteへのpush権限が必要です。
+GitHub Pagesへのdeployは `deployment.github_pages.remote`（実行元repoのremote名）と `branch` を使います。成功済み公開内容のハッシュをローカルに記録し、`public/` に変更も再送待ちもなければネットワークアクセスせず終了します。変更時・失敗後は `data_dir/deploy/github_pages/` の専用cloneをremoteへ同期し、完成済み `public/` を完全コピーして、差分がある場合だけ `public/` をcommit／pushします。開発用working treeはcommit／resetしません。実行環境にはGitのcommit用ユーザー設定とremoteへのpush権限が必要です。
 
 この実装では `public/` を静的サイト出力先にしています。GitHub Actions の `Deploy Pages` workflow が `public/` を Pages artifact としてアップロードし、GitHub Pages へ配布します。Actions 側ではビルド処理を行いません。

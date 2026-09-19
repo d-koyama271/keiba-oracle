@@ -16,8 +16,6 @@ from utils import (
     log_job,
     parse_target_date,
     prediction_entries,
-    save_race_json,
-    set_race_status,
     setup_logger,
 )
 
@@ -39,12 +37,6 @@ def publish_post_results(
     generate_evaluation_summary(config, job_name, root)
     render_site(config, job_name, None, root, **({"race_id": race_id} if race_id is not None else {}))
     public_path = publish_site(config, root)
-    for path in evaluated_paths:
-        payload = load_race_json(path)
-        if not payload:
-            continue
-        set_race_status(payload, post_status="published")
-        save_race_json(path, payload)
     log_job(logger, job_name, None, f"post published -> {public_path}")
     return evaluated_paths + cancelled_paths
 

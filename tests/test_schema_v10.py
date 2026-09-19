@@ -39,6 +39,16 @@ class SchemaV10Tests(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
 
+    def test_new_metadata_omits_status_and_legacy_status_is_preserved(self):
+        from utils import default_race_payload, ensure_race_payload
+        fresh = default_race_payload("test")
+        self.assertNotIn("pre_status", fresh["meta"])
+        self.assertNotIn("post_status", fresh["meta"])
+        legacy = {"meta": {"schema_version": 8, "pre_status": "published", "post_status": "published"}}
+        normalized = ensure_race_payload(legacy)
+        self.assertEqual(normalized["meta"]["pre_status"], "published")
+        self.assertEqual(normalized["meta"]["post_status"], "published")
+
     def test_new_race_uses_arrays_and_fixed_top_level_keys(self):
         payload = default_race_payload("test")
         self.assertEqual(payload["meta"]["schema_version"], 10)
@@ -555,10 +565,10 @@ class SchemaV10Tests(unittest.TestCase):
                 if methods:
                     self.assertEqual({m for m in ("general", "statistical") if m in saved["prediction"][0]}, methods)
                     self.assertEqual(set(saved["simulation"][0]) - {"prediction_id"}, methods)
-                    self.assertEqual(saved["meta"]["pre_status"], "published")
+                    self.assertEqual(saved["meta"]["pre_status"], "awaiting_prediction")
                 else:
                     self.assertEqual(saved["prediction"], [])
-                    self.assertNotEqual(saved["meta"]["pre_status"], "published")
+                    self.assertEqual(saved["meta"]["pre_status"], "awaiting_prediction")
             public = root / "public"
             self.assertEqual(len(list((public / "races").rglob("*.html"))), 3)
             before = (public / "index.html").read_bytes()

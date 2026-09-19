@@ -172,8 +172,6 @@ def default_race_payload(race_id: str) -> dict[str, Any]:
             "schema_version": SCHEMA_VERSION,
             "created_at": timestamp,
             "updated_at": timestamp,
-            "pre_status": None,
-            "post_status": "awaiting_result",
         },
         "race": {},
         "horses": [],
@@ -187,7 +185,6 @@ def default_race_payload(race_id: str) -> dict[str, Any]:
 def ensure_race_payload(payload: dict[str, Any] | None, race_id: str | None = None) -> dict[str, Any]:
     base = default_race_payload(race_id or "")
     payload = payload or {}
-    source_schema_version = payload.get("meta", {}).get("schema_version", 0)
     merged = {key: payload.get(key, base[key]) for key in REQUIRED_TOP_LEVEL_KEYS}
     merged["meta"] = dict(base["meta"])
     merged["meta"].update(payload.get("meta", {}))
@@ -196,8 +193,6 @@ def ensure_race_payload(payload: dict[str, Any] | None, race_id: str | None = No
     merged["meta"]["schema_version"] = SCHEMA_VERSION
     if not merged["meta"].get("created_at"):
         merged["meta"]["created_at"] = now_jst_iso()
-    if source_schema_version < 9 and merged.get("evaluation") is None:
-        merged["meta"]["post_status"] = "awaiting_result"
     merged["meta"]["updated_at"] = now_jst_iso()
     if not isinstance(merged.get("prediction"), list):
         legacy_prediction = merged.get("prediction") or {}
@@ -281,14 +276,6 @@ def load_race_json(path: str | Path) -> dict[str, Any] | None:
 def save_race_json(path: str | Path, payload: dict[str, Any]) -> None:
     current = ensure_race_payload(payload, payload.get("meta", {}).get("race_id"))
     atomic_write_json(path, current)
-
-
-def set_race_status(payload: dict[str, Any], *, pre_status: str | None = None, post_status: str | None = None) -> None:
-    meta = payload.setdefault("meta", {})
-    if pre_status is not None:
-        meta["pre_status"] = pre_status
-    if post_status is not None:
-        meta["post_status"] = post_status
 
 
 def prediction_entries(payload: dict[str, Any]) -> list[dict[str, Any]]:

@@ -1462,10 +1462,10 @@ def parse_cancellation_notice(html: str, race: dict, source_url: str) -> dict | 
     return None
 
 
-def fetch_cancellation_notices(session: requests.Session, source_urls: list[str] = (),
+def fetch_cancellation_notices(session: requests.Session, *,
                                since: str | None = None, excluded_urls: set[str] = frozenset()) -> list[tuple[str, str]]:
     url = "https://info.netkeiba.com/"
-    urls = set(source_urls)
+    urls = set()
     visited = set()
     while url not in visited:
         visited.add(url)

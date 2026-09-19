@@ -238,7 +238,7 @@ class EvaluationFlowTests(unittest.TestCase):
 
                 loaded = load_race_json(path)
                 self.assertEqual(updated, [path])
-                self.assertEqual(loaded["meta"]["post_status"], "published")
+                self.assertEqual(loaded["meta"]["post_status"], "awaiting_result")
                 self.assertIsNotNone(loaded["evaluation"])
                 self.assertFalse((root / "outbox" / "chat_input" / "feedback").exists())
                 generate_summary.assert_called_once_with(config, "test-post-publish", root)

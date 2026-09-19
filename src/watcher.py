@@ -12,10 +12,7 @@ from utils import (
     ensure_dir,
     inbox_dir,
     load_config,
-    load_race_json,
     log_job,
-    save_race_json,
-    set_race_status,
     setup_logger,
 )
 
@@ -39,10 +36,6 @@ def archive_processed(path: Path, race_path: Path) -> Path:
 def finalize_pre(race_path: Path, config: dict, logger_name: str) -> None:
     logger = setup_logger(logger_name, config)
     simulate_file(race_path, config, "pre", logger_name)
-    payload = load_race_json(race_path)
-    if payload:
-        set_race_status(payload, pre_status="published")
-        save_race_json(race_path, payload)
     render_site(config, logger_name, None)
     public_path = publish_site(config)
     log_job(logger, logger_name, None, f"manual pre published -> {public_path}")

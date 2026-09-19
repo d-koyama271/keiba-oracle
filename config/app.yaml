@@ -11,13 +11,12 @@ target_races:
   - 小倉
 odds_reference_minutes_before_start: 60
 automation:
-  discovery_interval_minutes: 60
   statistical_time: "18:00"
   general_minutes_before_start: 45
   result_minutes_after_start: 15
   retry_interval_minutes: 10
   max_attempts: 3
-  result_retry_interval_minutes: 5
+  result_retry_interval_minutes: 10
   result_max_attempts: 12
 simulation:
   budget: 3000

@@ -27,8 +27,6 @@ from utils import (
     outbox_chat_input_dir,
     parse_target_date,
     race_start_datetime,
-    save_race_json,
-    set_race_status,
     setup_logger,
     today_jst,
     track_name_from_race_id,
@@ -163,10 +161,6 @@ def export_prediction_chat_input(paths: list[Path], config: dict, job_name: str)
         if (runtime_prediction_entry(payload, config) or {}).get("general"):
             log_job(logger, job_name, payload["meta"].get("race_id"), "prediction input skipped: prediction already exists")
             continue
-        payload.setdefault("meta", {})["post_status"] = "awaiting_result"
-        set_race_status(payload, pre_status="awaiting_prediction")
-        save_race_json(path, payload)
-
         chat_input = build_prediction_chat_input(config, payload)
         output_path = output_dir / f"{path.stem}.json"
         atomic_write_json(output_path, chat_input)

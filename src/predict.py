@@ -24,7 +24,6 @@ from utils import (
     race_start_datetime,
     repo_root,
     save_race_json,
-    set_race_status,
     setup_logger,
 )
 
@@ -331,7 +330,7 @@ def generate_prediction(
             root,
             prompt_template,
         )
-        response = client.invoke_json(prompt, max_retries=2)
+        response = client.invoke_json(prompt)
 
     prediction = normalize_prediction_response(response, horses)
     if config["llm_provider"] == "codex" and not prediction.get("optional_summary"):
@@ -377,7 +376,6 @@ def predict_file(
             root,
         )
         runtime_prediction_entry(payload, config, create=True)["general"] = prediction
-        set_race_status(payload, pre_status="prediction_imported")
         save_race_json(path, payload)
         log_job(logger, job_name, race_id, "prediction updated")
         return True

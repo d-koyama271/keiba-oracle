@@ -43,6 +43,8 @@ class SchedulerTests(unittest.TestCase):
                 self.assertIsNone(load_automation_state(path, config))
                 publish.assert_called_once()
                 replacement = {"race_id": "202605010411", "race": {**race, "date": "2026-02-10"}}
+                with patch.object(scheduler, "discover_scheduled_races", return_value=[replacement]):
+                    scheduler.discover_cached_races(config, datetime(2026, 2, 9, 18, tzinfo=JST), Path(tmp))
                 scheduler.update_race_cancellations([replacement], config, datetime(2026, 2, 9, 18, tzinfo=JST), Path(tmp))
                 self.assertEqual(notices.call_count, 1)
                 self.assertNotIn("source_urls", notices.call_args.kwargs)
@@ -66,7 +68,7 @@ class SchedulerTests(unittest.TestCase):
         self.enterContext(patch.object(scheduler, "fetch_cancellation_notices", return_value=[]))
         self.config = {
             "target_races": ["中山"], "odds_reference_minutes_before_start": 60,
-            "automation": {"discovery_interval_minutes": 60, "statistical_time": "18:00", "general_minutes_before_start": 45,
+            "automation": {"statistical_time": "18:00", "general_minutes_before_start": 45,
                            "result_minutes_after_start": 10},
         }
 
@@ -128,6 +130,78 @@ class SchedulerTests(unittest.TestCase):
                 atomic_write_json(path, payload)
                 scheduler.update_race_cancellations([item], self.config, datetime(2026, 9, 20, 13, tzinfo=JST))
                 fetch.assert_not_called()
+
+    def test_evening_discovery_refresh_once_and_failure_backoff(self):
+        import json
+        for failure in (False, True):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as tmp:
+                self.config["data_dir"] = tmp
+                now = datetime(2026, 9, 20, 17, 50, tzinfo=JST)
+                with patch.object(scheduler, "discover_scheduled_races", return_value=[]) as discover:
+                    scheduler.discover_cached_races(self.config, now)
+                    if failure:
+                        discover.side_effect = scheduler.requests.ConnectionError("offline")
+                    for minutes in range(10, 70, 10):
+                        scheduler.discover_cached_races(self.config, now + timedelta(minutes=minutes))
+                    self.assertEqual(discover.call_count, 2)
+                    cache = json.loads((Path(tmp) / "automation/discovery_cache.json").read_text())
+                    if failure:
+                        self.assertEqual(cache["discovered_at"], now.isoformat())
+                    discover.side_effect = None
+                    scheduler.discover_cached_races(self.config, now + timedelta(minutes=70))
+                    self.assertEqual(discover.call_count, 3 if failure else 2)
+                    scheduler.discover_cached_races(self.config, now + timedelta(hours=5))
+                    self.assertEqual(discover.call_count, 3 if failure else 2)
+
+    def test_cancellation_reads_only_today_and_history_only_on_discovery(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.config["data_dir"] = tmp
+            now = datetime(2026, 9, 20, 12, tzinfo=JST)
+            with patch.object(scheduler, "list_race_files", wraps=scheduler.list_race_files) as files, \
+                 patch.object(scheduler, "discover_scheduled_races", return_value=[]):
+                scheduler.discover_cached_races(self.config, now)
+                self.assertEqual([c.args[1] for c in files.call_args_list], [None])
+                files.reset_mock()
+                for minutes in range(0, 70, 10):
+                    current = now + timedelta(minutes=minutes)
+                    scheduler.discover_cached_races(self.config, current)
+                    scheduler.update_race_cancellations([], self.config, current)
+                self.assertEqual([c.args[1] for c in files.call_args_list], ["2026-09-20"] * 7)
+
+    def test_result_waits_for_all_ready_quinella_and_retries_until_settled(self):
+        self.config["automation"].update(retry_interval_minutes=7, max_attempts=3,
+                                        result_retry_interval_minutes=11, result_max_attempts=4)
+        with tempfile.TemporaryDirectory() as tmp:
+            self.config["data_dir"] = tmp
+            item = {"race_id": "202606040711", "race": {
+                "date": "2026-09-20", "track": self.config["target_races"][0],
+                "race_number": 11, "start_time": "15:40"}}
+            path = race_json_path(self.config, item["race"]["date"], item["race"]["track"], 11)
+            now = scheduler.calculate_phase_times(item["race"], self.config)["result"]
+            payload = {"meta": {"schema_version": 10, "race_id": item["race_id"]},
+                       "race": item["race"], "result": {"horses": [1]},
+                       "prediction": [{"id": "p1", "general": {"horses": [1]}, "statistical": {"horses": [1]}}],
+                       "simulation": [{"prediction_id": "p1", "general": {"quinella": {"status": "ready", "post_status": "settled"}},
+                                       "statistical": {"quinella": {"status": "ready", "post_status": "awaiting_payouts"}}}]}
+            self.assertTrue(scheduler.result_phase_complete({"result": {"horses": [1]}}))
+            self.assertFalse(scheduler.result_phase_complete({}))
+            atomic_write_json(path, payload)
+            with patch.object(scheduler, "run_post_flow", return_value=[]) as post:
+                scheduler.execute_phases([item], self.config, now)
+                record = load_automation_state(path, self.config)["phases"]["result"]
+                self.assertEqual(record["status"], "retry_wait")
+                self.assertEqual(record["next_retry_at"], (now + timedelta(minutes=11)).isoformat())
+                def settle(*args, **kwargs):
+                    payload["simulation"][0]["statistical"]["quinella"]["post_status"] = "settled"
+                    atomic_write_json(path, payload)
+                post.side_effect = settle
+                scheduler.execute_phases([item], self.config, now + timedelta(minutes=11))
+                self.assertEqual(post.call_count, 2)
+                self.assertIsNone(load_automation_state(path, self.config))
+                decision = scheduler.decide_phases([item], self.config, now)[-1]
+                self.assertEqual(decision["reason"], "completed")
+            payload["simulation"][0]["statistical"]["quinella"] = {"status": "unavailable"}
+            self.assertTrue(scheduler.result_phase_complete(payload))
 
     def test_schedule_uses_independent_settings(self):
         race = {"date": "2026-09-20", "start_time": "15:40"}
@@ -240,11 +314,11 @@ class SchedulerTests(unittest.TestCase):
                 discover.side_effect = scheduler.requests.ConnectionError("offline")
                 for minute in (10, 20):
                     self.assertEqual(scheduler.discover_cached_races(self.config, now + timedelta(minutes=minute)), [])
-                    self.assertEqual(path.read_bytes(), before)
-                self.assertEqual(discover.call_count, 3)
+                self.assertNotEqual(path.read_bytes(), before)
+                self.assertEqual(discover.call_count, 2)
                 discover.side_effect = None
-                scheduler.discover_cached_races(self.config, now + timedelta(minutes=30))
-                self.assertEqual(discover.call_count, 4)
+                scheduler.discover_cached_races(self.config, now + timedelta(minutes=70))
+                self.assertEqual(discover.call_count, 3)
                 self.assertNotEqual(path.read_bytes(), before)
 
     def test_discovery_failure_retains_stale_races_and_no_cache_raises(self):

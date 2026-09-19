@@ -15,7 +15,6 @@ from utils import (
     log_job,
     now_jst_iso,
     save_race_json,
-    set_race_status,
     setup_logger,
 )
 
@@ -58,7 +57,6 @@ def import_prediction_response(path: Path, config: dict[str, Any], job_name: str
     normalized["predicted_at"] = now_jst_iso()
     imported_config = {**config, "llm_provider": normalized.pop("model_provider"), "llm_model": normalized.pop("model_name"), "llm_reasoning_effort": None}
     runtime_prediction_entry(race_payload, imported_config, create=True)["general"] = normalized
-    set_race_status(race_payload, pre_status="prediction_imported")
     save_race_json(race_path, race_payload)
     log_job(logger, job_name, race_id, f"prediction imported <- {path}")
     return race_path

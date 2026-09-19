@@ -22,8 +22,6 @@ from utils import (
     load_config,
     load_race_json,
     log_job,
-    save_race_json,
-    set_race_status,
     setup_logger,
 )
 
@@ -110,13 +108,6 @@ def run_pre_flow(config: dict, target_date: str | None, job_name: str = "pre", *
         published_paths = simulate_paths(published_paths, config, "pre", job_name)
         if set(published_paths) != successful_paths:
             raise RuntimeError("pre flow stopped: simulation generation failed")
-
-    for path in published_paths:
-        payload = load_race_json(path)
-        if not payload:
-            raise RuntimeError(f"pre flow stopped: race JSON missing -> {path}")
-        set_race_status(payload, pre_status="published")
-        save_race_json(path, payload)
 
     if cancelled_paths:
         generate_evaluation_summary(config, job_name)

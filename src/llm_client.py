@@ -21,15 +21,9 @@ class LLMClient:
     def from_config(cls, config: dict[str, Any]) -> "LLMClient":
         return cls(config["llm_provider"], config["llm_model"], config.get("llm_reasoning_effort"))
 
-    def invoke_json(self, prompt: str, max_retries: int = 2) -> dict[str, Any]:
-        last_error: Exception | None = None
-        for _ in range(max_retries + 1):
-            try:
-                raw = self._invoke_text(prompt)
-                return json.loads(self._extract_json(raw))
-            except Exception as exc:  # noqa: BLE001
-                last_error = exc
-        raise RuntimeError(f"Failed to parse LLM JSON response: {last_error}") from last_error
+    def invoke_json(self, prompt: str) -> dict[str, Any]:
+        raw = self._invoke_text(prompt)
+        return json.loads(self._extract_json(raw))
 
     def _invoke_text(self, prompt: str) -> str:
         if self.provider == "codex":
@@ -122,6 +116,7 @@ class LLMClient:
                 timeout=600,
                 check=False,
                 env=environment,
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
             )
             if completed.returncode != 0:
                 error = (completed.stderr or completed.stdout).strip()
