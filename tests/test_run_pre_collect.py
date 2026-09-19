@@ -46,7 +46,7 @@ def race(track: str, name: str, start_time: str, race_number: int = 11) -> dict:
 
 
 class DefaultRaceSelectionTests(unittest.TestCase):
-    def test_graded_only_includes_flat_and_jump_grades_at_any_race_number(self) -> None:
+    def test_graded_only_includes_flat_grades_and_excludes_jump_grades(self) -> None:
         html = "".join(
             f'<li class="RaceList_DataItem"><a href="?race_id=2026090403{number:02d}">'
             f'<span class="Icon_GradeType{grade}"></span></a></li>'
@@ -56,7 +56,7 @@ class DefaultRaceSelectionTests(unittest.TestCase):
             '<li class="Active" date="20260919" group="1"></li>', html,
         ]):
             ids = collect_module.discover_race_ids(None, "2026-09-19", race_number=None, graded_only=True)
-        self.assertEqual(ids, [f"2026090403{number:02d}" for number in range(1, 7)])
+        self.assertEqual(ids, [f"2026090403{number:02d}" for number in range(1, 4)])
 
     def test_mobile_race_list_is_used_when_desktop_endpoint_fails(self) -> None:
         mobile_html = """

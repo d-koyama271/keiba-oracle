@@ -146,8 +146,7 @@ def discover_race_ids(
         if race_number is not None and not race_id.endswith(f"{race_number:02d}"):
             continue
         if graded_only and not item.select_one(
-            ".Icon_GradeType1, .Icon_GradeType2, .Icon_GradeType3, "
-            ".Icon_GradeType10, .Icon_GradeType11, .Icon_GradeType12"
+            ".Icon_GradeType1, .Icon_GradeType2, .Icon_GradeType3"
         ):
             continue
         race_ids.add(race_id)
