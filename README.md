@@ -255,6 +255,8 @@ python src/evaluation_summary.py
 
 完了判定は保存済みのprediction／resultを参照します。resultが保存済みでも、`status: ready` の馬連simulationがあれば全ての `quinella.post_status` が `settled` になるまでresult phaseを再試行します。
 
+失敗stateがある場合は成果物より `retry_wait`／`blocked` を優先し、後続のsimulation・evaluation・render・publishを含むフローが正常終了した後だけstateを解除します。失敗stateのない既存データは従来どおり成果物で完了判定します。中止保存後の公開失敗もresultのretryとして扱い、中止記事を再取得せず公開を再試行します。
+
 ## Codex 予想フロー
 
 通常のレース前運用は `run_pre.py` だけで完了します。収集時に確定した予想入力 JSON は監査用に `outbox/chat_input/prediction/` にも保存しますが、人が外部チャットへ貼り付けたり、応答を `inbox/` へ戻したりする必要はありません。

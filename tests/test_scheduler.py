@@ -396,7 +396,7 @@ class SchedulerTests(unittest.TestCase):
             for phase in ("general", "statistical", "result"):
                 decision = decide()["10", phase]
                 self.assertFalse(decision["runnable"])
-                self.assertEqual(decision["reason"], "completed")
+                self.assertEqual(decision["reason"], "blocked" if phase == "general" else "completed")
             self.assertEqual(before, {p: p.read_bytes() for p in root.rglob("*.json")})
             payload["prediction"] = []
             atomic_write_json(paths[0], payload)
@@ -445,13 +445,82 @@ class SchedulerTests(unittest.TestCase):
             with patch.object(scheduler, "run_post_flow", return_value=[]) as post:
                 scheduler.execute_phases([item], self.config, result_time - timedelta(seconds=1), root)
                 post.assert_not_called()
-                self.assertIsNone(load_automation_state(path, self.config, root))
+                self.assertTrue(all(r["status"] == "blocked" for r in load_automation_state(path, self.config, root)["phases"].values()))
                 scheduler.execute_phases([item], self.config, result_time, root)
                 post.assert_called_once_with(self.config, item["race"]["date"], "post", race_id=item["race_id"])
                 record = load_automation_state(path, self.config, root)["phases"]["result"]
                 self.assertEqual(record["next_retry_at"], (result_time + timedelta(minutes=3)).isoformat())
                 scheduler.execute_phases([item], self.config, result_time + timedelta(minutes=3), root)
                 self.assertEqual(load_automation_state(path, self.config, root)["phases"]["result"]["status"], "blocked")
+
+    def test_partial_flow_failure_keeps_retry_until_full_success(self):
+        for phase in ("statistical", "general", "result"):
+            for blocked in (False, True):
+                with self.subTest(phase=phase, blocked=blocked), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    config = copy.deepcopy(self.config)
+                    config["data_dir"] = tmp
+                    config["automation"].update(retry_interval_minutes=10, max_attempts=1 if blocked else 3,
+                                                result_retry_interval_minutes=10, result_max_attempts=1 if blocked else 3)
+                    race = {"date": "2026-09-20", "track": config["target_races"][0], "race_number": 11, "start_time": "15:40"}
+                    item = {"race_id": "202606040711", "race": race}
+                    path = race_json_path(config, race["date"], race["track"], 11)
+                    payload = {"meta": {"schema_version": 10, "race_id": item["race_id"]}, "race": race,
+                               "prediction": [{"id": "p1", "general": {"horses": [1]}, "statistical": {"horses": [1]}}]}
+                    if phase != "result":
+                        del payload["prediction"][0][phase]
+                        suffix = ".statistical.json" if phase == "statistical" else ".json"
+                        atomic_write_json(outbox_chat_input_dir("prediction", root) / f"{path.stem}{suffix}", {})
+                    atomic_write_json(path, payload)
+                    now = scheduler.calculate_phase_times(race, config)[phase]
+                    def partial(*args, **kwargs):
+                        if phase == "result":
+                            payload["result"] = {"horses": [1]}
+                            payload["simulation"] = [{"prediction_id": "p1", "general": {"quinella": {"status": "ready", "post_status": "settled"}}}]
+                        else:
+                            payload["prediction"][0][phase] = {"horses": [1]}
+                        atomic_write_json(path, payload)
+                        raise RuntimeError("publish failed after artifact save")
+                    name = "run_post_flow" if phase == "result" else "run_pre_flow"
+                    with patch.object(scheduler, name, side_effect=partial) as flow:
+                        scheduler.execute_phases([item], config, now, root)
+                        expected = "blocked" if blocked else "retry_wait"
+                        self.assertEqual(load_automation_state(path, config)["phases"][phase]["status"], expected)
+                        decisions = scheduler.decide_phases([item], config, now, root)
+                        self.assertEqual(next(d for d in decisions if d["phase"] == phase)["reason"], expected)
+                        scheduler.execute_phases([item], config, now + timedelta(minutes=1), root)
+                        self.assertEqual(flow.call_count, 1)
+                        flow.side_effect = None
+                        scheduler.execute_phases([item], config, now + timedelta(minutes=10), root)
+                        self.assertEqual(flow.call_count, 1 if blocked else 2)
+                        decision = next(d for d in scheduler.decide_phases([item], config, now + timedelta(minutes=10), root) if d["phase"] == phase)
+                        self.assertEqual(decision["reason"], "blocked" if blocked else "completed")
+
+    def test_cancelled_publish_failure_retries_without_discovery_or_notice_refetch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = copy.deepcopy(self.config)
+            config["data_dir"] = tmp
+            config["automation"].update(retry_interval_minutes=10, max_attempts=3,
+                                        result_retry_interval_minutes=10, result_max_attempts=3)
+            race = {"date": "2026-09-20", "track": config["target_races"][0], "race_number": 11, "start_time": "15:40"}
+            path = race_json_path(config, race["date"], race["track"], 11)
+            atomic_write_json(path, {"meta": {"schema_version": 10, "race_id": "202606040711"}, "race": race})
+            now = datetime(2026, 9, 20, 9, tzinfo=JST)
+            with patch.object(scheduler, "fetch_cancellation_notices", return_value=[("url", "html")]) as fetch, \
+                 patch.object(scheduler, "parse_cancellation_notice", return_value={"source_url": "url"}), \
+                 patch.object(scheduler, "publish_post_results", side_effect=RuntimeError("publish failed")) as publish:
+                scheduler.update_race_cancellations([], config, now)
+                self.assertTrue(load_race_json(path)["race"]["cancelled"])
+                self.assertEqual(load_automation_state(path, config)["phases"]["result"]["status"], "retry_wait")
+                scheduler.update_race_cancellations([], config, now + timedelta(minutes=1))
+                self.assertEqual(publish.call_count, 1)
+                publish.side_effect = None
+                scheduler.update_race_cancellations([], config, now + timedelta(minutes=10))
+                self.assertEqual(publish.call_count, 2)
+                self.assertIsNone(load_automation_state(path, config))
+                scheduler.update_race_cancellations([], config, now + timedelta(minutes=20))
+                self.assertEqual(publish.call_count, 2)
+                self.assertEqual(fetch.call_count, 1)
 
     def test_executor_independent_success_and_missed_window(self):
         self.config.update(data_dir="custom-data")

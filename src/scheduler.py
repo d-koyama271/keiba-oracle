@@ -144,6 +144,9 @@ def update_race_cancellations(races: list[dict], config: dict, now: datetime,
             continue
         if payload["race"].get("cancelled"):
             cancelled.append(payload)
+            state = load_automation_state(path, config, root) or {}
+            if state.get("phases", {}).get("result"):
+                execute_phases([{"race_id": payload["meta"]["race_id"], "race": payload["race"]}], config, now, root)
         elif (payload["race"].get("date") == now.date().isoformat()
               and payload["race"].get("track") in config["target_races"] and not payload.get("result")):
             candidates[path] = payload
@@ -189,7 +192,15 @@ def update_race_cancellations(races: list[dict], config: dict, now: datetime,
                 clear_phase_state(path, config, phase, root)
             break
     if changed:
-        publish_post_results(changed, config, "cancellation", root)
+        try:
+            publish_post_results(changed, config, "cancellation", root)
+        except (Exception, SystemExit) as exc:
+            for path in changed:
+                record_phase_failure(path, config, load_race_json(path)["meta"]["race_id"],
+                                     "result", f"{type(exc).__name__}: {exc}", now, root)
+        else:
+            for path in changed:
+                clear_phase_state(path, config, "result", root)
 
 
 def result_phase_complete(payload: dict) -> bool:
@@ -229,22 +240,23 @@ def decide_phases(races: list[dict], config: dict, now: datetime | None = None,
             record = (state or {}).get("phases", {}).get(phase, {})
             completed = result_phase_complete(payload) if phase == "result" else bool(prediction_for_method(payload, phase))
             reason = None
-            if payload.get("race", {}).get("cancelled"):
+            cancelled = payload.get("race", {}).get("cancelled")
+            if cancelled and (phase != "result" or not record):
                 reason = "cancelled"
-            elif completed:
-                reason = "completed"
             elif record.get("status") == "blocked":
                 reason = "blocked"
-            elif phase == "result" and not any(prediction_for_method(payload, method) for method in ("general", "statistical")):
-                reason = "no_prediction"
-            elif phase != "result" and payload.get("result"):
-                reason = "result_exists"
-            elif phase != "result" and current >= start and not saved_input:
-                reason = "missed_execution_window"
-            elif current < scheduled_at:
-                reason = "not_scheduled_yet"
             elif record.get("status") == "retry_wait" and current < parse_jst_datetime(record["next_retry_at"]):
                 reason = "retry_wait"
+            elif completed and not record:
+                reason = "completed"
+            elif phase == "result" and not cancelled and not any(prediction_for_method(payload, method) for method in ("general", "statistical")):
+                reason = "no_prediction"
+            elif phase != "result" and not completed and payload.get("result"):
+                reason = "result_exists"
+            elif phase != "result" and not completed and current >= start and not saved_input:
+                reason = "missed_execution_window"
+            elif current < scheduled_at and not cancelled:
+                reason = "not_scheduled_yet"
             decisions.append({
                 "race_id": race_id, "date": race["date"], "phase": phase,
                 "scheduled_at": scheduled_at, "mode": "resume" if saved_input else "normal",
@@ -280,33 +292,42 @@ def execute_phases(races: list[dict], config: dict, now: datetime | None = None,
                 continue
             error = None
             try:
-                if phase == "result":
+                cancelled = (load_race_json(path) or {}).get("race", {}).get("cancelled")
+                if phase == "result" and cancelled:
+                    publish_post_results([path], config, "cancellation", root)
+                elif phase == "result":
                     run_post_flow(config, race["date"], "post", race_id=race_id)
                 else:
                     run_pre_flow(config, race["date"], phase=phase,
                                  resume=decision["mode"] == "resume", race_id=race_id)
                 payload = load_race_json(path) or {}
                 completed = result_phase_complete(payload) if phase == "result" else bool(prediction_for_method(payload, phase))
-                if payload.get("meta", {}).get("race_id") != race_id or not completed:
+                if payload.get("meta", {}).get("race_id") != race_id or not (completed or (phase == "result" and cancelled)):
                     error = f"{phase} artifact missing after execution"
             except (Exception, SystemExit) as exc:
                 error = f"{type(exc).__name__}: {exc}"
-            if (load_race_json(path) or {}).get("race", {}).get("cancelled"):
+            if phase != "result" and (load_race_json(path) or {}).get("race", {}).get("cancelled"):
                 clear_phase_state(path, config, phase, root)
                 continue
             if error is None:
                 clear_phase_state(path, config, phase, root)
                 continue
-            state = load_automation_state(path, config, root) or {}
-            attempts = state.get("phases", {}).get(phase, {}).get("attempts", 0)
-            prefix = "result_" if phase == "result" else ""
-            blocked = attempts + 1 >= settings[f"{prefix}max_attempts"]
-            current = now if now is not None else now_jst()
-            current = current.replace(tzinfo=JST) if current.tzinfo is None else current.astimezone(JST)
-            retry_at = current + timedelta(minutes=settings[f"{prefix}retry_interval_minutes"])
-            record_failure(path, config, race_id, phase, error,
-                           status="blocked" if blocked else "retry_wait",
-                           next_retry_at=None if blocked else retry_at.isoformat(), root=root)
+            record_phase_failure(path, config, race_id, phase, error, now, root)
+
+
+def record_phase_failure(path: Path, config: dict, race_id: str, phase: str, error: str,
+                         now: datetime | None = None, root: Path | None = None) -> None:
+    settings = config["automation"]
+    state = load_automation_state(path, config, root) or {}
+    attempts = state.get("phases", {}).get(phase, {}).get("attempts", 0)
+    prefix = "result_" if phase == "result" else ""
+    blocked = attempts + 1 >= settings[f"{prefix}max_attempts"]
+    current = now if now is not None else now_jst()
+    current = current.replace(tzinfo=JST) if current.tzinfo is None else current.astimezone(JST)
+    retry_at = current + timedelta(minutes=settings[f"{prefix}retry_interval_minutes"])
+    record_failure(path, config, race_id, phase, error,
+                   status="blocked" if blocked else "retry_wait",
+                   next_retry_at=None if blocked else retry_at.isoformat(), root=root)
 
 
 @contextmanager
