@@ -352,7 +352,7 @@ def predict_file(
 ) -> bool:
     logger = setup_logger(job_name, config, root)
     payload = load_race_json(path)
-    if not payload:
+    if not payload or payload.get("race", {}).get("cancelled"):
         return False
 
     race_id = payload["meta"].get("race_id")
@@ -395,7 +395,7 @@ def predict_statistical_file(
 ) -> bool:
     logger = setup_logger(job_name, config, root)
     payload = load_race_json(path)
-    if not payload:
+    if not payload or payload.get("race", {}).get("cancelled"):
         return False
 
     race_id = payload["meta"].get("race_id")

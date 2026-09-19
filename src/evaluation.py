@@ -194,6 +194,8 @@ def build_prediction_evaluation(
 
 
 def build_evaluation(payload: dict[str, Any]) -> list[dict[str, Any]] | None:
+    if payload.get("race", {}).get("cancelled"):
+        return None
     evaluations = []
     for entry in prediction_entries(payload):
         linked = {"prediction_id": entry["id"]}

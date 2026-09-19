@@ -137,6 +137,7 @@
       font-weight: 700;
       white-space: nowrap;
     }
+    .status-cancelled { background: #f8e3e3; color: #942f2f; border-color: #dbaaaa; }
     .status-prediction {
       background: var(--status-prediction-bg);
       color: var(--status-prediction-color);
@@ -249,6 +250,7 @@
             <th class="nowrap">発走</th>
             <th class="nowrap">開催場</th>
             <th>レース名</th>
+            <th class="nowrap">状態</th>
             <th class="nowrap">予想</th>
             <th class="nowrap result-link-column">結果</th>
           </tr>
@@ -260,12 +262,13 @@
             <td class="nowrap">{{ race.start_time or "-" }}</td>
             <td class="nowrap">{{ race.track }}</td>
             <td>{{ race.race_name|e }}{% if race.is_new %}<span class="new-badge">NEW!</span>{% endif %}</td>
+            <td class="nowrap"><span class="status {{ race.status_class }}">{{ race.status_label }}</span></td>
             <td class="nowrap"><a class="page-link" href="{{ race.prediction_href }}">開く</a></td>
             <td class="nowrap result-link-column">{% if race.result_href %}<a class="page-link" href="{{ race.result_href }}">開く</a>{% else %}-{% endif %}</td>
           </tr>
 {% else %}
           <tr>
-            <td colspan="6">公開済みレースはまだありません。</td>
+            <td colspan="7">公開済みレースはまだありません。</td>
           </tr>
 {% endfor %}
         </tbody>

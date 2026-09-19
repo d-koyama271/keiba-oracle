@@ -155,7 +155,7 @@ def export_prediction_chat_input(paths: list[Path], config: dict, job_name: str)
 
     for path in paths:
         payload = load_race_json(path)
-        if not payload:
+        if not payload or payload.get("race", {}).get("cancelled"):
             continue
         if not payload.get("horses"):
             log_job(logger, job_name, payload["meta"].get("race_id"), "prediction chat_input skipped: horses missing")
@@ -260,7 +260,8 @@ def run_pre_collect_flow(
     pending_count = sum(
         1
         for path in paths
-        if not (runtime_prediction_entry(load_race_json(path), config) or {}).get("general")
+        if not (load_race_json(path) or {}).get("race", {}).get("cancelled")
+        and not (runtime_prediction_entry(load_race_json(path), config) or {}).get("general")
     )
     if pending_count and len(exported) < pending_count:
         raise SystemExit(f"No prediction chat_input exported for {target_date}")

@@ -36,15 +36,21 @@ from utils import (
 
 
 STATUS_LABELS = {
-    "prediction_only": "予想公開",
+    "statistical_published": "前日予想公開",
+    "general_published": "直前予想公開",
+    "cancelled": "開催中止",
     "result_published": "結果公開",
 }
 STATUS_CLASSES = {
-    "prediction_only": "status-prediction",
+    "statistical_published": "status-pending",
+    "general_published": "status-prediction",
+    "cancelled": "status-cancelled",
     "result_published": "status-result",
 }
 INDEX_STATUS_PRIORITIES = {
-    "prediction_only": 0,
+    "statistical_published": 0,
+    "general_published": 0,
+    "cancelled": 2,
     "result_published": 2,
 }
 STATUS_COLORS = {
@@ -568,8 +574,10 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
     evaluation = primary_view["evaluation"]
     statistical_prediction = statistical_view["prediction"] if statistical_view else None
     statistical_evaluation = statistical_view["evaluation"] if statistical_view else None
-    has_result_page = bool(result and any(view["evaluation"] for view in ai_views))
-    status = "result_published" if has_result_page else "prediction_only"
+    has_result_page = bool(not race.get("cancelled") and result and any(view["evaluation"] for view in ai_views))
+    prediction_status = "cancelled" if race.get("cancelled") else (
+        "general_published" if any(entry.get("general") for entry in payload["prediction"]) else "statistical_published")
+    status = "result_published" if has_result_page else prediction_status
     return {
         "race": race,
         "prediction": prediction,
@@ -592,6 +600,7 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         "value_no_purchase_reason": primary_view["value_no_purchase_reason"],
         "has_result_page": has_result_page,
         "status": status,
+        "prediction_status": prediction_status,
         "status_label": status_label(status),
         "status_class": status_class(status),
         "status_colors": STATUS_COLORS,
@@ -640,7 +649,7 @@ def render_site(
         persisted_payload = json.loads(path.read_text(encoding="utf-8"))
         persisted_created_at = (persisted_payload.get("meta") or {}).get("created_at")
         payload = load_race_json(path)
-        if not payload or not any(entry.get(method) for entry in payload["prediction"] for method in ("general", "statistical")):
+        if not payload or (not payload.get("race", {}).get("cancelled") and not any(entry.get(method) for entry in payload["prediction"] for method in ("general", "statistical"))):
             continue
         context = build_race_context(payload)
         race = payload["race"]
@@ -650,8 +659,8 @@ def render_site(
         if not selected:
             if not (output_dir / prediction_path).exists():
                 continue
-            context["has_result_page"] = (output_dir / result_path).exists()
-            context["status"] = "result_published" if context["has_result_page"] else "prediction_only"
+            context["has_result_page"] = not race.get("cancelled") and (output_dir / result_path).exists()
+            context["status"] = "result_published" if context["has_result_page"] else context["prediction_status"]
             context["status_label"] = status_label(context["status"])
             context["status_class"] = status_class(context["status"])
         elif race_id is not None and not context["has_result_page"]:
@@ -664,9 +673,9 @@ def render_site(
             **context,
             **page_links,
             "page_kind": "prediction",
-            "status": "prediction_only",
-            "status_label": status_label("prediction_only"),
-            "status_class": status_class("prediction_only"),
+            "status": context["prediction_status"],
+            "status_label": status_label(context["prediction_status"]),
+            "status_class": status_class(context["prediction_status"]),
         }
         prediction_target = output_dir / prediction_path
         ensure_dir(prediction_target.parent)
@@ -692,7 +701,7 @@ def render_site(
                 "race_name": race["race_name"],
                 "is_new": (
                     is_created_this_week(persisted_created_at)
-                    and context["status"] == "prediction_only"
+                    and context["status"] in ("general_published", "statistical_published")
                 ),
                 "status": context["status"],
                 "status_label": context["status_label"],

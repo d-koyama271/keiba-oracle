@@ -46,6 +46,31 @@ def race(track: str, name: str, start_time: str, race_number: int = 11) -> dict:
 
 
 class DefaultRaceSelectionTests(unittest.TestCase):
+    def test_confirmed_cancellation_publishes_without_prediction_or_simulation(self):
+        from utils import atomic_write_json, ensure_race_payload
+        with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+            config = {"data_dir": str(Path(tmp) / "data"), "public_dir": str(Path(tmp) / "public"),
+                      "target_races": ["中山"], "odds_reference_minutes_before_start": 60}
+            for module in ("collect", "run_pre_collect", "run_pre", "evaluation_summary"):
+                stack.enter_context(patch(f"{module}.setup_logger", return_value=logging.getLogger("test-cancel")))
+            path = Path(tmp) / "data/races/2026-09-20/nakayama_11r.json"
+            payload = ensure_race_payload(None, "202606040711")
+            payload["race"] = {"date": "2026-09-20", "track": "中山", "race_number": 11,
+                               "start_time": "15:40", "race_name": "中止テスト", "cancelled": True}
+            payload["prediction"] = [{"id": "p1", "statistical": {"horses": []}}]
+            atomic_write_json(path, payload)
+            stack.enter_context(patch.object(collect_module, "fetch_html", return_value=(
+                '<div class="RaceNotice">このレースは中止となりました</div>', collect_module.SHUTUBA_URL.format(race_id="202606040711"))))
+            odds = stack.enter_context(patch.object(collect_module, "fetch_validated_win_odds", side_effect=AssertionError("no odds for cancelled race")))
+            predict = stack.enter_context(patch.object(run_pre, "predict_paths", return_value=[]))
+            for resume in (False, True):
+                self.assertEqual(run_pre.run_pre_flow(config, "2026-09-20", phase="general", race_id="202606040711", resume=resume), [path])
+            self.assertTrue(load_race_json(path)["race"]["cancelled"])
+            self.assertEqual(load_race_json(path)["prediction"], payload["prediction"])
+            self.assertTrue(all(call.args[0] == [] for call in predict.call_args_list))
+            odds.assert_not_called()
+            self.assertTrue((Path(tmp) / "public/races/2026-09-20/nakayama_11r.html").exists())
+
     def test_graded_only_includes_flat_grades_and_excludes_jump_grades(self) -> None:
         html = "".join(
             f'<li class="RaceList_DataItem"><a href="?race_id=2026090403{number:02d}">'

@@ -466,6 +466,8 @@ def simulate_file(path: Path, config: dict[str, Any], mode: str, job_name: str, 
     if not payload:
         return False
     race_id = payload["meta"].get("race_id")
+    if payload.get("race", {}).get("cancelled"):
+        return False
 
     if mode == "pre":
         simulation = calculate_pre_simulation(payload, config)

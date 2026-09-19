@@ -320,6 +320,12 @@ python -m unittest discover -s tests -v
 
 ## GitHub Pages
 
+レース一覧と予想ページには、統計重視のみの「前日予想公開」、総合予想ありの「直前予想公開」、結果・評価がある「結果公開」、優先表示の「開催中止」を使用します。予想ページは予想の公開段階を表示し、結果ページは常に「結果公開」です。
+
+schedulerの `--execute` はnetkeiba公式お知らせ（`https://info.netkeiba.com/`）を確認し、記事の明示的な中止告知と日付・競馬場・レース範囲が一致した場合にのみ `race.cancelled` と `race.cancellation`（対象日・対象レース・根拠URL・確認時刻）を保存します。取得失敗、一覧からの消失、出馬表・結果ページの文言だけでは確定しません。中止日の予想を保持して公開を更新し、その日付の予想生成・結果処理・retry・評価集計を停止します。結果ページは生成しません。
+
+公式記事に代替日が明記されている場合は `replacement_date` を記録し、その日付の探索で同じrace_idを確認できたら、新しい日付のrace JSONを `rescheduled_from` 付きで作成します。元日のJSON・予想は中止記録として残し、新日程は既存フローで処理します。元日付の確定inputを新日程のresumeに流用しません。日付やレース範囲を確定できない告知は推測で適用しません。過去JSONの一括移行は不要です。
+
 ソースコードは `main`、公開用 `public/` は `deploy-pages` で管理します。mainでは `public/` をGit管理せず、ローカルの生成物として保持します。公開先ブランチは初回のみ手動作成が必要です。GitHub Actionsのpushトリガーは `deploy-pages` の `public/**` を対象とします。
 
 `publish_site()` はホスティング先に依存せず、stageをローカル `public/` へ反映します。`deploy_site()` は `publish_mode` に応じて公開し、現在は `github_pages` のみ対応します。schedulerの `--execute` はphase処理後、処理件数が0件でも同じlock内でdeployを試みます。deploy失敗はraceの失敗回数に加算せず、次回起動で再試行します。

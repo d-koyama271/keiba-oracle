@@ -18,6 +18,47 @@ from automation_state import record_failure, automation_state_path, load_automat
 
 
 class SchedulerTests(unittest.TestCase):
+    def test_official_cancellation_and_replacement_keep_original_prediction(self):
+        from utils import ensure_race_payload, load_race_json
+        from automation_state import load_automation_state
+        with tempfile.TemporaryDirectory() as tmp:
+            config = {**self.config, "data_dir": tmp}
+            race = {"date": "2026-02-08", "track": "東京", "race_number": 11, "start_time": "15:40"}
+            path = race_json_path(config, race["date"], race["track"], 11)
+            payload = ensure_race_payload(None, "202605010411")
+            payload["race"] = race
+            payload["prediction"] = [{"id": "p1", "statistical": {"horses": []}}]
+            atomic_write_json(path, payload)
+            record_failure(path, config, "202605010411", "general", "failed", status="blocked")
+            html = '<div class="InfoArticle"><h1 class="ArticleTitle">8日(日)の東京競馬は中止</h1><div class="ArticleInfoData">2026年02月08日</div><div class="InfoArticle_Body"><p class="ArticleMainText">第1回東京競馬第4日（代替競馬） 2月10日（火曜）</p></div></div>'
+            notice = [("https://info.netkeiba.com/?pid=info_detail&id=1564", html)]
+            with patch.object(scheduler, "fetch_cancellation_notices", return_value=notice), patch.object(scheduler, "publish_post_results") as publish:
+                # The race disappeared from discovery, but its saved record still receives the notice.
+                scheduler.update_race_cancellations([], config, datetime(2026, 2, 8, 9, tzinfo=JST), Path(tmp))
+                saved = load_race_json(path)
+                self.assertTrue(saved["race"]["cancelled"])
+                self.assertEqual(saved["prediction"], payload["prediction"])
+                self.assertEqual(saved["race"]["cancellation"]["replacement_date"], "2026-02-10")
+                self.assertIsNone(load_automation_state(path, config))
+                publish.assert_called_once()
+                replacement = {"race_id": "202605010411", "race": {**race, "date": "2026-02-10"}}
+                scheduler.update_race_cancellations([replacement], config, datetime(2026, 2, 9, 18, tzinfo=JST), Path(tmp))
+                new_path = race_json_path(config, "2026-02-10", "東京", 11)
+                self.assertEqual(load_race_json(new_path)["race"]["rescheduled_from"], "2026-02-08")
+                self.assertTrue(load_race_json(path)["race"]["cancelled"])
+                input_path = outbox_chat_input_dir("prediction", Path(tmp)) / f"{new_path.stem}.json"
+                atomic_write_json(input_path, {"race": race})
+                decisions = scheduler.decide_phases([replacement], config, datetime(2026, 2, 10, 15, tzinfo=JST), Path(tmp))
+                self.assertTrue(next(d for d in decisions if d["phase"] == "general")["runnable"])
+                self.assertEqual(next(d for d in decisions if d["phase"] == "general")["mode"], "normal")
+                atomic_write_json(input_path, {"race": replacement["race"]})
+                decisions = scheduler.decide_phases([replacement], config, datetime(2026, 2, 10, 15, tzinfo=JST), Path(tmp))
+                self.assertEqual(next(d for d in decisions if d["phase"] == "general")["mode"], "resume")
+            before = path.read_bytes()
+            with patch.object(scheduler, "fetch_cancellation_notices", side_effect=scheduler.requests.ConnectionError("offline")):
+                scheduler.update_race_cancellations([], config, datetime(2026, 2, 10, 15, tzinfo=JST))
+            self.assertEqual(path.read_bytes(), before)
+
     def setUp(self):
         self.config = {
             "target_races": ["中山"], "odds_reference_minutes_before_start": 60,

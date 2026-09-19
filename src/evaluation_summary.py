@@ -536,6 +536,7 @@ def build_evaluation_summary(
     payloads: list[dict[str, Any]],
     generated_at: str | None = None,
 ) -> dict[str, Any]:
+    payloads = [payload for payload in payloads if not payload.get("race", {}).get("cancelled")]
     general = collect_method_evaluations(payloads, GENERAL_PREDICTION_METHOD)
     statistical = collect_method_evaluations(payloads, STATISTICAL_PREDICTION_METHOD)
     evaluated = [(payload, record) for payload, record, _ in general]

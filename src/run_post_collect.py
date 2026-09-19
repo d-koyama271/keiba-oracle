@@ -30,8 +30,9 @@ def publish_post_results(
     *, race_id: str | None = None,
 ) -> list[Path]:
     logger = setup_logger(job_name, config, root)
-    evaluated_paths = evaluate_paths(paths, config, job_name, root)
-    if not evaluated_paths:
+    cancelled_paths = [path for path in paths if load_race_json(path).get("race", {}).get("cancelled")]
+    evaluated_paths = evaluate_paths([path for path in paths if path not in cancelled_paths], config, job_name, root)
+    if not evaluated_paths and not cancelled_paths:
         log_job(logger, job_name, None, "post publish skipped: evaluation missing")
         return []
 
@@ -45,7 +46,7 @@ def publish_post_results(
         set_race_status(payload, post_status="published")
         save_race_json(path, payload)
     log_job(logger, job_name, None, f"post published -> {public_path}")
-    return evaluated_paths
+    return evaluated_paths + cancelled_paths
 
 
 def run_post_flow(config: dict, target_date: str, job_name: str, *, race_id: str | None = None) -> list[Path]:
@@ -57,7 +58,7 @@ def run_post_flow(config: dict, target_date: str, job_name: str, *, race_id: str
         if race_id is not None and (payload or {}).get("meta", {}).get("race_id") != race_id:
             continue
         found = True
-        if payload and any(entry.get(method) for entry in prediction_entries(payload) for method in ("general", "statistical")):
+        if payload and (payload.get("race", {}).get("cancelled") or any(entry.get(method) for entry in prediction_entries(payload) for method in ("general", "statistical"))):
             target_paths.append(path)
 
     if race_id is not None and not found:
@@ -67,7 +68,8 @@ def run_post_flow(config: dict, target_date: str, job_name: str, *, race_id: str
         return []
 
     paths = collect_results(config, job_name, target_paths)
-    simulated_paths = simulate_paths(paths, config, "post", job_name)
+    cancelled_paths = [path for path in paths if load_race_json(path).get("race", {}).get("cancelled")]
+    simulated_paths = simulate_paths([path for path in paths if path not in cancelled_paths], config, "post", job_name) + cancelled_paths
     return publish_post_results(simulated_paths, config, job_name, **({"race_id": race_id} if race_id is not None else {}))
 
 

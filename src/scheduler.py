@@ -10,12 +10,14 @@ from pathlib import Path
 
 import requests
 
-from collect import SHUTUBA_URL, discover_race_ids, fetch_html, parse_race_overview
+from collect import (SHUTUBA_URL, discover_race_ids, fetch_html, parse_race_overview,
+                     fetch_cancellation_notices, parse_cancellation_notice)
 from automation_state import clear_phase_state, load_automation_state, record_failure
 from run_pre import run_pre_flow
 from deploy import deploy_site
-from run_post_collect import run_post_flow
+from run_post_collect import run_post_flow, publish_post_results
 from utils import (JST, atomic_write_json, data_dir, load_config, load_race_json, now_jst, outbox_chat_input_dir,
+                   list_race_files, ensure_race_payload, save_race_json,
                    parse_jst_datetime, prediction_for_method, race_json_path,
                    race_start_datetime, track_name_from_race_id)
 
@@ -99,6 +101,63 @@ def discover_cached_races(config: dict, now: datetime | None = None,
     return races
 
 
+def update_race_cancellations(races: list[dict], config: dict, now: datetime,
+                              root: Path | None = None) -> None:
+    dates = {(now.date() + timedelta(days=offset)).isoformat() for offset in (0, 1)}
+    candidates = {}
+    for path in list_race_files(config, None, root):
+        payload = load_race_json(path)
+        if payload and (payload["race"].get("date") in dates or payload["race"].get("cancelled")):
+            candidates[path] = payload
+    for item in races:
+        race = item["race"]
+        path = race_json_path(config, race["date"], race["track"], race["race_number"], root)
+        if path not in candidates:
+            payload = ensure_race_payload(None, item["race_id"])
+            payload["race"] = dict(race)
+            candidates[path] = payload
+    if not candidates:
+        return
+    sources = [p["race"]["cancellation"]["source_url"] for p in candidates.values()
+               if p["race"].get("cancellation")]
+    try:
+        with requests.Session() as session:
+            notices = fetch_cancellation_notices(session, sources, since=now.date().isoformat())
+    except requests.RequestException as exc:
+        print(f"Cancellation notices unavailable: {exc}")
+        return
+    changed = []
+    for path, payload in candidates.items():
+        race = payload["race"]
+        for url, html in notices:
+            record = parse_cancellation_notice(html, race, url)
+            if record is None:
+                continue
+            previous = race.get("cancellation", {})
+            if previous:
+                record["confirmed_at"] = previous["confirmed_at"]
+            if record != previous or not race.get("cancelled"):
+                race.update(cancelled=True, cancellation=record)
+                save_race_json(path, payload)
+                changed.append(path)
+            break
+        if race.get("cancelled"):
+            for phase in ("general", "statistical", "result"):
+                clear_phase_state(path, config, phase, root)
+            for item in races:
+                replacement = item["race"]
+                if (item["race_id"] != payload["meta"]["race_id"] or replacement["date"] == race["date"]
+                        or replacement["date"] != race.get("cancellation", {}).get("replacement_date")):
+                    continue
+                new_path = race_json_path(config, replacement["date"], replacement["track"], replacement["race_number"], root)
+                if not new_path.exists():
+                    new_payload = ensure_race_payload(None, item["race_id"])
+                    new_payload["race"] = {**replacement, "rescheduled_from": race["date"]}
+                    save_race_json(new_path, new_payload)
+    if changed:
+        publish_post_results(changed, config, "cancellation", root)
+
+
 def decide_phases(races: list[dict], config: dict, now: datetime | None = None,
                   root: Path | None = None) -> list[dict]:
     current = now if now is not None else now_jst()
@@ -119,10 +178,15 @@ def decide_phases(races: list[dict], config: dict, now: datetime | None = None,
                 outbox_chat_input_dir("prediction", root)
                 / f"{path.stem}{'.statistical' if phase == 'statistical' else ''}.json"
             ).is_file()
+            if saved_input and payload.get("race", {}).get("rescheduled_from"):
+                input_path = outbox_chat_input_dir("prediction", root) / f"{path.stem}{'.statistical' if phase == 'statistical' else ''}.json"
+                saved_input = json.loads(input_path.read_text(encoding="utf-8")).get("race", {}).get("date") == race["date"]
             record = (state or {}).get("phases", {}).get(phase, {})
             completed = bool(payload.get("result")) if phase == "result" else bool(prediction_for_method(payload, phase))
             reason = None
-            if completed:
+            if payload.get("race", {}).get("cancelled"):
+                reason = "cancelled"
+            elif completed:
                 reason = "completed"
             elif record.get("status") == "blocked":
                 reason = "blocked"
@@ -155,13 +219,13 @@ def execute_phases(races: list[dict], config: dict, now: datetime | None = None,
         race, race_id = item["race"], item["race_id"]
         path = race_json_path(config, race["date"], race["track"], race["race_number"], root)
         for phase in ("statistical", "general", "result"):
-            key = (race_id, phase)
+            key = (race_id, race["date"], phase)
             if key in seen:
                 continue
             seen.add(key)
             # Refresh both time and saved artifacts after each preceding phase.
             decision = next(d for d in decide_phases([item], config, now, root) if d["phase"] == phase)
-            if decision["reason"] == "completed":
+            if decision["reason"] in ("completed", "cancelled"):
                 clear_phase_state(path, config, phase, root)
                 continue
             if decision["reason"] == "missed_execution_window":
@@ -182,6 +246,9 @@ def execute_phases(races: list[dict], config: dict, now: datetime | None = None,
                     error = f"{phase} artifact missing after execution"
             except (Exception, SystemExit) as exc:
                 error = f"{type(exc).__name__}: {exc}"
+            if (load_race_json(path) or {}).get("race", {}).get("cancelled"):
+                clear_phase_state(path, config, phase, root)
+                continue
             if error is None:
                 clear_phase_state(path, config, phase, root)
                 continue
@@ -247,6 +314,7 @@ def main() -> None:
                     status = decision["mode"] if decision["runnable"] else decision["reason"]
                     print(f"{decision['phase']}: {decision['scheduled_at']:%Y-%m-%d %H:%M} JST ({status})")
         if args.execute:
+            update_race_cancellations(races, config, current)
             execute_phases(races, config)
             deploy_site(config)
 

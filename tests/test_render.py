@@ -75,23 +75,48 @@ def make_payload(*, predicted: bool, track: str, date: str, name: str) -> dict:
 
 
 class RenderTests(unittest.TestCase):
+    def test_publication_states_and_cancelled_pages(self):
+        from utils import ensure_race_payload, atomic_write_json
+        payload = ensure_race_payload(make_payload(predicted=True, track="中山", date="2026-09-20", name="状態テスト"))
+        entry = payload["prediction"][0]
+        entry["statistical"] = entry.pop("general")
+        self.assertEqual(build_race_context(payload)["status_label"], "前日予想公開")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shutil.copytree(ROOT / "templates", root / "templates")
+            path = root / "data/races/2026-09-20/nakayama_11r.json"
+            for state, label in (("statistical", "前日予想公開"), ("general", "直前予想公開"), ("cancelled", "開催中止")):
+                if state == "general":
+                    entry["general"] = entry["statistical"]
+                if state == "cancelled":
+                    payload["race"]["cancelled"] = True
+                    payload["result"] = {"horses": []}
+                    payload["evaluation"] = [{"prediction_id": entry["id"], "general": {"metrics": {}}}]
+                atomic_write_json(path, payload)
+                output = render_site({"data_dir": "data", "public_dir": "public"}, "test-status", root=root)
+                index = BeautifulSoup((output / "index.html").read_text(encoding="utf-8"), "html.parser")
+                page = BeautifulSoup((output / "races/2026-09-20/nakayama_11r.html").read_text(encoding="utf-8"), "html.parser")
+                self.assertEqual(index.select_one(".status").get_text(), label)
+                self.assertEqual(page.select_one(".status").get_text(), label)
+                self.assertFalse((output / "races/2026-09-20/nakayama_11r_result.html").exists())
+
     def test_status_labels_do_not_expose_internal_values(self) -> None:
         labels = {
             status: status_label(status)
-            for status in ("prediction_only", "result_published", "unknown")
+            for status in ("general_published", "result_published", "unknown")
         }
 
         self.assertTrue(all(labels.values()))
         self.assertTrue(all(label != status for status, label in labels.items()))
-        self.assertNotEqual(labels["prediction_only"], labels["result_published"])
+        self.assertNotEqual(labels["general_published"], labels["result_published"])
 
     def test_index_sort_prioritizes_status_then_latest_start(self) -> None:
         rows = [
             {"name": "result", "status": "result_published", "date": "2026-07-20", "start_time": "16:00", "track": "東京", "href": "result"},
             {"name": "ongoing", "status": "awaiting_result", "date": "2026-07-21", "start_time": "16:00", "track": "中山", "href": "ongoing"},
-            {"name": "prediction_old", "status": "prediction_only", "date": "2026-07-18", "start_time": "15:45", "track": "福島", "href": "prediction-old"},
-            {"name": "prediction_early", "status": "prediction_only", "date": "2026-07-19", "start_time": "15:20", "track": "函館", "href": "prediction-early"},
-            {"name": "prediction_late", "status": "prediction_only", "date": "2026-07-19", "start_time": "15:45", "track": "小倉", "href": "prediction-late"},
+            {"name": "prediction_old", "status": "general_published", "date": "2026-07-18", "start_time": "15:45", "track": "福島", "href": "prediction-old"},
+            {"name": "prediction_early", "status": "general_published", "date": "2026-07-19", "start_time": "15:20", "track": "函館", "href": "prediction-early"},
+            {"name": "prediction_late", "status": "general_published", "date": "2026-07-19", "start_time": "15:45", "track": "小倉", "href": "prediction-late"},
         ]
 
         ordered = sorted(rows, key=index_row_sort_key)

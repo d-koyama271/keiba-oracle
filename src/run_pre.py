@@ -10,6 +10,7 @@ from predict import (
     predict_statistical_paths,
 )
 from publish import publish_site
+from evaluation_summary import generate_evaluation_summary
 from render import render_site
 from run_pre_collect import run_pre_collect_flow
 from simulate import simulate_paths
@@ -33,6 +34,7 @@ def run_pre_flow(config: dict, target_date: str | None, job_name: str = "pre", *
     if resume and (phase == "all" or not target_date):
         raise ValueError("resume requires --date and --phase general or statistical")
     logger = setup_logger(job_name, config)
+    cancelled_paths = []
     if resume:
         paths = list_race_files(config, target_date)
         if race_id is not None:
@@ -41,6 +43,8 @@ def run_pre_flow(config: dict, target_date: str | None, job_name: str = "pre", *
                 raise FileNotFoundError(f"No race JSON found for {target_date}: {race_id}")
         if not paths:
             raise RuntimeError(f"No race JSON found for resume: {target_date}")
+        cancelled_paths = [path for path in paths if load_race_json(path).get("race", {}).get("cancelled")]
+        paths = [path for path in paths if path not in cancelled_paths]
         suffix = ".statistical.json" if phase == "statistical" else ".json"
         input_paths = [outbox_chat_input_dir("prediction") / f"{path.stem}{suffix}" for path in paths]
         for path in input_paths:
@@ -54,6 +58,9 @@ def run_pre_flow(config: dict, target_date: str | None, job_name: str = "pre", *
         paths, input_paths = run_pre_collect_flow(config, target_date, job_name, phase=phase, **({"race_id": race_id} if race_id is not None else {}))
     else:
         paths, input_paths = run_pre_collect_flow(config, target_date, job_name, **({"race_id": race_id} if race_id is not None else {}))
+    if not resume:
+        cancelled_paths = [path for path in paths if load_race_json(path).get("race", {}).get("cancelled")]
+        paths = [path for path in paths if path not in cancelled_paths]
     prediction_inputs = (saved_inputs if resume else load_prediction_inputs(input_paths)) if phase != "statistical" else {}
     statistical_inputs = saved_inputs if resume and phase == "statistical" else {}
     if phase != "general" and not resume:
@@ -96,7 +103,7 @@ def run_pre_flow(config: dict, target_date: str | None, job_name: str = "pre", *
     for path in paths:
         if path not in successful_paths:
             log_job(logger, job_name, None, f"prediction failed for {methods}: {path}")
-    if not successful_paths:
+    if not successful_paths and not cancelled_paths:
         raise RuntimeError(f"pre flow stopped: prediction generation failed for {methods}")
     published_paths = [path for path in paths if path in successful_paths]
     if phase != "statistical":
@@ -111,10 +118,12 @@ def run_pre_flow(config: dict, target_date: str | None, job_name: str = "pre", *
         set_race_status(payload, pre_status="published")
         save_race_json(path, payload)
 
+    if cancelled_paths:
+        generate_evaluation_summary(config, job_name)
     render_site(config, job_name, None, **({"race_id": race_id} if race_id is not None else {}))
     public_path = publish_site(config)
     log_job(logger, job_name, None, f"published site -> {public_path}")
-    return published_paths
+    return published_paths + cancelled_paths
 
 
 def main() -> None:

@@ -1407,6 +1407,86 @@ def validate_complete_result(
         raise ValueError("win payout is unavailable or does not match the winner")
 
 
+def parse_cancellation_notice(html: str, race: dict, source_url: str) -> dict | None:
+    """Match an explicit official announcement to its date, track and race scope."""
+    if urlparse(source_url).hostname != "info.netkeiba.com":
+        return None
+    soup = BeautifulSoup(html, "html.parser")
+    title = soup.select_one(".InfoArticle .ArticleTitle")
+    published = soup.select_one(".InfoArticle .ArticleInfoData")
+    if title is None or published is None:
+        return None
+    published_match = re.search(r"(\d{4})年(\d{1,2})月(\d{1,2})日", published.get_text())
+    if not published_match:
+        return None
+    text = normalize_space(title.get_text(" ", strip=True))
+    when = re.search(r"(?:(\d{4})年)?(?:(\d{1,2})月)?(\d{1,2})日", text)
+    if not when:
+        return None
+    year, month, _ = map(int, published_match.groups())
+    try:
+        target_date = date_cls(int(when[1] or year), int(when[2] or month), int(when[3])).isoformat()
+    except ValueError:
+        return None
+    if target_date != race.get("date"):
+        return None
+    track = re.escape(race["track"])
+    for clause in re.split(r"[、。]", text):
+        match = re.search(track + r"競馬(?:場)?(?P<scope>[^、。]*?)(?:開催中止|は中止|が中止|取り止め|取りやめ)(?:とな(?:ります|りました)|にな(?:ります|りました)|します|です|について|のお知らせ|$)", clause)
+        if not match:
+            continue
+        scope = match["scope"]
+        other_date = re.search(r"(?:(\d{1,2})月)?(\d{1,2})日", clause)
+        if other_date and (int(other_date[1] or month), int(other_date[2])) != (int(when[2] or month), int(when[3])):
+            continue
+        if re.search(r"発売|馬券|WIN5|可能性|場合|おそれ|恐れ", clause):
+            continue
+        numbers = re.search(r"第?(\d{1,2})(?:[-～〜](\d{1,2}))?(?:R|レース)(以降)?", scope)
+        if numbers:
+            first = int(numbers[1])
+            last = 12 if numbers[3] else int(numbers[2] or first)
+            if not first <= race["race_number"] <= last:
+                continue
+        elif re.search(r"レース|R|第\d", scope):
+            continue
+        record = {"date": target_date, "track": race["track"], "race_number": race["race_number"],
+                  "source_url": source_url, "confirmed_at": now_jst_iso()}
+        for paragraph in soup.select(".InfoArticle_Body .ArticleMainText"):
+            line = paragraph.get_text(" ", strip=True)
+            replacement = re.search(track + r"競馬[^。]*[（(]代替競馬[）)][\s　]*(\d{1,2})月(\d{1,2})日", line)
+            if replacement:
+                replacement_date = date_cls(year, int(replacement[1]), int(replacement[2])).isoformat()
+                if replacement_date > target_date:
+                    record["replacement_date"] = replacement_date
+        return record
+    return None
+
+
+def fetch_cancellation_notices(session: requests.Session, source_urls: list[str] = (),
+                               since: str | None = None) -> list[tuple[str, str]]:
+    url = "https://info.netkeiba.com/"
+    urls = set(source_urls)
+    visited = set()
+    while url not in visited:
+        visited.add(url)
+        soup = BeautifulSoup(fetch_html(session, url), "html.parser")
+        dates = []
+        for link in soup.select('.InfoListBox a[href*="pid=info_detail"]'):
+            text = link.get_text()
+            when = re.search(r"(\d{4})年(\d{2})月(\d{2})日", text)
+            if when:
+                dates.append("-".join(when.groups()))
+            if re.search(r"中止|取り止め|取りやめ|代替", text):
+                urls.add(urljoin(url, link["href"]))
+        next_link = soup.select_one(".PagerMain a:has(.Next)")
+        if not since or not dates or min(dates) < since or next_link is None:
+            break
+        url = urljoin(url, next_link["href"])
+        if urlparse(url).hostname != "info.netkeiba.com":
+            break
+    return [(url, fetch_html(session, url)) for url in sorted(urls) if urlparse(url).hostname == "info.netkeiba.com"]
+
+
 def collect_results(
     config: dict[str, Any],
     job_name: str,
@@ -1424,6 +1504,9 @@ def collect_results(
             log_job(logger, job_name, race_id, f"result skipped: race JSON missing -> {path}")
             continue
 
+        if payload.get("race", {}).get("cancelled"):
+            processed.append(path)
+            continue
         try:
             result_html = fetch_html(session, RESULT_URL.format(race_id=race_id))
             result = parse_result(result_html)
@@ -1494,6 +1577,14 @@ def collect_races(
             race_number = int(race.get("race_number") or race_id[-2:])
             path = race_json_path(config, target_date, track_name, race_number, root)
             existing = load_race_json(path)
+            if (existing or {}).get("race", {}).get("cancelled"):
+                payload = ensure_race_payload(existing, race_id)
+                if not payload.get("race"):
+                    payload["race"] = race
+                payload["race"]["cancelled"] = True
+                save_race_json(path, payload)
+                processed.append(path)
+                continue
             expected_horses = parse_entry_horse_identities(entry_html, mobile=mobile_entry)
             odds_map, odds_captured_at, odds_source, odds_source_url = fetch_validated_win_odds(
                 session,
@@ -1518,6 +1609,8 @@ def collect_races(
 
             payload = ensure_race_payload(existing, race_id)
             payload["race"] = race
+            if (existing or {}).get("race", {}).get("rescheduled_from"):
+                payload["race"]["rescheduled_from"] = existing["race"]["rescheduled_from"]
             payload["horses"] = horses
 
             if mode == "post":
