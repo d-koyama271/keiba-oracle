@@ -21,7 +21,7 @@ class SchedulerTests(unittest.TestCase):
     def setUp(self):
         self.config = {
             "target_races": ["中山"], "odds_reference_minutes_before_start": 60,
-            "automation": {"statistical_time": "18:00", "general_minutes_before_start": 45,
+            "automation": {"discovery_interval_minutes": 60, "statistical_time": "18:00", "general_minutes_before_start": 45,
                            "result_minutes_after_start": 10},
         }
 
@@ -81,6 +81,67 @@ class SchedulerTests(unittest.TestCase):
         self.config["automation"]["general_minutes_before_start"] = -1
         with self.assertRaises(ValueError):
             scheduler.calculate_phase_times({"date": "2026-09-20", "start_time": "15:40"}, self.config)
+
+    def test_discovery_cache_ttl_and_due_phase(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.config["data_dir"] = tmp
+            now = datetime(2026, 9, 20, 14, 30, tzinfo=JST)
+            race = {"date": "2026-09-20", "start_time": "15:40", "track": "中山", "race_number": 11}
+            races = [{"race_id": "202606040711", "race": race,
+                      "scheduled_at": scheduler.calculate_phase_times(race, self.config)}]
+            with patch.object(scheduler, "discover_scheduled_races", return_value=races) as discover:
+                self.assertEqual(scheduler.discover_cached_races(self.config, now), races)
+                path = Path(tmp) / "automation" / "discovery_cache.json"
+                before = path.read_bytes()
+                later = now + timedelta(minutes=30)
+                cached = scheduler.discover_cached_races(self.config, later)
+                self.assertEqual(cached, races)
+                self.assertEqual(discover.call_count, 1)
+                self.assertEqual(path.read_bytes(), before)
+                decisions = scheduler.decide_phases(cached, self.config, later)
+                self.assertTrue(next(d for d in decisions if d["phase"] == "general")["runnable"])
+                scheduler.discover_cached_races(self.config, now + timedelta(minutes=60))
+                self.assertEqual(discover.call_count, 2)
+
+    def test_discovery_cache_rollover_failure_and_empty_results(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.config["data_dir"] = tmp
+            now = datetime(2026, 9, 19, 23, 50, tzinfo=JST)
+            with patch.object(scheduler, "discover_scheduled_races", return_value=[]) as discover:
+                self.assertEqual(scheduler.discover_cached_races(self.config, now), [])
+                self.assertEqual(scheduler.discover_cached_races(self.config, now + timedelta(minutes=5)), [])
+                self.assertEqual(discover.call_count, 1)
+                path = Path(tmp) / "automation" / "discovery_cache.json"
+                before = path.read_bytes()
+                discover.side_effect = scheduler.requests.ConnectionError("offline")
+                for minute in (10, 20):
+                    self.assertEqual(scheduler.discover_cached_races(self.config, now + timedelta(minutes=minute)), [])
+                    self.assertEqual(path.read_bytes(), before)
+                self.assertEqual(discover.call_count, 3)
+                discover.side_effect = None
+                scheduler.discover_cached_races(self.config, now + timedelta(minutes=30))
+                self.assertEqual(discover.call_count, 4)
+                self.assertNotEqual(path.read_bytes(), before)
+
+    def test_discovery_failure_retains_stale_races_and_no_cache_raises(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.config["data_dir"] = tmp
+            now = datetime(2026, 9, 20, 13, 30, tzinfo=JST)
+            race = {"date": "2026-09-20", "start_time": "15:40", "track": "中山", "race_number": 11}
+            races = [{"race_id": "202606040711", "race": race,
+                      "scheduled_at": scheduler.calculate_phase_times(race, self.config)}]
+            with patch.object(scheduler, "discover_scheduled_races", side_effect=scheduler.requests.ConnectionError):
+                with self.assertRaises(scheduler.requests.ConnectionError):
+                    scheduler.discover_cached_races(self.config, now)
+            with patch.object(scheduler, "discover_scheduled_races", return_value=races):
+                scheduler.discover_cached_races(self.config, now)
+            path = Path(tmp) / "automation" / "discovery_cache.json"
+            before = path.read_bytes()
+            with patch.object(scheduler, "discover_scheduled_races", side_effect=scheduler.requests.ConnectionError) as discover:
+                for minutes in (60, 70):
+                    self.assertEqual(scheduler.discover_cached_races(self.config, now + timedelta(minutes=minutes)), races)
+                self.assertEqual(discover.call_count, 2)
+            self.assertEqual(path.read_bytes(), before)
 
     def test_phase_decisions_schedule_resume_and_missed_window(self):
         self.config["data_dir"] = "custom-data"

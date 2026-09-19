@@ -152,6 +152,8 @@ schema v9以前は読み込み時に、本体を `general`、`variants` 内の�
 
 `--execute` は `data_dir/automation/scheduler.lock` のOS管理の非ブロッキングlockで重賞検知から実処理全体を保護します。競合時は失敗stateを更新せず正常skipします。異常終了時もOSがlockを解放するため、残ったlockファイルの削除は不要です。確認表示のみの場合はlockを取得しません。
 
+`--execute` の重賞探索結果は `data_dir/automation/discovery_cache.json` に保存し、`automation.discovery_interval_minutes` 未満は再利用します。今日・明日の日付範囲が変わった場合も再探索します。探索失敗時は正常な既存キャッシュの時刻・内容を変更せず、現在の対象日のレースで処理を続け、次回起動で再探索します。phase判定はキャッシュ利用中も毎回行います。確認表示のみの場合は従来どおり探索し、キャッシュを書き込みません。
+
 `run_pre.py`
 
 `run_pre.py`、`run_post.py`、`run_post_collect.py` は `--race-id <race_id>` で対象を1レースに限定できます。preの各phaseとresumeでも指定でき、対象外のレースのinput・予想・結果・公開済みHTMLは更新しません。トップページと結果集計は対象レースの更新を反映します。省略時は従来の日付単位処理です。resume／postで対象日のrace JSONが見つからない場合はエラーになります。

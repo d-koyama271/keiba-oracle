@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import errno
+import json
 import os
 from contextlib import contextmanager, nullcontext
 from datetime import datetime, timedelta
@@ -14,7 +15,7 @@ from automation_state import clear_phase_state, load_automation_state, record_fa
 from run_pre import run_pre_flow
 from deploy import deploy_site
 from run_post_collect import run_post_flow
-from utils import (JST, data_dir, load_config, load_race_json, now_jst, outbox_chat_input_dir,
+from utils import (JST, atomic_write_json, data_dir, load_config, load_race_json, now_jst, outbox_chat_input_dir,
                    parse_jst_datetime, prediction_for_method, race_json_path,
                    race_start_datetime, track_name_from_race_id)
 
@@ -53,6 +54,48 @@ def discover_scheduled_races(config: dict, now: datetime | None = None) -> list[
                     html, race_id, target_date, int(config["odds_reference_minutes_before_start"]),
                 )
                 races.append({"race_id": race_id, "race": race, "scheduled_at": calculate_phase_times(race, config)})
+    return races
+
+
+def discover_cached_races(config: dict, now: datetime | None = None,
+                          root: Path | None = None) -> list[dict]:
+    current = now if now is not None else now_jst()
+    current = current.replace(tzinfo=JST) if current.tzinfo is None else current.astimezone(JST)
+    interval = config["automation"]["discovery_interval_minutes"]
+    if type(interval) is not int or interval <= 0:
+        raise ValueError("automation.discovery_interval_minutes must be a positive integer")
+    dates = [(current.date() + timedelta(days=offset)).isoformat() for offset in (0, 1)]
+    path = data_dir(config, root) / "automation" / "discovery_cache.json"
+    cached = None
+    try:
+        cache = json.loads(path.read_text(encoding="utf-8"))
+        captured = parse_jst_datetime(cache["discovered_at"])
+        if captured is None or not isinstance(cache["dates"], list) or not isinstance(cache["races"], list):
+            raise ValueError("invalid discovery cache")
+        cached = []
+        for item in cache["races"]:
+            race = item["race"]
+            if not isinstance(item["race_id"], str) or not isinstance(race["race_number"], int):
+                raise ValueError("invalid cached race")
+            times = calculate_phase_times(race, config)
+            if race["date"] in dates and race["track"] in config["target_races"]:
+                cached.append({"race_id": item["race_id"], "race": race, "scheduled_at": times})
+        if (cache["dates"] == dates and cache.get("target_races") == config["target_races"]
+                and timedelta(0) <= current - captured < timedelta(minutes=interval)):
+            return cached
+    except (FileNotFoundError, ValueError, KeyError, TypeError, AttributeError):
+        cached = None
+    try:
+        races = discover_scheduled_races(config, current)
+    except (requests.RequestException, ValueError, KeyError, TypeError):
+        if cached is None:
+            raise
+        return cached
+    atomic_write_json(path, {
+        "discovered_at": current.isoformat(), "dates": dates,
+        "target_races": config["target_races"],
+        "races": [{"race_id": item["race_id"], "race": item["race"]} for item in races],
+    })
     return races
 
 
@@ -194,7 +237,7 @@ def main() -> None:
             print("別のschedulerが実行中のためskipします。")
             return
         current = now_jst()
-        races = discover_scheduled_races(config, current)
+        races = discover_cached_races(config, current) if args.execute else discover_scheduled_races(config, current)
         decisions = decide_phases(races, config, current)
         for item in races:
             race = item["race"]
