@@ -60,11 +60,47 @@ class SchedulerTests(unittest.TestCase):
             self.assertEqual(path.read_bytes(), before)
 
     def setUp(self):
+        self.enterContext(patch.object(scheduler, "fetch_cancellation_notices", return_value=[]))
         self.config = {
             "target_races": ["中山"], "odds_reference_minutes_before_start": 60,
             "automation": {"discovery_interval_minutes": 60, "statistical_time": "18:00", "general_minutes_before_start": 45,
                            "result_minutes_after_start": 10},
         }
+
+    def test_cli_checks_cancellation_only_when_discovery_refreshes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.config["data_dir"] = tmp
+            now = datetime(2026, 9, 20, 23, tzinfo=JST)
+            with patch.object(sys, "argv", ["scheduler.py", "--execute"]), \
+                 patch.object(scheduler, "load_config", return_value=self.config), \
+                 patch.object(scheduler, "discover_scheduled_races", return_value=[]) as discover, \
+                 patch.object(scheduler, "update_race_cancellations") as cancellations, \
+                 patch.object(scheduler, "execute_phases") as execute, \
+                 patch.object(scheduler, "deploy_site") as deploy:
+                for minutes, refreshes in ((0, 1), (10, 1), (20, 1), (60, 2), (70, 2)):
+                    with patch.object(scheduler, "now_jst", return_value=now + timedelta(minutes=minutes)):
+                        scheduler.main()
+                    self.assertEqual(discover.call_count, refreshes)
+                    self.assertEqual(cancellations.call_count, refreshes)
+                self.assertEqual(execute.call_count, 5)
+                self.assertEqual(deploy.call_count, 5)
+                # A failed refresh reuses stale data without a separate notice poll.
+                discover.side_effect = scheduler.requests.ConnectionError("offline")
+                with patch.object(scheduler, "now_jst", return_value=now + timedelta(minutes=120)):
+                    scheduler.main()
+                self.assertEqual(cancellations.call_count, 2)
+                self.assertEqual(execute.call_count, 6)
+                self.assertEqual(deploy.call_count, 6)
+
+    def test_cancellation_refresh_follows_date_rollover_within_ttl(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.config["data_dir"] = tmp
+            now = datetime(2026, 9, 20, 23, 50, tzinfo=JST)
+            with patch.object(scheduler, "discover_scheduled_races", return_value=[]), \
+                 patch.object(scheduler, "update_race_cancellations") as cancellations:
+                scheduler.discover_cached_races(self.config, now)
+                scheduler.discover_cached_races(self.config, now + timedelta(minutes=10))
+                self.assertEqual(cancellations.call_count, 2)
 
     def test_schedule_uses_independent_settings(self):
         race = {"date": "2026-09-20", "start_time": "15:40"}

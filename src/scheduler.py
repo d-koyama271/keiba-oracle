@@ -93,6 +93,7 @@ def discover_cached_races(config: dict, now: datetime | None = None,
         if cached is None:
             raise
         return cached
+    update_race_cancellations(races, config, current, root)
     atomic_write_json(path, {
         "discovered_at": current.isoformat(), "dates": dates,
         "target_races": config["target_races"],
@@ -314,7 +315,6 @@ def main() -> None:
                     status = decision["mode"] if decision["runnable"] else decision["reason"]
                     print(f"{decision['phase']}: {decision['scheduled_at']:%Y-%m-%d %H:%M} JST ({status})")
         if args.execute:
-            update_race_cancellations(races, config, current)
             execute_phases(races, config)
             deploy_site(config)
 
