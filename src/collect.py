@@ -1463,7 +1463,7 @@ def parse_cancellation_notice(html: str, race: dict, source_url: str) -> dict | 
 
 
 def fetch_cancellation_notices(session: requests.Session, source_urls: list[str] = (),
-                               since: str | None = None) -> list[tuple[str, str]]:
+                               since: str | None = None, excluded_urls: set[str] = frozenset()) -> list[tuple[str, str]]:
     url = "https://info.netkeiba.com/"
     urls = set(source_urls)
     visited = set()
@@ -1476,6 +1476,11 @@ def fetch_cancellation_notices(session: requests.Session, source_urls: list[str]
             when = re.search(r"(\d{4})年(\d{2})月(\d{2})日", text)
             if when:
                 dates.append("-".join(when.groups()))
+                if since and dates[-1] < since:
+                    # Yesterday's announcement can explicitly concern today's racing.
+                    title_date = re.search(r"(?:(\d{1,2})月)?(\d{1,2})日", text[when.end():])
+                    if not title_date or date_cls(int(when[1]), int(title_date[1] or when[2]), int(title_date[2])).isoformat() != since:
+                        continue
             if re.search(r"中止|取り止め|取りやめ|代替", text):
                 urls.add(urljoin(url, link["href"]))
         next_link = soup.select_one(".PagerMain a:has(.Next)")
@@ -1484,7 +1489,8 @@ def fetch_cancellation_notices(session: requests.Session, source_urls: list[str]
         url = urljoin(url, next_link["href"])
         if urlparse(url).hostname != "info.netkeiba.com":
             break
-    return [(url, fetch_html(session, url)) for url in sorted(urls) if urlparse(url).hostname == "info.netkeiba.com"]
+    return [(url, fetch_html(session, url)) for url in sorted(urls)
+            if urlparse(url).hostname == "info.netkeiba.com" and url not in excluded_urls]
 
 
 def collect_results(

@@ -24,6 +24,7 @@ class SchedulerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             config = {**self.config, "data_dir": tmp}
             race = {"date": "2026-02-08", "track": "東京", "race_number": 11, "start_time": "15:40"}
+            config["target_races"] = [race["track"]]
             path = race_json_path(config, race["date"], race["track"], 11)
             payload = ensure_race_payload(None, "202605010411")
             payload["race"] = race
@@ -32,7 +33,7 @@ class SchedulerTests(unittest.TestCase):
             record_failure(path, config, "202605010411", "general", "failed", status="blocked")
             html = '<div class="InfoArticle"><h1 class="ArticleTitle">8日(日)の東京競馬は中止</h1><div class="ArticleInfoData">2026年02月08日</div><div class="InfoArticle_Body"><p class="ArticleMainText">第1回東京競馬第4日（代替競馬） 2月10日（火曜）</p></div></div>'
             notice = [("https://info.netkeiba.com/?pid=info_detail&id=1564", html)]
-            with patch.object(scheduler, "fetch_cancellation_notices", return_value=notice), patch.object(scheduler, "publish_post_results") as publish:
+            with patch.object(scheduler, "fetch_cancellation_notices", return_value=notice) as notices, patch.object(scheduler, "publish_post_results") as publish:
                 # The race disappeared from discovery, but its saved record still receives the notice.
                 scheduler.update_race_cancellations([], config, datetime(2026, 2, 8, 9, tzinfo=JST), Path(tmp))
                 saved = load_race_json(path)
@@ -43,6 +44,8 @@ class SchedulerTests(unittest.TestCase):
                 publish.assert_called_once()
                 replacement = {"race_id": "202605010411", "race": {**race, "date": "2026-02-10"}}
                 scheduler.update_race_cancellations([replacement], config, datetime(2026, 2, 9, 18, tzinfo=JST), Path(tmp))
+                self.assertEqual(notices.call_count, 1)
+                self.assertNotIn("source_urls", notices.call_args.kwargs)
                 new_path = race_json_path(config, "2026-02-10", "東京", 11)
                 self.assertEqual(load_race_json(new_path)["race"]["rescheduled_from"], "2026-02-08")
                 self.assertTrue(load_race_json(path)["race"]["cancelled"])
@@ -67,40 +70,64 @@ class SchedulerTests(unittest.TestCase):
                            "result_minutes_after_start": 10},
         }
 
-    def test_cli_checks_cancellation_only_when_discovery_refreshes(self):
+    def test_cli_reuses_discovery_but_checks_phases_every_ten_minutes(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.config["data_dir"] = tmp
-            now = datetime(2026, 9, 20, 23, tzinfo=JST)
+            now = datetime(2026, 9, 20, 12, tzinfo=JST)
             with patch.object(sys, "argv", ["scheduler.py", "--execute"]), \
                  patch.object(scheduler, "load_config", return_value=self.config), \
                  patch.object(scheduler, "discover_scheduled_races", return_value=[]) as discover, \
-                 patch.object(scheduler, "update_race_cancellations") as cancellations, \
                  patch.object(scheduler, "execute_phases") as execute, \
                  patch.object(scheduler, "deploy_site") as deploy:
-                for minutes, refreshes in ((0, 1), (10, 1), (20, 1), (60, 2), (70, 2)):
+                for minutes in range(0, 71, 10):
                     with patch.object(scheduler, "now_jst", return_value=now + timedelta(minutes=minutes)):
                         scheduler.main()
-                    self.assertEqual(discover.call_count, refreshes)
-                    self.assertEqual(cancellations.call_count, refreshes)
-                self.assertEqual(execute.call_count, 5)
-                self.assertEqual(deploy.call_count, 5)
-                # A failed refresh reuses stale data without a separate notice poll.
-                discover.side_effect = scheduler.requests.ConnectionError("offline")
-                with patch.object(scheduler, "now_jst", return_value=now + timedelta(minutes=120)):
+                self.assertEqual(discover.call_count, 1)
+                self.assertEqual(execute.call_count, 8)
+                self.assertEqual(deploy.call_count, 8)
+                with patch.object(scheduler, "now_jst", return_value=now + timedelta(days=1)):
                     scheduler.main()
-                self.assertEqual(cancellations.call_count, 2)
-                self.assertEqual(execute.call_count, 6)
-                self.assertEqual(deploy.call_count, 6)
+                self.assertEqual(discover.call_count, 2)
 
-    def test_cancellation_refresh_follows_date_rollover_within_ttl(self):
+    def test_cancellation_hourly_attempts_include_network_failures(self):
+        for failure in (False, True):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as tmp:
+                self.config["data_dir"] = tmp
+                now = datetime(2026, 9, 20, 12, tzinfo=JST)
+                race = {"date": "2026-09-20", "track": self.config["target_races"][0],
+                        "race_number": 11, "start_time": "15:40"}
+                items = [{"race_id": "202606040711", "race": race}]
+                with patch.object(scheduler, "fetch_cancellation_notices", return_value=[],
+                                  side_effect=scheduler.requests.ConnectionError("offline") if failure else None) as fetch:
+                    for minutes in range(0, 60, 10):
+                        scheduler.update_race_cancellations(items, self.config, now + timedelta(minutes=minutes))
+                    self.assertEqual(fetch.call_count, 1)
+                    scheduler.update_race_cancellations(items, self.config, now + timedelta(minutes=60))
+                    self.assertEqual(fetch.call_count, 2)
+                    self.assertEqual(len(fetch.call_args.args), 1)
+
+    def test_cancellation_skips_tomorrow_cancelled_and_result_races(self):
+        from utils import ensure_race_payload
         with tempfile.TemporaryDirectory() as tmp:
             self.config["data_dir"] = tmp
-            now = datetime(2026, 9, 20, 23, 50, tzinfo=JST)
-            with patch.object(scheduler, "discover_scheduled_races", return_value=[]), \
-                 patch.object(scheduler, "update_race_cancellations") as cancellations:
-                scheduler.discover_cached_races(self.config, now)
-                scheduler.discover_cached_races(self.config, now + timedelta(minutes=10))
-                self.assertEqual(cancellations.call_count, 2)
+            race = {"date": "2026-09-21", "track": self.config["target_races"][0],
+                    "race_number": 11, "start_time": "15:40"}
+            item = {"race_id": "202606040711", "race": race}
+            with patch.object(scheduler, "fetch_cancellation_notices") as fetch:
+                scheduler.update_race_cancellations([item], self.config, datetime(2026, 9, 20, 12, tzinfo=JST))
+                race["date"] = "2026-09-20"
+                path = race_json_path(self.config, race["date"], race["track"], 11)
+                payload = ensure_race_payload(None, item["race_id"])
+                payload["race"] = race
+                payload["result"] = {"horses": [1]}
+                atomic_write_json(path, payload)
+                scheduler.update_race_cancellations([item], self.config, datetime(2026, 9, 20, 12, tzinfo=JST))
+                payload["result"] = None
+                payload["race"]["cancelled"] = True
+                payload["race"]["cancellation"] = {"source_url": "https://info.netkeiba.com/?id=1"}
+                atomic_write_json(path, payload)
+                scheduler.update_race_cancellations([item], self.config, datetime(2026, 9, 20, 13, tzinfo=JST))
+                fetch.assert_not_called()
 
     def test_schedule_uses_independent_settings(self):
         race = {"date": "2026-09-20", "start_time": "15:40"}
@@ -159,7 +186,7 @@ class SchedulerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             scheduler.calculate_phase_times({"date": "2026-09-20", "start_time": "15:40"}, self.config)
 
-    def test_discovery_cache_ttl_and_due_phase(self):
+    def test_discovery_cache_reuse_and_due_phase(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.config["data_dir"] = tmp
             now = datetime(2026, 9, 20, 14, 30, tzinfo=JST)
@@ -178,7 +205,27 @@ class SchedulerTests(unittest.TestCase):
                 decisions = scheduler.decide_phases(cached, self.config, later)
                 self.assertTrue(next(d for d in decisions if d["phase"] == "general")["runnable"])
                 scheduler.discover_cached_races(self.config, now + timedelta(minutes=60))
-                self.assertEqual(discover.call_count, 2)
+                self.assertEqual(discover.call_count, 1)
+
+    def test_discovery_rebuilds_broken_or_incomplete_cache(self):
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            self.config["data_dir"] = tmp
+            now = datetime(2026, 9, 20, 12, tzinfo=JST)
+            path = Path(tmp) / "automation/discovery_cache.json"
+            with patch.object(scheduler, "discover_scheduled_races", return_value=[]) as discover:
+                scheduler.discover_cached_races(self.config, now)
+                valid = json.loads(path.read_text(encoding="utf-8"))
+                missing_date = {**valid, "dates": ["2026-09-20"]}
+                missing_start = {**valid, "races": [{"race_id": "202606040711", "race": {
+                    "date": "2026-09-20", "track": self.config["target_races"][0], "race_number": 11,
+                }}]}
+                for invalid in (missing_date, missing_start):
+                    atomic_write_json(path, invalid)
+                    scheduler.discover_cached_races(self.config, now)
+                path.write_text("{broken", encoding="utf-8")
+                scheduler.discover_cached_races(self.config, now)
+                self.assertEqual(discover.call_count, 4)
 
     def test_discovery_cache_rollover_failure_and_empty_results(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -217,7 +264,7 @@ class SchedulerTests(unittest.TestCase):
             with patch.object(scheduler, "discover_scheduled_races", side_effect=scheduler.requests.ConnectionError) as discover:
                 for minutes in (60, 70):
                     self.assertEqual(scheduler.discover_cached_races(self.config, now + timedelta(minutes=minutes)), races)
-                self.assertEqual(discover.call_count, 2)
+                discover.assert_not_called()
             self.assertEqual(path.read_bytes(), before)
 
     def test_phase_decisions_schedule_resume_and_missed_window(self):

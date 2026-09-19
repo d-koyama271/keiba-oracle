@@ -152,7 +152,7 @@ schema v9以前は読み込み時に、本体を `general`、`variants` 内の�
 
 `--execute` は `data_dir/automation/scheduler.lock` のOS管理の非ブロッキングlockで重賞検知から実処理全体を保護します。競合時は失敗stateを更新せず正常skipします。異常終了時もOSがlockを解放するため、残ったlockファイルの削除は不要です。確認表示のみの場合はlockを取得しません。
 
-`--execute` の重賞探索結果は `data_dir/automation/discovery_cache.json` に保存し、`automation.discovery_interval_minutes` 未満は再利用します。今日・明日の日付範囲が変わった場合も再探索します。探索失敗時は正常な既存キャッシュの時刻・内容を変更せず、現在の対象日のレースで処理を続け、次回起動で再探索します。phase判定はキャッシュ利用中も毎回行います。確認表示のみの場合は従来どおり探索し、キャッシュを書き込みません。
+`--execute` の重賞探索結果は `data_dir/automation/discovery_cache.json` に保存します。今日・明日の対象日と必要なレース情報が揃っていれば、時間経過だけでは再探索しません。キャッシュ未作成・破損・対象日不足・日付構成変更時に再探索します。`discovery_interval_minutes` は通常探索のTTLとして使用しません。phase判定・retry判定・deployは起動ごとに継続します。確認表示のみの場合は従来どおり探索し、キャッシュを書き込みません。
 
 `run_pre.py`
 
@@ -322,7 +322,7 @@ python -m unittest discover -s tests -v
 
 レース一覧と予想ページには、統計重視のみの「前日予想公開」、総合予想ありの「直前予想公開」、結果・評価がある「結果公開」、優先表示の「開催中止」を使用します。予想ページは予想の公開段階を表示し、結果ページは常に「結果公開」です。
 
-schedulerの `--execute` は探索キャッシュの更新時にnetkeiba公式お知らせ（`https://info.netkeiba.com/`）を確認し、記事の明示的な中止告知と日付・競馬場・レース範囲が一致した場合にのみ `race.cancelled` と `race.cancellation`（対象日・対象レース・根拠URL・確認時刻）を保存します。確認周期は既存の `discovery_interval_minutes` に従い、キャッシュ再利用時にはお知らせへアクセスしません。取得失敗、一覧からの消失、出馬表・結果ページの文言だけでは確定しません。中止日の予想を保持して公開を更新し、その日付の予想生成・結果処理・retry・評価集計を停止します。結果ページは生成しません。
+schedulerの `--execute` は今日の未完了・未中止レースがある場合だけ、通常探索と独立してnetkeiba公式お知らせ（`https://info.netkeiba.com/`）を最大1時間に1回確認します。確認開始前に同じ探索キャッシュへ `cancellation_checked_at` を保存するため、通信失敗時も10分ごとには再取得しません。明日のレース、result保存済み、中止確定済みは確認対象外です。過去の中止記事や中止確定の根拠URLを再取得せず、代替開催は保存済み `replacement_date` と通常探索の同一race_id・日付を照合します。中止判定には公式告知と対象日付・競馬場・レース範囲の一致を必要とし、取得失敗や一覧からの消失では中止にしません。
 
 公式記事に代替日が明記されている場合は `replacement_date` を記録し、その日付の探索で同じrace_idを確認できたら、新しい日付のrace JSONを `rescheduled_from` 付きで作成します。元日のJSON・予想は中止記録として残し、新日程は既存フローで処理します。元日付の確定inputを新日程のresumeに流用しません。日付やレース範囲を確定できない告知は推測で適用しません。過去JSONの一括移行は不要です。
 

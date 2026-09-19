@@ -109,6 +109,13 @@ class ResultCollectionTests(unittest.TestCase):
         self.assertEqual(records, [(url, "notice1"), (saved, "notice2")])
         self.assertEqual(fetch.call_count, 3)
 
+    def test_notice_fetch_skips_old_and_confirmed_articles(self):
+        confirmed = "https://info.netkeiba.com/?pid=info_detail&id=1"
+        listing = f'<div class="InfoListBox"><a href="{confirmed}">2026年02月08日 2月8日の開催中止</a><a href="?pid=info_detail&id=2">2026年01月10日 1月10日の開催中止</a></div>'
+        with patch.object(collect, "fetch_html", return_value=listing) as fetch:
+            self.assertEqual(collect.fetch_cancellation_notices(None, since="2026-02-08", excluded_urls={confirmed}), [])
+        fetch.assert_called_once_with(None, "https://info.netkeiba.com/")
+
     def setUp(self) -> None:
         self.logger = logging.getLogger(f"test.{self.id()}")
         self.logger.handlers.clear()

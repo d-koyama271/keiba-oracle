@@ -63,12 +63,10 @@ def discover_cached_races(config: dict, now: datetime | None = None,
                           root: Path | None = None) -> list[dict]:
     current = now if now is not None else now_jst()
     current = current.replace(tzinfo=JST) if current.tzinfo is None else current.astimezone(JST)
-    interval = config["automation"]["discovery_interval_minutes"]
-    if type(interval) is not int or interval <= 0:
-        raise ValueError("automation.discovery_interval_minutes must be a positive integer")
     dates = [(current.date() + timedelta(days=offset)).isoformat() for offset in (0, 1)]
     path = data_dir(config, root) / "automation" / "discovery_cache.json"
     cached = None
+    cache = {}
     try:
         cache = json.loads(path.read_text(encoding="utf-8"))
         captured = parse_jst_datetime(cache["discovered_at"])
@@ -77,13 +75,15 @@ def discover_cached_races(config: dict, now: datetime | None = None,
         cached = []
         for item in cache["races"]:
             race = item["race"]
-            if not isinstance(item["race_id"], str) or not isinstance(race["race_number"], int):
+            if (not isinstance(item["race_id"], str) or not item["race_id"]
+                    or type(race["race_number"]) is not int or not 1 <= race["race_number"] <= 12
+                    or not isinstance(race["track"], str) or not race["track"]
+                    or race["date"] not in cache["dates"]):
                 raise ValueError("invalid cached race")
             times = calculate_phase_times(race, config)
             if race["date"] in dates and race["track"] in config["target_races"]:
                 cached.append({"race_id": item["race_id"], "race": race, "scheduled_at": times})
-        if (cache["dates"] == dates and cache.get("target_races") == config["target_races"]
-                and timedelta(0) <= current - captured < timedelta(minutes=interval)):
+        if cache["dates"] == dates and cache.get("target_races") == config["target_races"]:
             return cached
     except (FileNotFoundError, ValueError, KeyError, TypeError, AttributeError):
         cached = None
@@ -93,9 +93,9 @@ def discover_cached_races(config: dict, now: datetime | None = None,
         if cached is None:
             raise
         return cached
-    update_race_cancellations(races, config, current, root)
     atomic_write_json(path, {
         "discovered_at": current.isoformat(), "dates": dates,
+        "cancellation_checked_at": cache.get("cancellation_checked_at") if isinstance(cache, dict) else None,
         "target_races": config["target_races"],
         "races": [{"race_id": item["race_id"], "race": item["race"]} for item in races],
     })
@@ -104,26 +104,56 @@ def discover_cached_races(config: dict, now: datetime | None = None,
 
 def update_race_cancellations(races: list[dict], config: dict, now: datetime,
                               root: Path | None = None) -> None:
-    dates = {(now.date() + timedelta(days=offset)).isoformat() for offset in (0, 1)}
+    now = now.replace(tzinfo=JST) if now.tzinfo is None else now.astimezone(JST)
     candidates = {}
+    cancelled = []
     for path in list_race_files(config, None, root):
         payload = load_race_json(path)
-        if payload and (payload["race"].get("date") in dates or payload["race"].get("cancelled")):
+        if not payload:
+            continue
+        if payload["race"].get("cancelled"):
+            cancelled.append(payload)
+        elif (payload["race"].get("date") == now.date().isoformat()
+              and payload["race"].get("track") in config["target_races"] and not payload.get("result")):
             candidates[path] = payload
+    # Replacement confirmation uses saved evidence and the discovered schedule only.
+    for payload in cancelled:
+        race = payload["race"]
+        for item in races:
+            replacement = item["race"]
+            if (item["race_id"] != payload["meta"]["race_id"] or replacement["date"] == race["date"]
+                    or replacement["date"] != race.get("cancellation", {}).get("replacement_date")):
+                continue
+            new_path = race_json_path(config, replacement["date"], replacement["track"], replacement["race_number"], root)
+            if not new_path.exists():
+                new_payload = ensure_race_payload(None, item["race_id"])
+                new_payload["race"] = {**replacement, "rescheduled_from": race["date"]}
+                save_race_json(new_path, new_payload)
     for item in races:
         race = item["race"]
+        if race["date"] != now.date().isoformat() or race["track"] not in config["target_races"]:
+            continue
         path = race_json_path(config, race["date"], race["track"], race["race_number"], root)
         if path not in candidates:
-            payload = ensure_race_payload(None, item["race_id"])
-            payload["race"] = dict(race)
-            candidates[path] = payload
+            payload = load_race_json(path) or ensure_race_payload(None, item["race_id"])
+            if not payload.get("race"):
+                payload["race"] = dict(race)
+            if not payload["race"].get("cancelled") and not payload.get("result"):
+                candidates[path] = payload
     if not candidates:
         return
-    sources = [p["race"]["cancellation"]["source_url"] for p in candidates.values()
-               if p["race"].get("cancellation")]
+    cache_path = data_dir(config, root) / "automation" / "discovery_cache.json"
+    cache = json.loads(cache_path.read_text(encoding="utf-8")) if cache_path.exists() else {}
+    checked = parse_jst_datetime(cache.get("cancellation_checked_at"))
+    if checked is not None and timedelta(0) <= now - checked < timedelta(hours=1):
+        return
+    # Record the attempt before I/O, including failed requests, to avoid ten-minute polling.
+    cache["cancellation_checked_at"] = now.isoformat()
+    atomic_write_json(cache_path, cache)
     try:
         with requests.Session() as session:
-            notices = fetch_cancellation_notices(session, sources, since=now.date().isoformat())
+            confirmed_urls = {p["race"].get("cancellation", {}).get("source_url") for p in cancelled}
+            notices = fetch_cancellation_notices(session, since=now.date().isoformat(), excluded_urls=confirmed_urls)
     except requests.RequestException as exc:
         print(f"Cancellation notices unavailable: {exc}")
         return
@@ -134,27 +164,12 @@ def update_race_cancellations(races: list[dict], config: dict, now: datetime,
             record = parse_cancellation_notice(html, race, url)
             if record is None:
                 continue
-            previous = race.get("cancellation", {})
-            if previous:
-                record["confirmed_at"] = previous["confirmed_at"]
-            if record != previous or not race.get("cancelled"):
-                race.update(cancelled=True, cancellation=record)
-                save_race_json(path, payload)
-                changed.append(path)
-            break
-        if race.get("cancelled"):
+            race.update(cancelled=True, cancellation=record)
+            save_race_json(path, payload)
+            changed.append(path)
             for phase in ("general", "statistical", "result"):
                 clear_phase_state(path, config, phase, root)
-            for item in races:
-                replacement = item["race"]
-                if (item["race_id"] != payload["meta"]["race_id"] or replacement["date"] == race["date"]
-                        or replacement["date"] != race.get("cancellation", {}).get("replacement_date")):
-                    continue
-                new_path = race_json_path(config, replacement["date"], replacement["track"], replacement["race_number"], root)
-                if not new_path.exists():
-                    new_payload = ensure_race_payload(None, item["race_id"])
-                    new_payload["race"] = {**replacement, "rescheduled_from": race["date"]}
-                    save_race_json(new_path, new_payload)
+            break
     if changed:
         publish_post_results(changed, config, "cancellation", root)
 
@@ -315,6 +330,7 @@ def main() -> None:
                     status = decision["mode"] if decision["runnable"] else decision["reason"]
                     print(f"{decision['phase']}: {decision['scheduled_at']:%Y-%m-%d %H:%M} JST ({status})")
         if args.execute:
+            update_race_cancellations(races, config, current)
             execute_phases(races, config)
             deploy_site(config)
 
