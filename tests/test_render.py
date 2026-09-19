@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -480,6 +481,100 @@ class RenderTests(unittest.TestCase):
         )
         self.assertIsNone(prediction_soup.select_one(".result-section"))
         self.assertIsNone(result_soup.select_one("#custom-simulator"))
+
+    def test_statistical_only_simulation_content_uses_panel(self) -> None:
+        from utils import ensure_race_payload
+
+        payload = ensure_race_payload(
+            make_payload(
+                predicted=True,
+                track="中山",
+                date="2026-09-20",
+                name="統計予想のみ",
+            )
+        )
+        entry = payload["prediction"][0]
+        entry["statistical"] = entry.pop("general")
+
+        rendered = build_environment(ROOT).get_template("race.html.j2").render(
+            **build_race_context(payload)
+        )
+        soup = BeautifulSoup(rendered, "html.parser")
+        section = soup.select_one(".simulation-section")
+        content = section.select_one(".simulation-method-content")
+
+        self.assertNotIn("has-ai-tabs", section.get("class", []))
+        self.assertIn("panel", content.get("class", []))
+        self.assertIsNotNone(content.select_one(".ticket-tabs"))
+
+    @unittest.skipUnless(shutil.which("node"), "Node.js required for tab scope test")
+    def test_ai_and_ticket_panel_switching_is_scoped(self) -> None:
+        template = (ROOT / "templates" / "race.html.j2").read_text(encoding="utf-8")
+        start = template.index("function directScopedPanels")
+        controller = template[start:template.index("(() => {", start)]
+        script = controller + r'''
+const makeTab = (key, value) => ({
+  dataset: {[key]: value},
+  attributes: {},
+  tabIndex: 0,
+  setAttribute(name, setting) { this.attributes[name] = String(setting); },
+});
+const makePanel = (selector, key, value, hidden) => ({
+  dataset: {[key]: value},
+  hidden,
+  matches(candidate) { return candidate === selector; },
+});
+const makeList = (tabs, panels) => ({
+  parentElement: {children: panels},
+  querySelectorAll() { return tabs; },
+});
+
+const aiPanelsA = [
+  makePanel("[data-ai-panel]", "aiMethod", "general", false),
+  makePanel("[data-ai-panel]", "aiMethod", "statistical", true),
+];
+const aiPanelsB = [
+  makePanel("[data-ai-panel]", "aiMethod", "general", false),
+  makePanel("[data-ai-panel]", "aiMethod", "statistical", true),
+];
+const aiTabsA = [makeTab("aiMethod", "general"), makeTab("aiMethod", "statistical")];
+activateAiMethodTabList(makeList(aiTabsA, aiPanelsA), "statistical");
+
+const ticketPanelsA = [
+  makePanel("[data-ticket-panel]", "ticketPanel", "win", false),
+  makePanel("[data-ticket-panel]", "ticketPanel", "quinella", true),
+];
+const ticketPanelsB = [
+  makePanel("[data-ticket-panel]", "ticketPanel", "win", false),
+  makePanel("[data-ticket-panel]", "ticketPanel", "quinella", true),
+];
+const ticketTabsA = [makeTab("ticketTab", "win"), makeTab("ticketTab", "quinella")];
+activateTicketTabList(makeList(ticketTabsA, ticketPanelsA), "quinella");
+
+process.stdout.write(JSON.stringify({
+  aiA: aiPanelsA.map((panel) => panel.hidden),
+  aiB: aiPanelsB.map((panel) => panel.hidden),
+  ticketA: ticketPanelsA.map((panel) => panel.hidden),
+  ticketB: ticketPanelsB.map((panel) => panel.hidden),
+}));
+'''
+        result = subprocess.run(
+            ["node", "-e", script],
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+
+        self.assertEqual(
+            json.loads(result.stdout),
+            {
+                "aiA": [True, False],
+                "aiB": [False, True],
+                "ticketA": [True, False],
+                "ticketB": [False, True],
+            },
+        )
+        self.assertNotIn("scrollIntoView", template)
 
     def test_render_only_prediction_races_and_remove_stale_managed_html(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
