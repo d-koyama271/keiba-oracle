@@ -490,8 +490,17 @@ class HtmlAndBrowserCalculationTests(unittest.TestCase):
         before = copy.deepcopy(payload)
         rendered = build_environment(ROOT).get_template("race.html.j2").render(**build_race_context(payload))
         soup = BeautifulSoup(rendered, "html.parser")
+        pair_tooltip_keys = {
+            tooltip["data-term-key"]
+            for tooltip in soup.select('[data-ticket-panel="quinella"] .term-tooltip')
+        }
         for tooltip in soup.select(".term-tooltip"):
             tooltip.decompose()
+
+        def labels_after(panel, heading):
+            grid = panel.find("h4", string=heading).find_next_sibling("div", class_="metric-grid")
+            return [node.get_text(strip=True) for node in grid.select("strong")]
+
         for ai in ("general", "statistical"):
             win_panels = soup.select(f"#purchase-{ai}-win .simulation-panel")
             pair_panels = soup.select(f"#purchase-{ai}-quinella .simulation-panel")
@@ -503,22 +512,95 @@ class HtmlAndBrowserCalculationTests(unittest.TestCase):
                 [panel.h3.get_text(strip=True) for panel in pair_panels],
                 ["馬連分配方式", "期待値重視方式"],
             )
-            for win, pair in zip(win_panels, pair_panels):
-                win_labels = [
-                    node.get_text(strip=True).replace("自動選択頭数", "選択組数").replace("頭数", "組数")
-                    for node in win.select(".metric-grid strong")
-                ]
-                pair_labels = [node.get_text(strip=True) for node in pair.select(".metric-grid strong")]
-                self.assertEqual(pair_labels, win_labels)
             self.assertEqual(
-                [node.get_text(strip=True) for node in pair_panels[0].select(".metric-grid strong")],
-                ["予算", "最低利益率", "選択組数", "カバー確率", "グループ期待値", "最低払戻額", "最低利益", "合計購入額", "未使用予算"],
+                labels_after(win_panels[0], "設定条件"),
+                ["予算", "最大対象頭数", "最低カバー確率", "最低グループ期待値", "最低利益率"],
             )
+            self.assertEqual(
+                labels_after(pair_panels[0], "設定条件"),
+                ["予算", "最大対象組数", "最低カバー確率", "最低グループ期待値", "最低利益率"],
+            )
+            win_dutching = payload["simulation"][0][ai]["win"]["dutching"]["pre"]
+            pair_dutching = payload["simulation"][0][ai]["quinella"]["dutching"]["pre"]
+            self.assertEqual(
+                labels_after(win_panels[0], "計算結果"),
+                ["判定"]
+                + (["選択頭数", "カバー確率", "グループ期待値", "最低払戻額", "最低利益"] if win_dutching["selections"] else [])
+                + ["合計購入額", "未使用予算"],
+            )
+            self.assertEqual(
+                labels_after(pair_panels[0], "計算結果"),
+                ["判定"]
+                + (["選択組数", "カバー確率", "グループ期待値", "最低払戻額", "最低利益"] if pair_dutching["selections"] else [])
+                + ["合計購入額", "未使用予算"],
+            )
+            for panel in (win_panels[1], pair_panels[1]):
+                self.assertEqual(labels_after(panel, "設定条件"), ["予算", "最低EV", "Kelly係数"])
+                self.assertEqual(labels_after(panel, "計算結果"), ["判定", "合計購入額", "未使用予算"])
             self.assertEqual(pair_panels[1].h3.get_text(strip=True), "期待値重視方式")
         self.assertIsNotNone(soup.select_one('input[name="max_selection_count"]'))
         self.assertIsNone(soup.select_one('input[name="require_profit_if_hit"]'))
         self.assertNotIn("的中時利益必須", soup.get_text())
+        self.assertNotIn("自動選択頭数", soup.get_text())
+        self.assertTrue(
+            {
+                "max_selection_count",
+                "selection_count",
+                "coverage_probability",
+                "group_expected_value",
+                "minimum_profit_rate",
+                "minimum_payout",
+                "minimum_profit",
+                "minimum_ev",
+                "kelly_fraction",
+                "ev",
+                "full_kelly",
+                "applied_kelly",
+                "theoretical_stake",
+            }.issubset(pair_tooltip_keys)
+        )
+        self.assertTrue(
+            {
+                "fractional_kelly",
+                "expected_return",
+            }.issubset(build_race_context(payload)["quinella_tooltips"])
+        )
         self.assertEqual(payload, before)
+
+    def test_no_purchase_dutching_hides_unselected_result_metrics(self):
+        payload = payload_with_odds()
+        with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
+            payload["simulation"] = calculate_pre_simulation(payload, load_config())
+        for simulation in (payload["simulation"][0]["general"], payload["simulation"][0]["statistical"]):
+            for ticket in ("win", "quinella"):
+                pre = simulation[ticket]["dutching"]["pre"]
+                pre.update(
+                    status="no_purchase",
+                    selections=[],
+                    selected_count=0,
+                    coverage_probability=0,
+                    group_expected_value=0,
+                    minimum_payout=0,
+                    minimum_profit=0,
+                    total_stake=0,
+                    unused_budget=pre["budget"],
+                )
+
+        rendered = build_environment(ROOT).get_template("race.html.j2").render(
+            **build_race_context(payload)
+        )
+        soup = BeautifulSoup(rendered, "html.parser")
+        for ai in ("general", "statistical"):
+            for ticket in ("win", "quinella"):
+                panel = soup.select_one(f"#purchase-{ai}-{ticket} .simulation-panel")
+                result_grid = panel.find("h4", string="計算結果").find_next_sibling(
+                    "div", class_="metric-grid"
+                )
+                self.assertEqual(
+                    [node.get_text(strip=True) for node in result_grid.select("strong")],
+                    ["判定", "合計購入額", "未使用予算"],
+                )
+                self.assertIn("購入なし", result_grid.get_text(" ", strip=True))
 
     def test_result_badges_use_hits_for_each_ai_ticket_and_method(self):
         template = build_environment(ROOT).get_template("race.html.j2")

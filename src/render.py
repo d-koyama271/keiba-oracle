@@ -88,6 +88,24 @@ TOOLTIPS = {
     "expected_return": "各馬の予測確率を考慮した、平均的な払戻見込み額です。",
 }
 
+QUINELLA_TOOLTIPS = {
+    "max_selection_count": "馬連分配方式で購入候補として検討する組数の上限です。",
+    "selection_count": "設定条件を満たして実際の購入対象として採用された組数です。",
+    "coverage_probability": "選択した組の馬連的中確率を合計した値です。",
+    "group_expected_value": "選択組全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。",
+    "minimum_profit_rate": "合計購入額に対して確保する最低限の利益率です。20%なら合計3,000円購入時に最低600円以上の利益が必要です。",
+    "minimum_ev": "馬連的中確率と馬連オッズから計算した期待値の最低ラインです。Kelly割合が0以下の組には購入額を割り当てません。",
+    "kelly_fraction": "Kelly基準で算出した購入割合を実際に何割使うかを示す係数です。0.5なら算出額の半分を使用します。",
+    "ev": "馬連的中確率×馬連オッズで計算する期待値です。1.0が損益分岐の目安です。",
+    "full_kelly": "馬連的中確率と馬連オッズからKelly基準で算出した、予算に対する購入割合です。",
+    "fractional_kelly": "Full KellyにKelly係数を掛けて抑制した購入割合です。",
+    "applied_kelly": "Full KellyにKelly係数を掛けた、実際のシミュレーションで使用する購入割合です。",
+    "theoretical_stake": "現在の予算に適用Kellyを掛けた、購入単位へ丸める前の購入額です。",
+    "minimum_payout": "選択した組のうち最も払戻額が低い組が的中した場合の払戻額です。",
+    "minimum_profit": "最低払戻額から合計購入額を引いた利益です。",
+    "expected_return": "各組の馬連的中確率を考慮した、平均的な払戻見込み額です。",
+}
+
 REJECTION_REASON_LABELS = {
     "coverage_probability_below_threshold": "カバー確率が最低基準未満",
     "group_expected_value_below_threshold": "グループ期待値が最低基準未満",
@@ -557,16 +575,7 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         "display": {
             "rejection_reason_labels": REJECTION_REASON_LABELS,
             "unknown_rejection_reason_label": UNKNOWN_REJECTION_REASON_LABEL,
-            "quinella_tooltips": {
-                "coverage_probability": "選択した組の馬連的中確率を合計した値です。",
-                "group_expected_value": "選択組全体の期待払戻額を合計購入額で割った値です。1.0が損益分岐の目安です。",
-                "minimum_ev": "馬連的中確率と馬連オッズから計算した期待値の最低ラインです。Kelly割合が0以下の組には購入額を割り当てません。",
-                "ev": "馬連的中確率×馬連オッズで計算する期待値です。1.0が損益分岐の目安です。",
-                "full_kelly": "馬連的中確率と馬連オッズからKelly基準で算出した、予算に対する購入割合です。",
-                "minimum_payout": "選択した組のうち、最も払戻額が低い組が的中した場合の払戻額です。",
-                "minimum_profit": "選択した組のうち、最も利益が低い組が的中した場合の利益です。",
-                "expected_return": "各組の馬連的中確率を考慮した、平均的な払戻見込み額です。",
-            },
+            "quinella_tooltips": QUINELLA_TOOLTIPS,
         },
     }
 
@@ -606,6 +615,7 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
         "status_colors": STATUS_COLORS,
         "site_background": SITE_BACKGROUND,
         "tooltips": TOOLTIPS,
+        "quinella_tooltips": QUINELLA_TOOLTIPS,
         "rejection_reason_text": rejection_reason_text,
         "odds_captured_at_label": format_jst_datetime(race.get("odds_captured_at")),
         "result_fetched_at_label": format_jst_datetime((result or {}).get("fetched_at")),
