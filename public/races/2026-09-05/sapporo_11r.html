@@ -409,6 +409,20 @@
     .simulation-panel h4 {
       margin: 30px 0 10px;
     }
+    .simulation-panel h4.simulation-block-title {
+      margin: 16px 0 8px;
+    }
+    .simulation-panel h4.simulation-result-title {
+      margin-top: 20px;
+    }
+    .simulation-secondary-metrics {
+      margin-top: 10px;
+    }
+    @media (min-width: 900px) {
+      .simulation-primary-metrics {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+    }
     .result-panel h4 {
       margin: 28px 0 10px;
     }
@@ -917,8 +931,8 @@
       <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
       
       
-      <h4>設定条件</h4>
-      <div class="metric-grid">
+      <h4 class="simulation-block-title">設定条件</h4>
+      <div class="metric-grid simulation-primary-metrics">
         <div><strong>予算</strong><br>3000円</div>
         <div><strong>最大対象頭数</strong><br>5頭</div>
         <div><strong><span class="term-with-tooltip"><span>最低カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
@@ -934,10 +948,12 @@
   <span class="tooltip-content" role="tooltip">購入金額に対する最低限の利益率を設定します。20%なら合計3,000円購入時に最低600円以上の利益が必要です。</span>
 </span></span></strong><br>20%</div>
       </div>
-      <h4>計算結果</h4>
+      <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
       <div class="metric-grid">
         <div><strong>判定</strong><br>購入なし</div>
         
+      </div>
+      <div class="metric-grid simulation-secondary-metrics">
         <div><strong>合計購入額</strong><br>0円</div>
         <div><strong>未使用予算</strong><br>3000円</div>
       </div>
@@ -1041,7 +1057,7 @@
   <span class="tooltip-content" role="tooltip">AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。</span>
 </span></span></h3>
       
-      <h4>設定条件</h4>
+      <h4 class="simulation-block-title">設定条件</h4>
       <div class="metric-grid">
         <div><strong>予算</strong><br>3000円</div>
         <div><strong><span class="term-with-tooltip"><span>最低EV</span><span class="term-tooltip" data-term-key="minimum_ev">
@@ -1053,7 +1069,7 @@
   <span class="tooltip-content" role="tooltip">Kelly基準は、予測確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。</span>
 </span></span></strong><br>0.75</div>
       </div>
-      <h4>計算結果</h4>
+      <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
       <div class="metric-grid">
         <div><strong>判定</strong><br>購入あり</div>
         <div><strong>合計購入額</strong><br>500円</div>
@@ -1310,8 +1326,8 @@
       <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
       
       
-      <h4>設定条件</h4>
-      <div class="metric-grid">
+      <h4 class="simulation-block-title">設定条件</h4>
+      <div class="metric-grid simulation-primary-metrics">
         <div><strong>予算</strong><br>3000円</div>
         <div><strong>最大対象頭数</strong><br>5頭</div>
         <div><strong><span class="term-with-tooltip"><span>最低カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
@@ -1327,10 +1343,12 @@
   <span class="tooltip-content" role="tooltip">購入金額に対する最低限の利益率を設定します。20%なら合計3,000円購入時に最低600円以上の利益が必要です。</span>
 </span></span></strong><br>20%</div>
       </div>
-      <h4>計算結果</h4>
+      <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
       <div class="metric-grid">
         <div><strong>判定</strong><br>購入なし</div>
         
+      </div>
+      <div class="metric-grid simulation-secondary-metrics">
         <div><strong>合計購入額</strong><br>0円</div>
         <div><strong>未使用予算</strong><br>3000円</div>
       </div>
@@ -1434,7 +1452,7 @@
   <span class="tooltip-content" role="tooltip">AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。</span>
 </span></span></h3>
       
-      <h4>設定条件</h4>
+      <h4 class="simulation-block-title">設定条件</h4>
       <div class="metric-grid">
         <div><strong>予算</strong><br>3000円</div>
         <div><strong><span class="term-with-tooltip"><span>最低EV</span><span class="term-tooltip" data-term-key="minimum_ev">
@@ -1446,7 +1464,7 @@
   <span class="tooltip-content" role="tooltip">Kelly基準は、予測確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。</span>
 </span></span></strong><br>0.75</div>
       </div>
-      <h4>計算結果</h4>
+      <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
       <div class="metric-grid">
         <div><strong>判定</strong><br>購入あり</div>
         <div><strong>合計購入額</strong><br>700円</div>
