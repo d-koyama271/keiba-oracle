@@ -422,6 +422,20 @@
     .simulation-panel h4 {
       margin: 30px 0 10px;
     }
+    .simulation-panel h4.simulation-block-title {
+      margin: 16px 0 8px;
+    }
+    .simulation-panel h4.simulation-result-title {
+      margin-top: 20px;
+    }
+    .simulation-secondary-metrics {
+      margin-top: 10px;
+    }
+    @media (min-width: 900px) {
+      .simulation-primary-metrics {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+    }
     .result-panel h4 {
       margin: 28px 0 10px;
     }
@@ -657,24 +671,25 @@
       <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
       {% if simulation_dutching_pre %}
       {% set dutching_min_profit_rate = simulation_dutching_pre.settings.min_profit_rate | default(none) %}
-      <h4>設定条件</h4>
-      <div class="metric-grid">
+      <h4 class="simulation-block-title">設定条件</h4>
+      <div class="metric-grid simulation-primary-metrics">
         <div><strong>予算</strong><br>{{ simulation_dutching_pre.budget }}円</div>
         <div><strong>最大対象頭数</strong><br>{{ simulation_dutching_pre.settings.max_selection_count }}頭</div>
         <div><strong>{{ explained_term("最低カバー確率", "coverage_probability") }}</strong><br>{{ "%.2f"|format(simulation_dutching_pre.settings.min_coverage_probability * 100) }}%</div>
         <div><strong>{{ explained_term("最低グループ期待値", "group_expected_value") }}</strong><br>{{ "%.3f"|format(simulation_dutching_pre.settings.min_group_expected_value) }}</div>
         <div><strong>{{ explained_term("最低利益率", "minimum_profit_rate") }}</strong><br>{% if dutching_min_profit_rate is not none %}{{ "%.0f"|format(dutching_min_profit_rate * 100) }}%{% else %}-{% endif %}</div>
       </div>
-      <h4>計算結果</h4>
-      <div class="metric-grid">
+      <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
+      <div class="metric-grid{% if simulation_dutching_pre.selections %} simulation-primary-metrics{% endif %}">
         <div><strong>判定</strong><br>{{ "購入あり" if simulation_dutching_pre.selections else "購入なし" }}</div>
         {% if simulation_dutching_pre.selections %}
         <div><strong>選択頭数</strong><br>{{ simulation_dutching_pre.selected_count }}頭</div>
         <div><strong>{{ explained_term("カバー確率", "coverage_probability") }}</strong><br>{{ "%.2f"|format(simulation_dutching_pre.coverage_probability * 100) }}%</div>
         <div><strong>{{ explained_term("グループ期待値", "group_expected_value") }}</strong><br>{{ "%.3f"|format(simulation_dutching_pre.group_expected_value) }}</div>
-        <div><strong>{{ explained_term("最低払戻額", "minimum_payout") }}</strong><br>{{ "%.0f"|format(simulation_dutching_pre.minimum_payout) }}円</div>
         <div><strong>{{ explained_term("最低利益", "minimum_profit") }}</strong><br>{{ "%.0f"|format(simulation_dutching_pre.minimum_profit) }}円</div>
         {% endif %}
+      </div>
+      <div class="metric-grid simulation-secondary-metrics">
         <div><strong>合計購入額</strong><br>{{ simulation_dutching_pre.total_stake }}円</div>
         <div><strong>未使用予算</strong><br>{{ simulation_dutching_pre.unused_budget }}円</div>
       </div>
@@ -731,13 +746,13 @@
     <div class="panel simulation-panel">
       <h3>{{ explained_term("期待値重視方式", "value_method") }}</h3>
       {% if simulation_value_pre %}
-      <h4>設定条件</h4>
+      <h4 class="simulation-block-title">設定条件</h4>
       <div class="metric-grid">
         <div><strong>予算</strong><br>{{ simulation_value_pre.budget }}円</div>
         <div><strong>{{ explained_term("最低EV", "minimum_ev") }}</strong><br>{{ simulation_value_pre.settings.ev_threshold }}</div>
         <div><strong>{{ explained_term("Kelly係数", "kelly_fraction") }}</strong><br>{{ simulation_value_pre.settings.kelly_fraction }}</div>
       </div>
-      <h4>計算結果</h4>
+      <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
       <div class="metric-grid">
         <div><strong>判定</strong><br>{{ "購入あり" if simulation_value_pre.selections else "購入なし" }}</div>
         <div><strong>合計購入額</strong><br>{{ simulation_value_pre.total_stake }}円</div>

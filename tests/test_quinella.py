@@ -497,8 +497,11 @@ class HtmlAndBrowserCalculationTests(unittest.TestCase):
         for tooltip in soup.select(".term-tooltip"):
             tooltip.decompose()
 
+        def grid_after(panel, heading):
+            return panel.find("h4", string=heading).find_next_sibling("div", class_="metric-grid")
+
         def labels_after(panel, heading):
-            grid = panel.find("h4", string=heading).find_next_sibling("div", class_="metric-grid")
+            grid = grid_after(panel, heading)
             return [node.get_text(strip=True) for node in grid.select("strong")]
 
         for ai in ("general", "statistical"):
@@ -512,6 +515,15 @@ class HtmlAndBrowserCalculationTests(unittest.TestCase):
                 [panel.h3.get_text(strip=True) for panel in pair_panels],
                 ["馬連分配方式", "期待値重視方式"],
             )
+            for panel in (*win_panels, *pair_panels):
+                self.assertIn(
+                    "simulation-block-title",
+                    panel.find("h4", string="設定条件").get("class", []),
+                )
+                self.assertIn(
+                    "simulation-result-title",
+                    panel.find("h4", string="計算結果").get("class", []),
+                )
             self.assertEqual(
                 labels_after(win_panels[0], "設定条件"),
                 ["予算", "最大対象頭数", "最低カバー確率", "最低グループ期待値", "最低利益率"],
@@ -525,18 +537,31 @@ class HtmlAndBrowserCalculationTests(unittest.TestCase):
             self.assertEqual(
                 labels_after(win_panels[0], "計算結果"),
                 ["判定"]
-                + (["選択頭数", "カバー確率", "グループ期待値", "最低払戻額", "最低利益"] if win_dutching["selections"] else [])
-                + ["合計購入額", "未使用予算"],
+                + (["選択頭数", "カバー確率", "グループ期待値", "最低利益"] if win_dutching["selections"] else []),
             )
             self.assertEqual(
                 labels_after(pair_panels[0], "計算結果"),
                 ["判定"]
-                + (["選択組数", "カバー確率", "グループ期待値", "最低払戻額", "最低利益"] if pair_dutching["selections"] else [])
-                + ["合計購入額", "未使用予算"],
+                + (["選択組数", "カバー確率", "グループ期待値", "最低利益"] if pair_dutching["selections"] else []),
             )
+            for panel in (win_panels[0], pair_panels[0]):
+                settings_grid = grid_after(panel, "設定条件")
+                result_grid = grid_after(panel, "計算結果")
+                secondary_grid = result_grid.find_next_sibling("div", class_="simulation-secondary-metrics")
+                self.assertIn("simulation-primary-metrics", settings_grid.get("class", []))
+                self.assertEqual(
+                    [node.get_text(strip=True) for node in secondary_grid.select("strong")],
+                    ["合計購入額", "未使用予算"],
+                )
+                detail_headers = [node.get_text(strip=True) for node in panel.select("details thead th")]
+                self.assertIn("最低払戻額", detail_headers)
             for panel in (win_panels[1], pair_panels[1]):
                 self.assertEqual(labels_after(panel, "設定条件"), ["予算", "最低EV", "Kelly係数"])
                 self.assertEqual(labels_after(panel, "計算結果"), ["判定", "合計購入額", "未使用予算"])
+            if win_dutching["selections"]:
+                self.assertIn("simulation-primary-metrics", grid_after(win_panels[0], "計算結果").get("class", []))
+            if pair_dutching["selections"]:
+                self.assertIn("simulation-primary-metrics", grid_after(pair_panels[0], "計算結果").get("class", []))
             self.assertEqual(pair_panels[1].h3.get_text(strip=True), "期待値重視方式")
         self.assertIsNotNone(soup.select_one('input[name="max_selection_count"]'))
         self.assertIsNone(soup.select_one('input[name="require_profit_if_hit"]'))
@@ -598,9 +623,16 @@ class HtmlAndBrowserCalculationTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     [node.get_text(strip=True) for node in result_grid.select("strong")],
-                    ["判定", "合計購入額", "未使用予算"],
+                    ["判定"],
                 )
                 self.assertIn("購入なし", result_grid.get_text(" ", strip=True))
+                secondary_grid = result_grid.find_next_sibling(
+                    "div", class_="simulation-secondary-metrics"
+                )
+                self.assertEqual(
+                    [node.get_text(strip=True) for node in secondary_grid.select("strong")],
+                    ["合計購入額", "未使用予算"],
+                )
 
     def test_result_badges_use_hits_for_each_ai_ticket_and_method(self):
         template = build_environment(ROOT).get_template("race.html.j2")
