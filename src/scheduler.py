@@ -194,17 +194,16 @@ def update_race_cancellations(races: list[dict], config: dict, now: datetime,
                 clear_phase_state(path, config, phase, root)
             break
     if changed:
+        error = None
         try:
             published = publish_post_results(changed, config, "cancellation", root)
             if set(published) != set(changed):
                 raise RuntimeError("cancellation publication incomplete")
         except (Exception, SystemExit) as exc:
-            for path in changed:
-                record_phase_failure(path, config, load_race_json(path)["meta"]["race_id"],
-                                     "result", f"{type(exc).__name__}: {exc}", now, root)
-        else:
-            for path in changed:
-                clear_phase_state(path, config, "result", root)
+            error = f"{type(exc).__name__}: {exc}"
+        for path in changed:
+            _finish_phase(path, config, load_race_json(path)["meta"]["race_id"],
+                          "result", error, now, root)
 
 
 def result_phase_complete(payload: dict) -> bool:
@@ -257,64 +256,80 @@ def add_pending_races(races: list[dict], config: dict, now: datetime,
     return pending
 
 
+def _phase_artifact_complete(payload: dict, phase: str) -> bool:
+    return result_phase_complete(payload) if phase == "result" else bool(prediction_for_method(payload, phase))
+
+
+def _phase_items(races: list[dict]):
+    """Expand discovered races and phase-limited retries into dated work items."""
+    for item in races:
+        for phase in item.get("phases", ("statistical", "general", "result")):
+            yield item, phase
+
+
+def _decide_phase(item: dict, phase: str, config: dict, now: datetime | None,
+                  root: Path | None) -> dict:
+    current = now if now is not None else now_jst()
+    current = current.replace(tzinfo=JST) if current.tzinfo is None else current.astimezone(JST)
+    race, race_id = item["race"], item["race_id"]
+    path = race_json_path(config, race["date"], race["track"], race["race_number"], root)
+    payload = load_race_json(path) or {}
+    state = load_automation_state(path, config, root)
+    if payload and payload["meta"].get("race_id") != race_id:
+        raise ValueError("race JSON race_id mismatch")
+    if state and state["race_id"] != race_id:
+        raise ValueError("automation state race_id mismatch")
+    start = race_start_datetime(race["date"], race["start_time"])
+    scheduled_at = calculate_phase_times(race, config)[phase]
+    saved_input = False
+    invalid_input = False
+    if phase != "result":
+        input_path = prediction_input_path(config, path, phase, root)
+        if input_path.is_file():
+            try:
+                snapshot = json.loads(input_path.read_text(encoding="utf-8"))
+                validator = validate_statistical_prediction_input if phase == "statistical" else validate_prediction_input
+                validator(snapshot, {"meta": {"race_id": race_id}, "race": race})
+                saved_input = True
+            except (OSError, ValueError, TypeError, KeyError):
+                invalid_input = True
+    record = (state or {}).get("phases", {}).get(phase, {})
+    completed = _phase_artifact_complete(payload, phase)
+    reason = None
+    cancelled = payload.get("race", {}).get("cancelled")
+    if cancelled and (phase != "result" or not record):
+        reason = "cancelled"
+    elif record.get("status") == "blocked":
+        reason = "blocked"
+    elif record.get("status") == "retry_wait" and current < parse_jst_datetime(record["next_retry_at"]):
+        reason = "retry_wait"
+    elif completed and not record:
+        reason = "completed"
+    elif invalid_input:
+        reason = "invalid_prediction_input"
+    elif phase == "result" and not cancelled and not any(prediction_for_method(payload, method) for method in ("general", "statistical")):
+        reason = "no_prediction"
+    elif phase != "result" and not completed and payload.get("result"):
+        reason = "result_exists"
+    elif phase != "result" and current >= start and (not saved_input or not (runtime_prediction_entry(payload or None, config) or {}).get(phase)):
+        reason = "missed_execution_window"
+    elif current < scheduled_at and not cancelled:
+        reason = "not_scheduled_yet"
+    return {
+        "race_id": race_id, "date": race["date"], "phase": phase,
+        "scheduled_at": scheduled_at, "mode": "resume" if saved_input else "normal",
+        "runnable": reason is None, "reason": reason,
+    }
+
+
 def decide_phases(races: list[dict], config: dict, now: datetime | None = None,
                   root: Path | None = None) -> list[dict]:
     current = now if now is not None else now_jst()
-    current = current.replace(tzinfo=JST) if current.tzinfo is None else current.astimezone(JST)
-    decisions = []
-    for item in races:
-        race, race_id = item["race"], item["race_id"]
-        path = race_json_path(config, race["date"], race["track"], race["race_number"], root)
-        payload = load_race_json(path) or {}
-        state = load_automation_state(path, config, root)
-        if payload and payload["meta"].get("race_id") != race_id:
-            raise ValueError("race JSON race_id mismatch")
-        if state and state["race_id"] != race_id:
-            raise ValueError("automation state race_id mismatch")
-        start = race_start_datetime(race["date"], race["start_time"])
-        for phase, scheduled_at in calculate_phase_times(race, config).items():
-            if phase not in item.get("phases", ("statistical", "general", "result")):
-                continue
-            saved_input = False
-            invalid_input = False
-            if phase != "result":
-                input_path = prediction_input_path(config, path, phase, root)
-                if input_path.is_file():
-                    try:
-                        snapshot = json.loads(input_path.read_text(encoding="utf-8"))
-                        validator = validate_statistical_prediction_input if phase == "statistical" else validate_prediction_input
-                        validator(snapshot, {"meta": {"race_id": race_id}, "race": race})
-                        saved_input = True
-                    except (OSError, ValueError, TypeError, KeyError):
-                        invalid_input = True
-            record = (state or {}).get("phases", {}).get(phase, {})
-            completed = result_phase_complete(payload) if phase == "result" else bool(prediction_for_method(payload, phase))
-            reason = None
-            cancelled = payload.get("race", {}).get("cancelled")
-            if cancelled and (phase != "result" or not record):
-                reason = "cancelled"
-            elif record.get("status") == "blocked":
-                reason = "blocked"
-            elif record.get("status") == "retry_wait" and current < parse_jst_datetime(record["next_retry_at"]):
-                reason = "retry_wait"
-            elif completed and not record:
-                reason = "completed"
-            elif invalid_input:
-                reason = "invalid_prediction_input"
-            elif phase == "result" and not cancelled and not any(prediction_for_method(payload, method) for method in ("general", "statistical")):
-                reason = "no_prediction"
-            elif phase != "result" and not completed and payload.get("result"):
-                reason = "result_exists"
-            elif phase != "result" and current >= start and (not saved_input or not (runtime_prediction_entry(payload or None, config) or {}).get(phase)):
-                reason = "missed_execution_window"
-            elif current < scheduled_at and not cancelled:
-                reason = "not_scheduled_yet"
-            decisions.append({
-                "race_id": race_id, "date": race["date"], "phase": phase,
-                "scheduled_at": scheduled_at, "mode": "resume" if saved_input else "normal",
-                "runnable": reason is None, "reason": reason,
-            })
-    return decisions
+    # Keep the public decision order independent of the order of a phase filter.
+    items = [{**item, "phases": [phase for phase in ("statistical", "general", "result")
+                               if phase in item.get("phases", ("statistical", "general", "result"))]}
+             for item in races]
+    return [_decide_phase(item, phase, config, current, root) for item, phase in _phase_items(items)]
 
 
 def execute_phases(races: list[dict], config: dict, now: datetime | None = None,
@@ -324,48 +339,52 @@ def execute_phases(races: list[dict], config: dict, now: datetime | None = None,
         if type(settings.get(key)) is not int or settings[key] <= 0:
             raise ValueError(f"automation.{key} must be a positive integer")
     seen = set()
-    for item in races:
+    for item, phase in _phase_items(races):
         race, race_id = item["race"], item["race_id"]
         path = race_json_path(config, race["date"], race["track"], race["race_number"], root)
-        for phase in item.get("phases", ("statistical", "general", "result")):
-            key = (race_id, race["date"], phase)
-            if key in seen:
-                continue
-            seen.add(key)
-            # Refresh both time and saved artifacts after each preceding phase.
-            decision = next(d for d in decide_phases([item], config, now, root) if d["phase"] == phase)
-            if decision["reason"] in ("completed", "cancelled"):
-                clear_phase_state(path, config, phase, root)
-                continue
-            if decision["reason"] == "missed_execution_window":
-                record_failure(path, config, race_id, phase, "missed_execution_window", status="blocked", root=root)
-                continue
-            if not decision["runnable"]:
-                continue
-            record_phase_started(path, config, race_id, phase, root)
-            error = None
-            try:
-                cancelled = (load_race_json(path) or {}).get("race", {}).get("cancelled")
-                if phase == "result" and cancelled:
-                    processed = publish_post_results([path], config, "cancellation", root)
-                elif phase == "result":
-                    processed = run_post_flow(config, race["date"], "post", race_id=race_id)
-                else:
-                    processed = run_pre_flow(config, race["date"], phase=phase,
-                                 resume=decision["mode"] == "resume", race_id=race_id)
-                payload = load_race_json(path) or {}
-                completed = result_phase_complete(payload) if phase == "result" else bool(prediction_for_method(payload, phase))
-                if path not in processed or payload.get("meta", {}).get("race_id") != race_id or not (completed or (phase == "result" and cancelled)):
-                    error = f"{phase} artifact missing after execution"
-            except (Exception, SystemExit) as exc:
-                error = f"{type(exc).__name__}: {exc}"
-            if phase != "result" and (load_race_json(path) or {}).get("race", {}).get("cancelled"):
-                clear_phase_state(path, config, phase, root)
-                continue
-            if error is None:
-                clear_phase_state(path, config, phase, root)
-                continue
-            record_phase_failure(path, config, race_id, phase, error, now, root)
+        key = (race["date"], race_id, phase)
+        if key in seen:
+            continue
+        seen.add(key)
+        # Refresh both time and saved artifacts after each preceding phase.
+        decision = _decide_phase(item, phase, config, now, root)
+        if decision["reason"] in ("completed", "cancelled"):
+            clear_phase_state(path, config, phase, root)
+            continue
+        if decision["reason"] == "missed_execution_window":
+            record_failure(path, config, race_id, phase, "missed_execution_window", status="blocked", root=root)
+            continue
+        if not decision["runnable"]:
+            continue
+        record_phase_started(path, config, race_id, phase, root)
+        error = None
+        try:
+            cancelled = (load_race_json(path) or {}).get("race", {}).get("cancelled")
+            if phase == "result" and cancelled:
+                processed = publish_post_results([path], config, "cancellation", root)
+            elif phase == "result":
+                processed = run_post_flow(config, race["date"], "post", race_id=race_id)
+            else:
+                processed = run_pre_flow(config, race["date"], phase=phase,
+                             resume=decision["mode"] == "resume", race_id=race_id)
+            payload = load_race_json(path) or {}
+            completed = _phase_artifact_complete(payload, phase)
+            if path not in processed or payload.get("meta", {}).get("race_id") != race_id or not (completed or (phase == "result" and cancelled)):
+                error = f"{phase} artifact missing after execution"
+        except (Exception, SystemExit) as exc:
+            error = f"{type(exc).__name__}: {exc}"
+        if phase != "result" and (load_race_json(path) or {}).get("race", {}).get("cancelled"):
+            clear_phase_state(path, config, phase, root)
+            continue
+        _finish_phase(path, config, race_id, phase, error, now, root)
+
+
+def _finish_phase(path: Path, config: dict, race_id: str, phase: str, error: str | None,
+                  now: datetime | None, root: Path | None) -> None:
+    if error is None:
+        clear_phase_state(path, config, phase, root)
+    else:
+        record_phase_failure(path, config, race_id, phase, error, now, root)
 
 
 def record_phase_failure(path: Path, config: dict, race_id: str, phase: str, error: str,

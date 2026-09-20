@@ -58,17 +58,28 @@ def load_automation_state(race_path: str | Path, config: dict, root: Path | None
     return state
 
 
+def _state_for_update(race_path: str | Path, config: dict, race_id: str,
+                      root: Path | None) -> dict:
+    state = load_automation_state(race_path, config, root)
+    if state is None:
+        return {"race_id": race_id, "phases": {}}
+    if state["race_id"] != race_id:
+        raise ValueError("automation state race_id mismatch")
+    return state
+
+
+def _save_state(race_path: str | Path, config: dict, state: dict, root: Path | None) -> None:
+    validate_automation_state(state)
+    atomic_write_json(automation_state_path(race_path, config, root), state)
+
+
 def record_failure(
     race_path: str | Path, config: dict, race_id: str, phase: str, last_error: str,
     *, status: str = "retry_wait", next_retry_at: str | None = None, root: Path | None = None,
 ) -> dict:
     if status not in ("retry_wait", "blocked"):
         raise ValueError(f"invalid failure status: {status}")
-    state = load_automation_state(race_path, config, root)
-    if state is None:
-        state = {"race_id": race_id, "phases": {}}
-    elif state["race_id"] != race_id:
-        raise ValueError("automation state race_id mismatch")
+    state = _state_for_update(race_path, config, race_id, root)
     previous = state["phases"].get(phase, {})
     state["phases"][phase] = {
         "status": status,
@@ -77,25 +88,21 @@ def record_failure(
         "last_error": last_error,
         "updated_at": now_jst_iso(),
     }
-    validate_automation_state(state)
-    atomic_write_json(automation_state_path(race_path, config, root), state)
+    _save_state(race_path, config, state, root)
     return state
 
 
 def record_phase_started(
     race_path: str | Path, config: dict, race_id: str, phase: str, root: Path | None = None,
 ) -> None:
-    state = load_automation_state(race_path, config, root) or {"race_id": race_id, "phases": {}}
-    if state["race_id"] != race_id:
-        raise ValueError("automation state race_id mismatch")
+    state = _state_for_update(race_path, config, race_id, root)
     previous = state["phases"].get(phase, {})
     state["phases"][phase] = {
         "status": "in_progress", "attempts": previous.get("attempts", 0),
         "next_retry_at": None, "last_error": previous.get("last_error", ""),
         "updated_at": now_jst_iso(),
     }
-    validate_automation_state(state)
-    atomic_write_json(automation_state_path(race_path, config, root), state)
+    _save_state(race_path, config, state, root)
 
 
 def clear_phase_state(race_path: str | Path, config: dict, phase: str, root: Path | None = None) -> None:
@@ -107,6 +114,6 @@ def clear_phase_state(race_path: str | Path, config: dict, phase: str, root: Pat
     del state["phases"][phase]
     path = automation_state_path(race_path, config, root)
     if state["phases"]:
-        atomic_write_json(path, state)
+        _save_state(race_path, config, state, root)
     else:
         path.unlink()

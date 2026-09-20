@@ -321,6 +321,38 @@ class SchedulerTests(unittest.TestCase):
             self.assertIsNone(load_automation_state(paths["9"], config))
             self.assertEqual(load_automation_state(paths["10"], config)["phases"]["result"]["status"], "blocked")
 
+    def test_same_race_id_on_different_dates_has_independent_phase_execution(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = copy.deepcopy(self.config)
+            config["data_dir"] = tmp
+            config["automation"].update(retry_interval_minutes=10, max_attempts=3,
+                                        result_retry_interval_minutes=10, result_max_attempts=3)
+            now = datetime(2026, 9, 21, 18, tzinfo=JST)
+            items, paths = [], []
+            for date, cancelled in (("2026-09-20", True), ("2026-09-21", False)):
+                race = {"date": date, "track": config["target_races"][0], "race_number": 11,
+                        "start_time": "15:40", "cancelled": cancelled}
+                item = {"race_id": "202606040711", "race": race, "phases": ["result"]}
+                path = race_json_path(config, date, race["track"], 11)
+                atomic_write_json(path, {
+                    "meta": {"schema_version": 10, "race_id": item["race_id"]}, "race": race,
+                    "prediction": [{"id": "p1", "statistical": {"horses": [1]}}],
+                    "result": None if cancelled else {"horses": [1]},
+                    "evaluation": [{"prediction_id": "p1", "statistical": {"metrics": {}}}],
+                })
+                record_failure(path, config, item["race_id"], "result", "publish failed",
+                               next_retry_at=now.isoformat())
+                items.append(item)
+                paths.append(path)
+            with patch.object(scheduler, "publish_post_results", return_value=[paths[0]]) as publish, \
+                 patch.object(scheduler, "run_post_flow", return_value=[paths[1]]) as post:
+                scheduler.execute_phases(items + items, config, now)
+                publish.assert_called_once_with([paths[0]], config, "cancellation", None)
+                post.assert_called_once_with(config, "2026-09-21", "post", race_id=items[1]["race_id"])
+                self.assertTrue(all(load_automation_state(path, config) is None for path in paths))
+                scheduler.execute_phases(items, config, now)
+                self.assertEqual((publish.call_count, post.call_count), (1, 1))
+
     def test_cancelled_interrupted_publication_is_retried_next_day(self):
         with tempfile.TemporaryDirectory() as tmp:
             config = copy.deepcopy(self.config)
