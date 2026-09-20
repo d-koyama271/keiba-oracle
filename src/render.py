@@ -11,6 +11,7 @@ from typing import Any
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from evaluation_summary import load_evaluation_summary
+from publish import restore_public_backup
 from simulate import calculate_value_details, minimum_budget_for_value_stake, round_ratio
 from utils import (
     STATISTICAL_PREDICTION_METHOD,
@@ -25,7 +26,6 @@ from utils import (
     now_jst,
     parse_jst_datetime,
     parse_target_date,
-    public_dir,
     race_html_path,
     race_result_html_path,
     race_start_datetime,
@@ -641,7 +641,7 @@ def render_site(
     output_dir = stage_dir(config, root)
     if output_dir.exists():
         shutil.rmtree(output_dir)
-    current_public_dir = public_dir(config, root)
+    current_public_dir = restore_public_backup(config, root)
     if current_public_dir.exists():
         shutil.copytree(current_public_dir, output_dir)
     else:

@@ -7,13 +7,21 @@ from pathlib import Path
 from utils import load_config, parse_target_date, public_dir, repo_root, stage_dir
 
 
+def restore_public_backup(config: dict, root: Path | None = None) -> Path:
+    target_dir = public_dir(config, root)
+    backup_dir = target_dir.with_name(f"{target_dir.name}__backup")
+    if not target_dir.exists() and backup_dir.exists():
+        backup_dir.rename(target_dir)
+    return target_dir
+
+
 def publish_site(config: dict, root: Path | None = None) -> Path:
     root = root or repo_root()
+    target_dir = restore_public_backup(config, root)
     source_dir = stage_dir(config, root)
     if not source_dir.exists():
         raise FileNotFoundError(f"render output not found: {source_dir}")
 
-    target_dir = public_dir(config, root)
     tmp_dir = target_dir.with_name(f"{target_dir.name}__tmp")
     backup_dir = target_dir.with_name(f"{target_dir.name}__backup")
 
@@ -32,9 +40,9 @@ def publish_site(config: dict, root: Path | None = None) -> Path:
         if backup_dir.exists():
             shutil.rmtree(backup_dir)
     except Exception:
-        if target_dir.exists():
-            shutil.rmtree(target_dir)
         if backup_dir.exists():
+            if target_dir.exists():
+                shutil.rmtree(target_dir)
             backup_dir.rename(target_dir)
         raise
     return target_dir

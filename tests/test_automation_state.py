@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from automation_state import automation_state_path, clear_phase_state, load_automation_state, record_failure
+from automation_state import automation_state_path, clear_phase_state, load_automation_state, record_failure, record_phase_started
 
 
 class AutomationStateTests(unittest.TestCase):
@@ -49,6 +49,18 @@ class AutomationStateTests(unittest.TestCase):
         self.assertEqual(self.race.read_bytes(), self.before)
         self.assertEqual(automation_state_path(self.race, self.config, self.root),
                          self.root / "custom-data/automation/2026-09-20/hanshin_11r.json")
+
+    def test_started_state_preserves_failure_count_and_survives_reload(self):
+        record_phase_started(self.race, self.config, "test-race", "general", self.root)
+        self.assertEqual(self.load()["phases"]["general"]["status"], "in_progress")
+        self.assertEqual(self.load()["phases"]["general"]["attempts"], 0)
+        self.record(next_retry_at="2026-09-20T15:05:00+09:00")
+        self.assertEqual(self.load()["phases"]["general"]["attempts"], 1)
+        record_phase_started(self.race, self.config, "test-race", "general", self.root)
+        self.assertEqual(self.load()["phases"]["general"]["attempts"], 1)
+        self.record(status="blocked")
+        self.assertEqual(self.load()["phases"]["general"]["attempts"], 2)
+        self.assertEqual(self.race.read_bytes(), self.before)
 
     def test_blocked_and_clear_only_target_phase(self):
         self.record(status="blocked", next_retry_at="2026-09-20T15:05:00+09:00")

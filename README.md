@@ -111,7 +111,7 @@ python src/run_post.py --date 2026-04-14
 - 一覧ページ: `public/index.html`
 - 全体評価集計: `data/evaluation_summary.json`
 
-自動運用の失敗・再試行状態は、`src/automation_state.py` の `load_automation_state`／`record_failure`／`clear_phase_state` で扱います。保存先は `data_dir/automation/YYYY-MM-DD/<race JSONと同じstem>.json` です。`statistical`／`general`／`result` の失敗情報だけを保存し、完了判定はrace JSONを参照します。失敗記録ごとにそのphaseのattemptsを加算し、`retry_wait` は `next_retry_at` 必須、`blocked` はnullとします。不正なstateはエラーとし、clearは指定phaseだけを削除します。この状態管理は通常フロー・resumeにはまだ接続していません。`data/automation/` はGit管理対象外です。
+自動運用の処理途中・失敗・再試行状態は `src/automation_state.py` で扱います。保存先は `data_dir/automation/YYYY-MM-DD/<race JSONと同じstem>.json` です。schedulerはphase開始前に `in_progress` を保存し、フロー正常終了と成果物の確認後だけ解除します。開始記録ではattemptsを増やさず、失敗記録ごとに加算します。`retry_wait` は `next_retry_at` 必須、`blocked`／`in_progress` はnullです。不正なstateはエラーとし、clearは指定phaseだけを削除します。`data/automation/` はGit管理対象外です。
 
 各レース JSON のトップレベルは固定です。
 
@@ -152,6 +152,8 @@ schema v9以前は読み込み時に、本体を `general`、`variants` 内の�
 `python src/scheduler.py --execute` を指定すると、判定に従ってレース単位で既存pre／postフローを実行し、ローカルの `public/` まで更新します。resultは少なくとも一方のpredictionがある場合だけ実行します。実行後のrace JSONで成果物を確認し、成功したphaseの失敗stateをclearします。失敗時は `automation.retry_interval_minutes`／`max_attempts`、resultでは `result_retry_interval_minutes`／`result_max_attempts` に従ってretry待機またはblockedを記録します。これらは正の整数です。発走時刻以降にinputがないpre phaseは実行せず即blockedとし、既にblockedのphaseは再記録しません。各phaseは1回の起動で最大1回実行し、自動待機ループは行いません。`--execute` なしでは表示のみで、stateや `public/` を変更しません。
 
 `--execute` は `data_dir/automation/scheduler.lock` のOS管理の非ブロッキングlockで重賞検知から実処理全体を保護します。競合時は失敗stateを更新せず正常skipします。異常終了時もOSがlockを解放するため、残ったlockファイルの削除は不要です。確認表示のみの場合はlockを取得しません。
+
+前日以前でも `retry_wait`／`in_progress` が残るレースはローカルrace JSONから候補へ追加し、その未完了phaseだけを再開します。blockedやstate解除済みのレースは追加せず、過去の探索・中止記事取得は行いません。発走後のpre再開には保存済み確定inputと現在の実行設定に対応する既存predictionが必要で、新たなpredictionは生成しません。
 
 `--execute` の重賞探索結果は `data_dir/automation/discovery_cache.json` に保存します。キャッシュ未作成・破損・対象日不足・日付構成変更時に探索し、同じ日でも当日の `statistical_time` 以降にまだ探索していなければ1回再探索します。それ以外はキャッシュを再利用します。正常な既存キャッシュがある場合、探索失敗後の再試行は1時間空けます。phase判定・retry判定・deployは起動ごとに継続します。確認表示のみの場合は従来どおり探索し、キャッシュを書き込みません。
 
@@ -254,11 +256,11 @@ python src/evaluation_summary.py
 
 トップページの「総合AI予想の予測成績」と「統計重視予想の予測成績」はこの集計ファイルを読み込みます。統計重視予想の累計収支は、保存済みのsimulation postだけを集計します。ファイルがない場合は未算出として `-` を表示し、予想入力にはこの集計を含めません。
 
-完了判定は保存済みのprediction／resultを参照します。resultが保存済みでも、`status: ready` の馬連simulationがあれば全ての `quinella.post_status` が `settled` になるまでresult phaseを再試行します。
+result完了には、result・存在する全predictionのevaluation・利用可能なpre simulationに対応するpostが必要です。simulation自体がない場合はevaluationを確認します。`status: ready` の馬連simulationは全ての `quinella.post_status` が `settled` になるまで未完了です。
 
 post処理では利用可能なpre simulationを精算し、simulationの有無とは独立して保存済みpredictionを評価・公開します。statistical predictionとresultだけでも評価・結果ページを生成します。
 
-失敗stateがある場合は成果物より `retry_wait`／`blocked` を優先し、後続のsimulation・evaluation・render・publishを含むフローが正常終了した後だけstateを解除します。失敗stateのない既存データは従来どおり成果物で完了判定します。中止保存後の公開失敗もresultのretryとして扱い、中止記事を再取得せず公開を再試行します。
+stateがある場合は成果物より `in_progress`／`retry_wait`／`blocked` を優先し、後続のsimulation・evaluation・render・publishを含むフローが正常終了した後だけstateを解除します。stateのない既存データは成果物で完了判定します。中止保存前にもresultの `in_progress` を記録し、中断・公開失敗後は中止記事を再取得せず公開を再試行します。
 
 ## Codex 予想フロー
 

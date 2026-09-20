@@ -113,6 +113,58 @@ class DeployTests(unittest.TestCase):
         self.assertEqual(self.git(self.remote, "rev-parse", "main"), self.main_head)
         self.assertEqual(self.git(self.clone, "rev-parse", "HEAD^"), original)
 
+    def test_publish_restores_backup_before_failed_copy_and_preserves_current_public(self):
+        public = self.root / "public"
+        backup = self.root / "public__backup"
+        stage = Path(self.config["data_dir"]) / "_site_stage"
+        stage.mkdir(parents=True)
+        (stage / "index.html").write_text("new")
+        public.rename(backup)
+        stale = self.root / "public__tmp"
+        stale.mkdir()
+        (stale / "partial.html").write_text("incomplete")
+        with patch("publish.shutil.copytree", side_effect=OSError("copy failed")):
+            with self.assertRaises(OSError):
+                publish_site(self.config, self.root)
+        self.assertEqual((public / "old.html").read_text(), "old")
+        self.assertFalse(backup.exists())
+        self.assertFalse(stale.exists())
+        backup.mkdir()
+        (backup / "obsolete.html").write_text("obsolete")
+        with patch("publish.shutil.copytree", side_effect=OSError("copy failed")):
+            with self.assertRaises(OSError):
+                publish_site(self.config, self.root)
+        self.assertEqual((public / "old.html").read_text(), "old")
+        self.assertFalse(backup.exists())
+        publish_site(self.config, self.root)
+        self.assertEqual((public / "index.html").read_text(), "new")
+
+    def test_interrupted_publish_recovers_before_partial_render(self):
+        from render import render_site
+        public = self.root / "public"
+        preserved = public / "races/2026-09-19/previous_11r.html"
+        preserved.parent.mkdir(parents=True)
+        preserved.write_text("published previous race")
+        stage = Path(self.config["data_dir"]) / "_site_stage"
+        stage.mkdir(parents=True)
+        (stage / "index.html").write_text("new")
+        original_rename = Path.rename
+        def interrupt(path, target):
+            if path == self.root / "public__tmp":
+                raise KeyboardInterrupt("terminated during directory swap")
+            return original_rename(path, target)
+        with patch.object(Path, "rename", autospec=True, side_effect=interrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                publish_site(self.config, self.root)
+        self.assertFalse(public.exists())
+        self.assertTrue((self.root / "public__backup").is_dir())
+        self.config["public_dir"] = str(public)
+        render_site(self.config, "test-recovery", race_id="next-race")
+        publish_site(self.config, self.root)
+        self.assertEqual(preserved.read_text(), "published previous race")
+        self.assertTrue((public / "index.html").is_file())
+        self.assertFalse((self.root / "public__backup").exists())
+
     def test_publish_independent_and_unsupported_deploy(self):
         self.config["publish_mode"] = "other"
         stage = Path(self.config["data_dir"]) / "_site_stage"
