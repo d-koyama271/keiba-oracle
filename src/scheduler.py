@@ -5,6 +5,7 @@ import errno
 import json
 import os
 from contextlib import contextmanager, nullcontext
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -21,6 +22,32 @@ from utils import (JST, atomic_write_json, data_dir, load_config, load_race_json
                    list_race_files, ensure_race_payload, save_race_json, prediction_entries, linked_record, runtime_prediction_entry,
                    parse_jst_datetime, prediction_for_method, race_json_path,
                    race_start_datetime, track_name_from_race_id)
+
+
+@dataclass(frozen=True)
+class PhaseTask:
+    date: str
+    race_id: str
+    phase: str
+    path: Path
+    race: dict
+    scheduled_at: datetime
+
+    @property
+    def key(self) -> tuple[str, str, str]:
+        return self.date, self.race_id, self.phase
+
+    @classmethod
+    def from_race(cls, race_id: str, race: dict, phase: str, config: dict,
+                  root: Path | None = None) -> PhaseTask:
+        return cls(race["date"], race_id, phase,
+                   race_json_path(config, race["date"], race["track"], race["race_number"], root),
+                   dict(race), calculate_phase_times(race, config)[phase])
+
+
+def create_phase_tasks(races: list[dict], config: dict, root: Path | None = None) -> list[PhaseTask]:
+    return [PhaseTask.from_race(item["race_id"], item["race"], phase, config, root)
+            for item in races for phase in ("statistical", "general", "result")]
 
 
 def calculate_phase_times(race: dict, config: dict) -> dict[str, datetime]:
@@ -135,7 +162,8 @@ def restore_replacement_races(races: list[dict], config: dict, root: Path | None
 
 
 def update_race_cancellations(races: list[dict], config: dict, now: datetime,
-                              root: Path | None = None) -> None:
+                              root: Path | None = None) -> list[PhaseTask]:
+    tasks = []
     now = now.replace(tzinfo=JST) if now.tzinfo is None else now.astimezone(JST)
     candidates = {}
     cancelled = []
@@ -147,7 +175,7 @@ def update_race_cancellations(races: list[dict], config: dict, now: datetime,
             cancelled.append(payload)
             state = load_automation_state(path, config, root) or {}
             if state.get("phases", {}).get("result"):
-                execute_phases([{"race_id": payload["meta"]["race_id"], "race": payload["race"]}], config, now, root)
+                tasks.extend(create_phase_tasks([{"race_id": payload["meta"]["race_id"], "race": payload["race"]}], config, root))
         elif (payload["race"].get("date") == now.date().isoformat()
               and payload["race"].get("track") in config["target_races"] and not payload.get("result")):
             candidates[path] = payload
@@ -163,12 +191,12 @@ def update_race_cancellations(races: list[dict], config: dict, now: datetime,
             if not payload["race"].get("cancelled") and not payload.get("result"):
                 candidates[path] = payload
     if not candidates:
-        return
+        return tasks
     cache_path = data_dir(config, root) / "automation" / "discovery_cache.json"
     cache = json.loads(cache_path.read_text(encoding="utf-8")) if cache_path.exists() else {}
     checked = parse_jst_datetime(cache.get("cancellation_checked_at"))
     if checked is not None and timedelta(0) <= now - checked < timedelta(hours=1):
-        return
+        return tasks
     # Record the attempt before I/O, including failed requests, to avoid ten-minute polling.
     cache["cancellation_checked_at"] = now.isoformat()
     atomic_write_json(cache_path, cache)
@@ -178,32 +206,21 @@ def update_race_cancellations(races: list[dict], config: dict, now: datetime,
             notices = fetch_cancellation_notices(session, since=now.date().isoformat(), excluded_urls=confirmed_urls)
     except requests.RequestException as exc:
         print(f"Cancellation notices unavailable: {exc}")
-        return
-    changed = []
+        return tasks
     for path, payload in candidates.items():
         race = payload["race"]
         for url, html in notices:
             record = parse_cancellation_notice(html, race, url)
             if record is None:
                 continue
-            record_phase_started(path, config, payload["meta"]["race_id"], "result", root)
+            race_tasks = create_phase_tasks([{"race_id": payload["meta"]["race_id"], "race": race}], config, root)
+            # Persist the recovery obligation before saving cancellation evidence.
+            _transition_task(race_tasks[-1], "running", config, now, root)
             race.update(cancelled=True, cancellation=record)
             save_race_json(path, payload)
-            changed.append(path)
-            for phase in ("general", "statistical"):
-                clear_phase_state(path, config, phase, root)
+            tasks.extend(race_tasks)
             break
-    if changed:
-        error = None
-        try:
-            published = publish_post_results(changed, config, "cancellation", root)
-            if set(published) != set(changed):
-                raise RuntimeError("cancellation publication incomplete")
-        except (Exception, SystemExit) as exc:
-            error = f"{type(exc).__name__}: {exc}"
-        for path in changed:
-            _finish_phase(path, config, load_race_json(path)["meta"]["race_id"],
-                          "result", error, now, root)
+    return tasks
 
 
 def result_phase_complete(payload: dict) -> bool:
@@ -228,11 +245,11 @@ def result_phase_complete(payload: dict) -> bool:
     return True
 
 
-def add_pending_races(races: list[dict], config: dict, now: datetime,
-                      root: Path | None = None) -> list[dict]:
+def add_pending_tasks(tasks: list[PhaseTask], config: dict, now: datetime,
+                      root: Path | None = None) -> list[PhaseTask]:
     current = now.replace(tzinfo=JST) if now.tzinfo is None else now.astimezone(JST)
-    pending = list(races)
-    seen = {(item["race_id"], item["race"]["date"]) for item in races}
+    pending = list(tasks)
+    seen = {task.key for task in tasks}
     for state_path in sorted((data_dir(config, root) / "automation").glob("*/*.json")):
         if state_path.parent.name > current.date().isoformat():
             continue
@@ -249,10 +266,11 @@ def add_pending_races(races: list[dict], config: dict, now: datetime,
         if (payload["meta"]["race_id"] != state["race_id"] or race["date"] != state_path.parent.name
                 or race_json_path(config, race["date"], race["track"], race["race_number"], root) != path):
             raise ValueError("pending race identity mismatch")
-        key = (state["race_id"], race["date"])
-        if key not in seen:
-            pending.append({"race_id": state["race_id"], "race": race, "phases": phases})
-            seen.add(key)
+        for phase in phases:
+            task = PhaseTask.from_race(state["race_id"], race, phase, config, root)
+            if task.key not in seen:
+                pending.append(task)
+                seen.add(task.key)
     return pending
 
 
@@ -260,146 +278,125 @@ def _phase_artifact_complete(payload: dict, phase: str) -> bool:
     return result_phase_complete(payload) if phase == "result" else bool(prediction_for_method(payload, phase))
 
 
-def _phase_items(races: list[dict]):
-    """Expand discovered races and phase-limited retries into dated work items."""
-    for item in races:
-        for phase in item.get("phases", ("statistical", "general", "result")):
-            yield item, phase
-
-
-def _decide_phase(item: dict, phase: str, config: dict, now: datetime | None,
-                  root: Path | None) -> dict:
+def decide_phase(task: PhaseTask, config: dict, now: datetime | None = None,
+                 root: Path | None = None) -> dict:
     current = now if now is not None else now_jst()
     current = current.replace(tzinfo=JST) if current.tzinfo is None else current.astimezone(JST)
-    race, race_id = item["race"], item["race_id"]
-    path = race_json_path(config, race["date"], race["track"], race["race_number"], root)
-    payload = load_race_json(path) or {}
-    state = load_automation_state(path, config, root)
-    if payload and payload["meta"].get("race_id") != race_id:
+    payload = load_race_json(task.path) or {}
+    automation = load_automation_state(task.path, config, root) or {}
+    if payload and payload["meta"].get("race_id") != task.race_id:
         raise ValueError("race JSON race_id mismatch")
-    if state and state["race_id"] != race_id:
+    if automation and automation["race_id"] != task.race_id:
         raise ValueError("automation state race_id mismatch")
-    start = race_start_datetime(race["date"], race["start_time"])
-    scheduled_at = calculate_phase_times(race, config)[phase]
-    saved_input = False
-    invalid_input = False
-    if phase != "result":
-        input_path = prediction_input_path(config, path, phase, root)
+    record = automation.get("phases", {}).get(task.phase, {})
+    cancelled = bool(payload.get("race", {}).get("cancelled"))
+    artifact_complete = _phase_artifact_complete(payload, task.phase)
+    state = record.get("status") or ("completed" if artifact_complete or
+                                    (cancelled and task.phase == "result") else "scheduled")
+    if state == "in_progress":
+        state = "running"
+
+    # Execution mode is independent of lifecycle and race-level eligibility.
+    mode, reason = "normal", None
+    if task.phase != "result":
+        input_path = prediction_input_path(config, task.path, task.phase, root)
         if input_path.is_file():
             try:
                 snapshot = json.loads(input_path.read_text(encoding="utf-8"))
-                validator = validate_statistical_prediction_input if phase == "statistical" else validate_prediction_input
-                validator(snapshot, {"meta": {"race_id": race_id}, "race": race})
-                saved_input = True
+                validator = validate_statistical_prediction_input if task.phase == "statistical" else validate_prediction_input
+                validator(snapshot, {"meta": {"race_id": task.race_id}, "race": task.race})
+                mode = "resume"
             except (OSError, ValueError, TypeError, KeyError):
-                invalid_input = True
-    record = (state or {}).get("phases", {}).get(phase, {})
-    completed = _phase_artifact_complete(payload, phase)
-    reason = None
-    cancelled = payload.get("race", {}).get("cancelled")
-    if cancelled and (phase != "result" or not record):
+                reason = "invalid_prediction_input"
+    excluded = cancelled and task.phase != "result"
+    due = cancelled or current >= task.scheduled_at
+    if state == "retry_wait":
+        due = due and current >= parse_jst_datetime(record["next_retry_at"])
+    if excluded:
         reason = "cancelled"
-    elif record.get("status") == "blocked":
-        reason = "blocked"
-    elif record.get("status") == "retry_wait" and current < parse_jst_datetime(record["next_retry_at"]):
-        reason = "retry_wait"
-    elif completed and not record:
-        reason = "completed"
-    elif invalid_input:
-        reason = "invalid_prediction_input"
-    elif phase == "result" and not cancelled and not any(prediction_for_method(payload, method) for method in ("general", "statistical")):
-        reason = "no_prediction"
-    elif phase != "result" and not completed and payload.get("result"):
-        reason = "result_exists"
-    elif phase != "result" and current >= start and (not saved_input or not (runtime_prediction_entry(payload or None, config) or {}).get(phase)):
-        reason = "missed_execution_window"
-    elif current < scheduled_at and not cancelled:
-        reason = "not_scheduled_yet"
+    elif state not in ("completed", "blocked") and due and reason is None:
+        if task.phase == "result":
+            if not cancelled and not any(prediction_for_method(payload, method) for method in ("general", "statistical")):
+                reason = "no_prediction"
+        elif not artifact_complete and payload.get("result"):
+            reason = "result_exists"
+        elif current >= race_start_datetime(task.date, task.race["start_time"]) and (
+                mode != "resume" or not (runtime_prediction_entry(payload or None, config) or {}).get(task.phase)):
+            reason = "missed_execution_window"
     return {
-        "race_id": race_id, "date": race["date"], "phase": phase,
-        "scheduled_at": scheduled_at, "mode": "resume" if saved_input else "normal",
-        "runnable": reason is None, "reason": reason,
+        "race_id": task.race_id, "date": task.date, "phase": task.phase,
+        "scheduled_at": task.scheduled_at, "state": state, "mode": mode,
+        "runnable": state not in ("completed", "blocked") and due and reason is None,
+        "excluded": excluded, "reason": reason,
     }
 
 
-def decide_phases(races: list[dict], config: dict, now: datetime | None = None,
+def decide_phases(tasks: list[PhaseTask], config: dict, now: datetime | None = None,
                   root: Path | None = None) -> list[dict]:
     current = now if now is not None else now_jst()
-    # Keep the public decision order independent of the order of a phase filter.
-    items = [{**item, "phases": [phase for phase in ("statistical", "general", "result")
-                               if phase in item.get("phases", ("statistical", "general", "result"))]}
-             for item in races]
-    return [_decide_phase(item, phase, config, current, root) for item, phase in _phase_items(items)]
+    return [decide_phase(task, config, current, root) for task in tasks]
 
 
-def execute_phases(races: list[dict], config: dict, now: datetime | None = None,
+def _transition_task(task: PhaseTask, state: str, config: dict, now: datetime | None,
+                     root: Path | None, error: str = "") -> None:
+    if state == "running":
+        record_phase_started(task.path, config, task.race_id, task.phase, root)
+    elif state == "completed":
+        clear_phase_state(task.path, config, task.phase, root)
+    else:
+        settings = config["automation"]
+        record = (load_automation_state(task.path, config, root) or {}).get("phases", {}).get(task.phase, {})
+        prefix = "result_" if task.phase == "result" else ""
+        blocked = state == "blocked" or record.get("attempts", 0) + 1 >= settings[f"{prefix}max_attempts"]
+        current = now if now is not None else now_jst()
+        current = current.replace(tzinfo=JST) if current.tzinfo is None else current.astimezone(JST)
+        retry_at = current + timedelta(minutes=settings[f"{prefix}retry_interval_minutes"])
+        record_failure(task.path, config, task.race_id, task.phase, error,
+                       status="blocked" if blocked else "retry_wait",
+                       next_retry_at=None if blocked else retry_at.isoformat(), root=root)
+
+
+def execute_phases(tasks: list[PhaseTask], config: dict, now: datetime | None = None,
                    root: Path | None = None) -> None:
     settings = config["automation"]
     for key in ("retry_interval_minutes", "max_attempts", "result_retry_interval_minutes", "result_max_attempts"):
         if type(settings.get(key)) is not int or settings[key] <= 0:
             raise ValueError(f"automation.{key} must be a positive integer")
     seen = set()
-    for item, phase in _phase_items(races):
-        race, race_id = item["race"], item["race_id"]
-        path = race_json_path(config, race["date"], race["track"], race["race_number"], root)
-        key = (race["date"], race_id, phase)
-        if key in seen:
+    for task in tasks:
+        if task.key in seen:
             continue
-        seen.add(key)
-        # Refresh both time and saved artifacts after each preceding phase.
-        decision = _decide_phase(item, phase, config, now, root)
-        if decision["reason"] in ("completed", "cancelled"):
-            clear_phase_state(path, config, phase, root)
+        seen.add(task.key)
+        # Refresh time, artifacts and state after every preceding task.
+        decision = decide_phase(task, config, now, root)
+        if decision["excluded"]:
+            _transition_task(task, "completed", config, now, root)
             continue
         if decision["reason"] == "missed_execution_window":
-            record_failure(path, config, race_id, phase, "missed_execution_window", status="blocked", root=root)
+            _transition_task(task, "blocked", config, now, root, "missed_execution_window")
             continue
         if not decision["runnable"]:
             continue
-        record_phase_started(path, config, race_id, phase, root)
+        _transition_task(task, "running", config, now, root)
         error = None
         try:
-            cancelled = (load_race_json(path) or {}).get("race", {}).get("cancelled")
-            if phase == "result" and cancelled:
-                processed = publish_post_results([path], config, "cancellation", root)
-            elif phase == "result":
-                processed = run_post_flow(config, race["date"], "post", race_id=race_id)
+            cancelled = (load_race_json(task.path) or {}).get("race", {}).get("cancelled")
+            if task.phase == "result" and cancelled:
+                processed = publish_post_results([task.path], config, "cancellation", root)
+            elif task.phase == "result":
+                processed = run_post_flow(config, task.date, "post", race_id=task.race_id)
             else:
-                processed = run_pre_flow(config, race["date"], phase=phase,
-                             resume=decision["mode"] == "resume", race_id=race_id)
-            payload = load_race_json(path) or {}
-            completed = _phase_artifact_complete(payload, phase)
-            if path not in processed or payload.get("meta", {}).get("race_id") != race_id or not (completed or (phase == "result" and cancelled)):
-                error = f"{phase} artifact missing after execution"
+                processed = run_pre_flow(config, task.date, phase=task.phase,
+                                         resume=decision["mode"] == "resume", race_id=task.race_id)
+            payload = load_race_json(task.path) or {}
+            complete = _phase_artifact_complete(payload, task.phase) or (task.phase == "result" and cancelled)
+            if task.path not in processed or payload.get("meta", {}).get("race_id") != task.race_id or not complete:
+                error = f"{task.phase} artifact missing after execution"
         except (Exception, SystemExit) as exc:
             error = f"{type(exc).__name__}: {exc}"
-        if phase != "result" and (load_race_json(path) or {}).get("race", {}).get("cancelled"):
-            clear_phase_state(path, config, phase, root)
-            continue
-        _finish_phase(path, config, race_id, phase, error, now, root)
-
-
-def _finish_phase(path: Path, config: dict, race_id: str, phase: str, error: str | None,
-                  now: datetime | None, root: Path | None) -> None:
-    if error is None:
-        clear_phase_state(path, config, phase, root)
-    else:
-        record_phase_failure(path, config, race_id, phase, error, now, root)
-
-
-def record_phase_failure(path: Path, config: dict, race_id: str, phase: str, error: str,
-                         now: datetime | None = None, root: Path | None = None) -> None:
-    settings = config["automation"]
-    state = load_automation_state(path, config, root) or {}
-    attempts = state.get("phases", {}).get(phase, {}).get("attempts", 0)
-    prefix = "result_" if phase == "result" else ""
-    blocked = attempts + 1 >= settings[f"{prefix}max_attempts"]
-    current = now if now is not None else now_jst()
-    current = current.replace(tzinfo=JST) if current.tzinfo is None else current.astimezone(JST)
-    retry_at = current + timedelta(minutes=settings[f"{prefix}retry_interval_minutes"])
-    record_failure(path, config, race_id, phase, error,
-                   status="blocked" if blocked else "retry_wait",
-                   next_retry_at=None if blocked else retry_at.isoformat(), root=root)
+        if task.phase != "result" and (load_race_json(task.path) or {}).get("race", {}).get("cancelled"):
+            error = None
+        _transition_task(task, "completed" if error is None else "retry_wait", config, now, root, error or "")
 
 
 @contextmanager
@@ -443,19 +440,20 @@ def main() -> None:
             return
         current = now_jst()
         races = discover_cached_races(config, current) if args.execute else discover_scheduled_races(config, current)
+        tasks = create_phase_tasks(races, config)
         if args.execute:
-            races = add_pending_races(races, config, current)
-        decisions = decide_phases(races, config, current)
-        for item in races:
-            race = item["race"]
-            print(f"{race['date']} {race['track']}{race['race_number']}R {race['race_name']}")
-            for decision in decisions:
-                if decision["race_id"] == item["race_id"] and decision["date"] == race["date"]:
-                    status = decision["mode"] if decision["runnable"] else decision["reason"]
-                    print(f"{decision['phase']}: {decision['scheduled_at']:%Y-%m-%d %H:%M} JST ({status})")
+            tasks = add_pending_tasks(tasks, config, current)
+        decisions = decide_phases(tasks, config, current)
+        displayed = set()
+        for task, decision in zip(tasks, decisions):
+            if (task.date, task.race_id) not in displayed:
+                print(f"{task.date} {task.race['track']}{task.race['race_number']}R {task.race['race_name']}")
+                displayed.add((task.date, task.race_id))
+            detail = decision["reason"] or decision["mode"]
+            print(f"{task.phase}: {task.scheduled_at:%Y-%m-%d %H:%M} JST ({decision['state']}, {detail})")
         if args.execute:
-            update_race_cancellations(races, config, current)
-            execute_phases(races, config)
+            tasks.extend(update_race_cancellations(races, config, current))
+            execute_phases(tasks, config)
             deploy_site(config)
 
 

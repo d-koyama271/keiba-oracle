@@ -74,7 +74,7 @@ class ResultCollectionTests(unittest.TestCase):
             record_failure(path, config, "202604020207", "general", "old", status="blocked")
             record_failure(path, config, "202604020207", "result", "old", next_retry_at="2026-07-26T16:00:00+09:00")
             with patch.object(scheduler, "run_pre_flow") as pre, patch.object(scheduler, "run_post_flow") as post:
-                scheduler.execute_phases([{"race_id": "202604020207", "race": saved["race"]}], config, datetime(2026, 7, 26, 17, tzinfo=JST))
+                scheduler.execute_phases(scheduler.create_phase_tasks([{"race_id": "202604020207", "race": saved["race"]}], config), config, datetime(2026, 7, 26, 17, tzinfo=JST))
                 pre.assert_not_called(); post.assert_not_called()
             self.assertIsNone(load_automation_state(path, config))
 
