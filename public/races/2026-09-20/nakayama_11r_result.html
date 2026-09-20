@@ -8,8 +8,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>オールカマー AI予想 | keiba-oracle</title>
-  <meta name="description" content="オールカマーのAI予想。各馬の1着確率、予想理由、単勝分配方式と期待値重視方式による購入シミュレーションを掲載します。">
+  <title>オールカマー 結果 | keiba-oracle</title>
+  <meta name="description" content="オールカマーのレース結果、AI予想との比較、予測評価、購入シミュレーション結果を掲載します。">
   <style>
     :root {
       color-scheme: light;
@@ -534,7 +534,7 @@
     <div class="panel">
       <div class="page-badges">
         <span class="ai-badge">gpt-5.6-sol</span>
-        <span class="status status-pending">前日予想公開</span>
+        <span class="status status-result">結果公開</span>
       </div>
       <h1>中山 11R オールカマー</h1>
       <h2>レース基本情報</h2>
@@ -543,276 +543,290 @@
         <div><strong>発走</strong><br>15:45</div>
         <div><strong>距離</strong><br>芝 2200m</div>
         
-        <div><strong>馬場</strong><br>-</div>
-        <div><strong>天候</strong><br>-</div>
-        <div><strong>オッズ記録時刻</strong><br>2026-09-19 18:00:01</div>
-        <div><strong>発走時点との差</strong><br>発走1305分前</div>
+        <div><strong>馬場</strong><br>重</div>
+        <div><strong>天候</strong><br>雨</div>
+        <div><strong>結果取得日時</strong><br>2026-09-20 18:18:45</div>
         
       </div>
       
-      <p class="small">単勝オッズと人気は記録時点の値です。現在のオッズとは異なる場合があります。</p>
-      
-      
       <p class="small">
         <a href="../../index.html">一覧へ戻る</a>
-         / <a href="nakayama_11r_result.html">結果ページ</a>
         
-         / <a href="https://race.netkeiba.com/race/shutuba.html?race_id=202606040611">netkeiba</a>
+         / <a href="nakayama_11r.html">予想ページ</a>
+        
       </p>
     </div>
 
     
-    <div class="panel prediction-section">
-      <h2>予想比較</h2>
+
+    
+    <section class="panel result-section">
+      <h2 class="result-section-title">レース結果</h2>
       
       
-      <div class="ai-method-panel prediction-method-content" id="prediction-statistical" role="tabpanel" data-ai-panel data-ai-method="statistical">
+      
+      
+      
+      
+      <div class="ai-method-panel result-method-content" id="result-statistical" role="tabpanel" data-ai-panel data-ai-method="statistical">
         
-        <h3>統計重視予想</h3>
-        
-        <p class="small prediction-description">市場情報を使用せず、過去成績や今回のレース条件などの客観データから1着確率を推定しています。</p>
-        
-        <p class="table-scroll-hint">表は横にスクロールできます</p>
-        <div class="table-scroll">
-          <table class="prediction-table" data-sortable>
-            <thead>
-              <tr>
-                <th class="nowrap" aria-sort="none">
+        <div class="panel result-panel">
+          <h3 class="result-comparison-title">
+            <span>統計重視予想と実結果の比較</span>
+            
+          </h3>
+          <p class="table-scroll-hint">表は横にスクロールできます</p>
+          <div class="table-scroll">
+            <table class="result-table" data-sortable>
+              <thead><tr><th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="0" data-sort-type="number" data-sort-first="ascending">
     馬番 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
-</th>
-
-                <th class="horse-name" aria-sort="none">
+</th><th class="horse-name" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="1" data-sort-type="text" data-sort-first="ascending">
     馬名 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
-</th>
-                <th class="nowrap" aria-sort="none">
-  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="text" data-sort-first="ascending">
-    騎手 <span class="sort-indicator" aria-hidden="true">↕</span>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="number" data-sort-first="ascending">
+    人気 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
-</th>
-                <th class="nowrap" aria-sort="none">
+</th><th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="descending">
     1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
-</th>
-                <th class="nowrap" aria-sort="none">
+</th><th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
-    予想順位 <span class="sort-indicator" aria-hidden="true">↕</span>
+    予測順位 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
-</th>
-
-                <th class="reason-cell">理由</th>
-              </tr>
-            </thead>
-            <tbody>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="1">1</td>
-
-                <td class="horse-name">キャントウェイト</td>
-                <td class="nowrap">横山典</td>
-
-                <td class="nowrap" data-sort-value="0.026">2.6%</td>
-                <td class="nowrap" data-sort-value="8">8位</td>
-                <td class="reason-cell">前走2000mの3勝クラスを勝ち、中山も5戦1勝・3着内2回。ただし今回はG2初挑戦で、実績上位勢との能力比較では劣る。</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="2">2</td>
-
-                <td class="horse-name">ワイドエンペラー</td>
-                <td class="nowrap">ルメール</td>
-
-                <td class="nowrap" data-sort-value="0.018">1.8%</td>
-                <td class="nowrap" data-sort-value="9">9位</td>
-                <td class="reason-cell">ルメールとの組合せは7戦3勝・3着内5回だが、G2は5戦して3着内なし。同舞台の前年7着、直近のListedでも2.1秒差11着で休養133日も不確定要素。</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="3">3</td>
-
-                <td class="horse-name">リビアングラス</td>
-                <td class="nowrap">西村淳</td>
-
-                <td class="nowrap" data-sort-value="0.042">4.2%</td>
-                <td class="nowrap" data-sort-value="7">7位</td>
-                <td class="reason-cell">G2で2400m3着0.3秒差、2200m6着0.5秒差があり能力は通用圏。ただし中山は4戦して3着内なし、今回は161日ぶり。</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="4">4</td>
-
-                <td class="horse-name">ヴーレヴー</td>
-                <td class="nowrap">吉田隼</td>
-
-                <td class="nowrap" data-sort-value="0.058">5.8%</td>
-                <td class="nowrap" data-sort-value="5">5位</td>
-                <td class="reason-cell">芝に戻した近2走がOP1着0.5秒差、G3で0.1秒差3着と好調で、55kgの先行力も強み。一方、2000～2400mは1戦12着のみで2200mへの延長が課題。</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="5">5</td>
-
-                <td class="horse-name">アスクドゥポルテ</td>
-                <td class="nowrap">岩田康</td>
-
-                <td class="nowrap" data-sort-value="0.007">0.7%</td>
-                <td class="nowrap" data-sort-value="11">11位</td>
-                <td class="reason-cell">2000～2400mで4勝しているが、直近2走はOP・Listedでともに12着かつ1.7秒以上の差。G2も2戦して3着内がなく、161日ぶりで近況面が弱い。</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="6">6</td>
-
-                <td class="horse-name">パンジャ</td>
-                <td class="nowrap">丹内</td>
-
-                <td class="nowrap" data-sort-value="0.044">4.4%</td>
-                <td class="nowrap" data-sort-value="6">6位</td>
-                <td class="reason-cell">前走は今回と同じ中山芝2200mを上がり33.6秒で勝利し、中山7戦3勝。ただし3勝クラスからの昇級で、G2実績馬との比較と154日ぶりが課題。</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="7">7</td>
-
-                <td class="horse-name rank-prediction-top">レガレイラ</td>
-                <td class="nowrap">戸崎圭</td>
-
-                <td class="nowrap" data-sort-value="0.3">30.0%</td>
-                <td class="nowrap rank-prediction-top" data-sort-value="1">1位</td>
-                <td class="reason-cell">前年の同レースを勝ち、中山5戦3勝。続いて芝2200mのG1を勝ち、有馬記念も0.2秒差4着で、今回の条件と相手関係では基礎能力が最上位。</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="8">8</td>
-
-                <td class="horse-name">メイショウゲキリン</td>
-                <td class="nowrap">田辺</td>
-
-                <td class="nowrap" data-sort-value="0.014">1.4%</td>
-                <td class="nowrap" data-sort-value="10">10位</td>
-                <td class="reason-cell">直近の平地戦では芝2200mの3勝クラスを0.3秒差で勝利。ただしその後の障害2戦は6着、8着で、芝への再転向とG2昇級の両面に不確実性がある。</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="9">9</td>
-
-                <td class="horse-name">コスモキュランダ</td>
-                <td class="nowrap">横山武</td>
-
-                <td class="nowrap" data-sort-value="0.265">26.5%</td>
-                <td class="nowrap" data-sort-value="2">2位</td>
-                <td class="reason-cell">直近の宝塚記念で逃げて0.5秒差4着、有馬記念も0.1秒差2着。中山は10戦して3着内7回と安定し、同距離・57kgも好材料だが、通算2勝で勝ち切りには若干の割引。</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="10">10</td>
-
-                <td class="horse-name">コスモブッドレア</td>
-                <td class="nowrap">津村</td>
-
-                <td class="nowrap" data-sort-value="0.005">0.5%</td>
-                <td class="nowrap" data-sort-value="12">12位</td>
-                <td class="reason-cell">中山では6戦2勝だが、直近5走はすべて11着以下で、直近2走も1.8秒差、1.9秒差。今回は400m延長かつ前走比3kg増で、G2上位勢との比較では厳しい。</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="11">11</td>
-
-                <td class="horse-name">セイウンプラチナ</td>
-                <td class="nowrap">内田博</td>
-
-                <td class="nowrap" data-sort-value="0.002">0.2%</td>
-                <td class="nowrap" data-sort-value="13">13位</td>
-                <td class="reason-cell">中山で2勝はあるが、2000～2400mは5戦して3着内なし。直近3走も8着、11着、10着で、今回は575日ぶりかつ前走比3kg増。</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="12">12</td>
-
-                <td class="horse-name">エセルフリーダ</td>
-                <td class="nowrap">武藤</td>
-
-                <td class="nowrap" data-sort-value="0.095">9.5%</td>
-                <td class="nowrap" data-sort-value="4">4位</td>
-                <td class="reason-cell">中山は5戦4勝で、直近2走も中山の3勝クラス、G3を連勝。55kgも有利だが、前走から400m延長、G2初挑戦、197日ぶりのため上位3頭より不確実性が高い。</td>
-              </tr>
-              
-              <tr>
-                <td class="nowrap" data-sort-value="13">13</td>
-
-                <td class="horse-name">ジューンテイク</td>
-                <td class="nowrap">武豊</td>
-
-                <td class="nowrap" data-sort-value="0.124">12.4%</td>
-                <td class="nowrap" data-sort-value="3">3位</td>
-                <td class="reason-cell">同距離の京都記念G2を勝ち、金鯱賞G2も0.1秒差4着。G2通算5戦2勝・3着内3回で能力上位だが、中山実績がなく58kgで、直近G1は1.6秒差8着。</td>
-              </tr>
-              
-            </tbody>
-          </table>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="ascending">
+    実着順 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="ascending">
+    予想との差 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="7" data-sort-type="number" data-sort-first="ascending">
+    確定オッズ <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th><th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="8" data-sort-type="number" data-sort-first="descending">
+    単勝払戻 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th></tr></thead>
+              <tbody>
+                
+                <tr>
+                  <td class="nowrap" data-sort-value="1">1</td>
+                  <td class="horse-name">キャントウェイト</td>
+                  <td class="nowrap" data-sort-value="7">7</td>
+                  <td class="nowrap" data-sort-value="0.026">2.6%</td>
+                  <td class="nowrap" data-sort-value="8">8位</td>
+                  <td class="nowrap" data-sort-value="2">2着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="-6"><span class="comparison-up">6着上</span></td>
+                  <td class="nowrap" data-sort-value="12.1">12.1</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+                
+                <tr>
+                  <td class="nowrap" data-sort-value="2">2</td>
+                  <td class="horse-name">ワイドエンペラー</td>
+                  <td class="nowrap" data-sort-value="9">9</td>
+                  <td class="nowrap" data-sort-value="0.018">1.8%</td>
+                  <td class="nowrap" data-sort-value="9">9位</td>
+                  <td class="nowrap" data-sort-value="5">5着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="-4"><span class="comparison-up">4着上</span></td>
+                  <td class="nowrap" data-sort-value="48.1">48.1</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+                
+                <tr>
+                  <td class="nowrap" data-sort-value="3">3</td>
+                  <td class="horse-name">リビアングラス</td>
+                  <td class="nowrap" data-sort-value="8">8</td>
+                  <td class="nowrap" data-sort-value="0.042">4.2%</td>
+                  <td class="nowrap" data-sort-value="7">7位</td>
+                  <td class="nowrap" data-sort-value="10">10着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="3"><span class="comparison-down">3着下</span></td>
+                  <td class="nowrap" data-sort-value="37.1">37.1</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+                
+                <tr>
+                  <td class="nowrap" data-sort-value="4">4</td>
+                  <td class="horse-name">ヴーレヴー</td>
+                  <td class="nowrap" data-sort-value="6">6</td>
+                  <td class="nowrap" data-sort-value="0.058">5.8%</td>
+                  <td class="nowrap" data-sort-value="5">5位</td>
+                  <td class="nowrap" data-sort-value="3">3着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="-2"><span class="comparison-up">2着上</span></td>
+                  <td class="nowrap" data-sort-value="3.9">3.9</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+                
+                <tr>
+                  <td class="nowrap" data-sort-value="5">5</td>
+                  <td class="horse-name">アスクドゥポルテ</td>
+                  <td class="nowrap" data-sort-value="12">12</td>
+                  <td class="nowrap" data-sort-value="0.007">0.7%</td>
+                  <td class="nowrap" data-sort-value="11">11位</td>
+                  <td class="nowrap" data-sort-value="12">12着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="1"><span class="comparison-down">1着下</span></td>
+                  <td class="nowrap" data-sort-value="135.4">135.4</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+                
+                <tr>
+                  <td class="nowrap" data-sort-value="6">6</td>
+                  <td class="horse-name">パンジャ</td>
+                  <td class="nowrap" data-sort-value="4">4</td>
+                  <td class="nowrap" data-sort-value="0.044">4.4%</td>
+                  <td class="nowrap" data-sort-value="6">6位</td>
+                  <td class="nowrap" data-sort-value="6">6着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="0"><span class="comparison-neutral">差なし</span></td>
+                  <td class="nowrap" data-sort-value="17.2">17.2</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+                
+                <tr>
+                  <td class="nowrap" data-sort-value="7">7</td>
+                  <td class="horse-name rank-prediction-top">レガレイラ</td>
+                  <td class="nowrap" data-sort-value="1">1</td>
+                  <td class="nowrap" data-sort-value="0.3">30.0%</td>
+                  <td class="nowrap rank-prediction-top" data-sort-value="1">1位</td>
+                  <td class="nowrap" data-sort-value="4">4着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="3"><span class="comparison-down">3着下</span></td>
+                  <td class="nowrap" data-sort-value="3.1">3.1</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+                
+                <tr>
+                  <td class="nowrap" data-sort-value="8">8</td>
+                  <td class="horse-name rank-result-winner">メイショウゲキリン</td>
+                  <td class="nowrap" data-sort-value="10">10</td>
+                  <td class="nowrap" data-sort-value="0.014">1.4%</td>
+                  <td class="nowrap" data-sort-value="10">10位</td>
+                  <td class="nowrap rank-result-winner" data-sort-value="1">1着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="-9"><span class="comparison-up">9着上</span></td>
+                  <td class="nowrap" data-sort-value="44.5">44.5</td>
+                  <td class="nowrap" data-sort-value="4450">4450円</td>
+                </tr>
+                
+                <tr>
+                  <td class="nowrap" data-sort-value="9">9</td>
+                  <td class="horse-name">コスモキュランダ</td>
+                  <td class="nowrap" data-sort-value="2">2</td>
+                  <td class="nowrap" data-sort-value="0.265">26.5%</td>
+                  <td class="nowrap" data-sort-value="2">2位</td>
+                  <td class="nowrap" data-sort-value="11">11着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="9"><span class="comparison-down">9着下</span></td>
+                  <td class="nowrap" data-sort-value="3.6">3.6</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+                
+                <tr>
+                  <td class="nowrap" data-sort-value="10">10</td>
+                  <td class="horse-name">コスモブッドレア</td>
+                  <td class="nowrap" data-sort-value="11">11</td>
+                  <td class="nowrap" data-sort-value="0.005">0.5%</td>
+                  <td class="nowrap" data-sort-value="12">12位</td>
+                  <td class="nowrap" data-sort-value="8">8着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="-4"><span class="comparison-up">4着上</span></td>
+                  <td class="nowrap" data-sort-value="161.2">161.2</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+                
+                <tr>
+                  <td class="nowrap" data-sort-value="11">11</td>
+                  <td class="horse-name">セイウンプラチナ</td>
+                  <td class="nowrap" data-sort-value="13">13</td>
+                  <td class="nowrap" data-sort-value="0.002">0.2%</td>
+                  <td class="nowrap" data-sort-value="13">13位</td>
+                  <td class="nowrap" data-sort-value="13">13着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="0"><span class="comparison-neutral">差なし</span></td>
+                  <td class="nowrap" data-sort-value="157.7">157.7</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+                
+                <tr>
+                  <td class="nowrap" data-sort-value="12">12</td>
+                  <td class="horse-name">エセルフリーダ</td>
+                  <td class="nowrap" data-sort-value="5">5</td>
+                  <td class="nowrap" data-sort-value="0.095">9.5%</td>
+                  <td class="nowrap" data-sort-value="4">4位</td>
+                  <td class="nowrap" data-sort-value="9">9着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="5"><span class="comparison-down">5着下</span></td>
+                  <td class="nowrap" data-sort-value="11.4">11.4</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+                
+                <tr>
+                  <td class="nowrap" data-sort-value="13">13</td>
+                  <td class="horse-name">ジューンテイク</td>
+                  <td class="nowrap" data-sort-value="3">3</td>
+                  <td class="nowrap" data-sort-value="0.124">12.4%</td>
+                  <td class="nowrap" data-sort-value="3">3位</td>
+                  <td class="nowrap" data-sort-value="7">7着</td>
+                  <td class="comparison-cell nowrap" data-sort-value="4"><span class="comparison-down">4着下</span></td>
+                  <td class="nowrap" data-sort-value="10.8">10.8</td>
+                  <td class="nowrap" data-sort-value="">-</td>
+                </tr>
+                
+              </tbody>
+            </table>
+          </div>
         </div>
-        <p><strong>総括:</strong> 中山芝2200mのG2。前年の同レース勝ちとG1勝利がある7を首位、直近G1で4着かつ中山巧者の9を僅差で続く評価とした。G2実績の13、近2走連勝で中山適性の高い12が次位。馬場・天候が未確定で、休養明けや昇級馬も多いため不確実性はやや高い。</p>
         
-      </div>
-      
-    </div>
 
-    <section class="simulation-section">
-      <h2 class="simulation-section-title">購入シミュレーション</h2>
+        
+        <div class="panel result-panel">
+          <h3>統計重視予想の予測評価</h3>
+          <div class="metric-grid">
+            <div><strong>勝ち馬の予測順位</strong><br>10位</div>
+            <div><strong>勝ち馬の予測確率</strong><br>1.40%</div>
+            <div><strong>Top1</strong><br>不的中</div>
+            <div><strong>Top3</strong><br>不的中</div>
+            <div><strong>Top5</strong><br>不的中</div>
+            <div><strong>Log Loss</strong><br>4.268698</div>
+            <div><strong>Brier Score</strong><br>0.089613</div>
+          </div>
+          <p class="small">市場情報は予想には使用せず、結果評価の比較基準としてのみ使用しています。</p>
+          
+          <h4>市場ベースライン比較</h4>
+          <p>市場の勝ち馬確率 0.95% / 順位 10位</p>
+          <p>Log Loss差 -0.386296 / Brier Score差 -0.005911</p>
+          
+          
+        </div>
+        
 
-      
-      
-      
-      
-      
-      
-      
-      
-      <div class="ai-method-panel simulation-method-content panel" id="simulation-statistical" role="tabpanel" data-ai-panel data-ai-method="statistical">
-      <div class="ai-method-tabs ticket-tabs" role="tablist" aria-label="シミュレーションの券種">
-  <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="win" aria-controls="purchase-statistical-win" aria-selected="true" tabindex="0">単勝</button>
-  <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="quinella" aria-controls="purchase-statistical-quinella" aria-selected="false" tabindex="-1">馬連</button>
+        <div class="ai-method-tabs ticket-tabs" role="tablist" aria-label="シミュレーションの券種">
+  <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="win" aria-controls="settlement-statistical-win" aria-selected="true" tabindex="0">単勝</button>
+  <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="quinella" aria-controls="settlement-statistical-quinella" aria-selected="false" tabindex="-1">馬連</button>
 </div>
-      <div id="purchase-statistical-win" data-ticket-panel="win" role="tabpanel">
-    <div class="panel simulation-panel">
-      <h3><span class="term-with-tooltip"><span>単勝分配方式</span><span class="term-tooltip" data-term-key="dutching_method">
-  <button type="button" class="tooltip-trigger" aria-label="単勝分配方式: AI予想上位の複数馬を対象に、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">AI予想上位の複数馬を対象に、どの馬が勝っても払戻額が近くなるよう購入額を配分する方式です。</span>
-</span></span></h3>
-      <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
-      
-      <p>このレースでは統計重視予想の購入シミュレーションは記録されていません。</p>
-      
-    </div>
-
-    <div class="panel simulation-panel">
-      <h3><span class="term-with-tooltip"><span>期待値重視方式</span><span class="term-tooltip" data-term-key="value_method">
-  <button type="button" class="tooltip-trigger" aria-label="期待値重視方式: AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。</span>
-</span></span></h3>
-      
-      <p>このレースでは統計重視予想の購入シミュレーションは記録されていません。</p>
-      
-    </div>
-      </div>
-      <div id="purchase-statistical-quinella" data-ticket-panel="quinella" role="tabpanel" hidden>
+        <div id="settlement-statistical-win" data-ticket-panel="win" role="tabpanel">
         
+        <div class="panel result-panel">
+          <h3>統計重視予想のシミュレーション結果</h3>
+          <p>このレースでは統計重視予想の購入シミュレーションは記録されていません。</p>
+        </div>
+        
+
+        
+
+        
+        </div>
+        <div id="settlement-statistical-quinella" data-ticket-panel="quinella" role="tabpanel" hidden>
+          
 <p class="small">馬連的中確率は各馬の1着確率から算出した、同着を考慮しない近似値です。</p>
 
 <p class="quinella-unavailable">馬連は計算できません。発走前の完全なオッズ・確率データが記録されていません。</p>
 
-      </div>
+        </div>
       </div>
       
     </section>
-
-    
-    
-
     
 
     <p class="small">本ページはAIによる確率推定と購入シミュレーションを掲載するもので、的中や利益を保証するものではありません。投票はご自身の判断で行ってください。</p>
