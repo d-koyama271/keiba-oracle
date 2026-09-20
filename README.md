@@ -36,6 +36,7 @@ src/
   utils.py
 data/
   races/
+  prediction_inputs/YYYY-MM-DD/
   evaluation_summary.json
 inbox/
   prediction/
@@ -160,7 +161,7 @@ schema v9以前は読み込み時に、本体を `general`、`variants` 内の�
 
 `run_pre.py`、`run_post.py`、`run_post_collect.py` は `--race-id <race_id>` で対象を1レースに限定できます。preの各phaseとresumeでも指定でき、対象外のレースのinput・予想・結果・公開済みHTMLは更新しません。トップページと結果集計は対象レースの更新を反映します。省略時は従来の日付単位処理です。resume／postで対象日のrace JSONが見つからない場合はエラーになります。
 
-失敗後の再開は `python src/run_pre.py --date YYYY-MM-DD --phase general --resume` または `--phase statistical --resume` を使用します。再収集せず、`outbox/chat_input/prediction/<race>.json`（general）／`<race>.statistical.json`（statistical）を読み込みます。statistical inputもCodex実行前に保存します。対象日の該当inputがない場合は失敗し、現在のrace JSONから作り直しません。`--resume` には日付と単独フェーズの指定が必要です。通常のgeneral実行は従来どおり再収集・input確定を行います。
+失敗後の再開は `python src/run_pre.py --date YYYY-MM-DD --phase general --resume` または `--phase statistical --resume` を使用します。再収集せず、`data_dir/prediction_inputs/YYYY-MM-DD/<stem>.json`（general）／`<stem>.statistical.json`（statistical）を読み込みます。statistical inputもCodex実行前に保存します。race_id・日付・競馬場・レース番号・方式を照合し、不正なinputは再生成・上書きしません。後日の再収集でrace／horsesが変わっていても、予想には確定済みsnapshotを使用します。statisticalの市場情報除外と結果取得後の生成禁止は維持します。対象日の該当inputがない場合は失敗し、旧outboxや現在のrace JSONから補完しません。`--resume` には日付と単独フェーズの指定が必要です。通常のgeneral実行は従来どおり再収集・input確定を行います。
 
 `--phase statistical` は収集後に統計重視予想のみ生成・公開し、総合用inputの確定とsimulationは行いません。`--phase general` は再収集時点の総合用inputを確定して総合予想のみ生成し、保存済みの両予想方式でpre simulation・公開を行います。`--phase all`（省略時）は以下の一括処理です。各フェーズで `--date YYYY-MM-DD` を指定できます。
 
@@ -255,11 +256,13 @@ python src/evaluation_summary.py
 
 完了判定は保存済みのprediction／resultを参照します。resultが保存済みでも、`status: ready` の馬連simulationがあれば全ての `quinella.post_status` が `settled` になるまでresult phaseを再試行します。
 
+post処理では利用可能なpre simulationを精算し、simulationの有無とは独立して保存済みpredictionを評価・公開します。statistical predictionとresultだけでも評価・結果ページを生成します。
+
 失敗stateがある場合は成果物より `retry_wait`／`blocked` を優先し、後続のsimulation・evaluation・render・publishを含むフローが正常終了した後だけstateを解除します。失敗stateのない既存データは従来どおり成果物で完了判定します。中止保存後の公開失敗もresultのretryとして扱い、中止記事を再取得せず公開を再試行します。
 
 ## Codex 予想フロー
 
-通常のレース前運用は `run_pre.py` だけで完了します。収集時に確定した予想入力 JSON は監査用に `outbox/chat_input/prediction/` にも保存しますが、人が外部チャットへ貼り付けたり、応答を `inbox/` へ戻したりする必要はありません。
+通常のレース前運用は `run_pre.py` だけで完了します。確定した予想入力 JSON は監査・復旧用に `data_dir/prediction_inputs/YYYY-MM-DD/` へ保存します。`outbox/chat_input/prediction/` は自動運用では使用しません。
 
 新規公開では総合AI予想と統計重視予想の両方が正常に保存されてからシミュレーションへ進みます。総合AI予想だけが既にある場合はそれを再利用し、欠けている統計重視予想だけを生成します。統計重視予想に失敗した場合は総合AI予想を残したまま停止し、不完全なページを公開しません。
 

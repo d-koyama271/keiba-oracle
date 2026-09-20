@@ -29,11 +29,6 @@ from utils import (
 
 class SchemaV10Tests(unittest.TestCase):
     def setUp(self):
-        directory = tempfile.TemporaryDirectory()
-        self.addCleanup(directory.cleanup)
-        patcher = patch.object(run_pre, "outbox_chat_input_dir", return_value=Path(directory.name))
-        patcher.start()
-        self.addCleanup(patcher.stop)
         for module in ("simulate", "evaluation", "evaluation_summary"):
             patcher = patch(f"{module}.setup_logger", return_value=logger(f"schema-{module}"))
             patcher.start()
@@ -309,6 +304,7 @@ class SchemaV10Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             config = load_config()
+            config["data_dir"] = str(root / "data")
             payload = ensure_race_payload(race_payload())
             entry = runtime_prediction_entry(payload, config, create=True)
             entry["general"] = {k: v for k, v in valid_prediction().items()
@@ -316,8 +312,7 @@ class SchemaV10Tests(unittest.TestCase):
             path = root / "race.json"
             save_race_json(path, payload)
             before = path.read_bytes()
-            with patch.object(run_pre_collect, "setup_logger", return_value=logger("snapshot-export")), \
-                 patch.object(run_pre_collect, "outbox_chat_input_dir", return_value=root / "outbox"):
+            with patch.object(run_pre_collect, "setup_logger", return_value=logger("snapshot-export")):
                 self.assertEqual(run_pre_collect.export_prediction_chat_input([path], config, "snapshot"), [])
                 self.assertEqual(path.read_bytes(), before)
                 config["llm_model"] = "gpt-6"
@@ -345,8 +340,6 @@ class SchemaV10Tests(unittest.TestCase):
             for module in ("run_pre", "run_pre_collect", "predict", "simulate"):
                 stack.enter_context(patch(f"{module}.setup_logger", return_value=logger(f"phase-{module}")))
             stack.enter_context(patch.object(run_pre_collect, "collect_pre_races", side_effect=collect))
-            stack.enter_context(patch.object(run_pre_collect, "outbox_chat_input_dir", return_value=root / "outbox"))
-            stack.enter_context(patch.object(run_pre, "outbox_chat_input_dir", return_value=root / "outbox"))
             stack.enter_context(patch.object(predict.LLMClient, "from_config", return_value=client))
             stack.enter_context(patch.object(predict, "now_jst", return_value=parse_jst_datetime("2026-08-16T12:00:00+09:00")))
 
@@ -360,8 +353,8 @@ class SchemaV10Tests(unittest.TestCase):
             first = load_race_json(path)
             self.assertNotIn("general", first["prediction"][0])
             self.assertEqual(first["simulation"], [])
-            self.assertFalse((root / "outbox/test_11r.json").exists())
-            self.assertTrue((root / "outbox/test_11r.statistical.json").exists())
+            self.assertFalse((root / "data/prediction_inputs/2026-08-16/test_11r.json").exists())
+            self.assertTrue((root / "data/prediction_inputs/2026-08-16/test_11r.statistical.json").exists())
             self.assertTrue((root / "public/index.html").exists())
 
             with patch.object(run_pre, "predict_statistical_paths") as statistical, \
@@ -375,7 +368,7 @@ class SchemaV10Tests(unittest.TestCase):
             for method in ("general", "statistical"):
                 self.assertIsNotNone(second["simulation"][0][method]["win"]["value"]["pre"])
                 self.assertIsNotNone(second["simulation"][0][method]["win"]["dutching"]["pre"])
-            finalized = json.loads((root / "outbox/test_11r.json").read_text(encoding="utf-8"))
+            finalized = json.loads((root / "data/prediction_inputs/2026-08-16/test_11r.json").read_text(encoding="utf-8"))
             self.assertEqual(finalized["horses"][0]["win_odds"], 3.0)
 
             with patch.object(run_pre_collect, "export_prediction_chat_input") as export, \
@@ -419,10 +412,8 @@ class SchemaV10Tests(unittest.TestCase):
                 save_race_json(path, race_payload())
                 for module in ("run_pre", "run_pre_collect", "predict", "simulate"):
                     stack.enter_context(patch(f"{module}.setup_logger", return_value=logger(f"resume-{module}")))
-                for module in (run_pre, run_pre_collect):
-                    stack.enter_context(patch.object(module, "outbox_chat_input_dir", return_value=root / "outbox"))
                 collect = stack.enter_context(patch.object(run_pre_collect, "collect_pre_races", return_value=("2026-08-16", [path])))
-                clock = stack.enter_context(patch.object(predict, "now_jst", return_value=parse_jst_datetime("2026-08-16T12:00:00+09:00")))
+                clock = stack.enter_context(patch.object(predict, "now_jst", return_value=parse_jst_datetime("2026-08-15T18:00:00+09:00" if phase == "statistical" else "2026-08-16T12:00:00+09:00")))
                 client = Mock()
                 client.invoke_json.side_effect = RuntimeError("test runtime failure")
                 stack.enter_context(patch.object(predict.LLMClient, "from_config", return_value=client))
@@ -430,11 +421,16 @@ class SchemaV10Tests(unittest.TestCase):
                     run_pre.run_pre_flow(config, "2026-08-16", phase=phase)
                 collect.assert_called_once()
                 suffix = ".statistical.json" if phase == "statistical" else ".json"
-                input_path = root / f"outbox/test_11r{suffix}"
+                input_path = root / f"data/prediction_inputs/2026-08-16/test_11r{suffix}"
                 frozen_bytes = input_path.read_bytes()
                 frozen = json.loads(frozen_bytes)
                 failed_prompt = client.invoke_json.call_args.args[0]
                 self.assertIn(json.dumps(frozen, ensure_ascii=False, indent=2), failed_prompt)
+                updated = load_race_json(path)
+                updated["race"]["weather"] = "updated after snapshot"
+                updated["horses"][0]["horse_name"] = "updated after snapshot"
+                updated["horses"][0]["win_odds"] = 99.0
+                save_race_json(path, updated)
                 collect.side_effect = AssertionError("resume must not collect")
                 clock.return_value = parse_jst_datetime("2026-08-16T16:00:00+09:00")
                 client.invoke_json.side_effect = None
@@ -456,6 +452,41 @@ class SchemaV10Tests(unittest.TestCase):
                 with self.assertRaisesRegex(FileNotFoundError, "Saved prediction input missing"):
                     run_pre.run_pre_flow(config, "2026-08-16", phase=phase, resume=True)
                 self.assertEqual(path.read_bytes(), before)
+
+    def test_invalid_saved_input_is_not_rebuilt_or_overwritten(self):
+        from utils import prediction_input_path, atomic_write_json
+        for method in ("general", "statistical"):
+            with self.subTest(method=method), tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+                for module in (run_pre, run_pre_collect, predict):
+                    stack.enter_context(patch.object(module, "setup_logger", return_value=logger("invalid-input")))
+                root = Path(tmp)
+                config = load_config()
+                config.update(data_dir=str(root / "data"), public_dir=str(root / "public"))
+                payload = race_payload()
+                path = root / "data/races/2026-08-16/test_11r.json"
+                save_race_json(path, payload)
+                snapshot = predict.build_statistical_prediction_input(payload) if method == "statistical" else predict.build_prediction_chat_input(config, payload)
+                snapshot["meta"]["race_id"] = "old-race"
+                input_path = prediction_input_path(config, path, method)
+                atomic_write_json(input_path, snapshot)
+                before = input_path.read_bytes()
+                with patch.object(run_pre, "run_pre_collect_flow") as collect, patch.object(predict.LLMClient, "from_config") as client:
+                    with self.assertRaisesRegex(RuntimeError, "race IDs do not match"):
+                        run_pre.run_pre_flow(config, "2026-08-16", phase=method, resume=True)
+                    collect.assert_not_called()
+                    client.assert_not_called()
+                self.assertEqual(input_path.read_bytes(), before)
+                if method == "general":
+                    with self.assertRaisesRegex(ValueError, "race_id mismatch"):
+                        run_pre_collect.export_prediction_chat_input([path], config, "invalid-input")
+                else:
+                    with patch.object(run_pre_collect, "collect_pre_races", return_value=("2026-08-16", [path])), \
+                         patch.object(predict, "now_jst", return_value=parse_jst_datetime("2026-08-16T12:00:00+09:00")), \
+                         patch.object(predict.LLMClient, "from_config") as client:
+                        with self.assertRaises(RuntimeError):
+                            run_pre.run_pre_flow(config, "2026-08-16", phase=method)
+                        client.assert_not_called()
+                self.assertEqual(input_path.read_bytes(), before)
 
     def test_resume_rejects_all_phase_or_missing_date(self):
         for phase, date in (("all", "2026-08-16"), ("statistical", None), ("general", None)):
@@ -482,8 +513,8 @@ class SchemaV10Tests(unittest.TestCase):
                 other_payload["race"]["track"] = "函館"
                 save_race_json(other, other_payload)
                 before = other.read_bytes()
-                outbox = root / "outbox"
-                outbox.mkdir()
+                outbox = root / "data/prediction_inputs/2026-08-16"
+                outbox.mkdir(parents=True)
                 other_input = outbox / "hakodate_11r.json"
                 other_input.write_bytes(b"unrelated input must not be read or changed")
                 other_pages = [root / "public" / factory("2026-08-16", "函館", 11)
@@ -493,8 +524,6 @@ class SchemaV10Tests(unittest.TestCase):
                     page.write_bytes(b"existing unrelated HTML")
                 for module in ("run_pre", "run_pre_collect", "predict", "simulate"):
                     stack.enter_context(patch(f"{module}.setup_logger", return_value=logger(f"single-{module}")))
-                for module in (run_pre, run_pre_collect):
-                    stack.enter_context(patch.object(module, "outbox_chat_input_dir", return_value=outbox))
                 collect = stack.enter_context(patch.object(run_pre_collect, "collect_races", return_value=[target]))
                 select = stack.enter_context(patch.object(run_pre_collect, "select_default_races"))
                 client = Mock()

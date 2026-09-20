@@ -438,9 +438,9 @@ class PredictionValidationTests(unittest.TestCase):
                 elif case == "race_id":
                     frozen["meta"]["race_id"] = "wrong-race"
                 elif case == "race":
-                    frozen["race"]["start_time"] = "14:00"
+                    frozen["race"]["date"] = "2026-08-23"
                 elif case == "horses":
-                    frozen["horses"][0]["horse_name"] = "wrong-horse"
+                    frozen["horses"][0]["horse_number"] = frozen["horses"][1]["horse_number"]
                 else:
                     frozen = {}
                 save_race_json(path, payload)
@@ -603,13 +603,6 @@ class CodexClientTests(unittest.TestCase):
 
 
 class FlowAndCompatibilityTests(unittest.TestCase):
-    def setUp(self):
-        directory = tempfile.TemporaryDirectory()
-        self.addCleanup(directory.cleanup)
-        patcher = patch.object(run_pre, "outbox_chat_input_dir", return_value=Path(directory.name))
-        patcher.start()
-        self.addCleanup(patcher.stop)
-
     def test_export_does_not_clear_existing_prediction(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -623,10 +616,6 @@ class FlowAndCompatibilityTests(unittest.TestCase):
                 run_pre_collect,
                 "setup_logger",
                 return_value=logger("test.export.reuse"),
-            ), patch.object(
-                run_pre_collect,
-                "outbox_chat_input_dir",
-                return_value=root / "outbox",
             ):
                 exported = run_pre_collect.export_prediction_chat_input([path], {"llm_provider": "codex", "llm_model": "gpt-test"}, "test-export")
 

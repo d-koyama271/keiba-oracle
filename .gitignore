@@ -29,6 +29,7 @@ Thumbs.db
 # Runtime artifacts
 public/
 data/races/
+data/prediction_inputs/
 data/automation/
 data/deploy/
 data/_site_stage/

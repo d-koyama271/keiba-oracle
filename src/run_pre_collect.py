@@ -16,7 +16,7 @@ from collect import (
     normalize_class_grade,
     parse_race_overview,
 )
-from predict import build_prediction_chat_input
+from predict import build_prediction_chat_input, load_prediction_inputs, validate_prediction_input
 from utils import (
     runtime_prediction_entry,
     atomic_write_json,
@@ -24,7 +24,7 @@ from utils import (
     load_race_json,
     log_job,
     now_jst,
-    outbox_chat_input_dir,
+    prediction_input_path,
     parse_target_date,
     race_start_datetime,
     setup_logger,
@@ -148,7 +148,6 @@ def target_odds_datetime(race: dict, reference_minutes: int) -> datetime:
 
 def export_prediction_chat_input(paths: list[Path], config: dict, job_name: str) -> list[Path]:
     logger = setup_logger(job_name, config)
-    output_dir = outbox_chat_input_dir("prediction")
     exported: list[Path] = []
 
     for path in paths:
@@ -162,7 +161,12 @@ def export_prediction_chat_input(paths: list[Path], config: dict, job_name: str)
             log_job(logger, job_name, payload["meta"].get("race_id"), "prediction input skipped: prediction already exists")
             continue
         chat_input = build_prediction_chat_input(config, payload)
-        output_path = output_dir / f"{path.stem}.json"
+        output_path = prediction_input_path(config, path)
+        if output_path.exists():
+            saved = load_prediction_inputs([output_path])
+            if set(saved) != {payload["meta"]["race_id"]}:
+                raise ValueError(f"Saved prediction input race_id mismatch: {output_path}")
+            validate_prediction_input(saved[payload["meta"]["race_id"]], payload)
         atomic_write_json(output_path, chat_input)
         exported.append(output_path)
         log_job(logger, job_name, payload["meta"].get("race_id"), f"prediction chat_input exported -> {output_path}")

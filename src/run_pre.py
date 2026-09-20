@@ -6,6 +6,8 @@ from pathlib import Path
 from predict import (
     build_pending_statistical_inputs,
     load_prediction_inputs,
+    validate_prediction_input,
+    validate_statistical_prediction_input,
     predict_paths,
     predict_statistical_paths,
 )
@@ -17,7 +19,7 @@ from simulate import simulate_paths
 from utils import (
     atomic_write_json,
     list_race_files,
-    outbox_chat_input_dir,
+    prediction_input_path,
     runtime_prediction_entry,
     load_config,
     load_race_json,
@@ -43,8 +45,7 @@ def run_pre_flow(config: dict, target_date: str | None, job_name: str = "pre", *
             raise RuntimeError(f"No race JSON found for resume: {target_date}")
         cancelled_paths = [path for path in paths if load_race_json(path).get("race", {}).get("cancelled")]
         paths = [path for path in paths if path not in cancelled_paths]
-        suffix = ".statistical.json" if phase == "statistical" else ".json"
-        input_paths = [outbox_chat_input_dir("prediction") / f"{path.stem}{suffix}" for path in paths]
+        input_paths = [prediction_input_path(config, path, phase) for path in paths]
         for path in input_paths:
             if not path.is_file():
                 raise FileNotFoundError(f"Saved prediction input missing for resume: {path}")
@@ -52,6 +53,10 @@ def run_pre_flow(config: dict, target_date: str | None, job_name: str = "pre", *
         race_ids = {str(load_race_json(path)["meta"].get("race_id") or "") for path in paths}
         if set(saved_inputs) != race_ids:
             raise RuntimeError("resume input race IDs do not match target races")
+        for path in paths:
+            payload = load_race_json(path)
+            validator = validate_statistical_prediction_input if phase == "statistical" else validate_prediction_input
+            validator(saved_inputs[payload["meta"]["race_id"]], payload)
     elif phase == "statistical":
         paths, input_paths = run_pre_collect_flow(config, target_date, job_name, phase=phase, **({"race_id": race_id} if race_id is not None else {}))
     else:
@@ -66,7 +71,13 @@ def run_pre_flow(config: dict, target_date: str | None, job_name: str = "pre", *
             try:
                 pending_inputs = build_pending_statistical_inputs([path], config)
                 for prediction_input in pending_inputs.values():
-                    atomic_write_json(outbox_chat_input_dir("prediction") / f"{path.stem}.statistical.json", prediction_input)
+                    input_path = prediction_input_path(config, path, "statistical")
+                    if input_path.exists():
+                        prediction_input = load_prediction_inputs([input_path])[prediction_input["meta"]["race_id"]]
+                        validate_statistical_prediction_input(prediction_input, load_race_json(path))
+                        pending_inputs[prediction_input["meta"]["race_id"]] = prediction_input
+                    else:
+                        atomic_write_json(input_path, prediction_input)
                 statistical_inputs.update(pending_inputs)
             except (ValueError, KeyError) as exc:
                 log_job(logger, job_name, None, f"statistical input unavailable for {path}: {exc}")

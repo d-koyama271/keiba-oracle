@@ -143,6 +143,15 @@ def outbox_chat_input_dir(kind: str, root: Path | None = None) -> Path:
     return resolve_path(Path("outbox") / "chat_input" / kind, root or repo_root())
 
 
+def prediction_input_path(config: dict[str, Any], race_path: str | Path,
+                          method: str = "general", root: Path | None = None) -> Path:
+    if method not in ("general", "statistical"):
+        raise ValueError(f"invalid prediction method: {method}")
+    path = Path(race_path)
+    suffix = ".statistical.json" if method == "statistical" else ".json"
+    return data_dir(config, root) / "prediction_inputs" / path.parent.name / f"{path.stem}{suffix}"
+
+
 def stage_dir(config: dict[str, Any], root: Path | None = None) -> Path:
     return data_dir(config, root) / "_site_stage"
 

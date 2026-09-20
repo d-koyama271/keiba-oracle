@@ -152,6 +152,33 @@ class ResultCollectionTests(unittest.TestCase):
                 run_post_collect.run_post_flow(config, "2026-07-26", "post", race_id="202604020299")
             self.assertEqual(fetch.call_count, 1)
 
+    def test_statistical_result_without_simulation_is_evaluated_and_published(self):
+        from test_evaluation import make_payload
+        from utils import load_config, race_json_path, race_result_html_path
+        with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+            for module in ("run_post_collect", "simulate", "evaluation", "evaluation_summary"):
+                stack.enter_context(patch(f"{module}.setup_logger", return_value=self.logger))
+            root = Path(tmp)
+            config = load_config()
+            config.update(data_dir=str(root / "data"), public_dir=str(root / "public"))
+            payload = ensure_race_payload(make_payload())
+            payload["prediction"][0]["statistical"] = payload["prediction"][0].pop("general")
+            payload["simulation"] = []
+            race = payload["race"]
+            path = race_json_path(config, race["date"], race["track"], race["race_number"])
+            atomic_write_json(path, payload)
+            with patch.object(run_post_collect, "collect_results", return_value=[path]):
+                processed = run_post_collect.run_post_flow(config, race["date"], "test-statistical-post", race_id=payload["meta"]["race_id"])
+            self.assertEqual(processed, [path])
+            saved = load_race_json(path)
+            self.assertEqual(saved["simulation"], [])
+            self.assertEqual(saved["prediction"], payload["prediction"])
+            self.assertIn("statistical", saved["evaluation"][0])
+            self.assertNotIn("general", saved["evaluation"][0])
+            self.assertTrue((root / "public" / race_result_html_path(race["date"], race["track"], race["race_number"])).is_file())
+            self.assertTrue((root / "public/index.html").is_file())
+            self.assertTrue((root / "data/evaluation_summary.json").is_file())
+
     def test_post_clis_forward_optional_race_id(self):
         for module, job in ((run_post, "post"), (run_post_collect, "post_collect")):
             for race_id in (None, "202604020207"):

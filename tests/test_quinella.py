@@ -311,6 +311,7 @@ class SettlementTests(unittest.TestCase):
     @patch("collect.setup_logger", return_value=logging.getLogger("test-quinella-legacy"))
     def test_direct_post_collection_keeps_confirmed_quinella_on_retry(self, _logger):
         payload, config = payload_with_odds(), load_config()
+        payload["meta"]["race_id"] = "202606040111"
         payload["result"] = parse_result(result_html())
         expected = copy.deepcopy(payload["result"])
         with tempfile.TemporaryDirectory() as temporary:
@@ -324,7 +325,7 @@ class SettlementTests(unittest.TestCase):
                 patch("collect.fetch_validated_win_odds", return_value=({}, CAPTURED, "netkeiba", "https://example.invalid")),
                 patch("collect.parse_horses", return_value=payload["horses"]),
             ):
-                self.assertEqual(collect_races(config, "test", "2026-09-05", "post", root, ["202606040111"]), [path])
+                self.assertEqual(collect_races(config, "test", "2026-09-05", "post", root, [payload["meta"]["race_id"]]), [path])
             saved = load_race_json(path)["result"]
         self.assertEqual(saved["quinella_settlement"], expected["quinella_settlement"])
         self.assertEqual(saved["payouts"]["quinella"], expected["payouts"]["quinella"])
@@ -360,8 +361,8 @@ class FlowAndSummaryTests(unittest.TestCase):
             root = Path(temporary)
             path = root / "race.json"
             save_race_json(path, payload)
-            with patch("run_pre_collect.outbox_chat_input_dir", return_value=root / "input"):
-                exported = export_prediction_chat_input([path], config, "test-export")
+            config["data_dir"] = str(root / "data")
+            exported = export_prediction_chat_input([path], config, "test-export")
             self.assertEqual(load_race_json(path)["simulation"][0]["general"]["quinella"], payload["simulation"][0]["general"]["quinella"])
             self.assertNotIn("quinella_odds", json.loads(exported[0].read_text(encoding="utf-8"))["race"])
 

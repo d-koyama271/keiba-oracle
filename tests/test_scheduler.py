@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 import scheduler
-from utils import JST, atomic_write_json, race_json_path, outbox_chat_input_dir, load_race_json
+from utils import JST, atomic_write_json, race_json_path, prediction_input_path, load_race_json
 from automation_state import record_failure, automation_state_path, load_automation_state
 
 
@@ -51,12 +51,11 @@ class SchedulerTests(unittest.TestCase):
                 new_path = race_json_path(config, "2026-02-10", "東京", 11)
                 self.assertEqual(load_race_json(new_path)["race"]["rescheduled_from"], "2026-02-08")
                 self.assertTrue(load_race_json(path)["race"]["cancelled"])
-                input_path = outbox_chat_input_dir("prediction", Path(tmp)) / f"{new_path.stem}.json"
-                atomic_write_json(input_path, {"race": race})
+                input_path = prediction_input_path(config, new_path, root=Path(tmp))
+                atomic_write_json(input_path, {"meta": {"race_id": replacement["race_id"], "kind": "prediction", "method": "general"}, "race": race, "horses": [{"horse_number": 1}]})
                 decisions = scheduler.decide_phases([replacement], config, datetime(2026, 2, 10, 15, tzinfo=JST), Path(tmp))
-                self.assertTrue(next(d for d in decisions if d["phase"] == "general")["runnable"])
-                self.assertEqual(next(d for d in decisions if d["phase"] == "general")["mode"], "normal")
-                atomic_write_json(input_path, {"race": replacement["race"]})
+                self.assertEqual(next(d for d in decisions if d["phase"] == "general")["reason"], "invalid_prediction_input")
+                atomic_write_json(input_path, {"meta": {"race_id": replacement["race_id"], "kind": "prediction", "method": "general"}, "race": replacement["race"], "horses": [{"horse_number": 1}]})
                 decisions = scheduler.decide_phases([replacement], config, datetime(2026, 2, 10, 15, tzinfo=JST), Path(tmp))
                 self.assertEqual(next(d for d in decisions if d["phase"] == "general")["mode"], "resume")
             before = path.read_bytes()
@@ -341,6 +340,43 @@ class SchedulerTests(unittest.TestCase):
                 discover.assert_not_called()
             self.assertEqual(path.read_bytes(), before)
 
+    def test_prediction_inputs_are_date_and_method_scoped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = {**self.config, "data_dir": tmp}
+            paths = []
+            for date in ("2026-09-20", "2026-09-27"):
+                race_path = race_json_path(config, date, config["target_races"][0], 11)
+                for method in ("general", "statistical"):
+                    path = prediction_input_path(config, race_path, method)
+                    self.assertEqual(path.parent, Path(tmp) / "prediction_inputs" / date)
+                    atomic_write_json(path, {"date": date, "method": method})
+                    paths.append(path)
+            self.assertEqual(len(set(paths)), 4)
+            self.assertTrue(all(path.is_file() for path in paths))
+
+    def test_scheduler_rejects_wrong_saved_input_identity_without_overwriting(self):
+        for method in ("general", "statistical"):
+            for field in ("race_id", "date", "track", "race_number", "method", "invalid_json"):
+                with self.subTest(method=method, field=field), tempfile.TemporaryDirectory() as tmp:
+                    config = {**self.config, "data_dir": tmp}
+                    race = {"date": "2026-09-20", "track": config["target_races"][0], "race_number": 11, "start_time": "15:40"}
+                    item = {"race_id": "202606040711", "race": race}
+                    path = prediction_input_path(config, race_json_path(config, race["date"], race["track"], 11), method)
+                    snapshot = {"meta": {"race_id": item["race_id"], "kind": "prediction", "method": method}, "race": dict(race), "horses": [{"horse_number": 1}]}
+                    if field in ("race_id", "method"):
+                        snapshot["meta"][field] = "old-race-or-other-method"
+                    elif field != "invalid_json":
+                        snapshot["race"][field] = "wrong-identity"
+                    atomic_write_json(path, snapshot)
+                    if field == "invalid_json":
+                        path.write_text("{", encoding="utf-8")
+                    before = path.read_bytes()
+                    decisions = scheduler.decide_phases([item], config, datetime(2026, 9, 20, 15, tzinfo=JST))
+                    decision = next(d for d in decisions if d["phase"] == method)
+                    self.assertFalse(decision["runnable"])
+                    self.assertEqual(decision["reason"], "invalid_prediction_input")
+                    self.assertEqual(path.read_bytes(), before)
+
     def test_phase_decisions_schedule_resume_and_missed_window(self):
         self.config["data_dir"] = "custom-data"
         race = {"date": "2026-09-20", "start_time": "15:40", "track": "中山", "race_number": 11}
@@ -361,13 +397,14 @@ class SchedulerTests(unittest.TestCase):
                 self.assertEqual(decide(after)[phase]["reason"], "missed_execution_window")
                 path = race_json_path(self.config, race["date"], race["track"], 11, root)
                 suffix = ".statistical.json" if phase == "statistical" else ".json"
-                atomic_write_json(outbox_chat_input_dir("prediction", root) / f"{path.stem}{suffix}", {})
+                atomic_write_json(prediction_input_path(self.config, path, phase, root), {"meta": {"race_id": "202606040711", "kind": "prediction", "method": phase}, "race": race, "horses": [{"horse_number": 1}]})
                 for current in (times["general"], after):
                     decision = decide(current)[phase]
                     self.assertTrue(decision["runnable"])
                     self.assertEqual(decision["mode"], "resume")
             # Decision reads must not create race or automation state files.
-            self.assertFalse((root / "custom-data").exists())
+            self.assertFalse((root / "custom-data/races").exists())
+            self.assertFalse((root / "custom-data/automation").exists())
 
     def test_completion_state_and_multiple_races_are_independent(self):
         self.config["data_dir"] = "custom-data"
@@ -417,7 +454,7 @@ class SchedulerTests(unittest.TestCase):
             path = race_json_path(self.config, item["race"]["date"], "中山", 11, root)
             def fail(config, date, *, phase, resume, race_id):
                 suffix = ".statistical.json" if phase == "statistical" else ".json"
-                atomic_write_json(outbox_chat_input_dir("prediction", root) / f"{path.stem}{suffix}", {})
+                atomic_write_json(prediction_input_path(config, path, phase, root), {"meta": {"race_id": race_id, "kind": "prediction", "method": phase}, "race": item["race"], "horses": [{"horse_number": 1}]})
                 raise SystemExit("runtime unavailable")
             with patch.object(scheduler, "run_pre_flow", side_effect=fail) as pre, \
                  patch.object(scheduler, "run_post_flow") as post:
@@ -470,7 +507,7 @@ class SchedulerTests(unittest.TestCase):
                     if phase != "result":
                         del payload["prediction"][0][phase]
                         suffix = ".statistical.json" if phase == "statistical" else ".json"
-                        atomic_write_json(outbox_chat_input_dir("prediction", root) / f"{path.stem}{suffix}", {})
+                        atomic_write_json(prediction_input_path(config, path, phase, root), {"meta": {"race_id": item["race_id"], "kind": "prediction", "method": phase}, "race": race, "horses": [{"horse_number": 1}]})
                     atomic_write_json(path, payload)
                     now = scheduler.calculate_phase_times(race, config)[phase]
                     def partial(*args, **kwargs):
@@ -534,7 +571,7 @@ class SchedulerTests(unittest.TestCase):
             now = scheduler.calculate_phase_times(items[0]["race"], self.config)["result"]
             for phase in ("statistical", "general"):
                 suffix = ".statistical.json" if phase == "statistical" else ".json"
-                atomic_write_json(outbox_chat_input_dir("prediction", root) / f"{paths['10'].stem}{suffix}", {})
+                atomic_write_json(prediction_input_path(self.config, paths["10"], phase, root), {"meta": {"race_id": "10", "kind": "prediction", "method": phase}, "race": items[0]["race"], "horses": [{"horse_number": 1}]})
                 record_failure(paths['10'], self.config, "10", phase, "failed", next_retry_at=now.isoformat(), root=root)
             def pre(config, date, *, phase, resume, race_id):
                 payload = load_race_json(paths[race_id]) or {"meta": {"schema_version": 10, "race_id": race_id}, "prediction": [{"id": "p1"}]}

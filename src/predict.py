@@ -193,6 +193,7 @@ def build_prediction_chat_input(
         "meta": {
             "race_id": payload["meta"].get("race_id"),
             "kind": "prediction",
+            "method": "general",
             "generated_at": now_jst_iso(),
         },
         "race": {key: value for key, value in payload["race"].items() if key != "quinella_odds"},
@@ -238,15 +239,11 @@ def validate_statistical_prediction_input(
     prediction_input: dict[str, Any],
     race_payload: dict[str, Any],
 ) -> None:
-    if set(prediction_input) != {"meta", "race", "horses"}:
-        raise ValueError("statistical prediction input must contain only meta, race, and horses")
-    meta = prediction_input.get("meta") or {}
-    if meta.get("method") != STATISTICAL_PREDICTION_METHOD:
-        raise ValueError("statistical prediction input method is invalid")
-    expected = build_statistical_prediction_input(race_payload)
-    comparable = {**prediction_input, "meta": {k: v for k, v in meta.items() if k != "generated_at"}}
+    validate_prediction_input(prediction_input, race_payload, method=STATISTICAL_PREDICTION_METHOD)
+    expected = build_statistical_prediction_input(prediction_input)
+    comparable = {**prediction_input, "meta": {k: v for k, v in prediction_input["meta"].items() if k != "generated_at"}}
     if comparable != expected:
-        raise ValueError("statistical prediction input does not match sanitized race JSON")
+        raise ValueError("statistical prediction input must contain only sanitized snapshot data")
 
 
 def ensure_statistical_prediction_is_pre_race(
@@ -282,18 +279,26 @@ def validate_statistical_prediction_metadata(prediction: dict[str, Any]) -> None
 def validate_prediction_input(
     prediction_input: dict[str, Any],
     race_payload: dict[str, Any],
+    *, method: str = "general",
 ) -> None:
-    if set(prediction_input) != {"meta", "race", "horses"}:
+    if not isinstance(prediction_input, dict) or set(prediction_input) != {"meta", "race", "horses"}:
         raise ValueError("prediction input must contain only meta, race, and horses")
-
-    race_id = str((prediction_input.get("meta") or {}).get("race_id") or "")
-    if race_id != str(race_payload["meta"].get("race_id") or ""):
+    meta, race = prediction_input["meta"], prediction_input["race"]
+    if not isinstance(meta, dict) or not isinstance(race, dict):
+        raise ValueError("invalid prediction input identity")
+    if not meta.get("race_id") or meta["race_id"] != race_payload["meta"].get("race_id"):
         raise ValueError("prediction input race_id does not match race JSON")
-    expected_race = {key: value for key, value in (race_payload.get("race") or {}).items() if key != "quinella_odds"}
-    if prediction_input.get("race") != expected_race:
-        raise ValueError("prediction input race does not match race JSON")
-    if prediction_input.get("horses") != race_payload.get("horses"):
-        raise ValueError("prediction input horses do not match race JSON")
+    if meta.get("kind") != "prediction" or meta.get("method", "general") != method:
+        raise ValueError("prediction input method is invalid")
+    for key in ("date", "track", "race_number"):
+        if not race.get(key) or race[key] != race_payload["race"].get(key):
+            raise ValueError(f"prediction input race {key} does not match race JSON")
+    horses = prediction_input["horses"]
+    if not isinstance(horses, list) or not horses:
+        raise ValueError("prediction input horses missing")
+    numbers = [horse.get("horse_number") if isinstance(horse, dict) else None for horse in horses]
+    if any(type(number) is not int or number < 1 for number in numbers) or len(set(numbers)) != len(numbers):
+        raise ValueError("prediction input horse numbers are invalid")
 
 
 def load_prediction_inputs(paths: list[Path]) -> dict[str, dict[str, Any]]:
@@ -371,7 +376,7 @@ def predict_file(
         prediction = generate_prediction(
             config,
             prediction_input,
-            payload["horses"],
+            prediction_input["horses"],
             "prompt_prediction.txt",
             root,
         )
@@ -418,7 +423,7 @@ def predict_statistical_file(
         statistical = generate_prediction(
             config,
             prediction_input,
-            payload["horses"],
+            prediction_input["horses"],
             STATISTICAL_PROMPT_FILE,
             root,
             STATISTICAL_PREDICTION_METHOD,

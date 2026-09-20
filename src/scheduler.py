@@ -14,9 +14,10 @@ from collect import (SHUTUBA_URL, discover_race_ids, fetch_html, parse_race_over
                      fetch_cancellation_notices, parse_cancellation_notice)
 from automation_state import clear_phase_state, load_automation_state, record_failure
 from run_pre import run_pre_flow
+from predict import validate_prediction_input, validate_statistical_prediction_input
 from deploy import deploy_site
 from run_post_collect import run_post_flow, publish_post_results
-from utils import (JST, atomic_write_json, data_dir, load_config, load_race_json, now_jst, outbox_chat_input_dir,
+from utils import (JST, atomic_write_json, data_dir, load_config, load_race_json, now_jst, prediction_input_path,
                    list_race_files, ensure_race_payload, save_race_json,
                    parse_jst_datetime, prediction_for_method, race_json_path,
                    race_start_datetime, track_name_from_race_id)
@@ -230,13 +231,18 @@ def decide_phases(races: list[dict], config: dict, now: datetime | None = None,
             raise ValueError("automation state race_id mismatch")
         start = race_start_datetime(race["date"], race["start_time"])
         for phase, scheduled_at in calculate_phase_times(race, config).items():
-            saved_input = phase != "result" and (
-                outbox_chat_input_dir("prediction", root)
-                / f"{path.stem}{'.statistical' if phase == 'statistical' else ''}.json"
-            ).is_file()
-            if saved_input and payload.get("race", {}).get("rescheduled_from"):
-                input_path = outbox_chat_input_dir("prediction", root) / f"{path.stem}{'.statistical' if phase == 'statistical' else ''}.json"
-                saved_input = json.loads(input_path.read_text(encoding="utf-8")).get("race", {}).get("date") == race["date"]
+            saved_input = False
+            invalid_input = False
+            if phase != "result":
+                input_path = prediction_input_path(config, path, phase, root)
+                if input_path.is_file():
+                    try:
+                        snapshot = json.loads(input_path.read_text(encoding="utf-8"))
+                        validator = validate_statistical_prediction_input if phase == "statistical" else validate_prediction_input
+                        validator(snapshot, {"meta": {"race_id": race_id}, "race": race})
+                        saved_input = True
+                    except (OSError, ValueError, TypeError, KeyError):
+                        invalid_input = True
             record = (state or {}).get("phases", {}).get(phase, {})
             completed = result_phase_complete(payload) if phase == "result" else bool(prediction_for_method(payload, phase))
             reason = None
@@ -249,6 +255,8 @@ def decide_phases(races: list[dict], config: dict, now: datetime | None = None,
                 reason = "retry_wait"
             elif completed and not record:
                 reason = "completed"
+            elif invalid_input:
+                reason = "invalid_prediction_input"
             elif phase == "result" and not cancelled and not any(prediction_for_method(payload, method) for method in ("general", "statistical")):
                 reason = "no_prediction"
             elif phase != "result" and not completed and payload.get("result"):

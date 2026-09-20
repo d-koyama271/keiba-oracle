@@ -1566,6 +1566,10 @@ def collect_races(
         if track_name not in target_races:
             continue
 
+        existing_path = race_json_path(config, target_date, track_name, int(race_id[-2:]), root)
+        existing = load_race_json(existing_path)
+        if existing and existing["meta"].get("race_id") != race_id:
+            raise ValueError(f"existing race JSON race_id mismatch: {existing_path}")
         try:
             entry_html, entry_source_url = fetch_html(
                 session,

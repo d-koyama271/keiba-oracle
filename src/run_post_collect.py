@@ -61,8 +61,8 @@ def run_post_flow(config: dict, target_date: str, job_name: str, *, race_id: str
 
     paths = collect_results(config, job_name, target_paths)
     cancelled_paths = [path for path in paths if load_race_json(path).get("race", {}).get("cancelled")]
-    simulated_paths = simulate_paths([path for path in paths if path not in cancelled_paths], config, "post", job_name) + cancelled_paths
-    return publish_post_results(simulated_paths, config, job_name, **({"race_id": race_id} if race_id is not None else {}))
+    simulate_paths([path for path in paths if path not in cancelled_paths], config, "post", job_name)
+    return publish_post_results(paths, config, job_name, **({"race_id": race_id} if race_id is not None else {}))
 
 
 def main() -> None:

@@ -578,6 +578,19 @@ class DefaultRaceSelectionTests(unittest.TestCase):
 
 
 class MultipleRaceGenerationTests(unittest.TestCase):
+    def test_collection_rejects_existing_race_id_mismatch_without_writes(self):
+        from utils import atomic_write_json, race_json_path
+        with tempfile.TemporaryDirectory() as tmp:
+            config = {"data_dir": tmp, "target_races": [collect_module.track_name_from_race_id(NIIGATA_7R)]}
+            path = race_json_path(config, "2026-07-26", config["target_races"][0], 7)
+            atomic_write_json(path, {"meta": {"race_id": "old-race"}, "prediction": {"horses": []}})
+            before = path.read_bytes()
+            with patch.object(collect_module, "fetch_html") as fetch, patch.object(collect_module, "setup_logger"):
+                with self.assertRaisesRegex(ValueError, "race_id mismatch"):
+                    collect_module.collect_races(config, "test-identity", "2026-07-26", "pre", selected_race_ids=[NIIGATA_7R])
+                fetch.assert_not_called()
+            self.assertEqual(path.read_bytes(), before)
+
     def test_each_selected_race_gets_separate_race_and_chat_json(self) -> None:
         race_ids = [NIIGATA_7R, CHUKYO_7R]
         tracks = {NIIGATA_7R: "新潟", CHUKYO_7R: "中京"}
@@ -643,10 +656,10 @@ class MultipleRaceGenerationTests(unittest.TestCase):
 
             discovery.assert_not_called()
 
-            outbox = root / "outbox"
+            config["data_dir"] = str(root / "data")
+            outbox = root / "data/prediction_inputs/2026-07-19"
             with ExitStack() as stack:
                 stack.enter_context(patch.object(run_pre_collect, "setup_logger", return_value=logger))
-                stack.enter_context(patch.object(run_pre_collect, "outbox_chat_input_dir", return_value=outbox))
                 exported = run_pre_collect.export_prediction_chat_input(paths, config, "test-multiple-export")
 
             self.assertEqual({path.name for path in paths}, {"niigata_7r.json", "chukyo_7r.json"})
