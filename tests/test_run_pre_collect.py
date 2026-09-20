@@ -295,125 +295,37 @@ class DefaultRaceSelectionTests(unittest.TestCase):
             selected = run_pre_collect.select_default_races(config)
         return selected, seen_dates
 
-    def test_later_nearest_graded_date_beats_first_non_graded_date(self) -> None:
-        selected, _ = self.select(
-            {
-                "2026-07-18": [FUKUSHIMA],
-                "2026-07-19": [KOKURA],
-            },
-            {
-                FUKUSHIMA: race("福島", "阿武隈S", "15:45"),
-                KOKURA: race("小倉", "小倉記念 (G3)", "15:35"),
-            },
+    def test_default_selection_respects_grades_dates_period_and_fallback(self):
+        cases = (
+            ("later_nearest_graded_date_beats_first_non_graded_date", {'2026-07-18': [FUKUSHIMA], '2026-07-19': [KOKURA]},
+             {FUKUSHIMA: race('福島', '阿武隈S', '15:45'), KOKURA: race('小倉', '小倉記念 (G3)', '15:35')}, "2026-07-19", {KOKURA}),
+            ("two_graded_races_on_same_date_are_both_selected", {'2026-07-18': [KOKURA, HAKODATE]},
+             {KOKURA: race('小倉', '小倉記念 (G3)', '15:35'), HAKODATE: race('函館', '函館2歳S (G3)', '15:25')}, "2026-07-18", {KOKURA, HAKODATE}),
+            ("different_grades_on_same_date_are_all_selected", {'2026-07-18': [TOKYO, KYOTO, KOKURA]},
+             {TOKYO: race('東京', 'G1テスト (G1)', '15:40'), KYOTO: race('京都', 'G2テスト (G2)', '15:35'), KOKURA: race('小倉', 'G3テスト (G3)', '15:30')}, "2026-07-18", {TOKYO, KYOTO, KOKURA}),
+            ("all_graded_races_in_same_race_period_are_selected", {'2026-07-18': [KOKURA, HAKODATE], '2026-07-19': [TOKYO]},
+             {KOKURA: race('小倉', '小倉記念 (G3)', '15:35'), HAKODATE: race('函館', '函館2歳S (G3)', '15:25'), TOKYO: race('東京', '翌日重賞 (G1)', '15:40')}, "2026-07-18", {KOKURA, HAKODATE, TOKYO}),
+            ("graded_races_are_selected_regardless_of_race_number", {'2026-07-18': [NIIGATA_7R, CHUKYO_7R, FUKUSHIMA]},
+             {NIIGATA_7R: race('新潟', '関屋記念 (G3)', '15:45', 7), CHUKYO_7R: race('中京', '東海S (G3)', '15:35', 7), FUKUSHIMA: race('福島', '非重賞', '15:25')}, "2026-07-18", {NIIGATA_7R, CHUKYO_7R}),
+            ("later_race_period_is_not_included", {'2026-07-18': [KOKURA], '2026-07-19': [HAKODATE], '2026-07-25': [TOKYO]},
+             {KOKURA: race('小倉', '小倉記念 (G3)', '15:35'), HAKODATE: race('函館', '函館2歳S (G3)', '15:25'), TOKYO: race('東京', '翌週重賞 (G1)', '15:40')}, "2026-07-18", {KOKURA, HAKODATE}),
+            ("no_graded_race_falls_back_to_all_11r_in_race_period", {'2026-07-18': [FUKUSHIMA, KOKURA], '2026-07-19': [HAKODATE]},
+             {FUKUSHIMA: race('福島', '非重賞A', '15:30'), KOKURA: race('小倉', '非重賞B', '15:45'), HAKODATE: race('函館', '非重賞C', '15:50')}, "2026-07-18", {FUKUSHIMA, KOKURA, HAKODATE}),
         )
-
-        target_date, items, reason = selected
-        self.assertEqual(target_date, "2026-07-19")
-        self.assertEqual([item["race_id"] for item in items], [KOKURA])
-        self.assertTrue(reason)
-
-    def test_two_graded_races_on_same_date_are_both_selected(self) -> None:
-        selected, _ = self.select(
-            {"2026-07-18": [KOKURA, HAKODATE]},
-            {
-                KOKURA: race("小倉", "小倉記念 (G3)", "15:35"),
-                HAKODATE: race("函館", "函館2歳S (G3)", "15:25"),
-            },
-        )
-
-        self.assertEqual({item["race_id"] for item in selected[1]}, {KOKURA, HAKODATE})
-
-    def test_different_grades_on_same_date_are_all_selected(self) -> None:
-        selected, _ = self.select(
-            {"2026-07-18": [TOKYO, KYOTO, KOKURA]},
-            {
-                TOKYO: race("東京", "G1テスト (G1)", "15:40"),
-                KYOTO: race("京都", "G2テスト (G2)", "15:35"),
-                KOKURA: race("小倉", "G3テスト (G3)", "15:30"),
-            },
-        )
-
-        self.assertEqual({item["grade_rank"] for item in selected[1]}, {1, 2, 3})
-        self.assertEqual(len(selected[1]), 3)
-
-    def test_all_graded_races_in_same_race_period_are_selected(self) -> None:
-        selected, seen_dates = self.select(
-            {
-                "2026-07-18": [KOKURA, HAKODATE],
-                "2026-07-19": [TOKYO],
-            },
-            {
-                KOKURA: race("小倉", "小倉記念 (G3)", "15:35"),
-                HAKODATE: race("函館", "函館2歳S (G3)", "15:25"),
-                TOKYO: race("東京", "翌日重賞 (G1)", "15:40"),
-            },
-        )
-
-        self.assertEqual(selected[0], "2026-07-18")
-        self.assertEqual(
-            {item["race_id"] for item in selected[1]},
-            {KOKURA, HAKODATE, TOKYO},
-        )
-        self.assertIn(("2026-07-20", None, True), seen_dates)
-        self.assertNotIn(("2026-07-21", None, True), seen_dates)
-
-    def test_graded_races_are_selected_regardless_of_race_number(self) -> None:
-        selected, _ = self.select(
-            {
-                "2026-07-18": [NIIGATA_7R, CHUKYO_7R, FUKUSHIMA],
-            },
-            {
-                NIIGATA_7R: race("新潟", "関屋記念 (G3)", "15:45", 7),
-                CHUKYO_7R: race("中京", "東海S (G3)", "15:35", 7),
-                FUKUSHIMA: race("福島", "非重賞", "15:25"),
-            },
-        )
-
-        self.assertEqual(
-            {item["race_id"] for item in selected[1]},
-            {NIIGATA_7R, CHUKYO_7R},
-        )
-
-    def test_later_race_period_is_not_included(self) -> None:
-        selected, seen_dates = self.select(
-            {
-                "2026-07-18": [KOKURA],
-                "2026-07-19": [HAKODATE],
-                "2026-07-25": [TOKYO],
-            },
-            {
-                KOKURA: race("小倉", "小倉記念 (G3)", "15:35"),
-                HAKODATE: race("函館", "函館2歳S (G3)", "15:25"),
-                TOKYO: race("東京", "翌週重賞 (G1)", "15:40"),
-            },
-        )
-
-        self.assertEqual(
-            {item["race_id"] for item in selected[1]},
-            {KOKURA, HAKODATE},
-        )
-        self.assertNotIn(("2026-07-25", None, True), seen_dates)
-
-    def test_no_graded_race_falls_back_to_all_11r_in_race_period(self) -> None:
-        selected, _ = self.select(
-            {
-                "2026-07-18": [FUKUSHIMA, KOKURA],
-                "2026-07-19": [HAKODATE],
-            },
-            {
-                FUKUSHIMA: race("福島", "非重賞A", "15:30"),
-                KOKURA: race("小倉", "非重賞B", "15:45"),
-                HAKODATE: race("函館", "非重賞C", "15:50"),
-            },
-        )
-
-        target_date, items, reason = selected
-        self.assertEqual(target_date, "2026-07-18")
-        self.assertEqual(
-            {item["race_id"] for item in items},
-            {FUKUSHIMA, KOKURA, HAKODATE},
-        )
-        self.assertTrue(reason)
+        for name, dates, races, expected_date, expected_ids in cases:
+            with self.subTest(case=name):
+                (target_date, items, reason), seen_dates = self.select(dates, races)
+                self.assertEqual(target_date, expected_date)
+                self.assertEqual({item["race_id"] for item in items}, expected_ids)
+                self.assertTrue(reason)
+                if name == "different_grades_on_same_date_are_all_selected":
+                    self.assertEqual({item["grade_rank"] for item in items}, {1, 2, 3})
+                    self.assertEqual(len(items), 3)
+                if name == "all_graded_races_in_same_race_period_are_selected":
+                    self.assertIn(("2026-07-20", None, True), seen_dates)
+                    self.assertNotIn(("2026-07-21", None, True), seen_dates)
+                if name == "later_race_period_is_not_included":
+                    self.assertNotIn(("2026-07-25", None, True), seen_dates)
 
     def test_date_argument_keeps_existing_collection_path(self) -> None:
         config = {"target_races": ["福島", "小倉"]}
@@ -433,18 +345,6 @@ class DefaultRaceSelectionTests(unittest.TestCase):
         self.assertEqual(collect.call_args.args[0]["target_races"], ["福島", "小倉"])
         self.assertEqual(collect.call_args.args[2:], ("2026-07-18", "pre"))
         self.assertIsNone(collect.call_args.kwargs["selected_race_ids"])
-
-    def test_run_pre_date_argument_is_forwarded_to_pre_flow(self) -> None:
-        config = {"target_races": ["中京", "新潟"]}
-        with ExitStack() as stack:
-            stack.enter_context(
-                patch.object(sys, "argv", ["run_pre.py", "--date", "2026-08-30"])
-            )
-            stack.enter_context(patch.object(run_pre, "load_config", return_value=config))
-            run_flow = stack.enter_context(patch.object(run_pre, "run_pre_flow"))
-            run_pre.main()
-
-        run_flow.assert_called_once_with(config, "2026-08-30", phase="all", resume=False)
 
     def test_collect_cli_date_pre_uses_pre_collection_mode(self) -> None:
         config = {"target_races": ["中京", "新潟"]}

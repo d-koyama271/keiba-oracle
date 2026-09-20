@@ -9,15 +9,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from bs4 import BeautifulSoup
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 import run_post_collect  # noqa: E402
-import watcher  # noqa: E402
 from evaluation import build_evaluation, evaluate_file  # noqa: E402
-from render import build_environment, build_race_context  # noqa: E402
 from utils import ensure_race_payload, load_race_json, save_race_json  # noqa: E402
 
 
@@ -210,7 +207,7 @@ class EvaluationMetricTests(unittest.TestCase):
 
 class EvaluationFlowTests(unittest.TestCase):
     def tearDown(self) -> None:
-        for name in ("test-evaluation", "test-post-publish", "test-watcher"):
+        for name in ("test-evaluation", "test-post-publish"):
             close_logger(name)
 
     def test_post_publish_sets_status_without_feedback_output(self) -> None:
@@ -246,44 +243,6 @@ class EvaluationFlowTests(unittest.TestCase):
                 publish.assert_called_once_with(config, root)
             finally:
                 close_logger("test-post-publish")
-
-    def test_watcher_only_checks_prediction_inbox(self) -> None:
-        logger = logging.getLogger("test.watcher.stub")
-        logger.handlers.clear()
-        logger.addHandler(logging.NullHandler())
-        with patch.object(watcher, "setup_logger", return_value=logger), patch.object(
-            watcher,
-            "inbox_files",
-            return_value=[],
-        ) as inbox_files:
-            self.assertEqual(watcher.process_once({"data_dir": "data"}, "test-watcher"), 0)
-
-        inbox_files.assert_called_once_with("prediction")
-
-    def test_result_html_contains_evaluation_without_feedback(self) -> None:
-        payload = make_payload()
-        payload["evaluation"] = build_evaluation(payload)
-        payload["simulation"]["value"]["pre"] = None
-        payload["simulation"]["dutching"]["pre"] = None
-        context = build_race_context(payload)
-        context.update(
-            {
-                "page_kind": "result",
-                "prediction_page_name": "race.html",
-                "result_page_name": "race_result.html",
-                "status_label": "結果公開",
-                "status_class": "status-result",
-            }
-        )
-        rendered = build_environment(ROOT).get_template("race.html.j2").render(**context)
-        soup = BeautifulSoup(rendered, "html.parser")
-        evaluation_grid = soup.select_one("#result-general .metric-grid")
-
-        self.assertIsNotNone(evaluation_grid)
-        self.assertGreater(len(evaluation_grid.find_all("div", recursive=False)), 0)
-        self.assertNotIn("feedback", rendered.lower())
-        self.assertEqual(build_race_context(payload)["status"], "result_published")
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -44,22 +44,28 @@ class ArchiveProcessedTests(unittest.TestCase):
         logger.handlers.clear()
         logger.addHandler(NullHandler())
 
-        with patch.object(watcher, "setup_logger", return_value=logger), patch.object(
-            watcher,
-            "inbox_files",
-            return_value=[response_path],
-        ), patch.object(
-            watcher,
-            "import_prediction_response",
-            return_value=race_path,
-        ), patch.object(watcher, "finalize_pre"), patch.object(
-            watcher,
-            "archive_processed",
-        ) as archive:
-            processed = watcher.process_once({}, "test-watcher")
+        for has_response in (False, True):
+            with self.subTest(has_response=has_response):
+                with patch.object(watcher, "setup_logger", return_value=logger), patch.object(
+                    watcher,
+                    "inbox_files",
+                    return_value=[response_path] if has_response else [],
+                ) as inbox, patch.object(
+                    watcher,
+                    "import_prediction_response",
+                    return_value=race_path,
+                ), patch.object(watcher, "finalize_pre"), patch.object(
+                    watcher,
+                    "archive_processed",
+                ) as archive:
+                    processed = watcher.process_once({}, "test-watcher")
 
-        self.assertEqual(processed, 1)
-        archive.assert_called_once_with(response_path, race_path)
+                self.assertEqual(processed, int(has_response))
+                inbox.assert_called_once_with("prediction")
+                if has_response:
+                    archive.assert_called_once_with(response_path, race_path)
+                else:
+                    archive.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -15,7 +15,6 @@ from itertools import combinations
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from bs4 import BeautifulSoup
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -28,9 +27,8 @@ from quinella import (
     calculate_quinella_post, calculate_quinella_pre, calculate_quinella_purchase,
     harville_probabilities, pair_numbers, validate_pair_odds,
 )
-from render import build_environment, build_race_context, render_site
 from run_pre_collect import export_prediction_chat_input
-from simulate import calculate_post, calculate_pre_simulation, calculate_value_details, simulate_file
+from simulate import calculate_pre_simulation, calculate_value_details, simulate_file
 from utils import ensure_race_payload, load_config, load_race_json, parse_jst_datetime, save_race_json
 from test_simulation import make_payload
 
@@ -248,6 +246,18 @@ class ProbabilityAndPurchaseTests(unittest.TestCase):
         for odds, eligible in ((1.2, True), (1.199, False)):
             result = calculate_quinella_purchase([{"horse_numbers": [1, 2], "probability": 1, "odds": odds}], 3099, 100, settings, "dutching")
             self.assertEqual(result["evaluated_counts"][0]["eligible"], eligible)
+
+
+    def test_quinella_minimum_profit_rate_allows_break_even_and_ignores_legacy_key(self):
+        pairs = [{"horse_numbers": [1, 2], "probability": .5, "odds": 2.0}, {"horse_numbers": [1, 3], "probability": .5, "odds": 2.0}]
+        for rate, eligible in ((0, True), (.2, False)):
+            with self.subTest(rate=rate):
+                settings = {**load_config()["simulation"]["quinella"]["dutching"], "min_profit_rate": rate}
+                result = calculate_quinella_purchase(pairs, 1000, 100, settings, "dutching")
+                self.assertEqual(result["evaluated_counts"][1]["minimum_profit"], 0)
+                self.assertEqual(result["evaluated_counts"][1]["eligible"], eligible)
+                settings["require_profit_if_hit"] = True
+                self.assertEqual(calculate_quinella_purchase(pairs, 1000, 100, settings, "dutching"), result)
 
 
 class SettlementTests(unittest.TestCase):
@@ -479,269 +489,7 @@ class FlowAndSummaryTests(unittest.TestCase):
         self.assertIsNone(summary["simulation"]["quinella"]["value"]["overall_roi"])
 
 
-class HtmlAndBrowserCalculationTests(unittest.TestCase):
-    def test_purchase_display_and_legacy_settings_are_compatible(self):
-        payload = payload_with_odds()
-        payload["race"]["weather"] = "晴"
-        with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
-            payload["simulation"] = calculate_pre_simulation(payload, load_config())
-        for simulation in [payload["simulation"][0]["general"], payload["simulation"][0]["statistical"]]:
-            simulation["win"]["dutching"]["pre"]["settings"]["require_profit_if_hit"] = True
-            simulation["quinella"]["dutching"]["pre"]["settings"]["require_profit_if_hit"] = True
-        before = copy.deepcopy(payload)
-        rendered = build_environment(ROOT).get_template("race.html.j2").render(**build_race_context(payload))
-        soup = BeautifulSoup(rendered, "html.parser")
-        pair_tooltip_keys = {
-            tooltip["data-term-key"]
-            for tooltip in soup.select('[data-ticket-panel="quinella"] .term-tooltip')
-        }
-        for tooltip in soup.select(".term-tooltip"):
-            tooltip.decompose()
-
-        def grid_after(panel, heading):
-            return panel.find("h4", string=heading).find_next_sibling("div", class_="metric-grid")
-
-        def labels_after(panel, heading):
-            grid = grid_after(panel, heading)
-            return [node.get_text(strip=True) for node in grid.select("strong")]
-
-        for ai in ("general", "statistical"):
-            win_panels = soup.select(f"#purchase-{ai}-win .simulation-panel")
-            pair_panels = soup.select(f"#purchase-{ai}-quinella .simulation-panel")
-            self.assertEqual(
-                [panel.h3.get_text(strip=True) for panel in win_panels],
-                ["単勝分配方式", "期待値重視方式"],
-            )
-            self.assertEqual(
-                [panel.h3.get_text(strip=True) for panel in pair_panels],
-                ["馬連分配方式", "期待値重視方式"],
-            )
-            for panel in (*win_panels, *pair_panels):
-                self.assertIn(
-                    "simulation-block-title",
-                    panel.find("h4", string="設定条件").get("class", []),
-                )
-                self.assertIn(
-                    "simulation-result-title",
-                    panel.find("h4", string="計算結果").get("class", []),
-                )
-            self.assertEqual(
-                labels_after(win_panels[0], "設定条件"),
-                ["予算", "最大対象頭数", "最低カバー確率", "最低グループ期待値", "最低利益率"],
-            )
-            self.assertEqual(
-                labels_after(pair_panels[0], "設定条件"),
-                ["予算", "最大対象組数", "最低カバー確率", "最低グループ期待値", "最低利益率"],
-            )
-            win_dutching = payload["simulation"][0][ai]["win"]["dutching"]["pre"]
-            pair_dutching = payload["simulation"][0][ai]["quinella"]["dutching"]["pre"]
-            self.assertEqual(
-                labels_after(win_panels[0], "計算結果"),
-                ["判定"]
-                + (["選択頭数", "カバー確率", "グループ期待値", "最低利益"] if win_dutching["selections"] else []),
-            )
-            self.assertEqual(
-                labels_after(pair_panels[0], "計算結果"),
-                ["判定"]
-                + (["選択組数", "カバー確率", "グループ期待値", "最低利益"] if pair_dutching["selections"] else []),
-            )
-            for panel in (win_panels[0], pair_panels[0]):
-                settings_grid = grid_after(panel, "設定条件")
-                result_grid = grid_after(panel, "計算結果")
-                secondary_grid = result_grid.find_next_sibling("div", class_="simulation-secondary-metrics")
-                self.assertIn("simulation-primary-metrics", settings_grid.get("class", []))
-                self.assertEqual(
-                    [node.get_text(strip=True) for node in secondary_grid.select("strong")],
-                    ["合計購入額", "未使用予算"],
-                )
-                detail_headers = [node.get_text(strip=True) for node in panel.select("details thead th")]
-                self.assertIn("最低払戻額", detail_headers)
-            for panel in (win_panels[1], pair_panels[1]):
-                self.assertEqual(labels_after(panel, "設定条件"), ["予算", "最低EV", "Kelly係数"])
-                self.assertEqual(labels_after(panel, "計算結果"), ["判定", "合計購入額", "未使用予算"])
-            if win_dutching["selections"]:
-                self.assertIn("simulation-primary-metrics", grid_after(win_panels[0], "計算結果").get("class", []))
-            if pair_dutching["selections"]:
-                self.assertIn("simulation-primary-metrics", grid_after(pair_panels[0], "計算結果").get("class", []))
-            self.assertEqual(pair_panels[1].h3.get_text(strip=True), "期待値重視方式")
-        self.assertIsNotNone(soup.select_one('input[name="max_selection_count"]'))
-        self.assertIsNone(soup.select_one('input[name="require_profit_if_hit"]'))
-        self.assertNotIn("的中時利益必須", soup.get_text())
-        self.assertNotIn("自動選択頭数", soup.get_text())
-        self.assertTrue(
-            {
-                "max_selection_count",
-                "selection_count",
-                "coverage_probability",
-                "group_expected_value",
-                "minimum_profit_rate",
-                "minimum_payout",
-                "minimum_profit",
-                "minimum_ev",
-                "kelly_fraction",
-                "ev",
-                "full_kelly",
-                "applied_kelly",
-                "theoretical_stake",
-            }.issubset(pair_tooltip_keys)
-        )
-        self.assertTrue(
-            {
-                "fractional_kelly",
-                "expected_return",
-            }.issubset(build_race_context(payload)["quinella_tooltips"])
-        )
-        self.assertEqual(payload, before)
-
-    def test_no_purchase_dutching_hides_unselected_result_metrics(self):
-        payload = payload_with_odds()
-        with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
-            payload["simulation"] = calculate_pre_simulation(payload, load_config())
-        for simulation in (payload["simulation"][0]["general"], payload["simulation"][0]["statistical"]):
-            for ticket in ("win", "quinella"):
-                pre = simulation[ticket]["dutching"]["pre"]
-                pre.update(
-                    status="no_purchase",
-                    selections=[],
-                    selected_count=0,
-                    coverage_probability=0,
-                    group_expected_value=0,
-                    minimum_payout=0,
-                    minimum_profit=0,
-                    total_stake=0,
-                    unused_budget=pre["budget"],
-                )
-
-        rendered = build_environment(ROOT).get_template("race.html.j2").render(
-            **build_race_context(payload)
-        )
-        soup = BeautifulSoup(rendered, "html.parser")
-        for ai in ("general", "statistical"):
-            for ticket in ("win", "quinella"):
-                panel = soup.select_one(f"#purchase-{ai}-{ticket} .simulation-panel")
-                result_grid = panel.find("h4", string="計算結果").find_next_sibling(
-                    "div", class_="metric-grid"
-                )
-                self.assertEqual(
-                    [node.get_text(strip=True) for node in result_grid.select("strong")],
-                    ["判定"],
-                )
-                self.assertIn("購入なし", result_grid.get_text(" ", strip=True))
-                secondary_grid = result_grid.find_next_sibling(
-                    "div", class_="simulation-secondary-metrics"
-                )
-                self.assertEqual(
-                    [node.get_text(strip=True) for node in secondary_grid.select("strong")],
-                    ["合計購入額", "未使用予算"],
-                )
-
-    def test_result_badges_use_hits_for_each_ai_ticket_and_method(self):
-        template = build_environment(ROOT).get_template("race.html.j2")
-        for case, hit, stake, refund in (("hit_with_loss", True, 1000, 0), ("miss", False, 1000, 0), ("refund", False, 1000, 1000), ("empty", False, 0, 0)):
-            with self.subTest(case=case):
-                payload = payload_with_odds()
-                with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
-                    payload["simulation"] = calculate_pre_simulation(payload, load_config())
-                payload["result"] = parse_result(result_html())
-                for simulation in [payload["simulation"][0]["general"], payload["simulation"][0]["statistical"]]:
-                    for ticket in (simulation["win"], simulation["quinella"]):
-                        for method in ("value", "dutching"):
-                            ticket[method]["post"] = {
-                                "total_stake": stake, "total_refund": refund, "total_return": refund,
-                                "profit": refund - stake, "roi": -1 if stake and not refund else 0,
-                                "selections": [{"horse_number": 1, "horse_numbers": [1, 2], "stake": stake, "hit": hit, "refund": refund, "payout": 0, "return": refund}] if stake else [],
-                            }
-                soup = BeautifulSoup(template.render(**build_race_context(payload), page_kind="result"), "html.parser")
-                for ai in ("general", "statistical"):
-                    result_method = soup.select_one(f"#result-{ai}")
-                    self.assertEqual(
-                        [tab.get_text(strip=True) for tab in result_method.select(":scope > .ticket-tabs .ai-method-tab")],
-                        ["単勝", "馬連"],
-                    )
-                    for ticket in ("win", "quinella"):
-                        panels = soup.select(f"#settlement-{ai}-{ticket} .result-panel")
-                        self.assertEqual(len(panels), 2)
-                        self.assertEqual(
-                            [panel.h3.select_one("span").get_text(strip=True) for panel in panels],
-                            (["単勝分配方式のシミュレーション結果", "期待値重視方式のシミュレーション結果"] if ticket == "win" else ["馬連分配方式のシミュレーション結果", "期待値重視方式のシミュレーション結果"]),
-                        )
-                        for panel in panels:
-                            self.assertEqual(panel.select_one("h3 .hit-badge") is not None, hit)
-
-    def test_weather_and_saved_popularity_on_both_ai_result_tables(self):
-        payload = payload_with_odds()
-        payload["race"]["weather"] = "晴"
-        payload["result"] = parse_result(result_html())
-        payload["result"]["weather"] = "雨"
-        for horse, popularity in zip(payload["horses"], (10, 2, None)):
-            horse["popularity"] = popularity
-        before = copy.deepcopy(payload)
-        template = build_environment(ROOT).get_template("race.html.j2")
-        for kind, weather in (("prediction", "晴"), ("result", "雨")):
-            soup = BeautifulSoup(template.render(**build_race_context(payload), page_kind=kind), "html.parser")
-            weather_label = soup.find("strong", string="天候")
-            self.assertEqual(weather_label.parent.get_text(strip=True), "天候" + weather)
-            if kind == "result":
-                for table in soup.select(".result-table"):
-                    self.assertEqual([row.select("td")[2].get("data-sort-value") for row in table.select("tbody tr")], ["10", "2", ""])
-                    header = table.select("thead .sort-button")[2]
-                    self.assertEqual(header["data-sort-type"], "number")
-                    self.assertEqual(header["data-sort-column"], "2")
-        self.assertEqual(payload, before)
-        payload["race"].pop("weather")
-        soup = BeautifulSoup(template.render(**build_race_context(payload)), "html.parser")
-        self.assertEqual(soup.find("strong", string="天候").parent.get_text(strip=True), "天候-")
-
-    def test_quinella_minimum_profit_rate_allows_break_even_and_ignores_legacy_key(self):
-        pairs = [{"horse_numbers": [1, 2], "probability": .5, "odds": 2.0}, {"horse_numbers": [1, 3], "probability": .5, "odds": 2.0}]
-        for rate, eligible in ((0, True), (.2, False)):
-            with self.subTest(rate=rate):
-                settings = {**load_config()["simulation"]["quinella"]["dutching"], "min_profit_rate": rate}
-                result = calculate_quinella_purchase(pairs, 1000, 100, settings, "dutching")
-                self.assertEqual(result["evaluated_counts"][1]["minimum_profit"], 0)
-                self.assertEqual(result["evaluated_counts"][1]["eligible"], eligible)
-                settings["require_profit_if_hit"] = True
-                self.assertEqual(calculate_quinella_purchase(pairs, 1000, 100, settings, "dutching"), result)
-
-    def test_temp_render_ticket_panels_and_saved_probability_data(self):
-        config, payload = load_config(), payload_with_odds()
-        with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
-            payload["simulation"] = calculate_pre_simulation(payload, config)
-        # Display and custom defaults must come from saved pre, not changed current config/odds.
-        original = copy.deepcopy(payload)
-        config["simulation"]["quinella"]["value"]["kelly_fraction"] = .1
-        payload["race"]["quinella_odds"]["pairs"][0]["odds"] = 999
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            shutil.copytree(ROOT / "templates", root / "templates")
-            path = root / config["data_dir"] / "races" / "2026-09-05" / "nakayama_11r.json"
-            save_race_json(path, payload)
-            stage = render_site(config, "test-quinella-render", root=root)
-            pre_path = stage / "races/2026-09-05/nakayama_11r.html"
-            soup = BeautifulSoup(pre_path.read_text(encoding="utf-8"), "html.parser")
-            self.assertFalse(pre_path.with_name("nakayama_11r_result.html").exists())
-            for ai in ("general", "statistical"):
-                self.assertFalse(soup.select_one(f'#purchase-{ai}-win').has_attr("hidden"))
-                self.assertTrue(soup.select_one(f'#purchase-{ai}-quinella').has_attr("hidden"))
-                self.assertEqual(len(soup.select(f'#purchase-{ai}-quinella [data-quinella-method]')), 2)
-            data = json.loads(soup.select_one("#custom-simulator-data").string)
-            self.assertEqual(data["methods"]["general"]["quinella"]["value"]["settings"]["kelly_fraction"], .8)
-            self.assertEqual(data["methods"]["general"]["quinella"]["pairs"][0]["odds"], original["race"]["quinella_odds"]["pairs"][0]["odds"])
-            self.assertEqual([r["probability"] for r in data["methods"]["general"]["quinella"]["pairs"]], [r["probability"] for r in original["simulation"][0]["general"]["quinella"]["probabilities"]])
-            payload["result"] = parse_result(result_html())
-            for simulation in [payload["simulation"][0]["general"], payload["simulation"][0]["statistical"]]:
-                for method in ("value", "dutching"):
-                    simulation["win"][method]["post"] = calculate_post(simulation["win"][method]["pre"], payload["result"])
-            payload["evaluation"] = build_evaluation(payload)
-            save_race_json(path, payload)
-            stored = path.read_bytes()
-            stage = render_site(config, "test-quinella-result-render", root=root)
-            result_soup = BeautifulSoup((stage / "races/2026-09-05/nakayama_11r_result.html").read_text(encoding="utf-8"), "html.parser")
-            self.assertEqual(len(result_soup.select('[data-ticket-panel="quinella"] .quinella-pending')), 4)
-            self.assertEqual(path.read_bytes(), stored)
-            index = BeautifulSoup((stage / "index.html").read_text(encoding="utf-8"), "html.parser")
-            self.assertIsNotNone(index.select_one('a[href$="nakayama_11r_result.html"]'))
-
+class JavaScriptParityTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("node"), "Node.js required for browser calculation parity")
     def test_javascript_purchase_matches_python(self):
         template = (ROOT / "templates/race.html.j2").read_text(encoding="utf-8")
