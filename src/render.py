@@ -644,8 +644,8 @@ def render_site(
     index_template = env.get_template("index.html.j2")
     automation = config.get("automation")
     update_description = (
-        f"統計重視予想は前日{automation['statistical_time']}頃、"
-        f"総合AI予想は発走{automation['general_minutes_before_start']}分前頃、"
+        f"前日{automation['statistical_time']}頃に市場オッズを使わない統計重視予想を公開し、"
+        f"発走{automation['general_minutes_before_start']}分前頃に市場オッズも含めて分析する総合AI予想を追加します。"
         f"結果は発走{automation['result_minutes_after_start']}分後以降に自動更新します。"
         if automation else None
     )

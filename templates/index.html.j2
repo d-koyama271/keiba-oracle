@@ -230,10 +230,10 @@
   <main>
     <div class="panel">
       <h1>中央競馬 AI予想</h1>
+      <p class="small">ChatGPTが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。</p>
 {% if update_description %}
       <p class="small">{{ update_description }}</p>
 {% endif %}
-      <p class="small">ChatGPTが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。</p>
     </div>
 {% set method_summaries = evaluation_summary.get("methods", {}) if evaluation_summary else {} %}
 {% set general_summary = method_summaries.get("general") %}
