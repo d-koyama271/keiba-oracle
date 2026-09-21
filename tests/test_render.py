@@ -776,7 +776,17 @@ process.stdout.write(JSON.stringify({
                     for value in panel.select(".performance-value")
                 )
             )
-            self.assertIsNotNone(soup.select_one("table.index-table"))
+            index_table = soup.select_one("table.index-table")
+            self.assertIsNotNone(index_table)
+            self.assertEqual(
+                [header.get_text(strip=True) for header in index_table.select("thead th")],
+                ["日付", "発走", "開催場", "レース名", "状態", "予想", "結果"],
+            )
+            row_cells = index_table.select_one("tbody tr").find_all("td", recursive=False)
+            self.assertEqual(len(row_cells), 7)
+            self.assertIn("race-name-column", row_cells[3].get("class", []))
+            self.assertIn("status-column", index_table.select("thead th")[4].get("class", []))
+            self.assertIn("status-column", row_cells[4].get("class", []))
 
 
 class SimulationRenderTests(unittest.TestCase):

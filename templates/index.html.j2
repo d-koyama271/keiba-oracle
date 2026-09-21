@@ -92,6 +92,7 @@
     .index-table th,
     .index-table td { padding: 10px 6px; }
     .index-table tbody tr:nth-child(even) { background: #faf6ee; }
+    .status-column { text-align: center; }
     .nowrap {
       white-space: nowrap;
       word-break: keep-all;
@@ -167,13 +168,56 @@
       .profit-grid { grid-template-columns: 1fr; }
       table { font-size: 13px; }
       th, td { padding: 8px 7px; }
-      .index-table th,
-      .index-table td { padding: 8px 6px; }
-      .index-table th:not(:nth-child(4)),
-      .index-table td:not(:nth-child(4)) {
-        width: 1%;
-        white-space: nowrap;
+      .index-panel {
+        padding-right: 8px;
+        padding-left: 8px;
       }
+      .index-table {
+        width: 100%;
+        table-layout: fixed;
+        font-size: 11px;
+      }
+      .index-table th,
+      .index-table td {
+        box-sizing: border-box;
+        padding: 6px 1px;
+        line-height: 1.35;
+      }
+      .index-table th:nth-child(1),
+      .index-table td:nth-child(1) {
+        width: 15%;
+        white-space: normal;
+        word-break: normal;
+      }
+      .index-table th:nth-child(2),
+      .index-table td:nth-child(2) { width: 10%; }
+      .index-table th:nth-child(3),
+      .index-table td:nth-child(3) { width: 9%; }
+      .index-table th:nth-child(4),
+      .index-table td:nth-child(4) { width: 33%; }
+      .index-table th:nth-child(5),
+      .index-table td:nth-child(5) { width: 17%; }
+      .index-table th:nth-child(6),
+      .index-table td:nth-child(6),
+      .index-table th:nth-child(7),
+      .index-table td:nth-child(7) {
+        width: 8%;
+        text-align: center;
+      }
+      .index-table .status {
+        padding: 2px;
+        font-size: 10px;
+      }
+      .index-table .race-name-column {
+        white-space: normal;
+        line-break: strict;
+        word-break: normal;
+      }
+      .index-table .status-column {
+        white-space: normal;
+        word-break: keep-all;
+      }
+      .index-table .next-update { font-size: 9px; }
     }
   </style>
 </head>
@@ -251,7 +295,7 @@
 {% set statistical_simulation = statistical_summary.get("simulation") if statistical_summary else none %}
 {{ performance_panel("総合AI予想の予測成績", prediction_method_descriptions.get("general", ""), general_overall, general_simulation) }}
 {{ performance_panel("統計重視予想の予測成績", prediction_method_descriptions.get("statistical", ""), statistical_overall, statistical_simulation) }}
-    <div class="panel">
+    <div class="panel index-panel">
       <h2>レース一覧</h2>
       <div class="table-scroll">
       <table class="index-table">
@@ -260,8 +304,8 @@
             <th class="nowrap">日付</th>
             <th class="nowrap">発走</th>
             <th class="nowrap">開催場</th>
-            <th>レース名</th>
-            <th class="nowrap">状態</th>
+            <th class="race-name-column">レース名</th>
+            <th class="nowrap status-column">状態</th>
             <th class="nowrap">予想</th>
             <th class="nowrap result-link-column">結果</th>
           </tr>
@@ -272,8 +316,8 @@
             <td class="nowrap">{{ race.date }}</td>
             <td class="nowrap">{{ race.start_time or "-" }}</td>
             <td class="nowrap">{{ race.track }}</td>
-            <td>{{ race.race_name|e }}{% if race.is_new %}<span class="new-badge">NEW!</span>{% endif %}</td>
-            <td class="nowrap"><span class="status {{ race.status_class }}">{{ race.status_label }}</span>{% if race.next_update %}<div class="small next-update"><time datetime="{{ race.next_update.at }}">{{ race.next_update.label }}</time></div>{% endif %}</td>
+            <td class="race-name-column">{{ race.race_name|e }}{% if race.is_new %}<span class="new-badge">NEW!</span>{% endif %}</td>
+            <td class="nowrap status-column"><span class="status {{ race.status_class }}">{{ race.status_label }}</span>{% if race.next_update %}<div class="small next-update"><time datetime="{{ race.next_update.at }}">{{ race.next_update.label }}</time></div>{% endif %}</td>
             <td class="nowrap"><a class="page-link" href="{{ race.prediction_href }}">開く</a></td>
             <td class="nowrap result-link-column">{% if race.result_href %}<a class="page-link" href="{{ race.result_href }}">開く</a>{% else %}-{% endif %}</td>
           </tr>
