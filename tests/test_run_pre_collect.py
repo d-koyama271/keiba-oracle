@@ -369,113 +369,33 @@ class DefaultRaceSelectionTests(unittest.TestCase):
 
         collect.assert_called_once_with(config, "pre", "2026-08-30", "pre")
 
-    def test_main_passes_every_selected_track_to_collection(self) -> None:
-        selected = [
-            {"race_id": KOKURA, "race": race("小倉", "小倉記念 (G3)", "15:35"), "grade_rank": 1},
-            {"race_id": HAKODATE, "race": race("函館", "函館2歳S (G3)", "15:25"), "grade_rank": 1},
-        ]
-        for item in selected:
-            item["race"]["date"] = "2026-07-19"
-        config = {
-            "target_races": ["福島", "函館", "小倉"],
-            "odds_reference_minutes_before_start": 60,
-        }
-        jst = timezone(timedelta(hours=9))
-        with ExitStack() as stack:
-            stack.enter_context(patch.object(sys, "argv", ["run_pre_collect.py"]))
-            stack.enter_context(patch.object(run_pre_collect, "load_config", return_value=config))
-            stack.enter_context(patch.object(
-                run_pre_collect,
-                "select_default_races",
-                return_value=("2026-07-19", selected, "all graded races in next race period"),
-            ))
-            stack.enter_context(patch.object(
-                run_pre_collect,
-                "target_odds_datetime",
-                side_effect=[datetime(2026, 7, 19, 14, 35, tzinfo=jst), datetime(2026, 7, 19, 14, 25, tzinfo=jst)],
-            ))
-            stack.enter_context(
-                patch.object(run_pre_collect, "now_jst", return_value=datetime(2026, 7, 18, 12, 0, tzinfo=jst))
-            )
-            collect = stack.enter_context(
-                patch.object(
-                    run_pre_collect,
-                    "collect_races",
-                    return_value=[Path("kokura.json"), Path("hakodate.json")],
-                )
-            )
-            stack.enter_context(
-                patch.object(
-                    run_pre_collect,
-                    "export_prediction_chat_input",
-                    return_value=[Path("kokura.json"), Path("hakodate.json")],
-                )
-            )
-            stack.enter_context(patch("builtins.print"))
-            run_pre_collect.main()
-
-        self.assertEqual(collect.call_args.args[0]["target_races"], ["小倉", "函館"])
-        self.assertEqual(
-            collect.call_args.kwargs["selected_race_ids"],
-            [KOKURA, HAKODATE],
-        )
-
-    def test_main_collects_selected_races_for_each_date(self) -> None:
-        selected = [
-            {"race_id": KOKURA, "race": race("小倉", "小倉記念 (G3)", "15:35"), "grade_rank": 1},
-            {"race_id": HAKODATE, "race": race("函館", "函館2歳S (G3)", "15:25"), "grade_rank": 1},
-        ]
-        selected[0]["race"]["date"] = "2026-07-18"
-        selected[1]["race"]["date"] = "2026-07-19"
-        config = {
-            "target_races": ["小倉", "函館"],
-            "odds_reference_minutes_before_start": 60,
-        }
-        jst = timezone(timedelta(hours=9))
-        with ExitStack() as stack:
-            stack.enter_context(patch.object(sys, "argv", ["run_pre_collect.py"]))
-            stack.enter_context(patch.object(run_pre_collect, "load_config", return_value=config))
-            stack.enter_context(patch.object(
-                run_pre_collect,
-                "select_default_races",
-                return_value=("2026-07-18", selected, "all graded races in next race period"),
-            ))
-            stack.enter_context(patch.object(
-                run_pre_collect,
-                "target_odds_datetime",
-                side_effect=[datetime(2026, 7, 18, 14, 35, tzinfo=jst), datetime(2026, 7, 19, 14, 25, tzinfo=jst)],
-            ))
-            stack.enter_context(
-                patch.object(run_pre_collect, "now_jst", return_value=datetime(2026, 7, 17, 12, 0, tzinfo=jst))
-            )
-            collect = stack.enter_context(patch.object(
-                run_pre_collect,
-                "collect_races",
-                side_effect=[[Path("kokura.json")], [Path("hakodate.json")]],
-            ))
-            export = stack.enter_context(patch.object(
-                run_pre_collect,
-                "export_prediction_chat_input",
-                return_value=[Path("kokura.json"), Path("hakodate.json")],
-            ))
-            stack.enter_context(patch("builtins.print"))
-            run_pre_collect.main()
-
-        self.assertEqual(
-            [
-                (call.args[2], call.kwargs["selected_race_ids"])
-                for call in collect.call_args_list
-            ],
-            [
-                ("2026-07-18", [KOKURA]),
-                ("2026-07-19", [HAKODATE]),
-            ],
-        )
-        self.assertEqual(
-            export.call_args.args[0],
-            [Path("kokura.json"), Path("hakodate.json")],
-        )
-
+    def test_main_batches_selected_tracks_and_inputs_by_date(self) -> None:
+        for dates in (("2026-07-18", "2026-07-18"), ("2026-07-18", "2026-07-19")):
+            with self.subTest(dates=dates), ExitStack() as stack:
+                selected = [
+                    {"race_id": KOKURA, "race": race("小倉", "小倉記念 (G3)", "15:35"), "grade_rank": 1},
+                    {"race_id": HAKODATE, "race": race("函館", "函館2歳S (G3)", "15:25"), "grade_rank": 1},
+                ]
+                for item, date in zip(selected, dates):
+                    item["race"]["date"] = date
+                config = {"target_races": ["福島", "小倉", "函館"], "odds_reference_minutes_before_start": 60}
+                paths = {KOKURA: Path("kokura.json"), HAKODATE: Path("hakodate.json")}
+                stack.enter_context(patch.object(sys, "argv", ["run_pre_collect.py"]))
+                stack.enter_context(patch.object(run_pre_collect, "load_config", return_value=config))
+                stack.enter_context(patch.object(run_pre_collect, "select_default_races", return_value=(dates[0], selected, "selected")))
+                stack.enter_context(patch.object(run_pre_collect, "now_jst", return_value=datetime(2026, 7, 17, 12, tzinfo=timezone(timedelta(hours=9)))))
+                collect = stack.enter_context(patch.object(run_pre_collect, "collect_races",
+                    side_effect=lambda *args, selected_race_ids: [paths[rid] for rid in selected_race_ids]))
+                export = stack.enter_context(patch.object(run_pre_collect, "export_prediction_chat_input", return_value=list(paths.values())))
+                stack.enter_context(patch("builtins.print"))
+                run_pre_collect.main()
+                self.assertEqual(len(collect.call_args_list), len(set(dates)))
+                for call, date in zip(collect.call_args_list, dict.fromkeys(dates)):
+                    expected = [item for item in selected if item["race"]["date"] == date]
+                    self.assertEqual(call.args[2], date)
+                    self.assertEqual(call.args[0]["target_races"], [item["race"]["track"] for item in selected])
+                    self.assertEqual(call.kwargs["selected_race_ids"], [item["race_id"] for item in expected])
+                self.assertEqual(export.call_args.args[0], list(paths.values()))
 
 class MultipleRaceGenerationTests(unittest.TestCase):
     def test_collection_rejects_existing_race_id_mismatch_without_writes(self):

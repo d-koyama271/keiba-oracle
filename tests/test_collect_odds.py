@@ -139,29 +139,17 @@ class OddsFallbackTests(TestCase):
         self.assertEqual(source_url, f"{NETKEIBA_ODDS_URL}?race_id={RACE_ID}")
         discover.assert_not_called()
 
-    def test_netkeiba_empty_uses_complete_jra_snapshot(self) -> None:
-        with ExitStack() as stack:
-            stack.enter_context(patch("collect.fetch_win_odds", return_value=({}, None)))
-            stack.enter_context(patch("collect.discover_jra_race_url", return_value=JRA_URL))
-            stack.enter_context(patch("collect.fetch_html", return_value=jra_html()))
-            stack.enter_context(patch("collect.now_jst_iso", return_value=CAPTURED_AT))
-            odds, captured_at, source, source_url = self.fetch()
-
-        self.assertEqual(odds, JRA_ODDS)
-        self.assertEqual((captured_at, source, source_url), (CAPTURED_AT, "jra", JRA_URL))
-
-    def test_partial_netkeiba_snapshot_is_fully_replaced_by_jra(self) -> None:
-        partial = {1: NETKEIBA_ODDS[1]}
-        with ExitStack() as stack:
-            stack.enter_context(patch("collect.fetch_win_odds", return_value=(partial, None)))
-            stack.enter_context(patch("collect.discover_jra_race_url", return_value=JRA_URL))
-            stack.enter_context(patch("collect.fetch_html", return_value=jra_html()))
-            stack.enter_context(patch("collect.now_jst_iso", return_value=CAPTURED_AT))
-            odds, _, source, _ = self.fetch()
-
-        self.assertEqual(odds, JRA_ODDS)
-        self.assertNotEqual(odds[1], NETKEIBA_ODDS[1])
-        self.assertEqual(source, "jra")
+    def test_empty_or_partial_netkeiba_snapshot_is_fully_replaced_by_jra(self) -> None:
+        for snapshot in ({}, {1: NETKEIBA_ODDS[1]}):
+            with self.subTest(snapshot=snapshot), ExitStack() as stack:
+                stack.enter_context(patch("collect.fetch_win_odds", return_value=(snapshot, None)))
+                stack.enter_context(patch("collect.discover_jra_race_url", return_value=JRA_URL))
+                stack.enter_context(patch("collect.fetch_html", return_value=jra_html()))
+                stack.enter_context(patch("collect.now_jst_iso", return_value=CAPTURED_AT))
+                odds, captured_at, source, source_url = self.fetch()
+                self.assertEqual(odds, JRA_ODDS)
+                self.assertNotEqual(odds[1], NETKEIBA_ODDS[1])
+                self.assertEqual((captured_at, source, source_url), (CAPTURED_AT, "jra", JRA_URL))
 
     def test_horse_name_mismatch_rejects_jra_snapshot(self) -> None:
         with ExitStack() as stack:

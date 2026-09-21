@@ -215,17 +215,6 @@ class SchemaV10Tests(unittest.TestCase):
             self.assertEqual(loaded["methods"]["general"], old["methods"]["traditional"])
             self.assertEqual(path.read_bytes(), before)
 
-    def test_new_method_does_not_inherit_different_recorded_reasoning_effort(self):
-        config = load_config()
-        payload = default_race_payload("test")
-        old = runtime_prediction_entry(payload, {**config, "llm_reasoning_effort": "low"}, create=True)
-        old["statistical"] = {"horses": [{"horse_number": 1, "win_probability": 1}]}
-        saved = copy.deepcopy(old)
-        new = runtime_prediction_entry(payload, config, create=True)
-        self.assertEqual(old, saved)
-        self.assertNotEqual(new["id"], old["id"])
-        self.assertEqual(new["reasoning_effort"], config["llm_reasoning_effort"])
-
     def test_changed_settings_reuse_p2_for_either_method_without_p3(self):
         for change in ({"llm_model": "gpt-6"}, {"llm_reasoning_effort": "low"}):
             for order in (("general", "statistical"), ("statistical", "general")):

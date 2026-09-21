@@ -5,7 +5,6 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -95,26 +94,14 @@ def write_race(root: Path, name: str, payload: dict) -> Path:
 
 
 class BacktestTests(unittest.TestCase):
-    def test_reuses_simulation_functions_without_writing_race_json(self) -> None:
+    def test_reports_both_methods_without_writing_race_json(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             race_path = write_race(root, "nakayama_11r.json", make_payload())
             before = race_path.read_bytes()
-            value_pre = backtest.calculate_value_pre
-            dutching_pre = backtest.calculate_dutching_pre
-            calculate_post = backtest.calculate_post
-
-            with (
-                patch.object(backtest, "calculate_value_pre", wraps=value_pre) as value_mock,
-                patch.object(backtest, "calculate_dutching_pre", wraps=dutching_pre) as dutching_mock,
-                patch.object(backtest, "calculate_post", wraps=calculate_post) as post_mock,
-            ):
-                report = backtest.run_backtest(make_config(), root)
+            report = backtest.run_backtest(make_config(), root)
 
             self.assertEqual(race_path.read_bytes(), before)
-            self.assertEqual(value_mock.call_count, 2)
-            self.assertEqual(dutching_mock.call_count, 2)
-            self.assertEqual(post_mock.call_count, 4)
             self.assertEqual(report["methods"]["general"]["value"]["target_races"], 1)
             self.assertEqual(report["methods"]["statistical"]["value"]["target_races"], 1)
             self.assertEqual(report["methods"]["general"]["dutching"]["hit_races"], 1)

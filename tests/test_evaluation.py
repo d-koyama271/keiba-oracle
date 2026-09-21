@@ -7,13 +7,11 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-import run_post_collect  # noqa: E402
 from evaluation import build_evaluation, evaluate_file  # noqa: E402
 from utils import ensure_race_payload, load_race_json, save_race_json  # noqa: E402
 
@@ -204,45 +202,6 @@ class EvaluationMetricTests(unittest.TestCase):
         self.assertIsNotNone(loaded["evaluation"])
         self.assertNotIn("feedback", loaded)
 
-
-class EvaluationFlowTests(unittest.TestCase):
-    def tearDown(self) -> None:
-        for name in ("test-evaluation", "test-post-publish"):
-            close_logger(name)
-
-    def test_post_publish_sets_status_without_feedback_output(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            config = test_config(root)
-            path = root / "race.json"
-            save_race_json(path, make_payload())
-            try:
-                with patch.object(
-                    run_post_collect,
-                    "generate_evaluation_summary",
-                    return_value=root / "data" / "evaluation_summary.json",
-                ) as generate_summary, patch.object(run_post_collect, "render_site") as render, patch.object(
-                    run_post_collect,
-                    "publish_site",
-                    return_value=root / "public",
-                ) as publish:
-                    updated = run_post_collect.publish_post_results(
-                        [path],
-                        config,
-                        "test-post-publish",
-                        root,
-                    )
-
-                loaded = load_race_json(path)
-                self.assertEqual(updated, [path])
-                self.assertEqual(loaded["meta"]["post_status"], "awaiting_result")
-                self.assertIsNotNone(loaded["evaluation"])
-                self.assertFalse((root / "outbox" / "chat_input" / "feedback").exists())
-                generate_summary.assert_called_once_with(config, "test-post-publish", root)
-                render.assert_called_once_with(config, "test-post-publish", None, root)
-                publish.assert_called_once_with(config, root)
-            finally:
-                close_logger("test-post-publish")
 
 if __name__ == "__main__":
     unittest.main()

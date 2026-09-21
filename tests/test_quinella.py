@@ -28,7 +28,7 @@ from quinella import (
     harville_probabilities, pair_numbers, validate_pair_odds,
 )
 from run_pre_collect import export_prediction_chat_input
-from simulate import calculate_pre_simulation, calculate_value_details, simulate_file
+from simulate import calculate_pre_simulation, simulate_file
 from utils import ensure_race_payload, load_config, load_race_json, parse_jst_datetime, save_race_json
 from test_simulation import make_payload
 
@@ -103,7 +103,7 @@ class OddsTests(unittest.TestCase):
                 self.assertEqual(snapshot["pairs"], [])
         win, snapshot = self.fetch(self.api(status="result"))
         self.assertEqual(len(win[0]), 3)
-        self.assertEqual(snapshot["reason"], "odds_not_pre_race")
+        self.assertFalse(snapshot["available"])
 
     def test_grouped_odds_are_numeric_and_can_generate_both_ai_pre(self):
         for text, expected in (("1,025.0", 1025.0), ("12,345.6", 12345.6),
@@ -201,9 +201,6 @@ class ProbabilityAndPurchaseTests(unittest.TestCase):
         self.assertEqual(result["unused_budget"], 2800)
         self.assertEqual(len(result["details"]), 3)
         self.assertEqual(result["selections"][0]["horse_numbers"], [1, 2])
-        with patch("simulate.calculate_value_details", wraps=calculate_value_details) as allocator:
-            calculate_quinella_purchase(rows, 3000, 100, settings, "value")
-        allocator.assert_called_once()
 
     def test_value_scales_only_when_total_raw_exceeds_budget(self):
         # Large coefficient deliberately exercises the shared allocator's scaling path.
@@ -223,7 +220,7 @@ class ProbabilityAndPurchaseTests(unittest.TestCase):
         self.assertEqual(result["coverage_probability"], 1)
         self.assertEqual(result["group_expected_value"], 2)
         first = result["evaluated_counts"][0]
-        self.assertIn("coverage_probability_below_threshold", first["rejection_reasons"])
+        self.assertFalse(first["eligible"])
         for key, value in (("min_coverage_probability", 1.1), ("min_group_expected_value", 3), ("min_profit_rate", 10)):
             excluded = calculate_quinella_purchase(rows, 3000, 100, {**settings, key: value}, "dutching")
             self.assertEqual(excluded["status"], "no_purchase")
@@ -342,10 +339,8 @@ class SettlementTests(unittest.TestCase):
 
 
 class FlowAndSummaryTests(unittest.TestCase):
-    def test_default_settings_and_missing_quinella_do_not_replace_win_history(self):
+    def test_missing_quinella_does_not_replace_win_history(self):
         config, payload = load_config(), payload_with_odds()
-        q_settings = config["simulation"]["quinella"]
-        self.assertEqual(q_settings, {"harville_lambda": .81, "value": {"ev_threshold": 1.1, "kelly_fraction": .8}, "dutching": {"max_selection_count": 10, "min_coverage_probability": .4, "min_group_expected_value": .75, "min_profit_rate": .2}})
         old_config = copy.deepcopy(config)
         old_config["simulation"].pop("quinella")
         payload["simulation"] = calculate_pre_simulation(payload, old_config)

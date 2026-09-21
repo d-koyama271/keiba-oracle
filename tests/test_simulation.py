@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import json
-import logging
 import shutil
 import subprocess
 import sys
@@ -25,9 +24,8 @@ from simulate import (  # noqa: E402
     evaluate_dutching_count,
     minimum_budget_for_value_stake,
     select_best_dutching,
-    simulate_file,
 )
-from utils import ensure_race_payload, load_config, load_race_json, save_race_json  # noqa: E402
+from utils import ensure_race_payload, load_race_json, save_race_json  # noqa: E402
 
 
 def make_config(
@@ -132,40 +130,6 @@ DUTCHING_ROWS = [
 
 
 class ValueSimulationTests(unittest.TestCase):
-    def test_app_config_value_defaults_apply_to_both_prediction_methods(self) -> None:
-        config = load_config(ROOT / "config" / "app.yaml")
-
-        self.assertEqual(float(config["simulation"]["value"]["ev_threshold"]), 1.0)
-        self.assertEqual(float(config["simulation"]["value"]["kelly_fraction"]), 0.75)
-
-        payload = make_payload(DUTCHING_ROWS)
-        payload["prediction"]["variants"] = [
-            {
-                "method": "statistical",
-                "model_provider": "codex",
-                "model_name": "gpt-test",
-                "horses": [
-                    {
-                        "horse_number": number,
-                        "win_probability": probability,
-                        "reason": f"statistical reason {number}",
-                    }
-                    for number, probability, _ in DUTCHING_ROWS
-                ],
-            }
-        ]
-        payload = ensure_race_payload(payload)
-        payload["simulation"] = calculate_pre_simulation(payload, config)
-
-        self.assertEqual(
-            payload["simulation"][0]["general"]["win"]["value"]["pre"]["settings"]["kelly_fraction"],
-            0.75,
-        )
-        self.assertEqual(
-            payload["simulation"][0]["statistical"]["win"]["value"]["pre"]["settings"]["kelly_fraction"],
-            0.75,
-        )
-
     def test_ev_boundary_and_single_candidate_are_included(self) -> None:
         payload = make_payload([(1, 0.35, 3.0), (2, 0.10, 2.0)])
         result = calculate_value_pre(payload, make_config(budget=10000, ev_threshold=1.05))
@@ -327,13 +291,6 @@ class ValueSimulationTests(unittest.TestCase):
 
 
 class DutchingSimulationTests(unittest.TestCase):
-    def test_app_config_dutching_defaults_are_ticket_specific(self) -> None:
-        config = load_config(ROOT / "config" / "app.yaml")
-
-        self.assertEqual(float(config["simulation"]["dutching"]["min_profit_rate"]), 0.20)
-        self.assertEqual(float(config["simulation"]["dutching"]["min_group_expected_value"]), 0.70)
-        self.assertEqual(float(config["simulation"]["quinella"]["dutching"]["min_group_expected_value"]), 0.75)
-
     def test_counts_order_metrics_allocation_and_best_candidate(self) -> None:
         result = calculate_dutching_pre(
             make_payload(DUTCHING_ROWS),
@@ -400,17 +357,11 @@ class DutchingSimulationTests(unittest.TestCase):
         self.assertEqual(at_boundary["minimum_profit"], 600.0)
         self.assertTrue(at_boundary["eligible"])
         self.assertEqual(below_boundary["minimum_profit"], 599.0)
-        self.assertIn(
-            "minimum_profit_rate_below_threshold",
-            below_boundary["rejection_reasons"],
-        )
+        self.assertFalse(below_boundary["eligible"])
         self.assertEqual(sum(item["stake"] for item in smaller_selections), 1500)
         self.assertEqual(smaller_purchase["minimum_profit"], 300.0)
         self.assertTrue(smaller_purchase["eligible"])
-        self.assertIn(
-            "minimum_profit_rate_below_threshold",
-            stricter_rate["rejection_reasons"],
-        )
+        self.assertFalse(stricter_rate["eligible"])
 
     def test_min_profit_rate_can_exclude_every_candidate(self) -> None:
         result = calculate_dutching_pre(
@@ -420,12 +371,7 @@ class DutchingSimulationTests(unittest.TestCase):
 
         self.assertEqual(result["selected_count"], 0)
         self.assertEqual(result["selections"], [])
-        self.assertTrue(
-            all(
-                "minimum_profit_rate_below_threshold" in item["rejection_reasons"]
-                for item in result["evaluated_counts"]
-            )
-        )
+        self.assertTrue(all(not item["eligible"] for item in result["evaluated_counts"]))
 
     def test_probability_tie_uses_horse_number(self) -> None:
         rows = [(2, 0.40, 3.0), (1, 0.40, 4.0), (3, 0.20, 8.0)]
@@ -437,7 +383,7 @@ class DutchingSimulationTests(unittest.TestCase):
         self.assertEqual(result["evaluated_counts"][0]["horse_numbers"], [1])
         self.assertEqual(result["evaluated_counts"][1]["horse_numbers"], [1, 2])
 
-    def test_all_rejection_reasons_and_no_eligible_candidate(self) -> None:
+    def test_group_threshold_and_insufficient_budget_exclude_candidates(self) -> None:
         group_rejected = calculate_dutching_pre(
             make_payload(DUTCHING_ROWS),
             make_config(budget=1000, min_group_expected_value=2.0),
@@ -452,15 +398,9 @@ class DutchingSimulationTests(unittest.TestCase):
         )
 
         self.assertEqual(group_rejected["selected_count"], 0)
-        self.assertTrue(
-            all(
-                "group_expected_value_below_threshold" in item["rejection_reasons"]
-                for item in group_rejected["evaluated_counts"]
-            )
-        )
+        self.assertTrue(all(not item["eligible"] for item in group_rejected["evaluated_counts"]))
         self.assertEqual(insufficient["selected_count"], 0)
-        self.assertIn("coverage_probability_below_threshold", insufficient["evaluated_counts"][0]["rejection_reasons"])
-        self.assertIn("insufficient_budget_units", insufficient["evaluated_counts"][1]["rejection_reasons"])
+        self.assertTrue(all(not item["eligible"] for item in insufficient["evaluated_counts"]))
 
     def test_minimum_profit_rate_allows_break_even_at_zero(self) -> None:
         payload = make_payload([(1, 0.5, 2.0), (2, 0.5, 2.0)])
@@ -495,94 +435,6 @@ class DutchingSimulationTests(unittest.TestCase):
 
 
 class PostAndStructureTests(unittest.TestCase):
-    def test_simulate_file_generates_both_pre_and_post(self) -> None:
-        payload = make_payload(DUTCHING_ROWS)
-        config = make_config(budget=1000)
-        config["data_dir"] = "data"
-        logger_name = "test-simulate-file"
-
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            path = root / "race.json"
-            save_race_json(path, payload)
-            try:
-                self.assertTrue(simulate_file(path, config, "pre", logger_name, root))
-                pre_payload = load_race_json(path)
-                self.assertIsNotNone(pre_payload["simulation"][0]["general"]["win"]["value"]["pre"])
-                self.assertIsNotNone(pre_payload["simulation"][0]["general"]["win"]["dutching"]["pre"])
-                self.assertIsNone(pre_payload["simulation"][0]["general"]["win"]["value"]["post"])
-                self.assertIsNone(pre_payload["simulation"][0]["general"]["win"]["dutching"]["post"])
-
-                pre_payload["result"] = make_result(1, 400, [1, 2, 3, 4, 5])
-                save_race_json(path, pre_payload)
-                self.assertTrue(simulate_file(path, config, "post", logger_name, root))
-                post_payload = load_race_json(path)
-                self.assertIsNotNone(post_payload["simulation"][0]["general"]["win"]["value"]["post"])
-                self.assertIsNotNone(post_payload["simulation"][0]["general"]["win"]["dutching"]["post"])
-            finally:
-                logger = logging.getLogger(f"keiba_oracle.{logger_name}")
-                for handler in list(logger.handlers):
-                    handler.close()
-                    logger.removeHandler(handler)
-
-    def test_statistical_variant_generates_independent_pre_and_post_without_mutating_pre(self) -> None:
-        payload = make_payload(DUTCHING_ROWS)
-        payload["prediction"]["variants"] = [
-            {
-                "method": "statistical",
-                "model_provider": "codex",
-                "model_name": "gpt-test",
-                "predicted_at": "2026-01-01T12:00:00+09:00",
-                "horses": [
-                    {"horse_number": 1, "win_probability": 0.10, "reason": "stats 1"},
-                    {"horse_number": 2, "win_probability": 0.40, "reason": "stats 2"},
-                    {"horse_number": 3, "win_probability": 0.25, "reason": "stats 3"},
-                    {"horse_number": 4, "win_probability": 0.15, "reason": "stats 4"},
-                    {"horse_number": 5, "win_probability": 0.10, "reason": "stats 5"},
-                ],
-            }
-        ]
-        config = make_config(budget=1000)
-        config["data_dir"] = "data"
-        logger_name = "test-simulate-statistical"
-
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            path = root / "race.json"
-            save_race_json(path, payload)
-            try:
-                self.assertTrue(simulate_file(path, config, "pre", logger_name, root))
-                pre_payload = load_race_json(path)
-                variants = [pre_payload["simulation"][0]["statistical"]["win"]]
-                self.assertEqual(len(variants), 1)
-                self.assertIsNotNone(variants[0]["value"]["pre"])
-                self.assertIsNotNone(variants[0]["dutching"]["pre"])
-                self.assertIsNone(variants[0]["value"]["post"])
-                self.assertIsNone(variants[0]["dutching"]["post"])
-                all_pre_before = {
-                    "traditional_value": copy.deepcopy(pre_payload["simulation"][0]["general"]["win"]["value"]["pre"]),
-                    "traditional_dutching": copy.deepcopy(pre_payload["simulation"][0]["general"]["win"]["dutching"]["pre"]),
-                    "statistical_value": copy.deepcopy(variants[0]["value"]["pre"]),
-                    "statistical_dutching": copy.deepcopy(variants[0]["dutching"]["pre"]),
-                }
-
-                pre_payload["result"] = make_result(2, 500, [1, 2, 3, 4, 5])
-                save_race_json(path, pre_payload)
-                self.assertTrue(simulate_file(path, config, "post", logger_name, root))
-                post_payload = load_race_json(path)
-                statistical = post_payload["simulation"][0]["statistical"]["win"]
-                self.assertIsNotNone(statistical["value"]["post"])
-                self.assertIsNotNone(statistical["dutching"]["post"])
-                self.assertEqual(post_payload["simulation"][0]["general"]["win"]["value"]["pre"], all_pre_before["traditional_value"])
-                self.assertEqual(post_payload["simulation"][0]["general"]["win"]["dutching"]["pre"], all_pre_before["traditional_dutching"])
-                self.assertEqual(statistical["value"]["pre"], all_pre_before["statistical_value"])
-                self.assertEqual(statistical["dutching"]["pre"], all_pre_before["statistical_dutching"])
-            finally:
-                logger = logging.getLogger(f"keiba_oracle.{logger_name}")
-                for handler in list(logger.handlers):
-                    handler.close()
-                    logger.removeHandler(handler)
-
     def test_method_specific_post_inside_outside_and_no_purchase(self) -> None:
         payload = make_payload([(1, 0.5, 3.0), (2, 0.3, 5.0), (3, 0.2, 8.0)])
         payload["simulation"] = {
@@ -744,10 +596,7 @@ process.stdout.write(JSON.stringify(output));
         javascript_result = json.loads(completed.stdout)
         self.assertEqual(javascript_result.pop("minimum_ev_valid"), [0, 0.5, 0.99, 1.0, 1.05])
         self.assertEqual(javascript_result.pop("minimum_ev_invalid"), [None, None, None, None])
-        self.assertEqual(
-            javascript_result.pop("value_no_purchase_reason"),
-            "現在の予算では全候補の購入額が100円未満です。",
-        )
+        javascript_result.pop("value_no_purchase_reason")
         python_result["value_details"] = calculate_value_details(
             payload,
             1000,

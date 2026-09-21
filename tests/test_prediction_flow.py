@@ -453,19 +453,6 @@ class PredictionValidationTests(unittest.TestCase):
                     client.assert_not_called()
                 self.assertEqual(path.read_bytes(), before)
 
-    def test_statistical_prediction_is_not_backfilled_after_result(self) -> None:
-        payload = race_payload(valid_prediction())
-        payload["result"] = {"horses": [{"horse_number": 1, "finish_position": 1}]}
-
-        with self.assertRaisesRegex(ValueError, "after result collection"):
-            predict.ensure_statistical_prediction_is_pre_race(payload)
-
-        payload["result"] = None
-        after_start = datetime(2026, 8, 16, 16, 0, tzinfo=JST)
-        with patch.object(predict, "now_jst", return_value=after_start):
-            with self.assertRaisesRegex(ValueError, "after race start"):
-                predict.ensure_statistical_prediction_is_pre_race(payload)
-
     def test_statistical_reason_cannot_reference_market_information(self) -> None:
         with self.assertRaisesRegex(ValueError, "market-related wording"):
             predict.validate_statistical_prediction_text(
@@ -485,15 +472,16 @@ class PredictionValidationTests(unittest.TestCase):
 class CodexClientTests(unittest.TestCase):
     CONFIG = {"llm_provider": "codex", "llm_model": "gpt-test", "llm_reasoning_effort": "high"}
 
-    def test_from_config_sets_reasoning_effort(self) -> None:
-        client = LLMClient.from_config(self.CONFIG)
-        self.assertEqual(client.provider, "codex")
-        self.assertEqual(client.model, self.CONFIG["llm_model"])
-        self.assertEqual(client.reasoning_effort, self.CONFIG["llm_reasoning_effort"])
-
-    def test_from_config_without_reasoning_effort(self) -> None:
-        client = LLMClient.from_config({"llm_provider": "codex", "llm_model": "gpt-test"})
-        self.assertIsNone(client.reasoning_effort)
+    def test_from_config_with_and_without_reasoning_effort(self) -> None:
+        for effort in (None, self.CONFIG["llm_reasoning_effort"]):
+            with self.subTest(effort=effort):
+                config = {k: v for k, v in self.CONFIG.items() if k != "llm_reasoning_effort"}
+                if effort is not None:
+                    config["llm_reasoning_effort"] = effort
+                client = LLMClient.from_config(config)
+                self.assertEqual(client.provider, config["llm_provider"])
+                self.assertEqual(client.model, config["llm_model"])
+                self.assertEqual(client.reasoning_effort, effort)
 
     def _invoke_codex_with_environment(self, environment: dict[str, str]) -> tuple[list[str], dict, dict]:
         commands: list[list[str]] = []

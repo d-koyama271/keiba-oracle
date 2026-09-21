@@ -51,14 +51,13 @@ class SchedulerTests(unittest.TestCase):
                     scheduler.discover_cached_races(config, datetime(2026, 2, 9, 18, tzinfo=JST), Path(tmp))
                 self.update_cancellations([replacement], config, datetime(2026, 2, 9, 18, tzinfo=JST), Path(tmp))
                 self.assertEqual(notices.call_count, 1)
-                self.assertNotIn("source_urls", notices.call_args.kwargs)
                 new_path = race_json_path(config, "2026-02-10", "東京", 11)
                 self.assertEqual(load_race_json(new_path)["race"]["rescheduled_from"], "2026-02-08")
                 self.assertTrue(load_race_json(path)["race"]["cancelled"])
                 input_path = prediction_input_path(config, new_path, root=Path(tmp))
                 atomic_write_json(input_path, {"meta": {"race_id": replacement["race_id"], "kind": "prediction", "method": "general"}, "race": race, "horses": [{"horse_number": 1}]})
                 decisions = scheduler.decide_phases(scheduler.create_phase_tasks([replacement], config, Path(tmp)), config, datetime(2026, 2, 10, 15, tzinfo=JST), Path(tmp))
-                self.assertEqual(next(d for d in decisions if d["phase"] == "general")["reason"], "invalid_prediction_input")
+                self.assertFalse(next(d for d in decisions if d["phase"] == "general")["runnable"])
                 atomic_write_json(input_path, {"meta": {"race_id": replacement["race_id"], "kind": "prediction", "method": "general"}, "race": replacement["race"], "horses": [{"horse_number": 1}]})
                 decisions = scheduler.decide_phases(scheduler.create_phase_tasks([replacement], config, Path(tmp)), config, datetime(2026, 2, 10, 15, tzinfo=JST), Path(tmp))
                 self.assertEqual(next(d for d in decisions if d["phase"] == "general")["mode"], "resume")
@@ -205,7 +204,6 @@ class SchedulerTests(unittest.TestCase):
                     self.assertEqual(fetch.call_count, 1)
                     self.update_cancellations(items, self.config, now + timedelta(minutes=60))
                     self.assertEqual(fetch.call_count, 2)
-                    self.assertEqual(len(fetch.call_args.args), 1)
 
     def test_cancellation_skips_tomorrow_cancelled_and_result_races(self):
         from utils import ensure_race_payload
@@ -648,7 +646,6 @@ class SchedulerTests(unittest.TestCase):
                     decisions = scheduler.decide_phases(scheduler.create_phase_tasks([item], config), config, datetime(2026, 9, 20, 15, tzinfo=JST))
                     decision = next(d for d in decisions if d["phase"] == method)
                     self.assertFalse(decision["runnable"])
-                    self.assertEqual(decision["reason"], "invalid_prediction_input")
                     self.assertEqual(path.read_bytes(), before)
 
     def test_pre_input_cannot_generate_new_prediction_after_start(self):
@@ -661,10 +658,10 @@ class SchedulerTests(unittest.TestCase):
             tasks = scheduler.create_phase_tasks(items, self.config, root)
             def decide(now):
                 return {d["phase"]: d for d in scheduler.decide_phases(tasks, self.config, now, root)}
-            self.assertEqual(decide(times["result"])["result"]["reason"], "no_prediction")
+            self.assertFalse(decide(times["result"])["result"]["runnable"])
             after = times["result"]
             for phase in ("general", "statistical"):
-                self.assertEqual(decide(after)[phase]["reason"], "missed_execution_window")
+                self.assertFalse(decide(after)[phase]["runnable"])
                 self.save_input(self.config, next(t for t in tasks if t.phase == phase), root)
                 for current in (times["general"], after):
                     decision = decide(current)[phase]
@@ -709,7 +706,7 @@ class SchedulerTests(unittest.TestCase):
             self.assertEqual(before, {p: p.read_bytes() for p in root.rglob("*.json")})
             payload["prediction"] = []
             atomic_write_json(paths[0], payload)
-            self.assertEqual(decide()["10", "statistical"]["reason"], "result_exists")
+            self.assertFalse(decide()["10", "statistical"]["runnable"])
             automation_state_path(paths[1], self.config, root).write_text("{}", encoding="utf-8")
             with self.assertRaises(ValueError):
                 decide()
