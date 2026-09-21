@@ -787,6 +787,8 @@ process.stdout.write(JSON.stringify({
             self.assertIn("race-name-column", row_cells[3].get("class", []))
             self.assertIn("status-column", index_table.select("thead th")[4].get("class", []))
             self.assertIn("status-column", row_cells[4].get("class", []))
+            self.assertEqual(row_cells[5].get("data-label"), "予想")
+            self.assertEqual(row_cells[6].get("data-label"), "結果")
 
 
 class SimulationRenderTests(unittest.TestCase):

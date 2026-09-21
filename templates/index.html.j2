@@ -169,55 +169,65 @@
       table { font-size: 13px; }
       th, td { padding: 8px 7px; }
       .index-panel {
-        padding-right: 8px;
-        padding-left: 8px;
+        padding-right: 12px;
+        padding-left: 12px;
       }
+      .index-panel .table-scroll { overflow-x: visible; }
       .index-table {
         width: 100%;
-        table-layout: fixed;
-        font-size: 11px;
+        font-size: 13px;
       }
-      .index-table th,
+      .index-table thead { display: none; }
+      .index-table tbody,
+      .index-table tr,
       .index-table td {
-        box-sizing: border-box;
-        padding: 6px 1px;
-        line-height: 1.35;
+        display: block;
       }
-      .index-table th:nth-child(1),
-      .index-table td:nth-child(1) {
-        width: 15%;
-        white-space: normal;
-        word-break: normal;
+      .index-table tbody tr {
+        display: grid;
+        grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+        grid-template-areas:
+          "race race race status status"
+          "date time track prediction result";
+        gap: 7px 8px;
+        padding: 10px 4px;
+        border-bottom: 1px solid #ddd;
       }
-      .index-table th:nth-child(2),
-      .index-table td:nth-child(2) { width: 10%; }
-      .index-table th:nth-child(3),
-      .index-table td:nth-child(3) { width: 9%; }
-      .index-table th:nth-child(4),
-      .index-table td:nth-child(4) { width: 33%; }
-      .index-table th:nth-child(5),
-      .index-table td:nth-child(5) { width: 17%; }
-      .index-table th:nth-child(6),
-      .index-table td:nth-child(6),
-      .index-table th:nth-child(7),
-      .index-table td:nth-child(7) {
-        width: 8%;
-        text-align: center;
+      .index-table td {
+        padding: 0;
+        border-bottom: 0;
+        line-height: 1.4;
       }
+      .index-table td:nth-child(1) { grid-area: date; }
+      .index-table td:nth-child(2) { grid-area: time; }
+      .index-table td:nth-child(3) { grid-area: track; }
+      .index-table td:nth-child(4) { grid-area: race; }
+      .index-table td:nth-child(5) { grid-area: status; }
+      .index-table td:nth-child(6) { grid-area: prediction; }
+      .index-table td:nth-child(7) { grid-area: result; }
       .index-table .status {
-        padding: 2px;
-        font-size: 10px;
+        font-size: 12px;
       }
       .index-table .race-name-column {
+        min-width: 0;
+        font-size: 15px;
+        font-weight: 700;
         white-space: normal;
-        line-break: strict;
         word-break: normal;
       }
       .index-table .status-column {
-        white-space: normal;
-        word-break: keep-all;
+        justify-self: end;
+        text-align: right;
       }
-      .index-table .next-update { font-size: 9px; }
+      .index-table .next-update { font-size: 12px; }
+      .index-table td[data-label]::before {
+        content: attr(data-label) " ";
+        color: #666;
+      }
+      .index-table td[colspan] {
+        grid-column: 1 / -1;
+        grid-area: auto;
+      }
     }
   </style>
 </head>
@@ -318,8 +328,8 @@
             <td class="nowrap">{{ race.track }}</td>
             <td class="race-name-column">{{ race.race_name|e }}{% if race.is_new %}<span class="new-badge">NEW!</span>{% endif %}</td>
             <td class="nowrap status-column"><span class="status {{ race.status_class }}">{{ race.status_label }}</span>{% if race.next_update %}<div class="small next-update"><time datetime="{{ race.next_update.at }}">{{ race.next_update.label }}</time></div>{% endif %}</td>
-            <td class="nowrap"><a class="page-link" href="{{ race.prediction_href }}">開く</a></td>
-            <td class="nowrap result-link-column">{% if race.result_href %}<a class="page-link" href="{{ race.result_href }}">開く</a>{% else %}-{% endif %}</td>
+            <td class="nowrap" data-label="予想"><a class="page-link" href="{{ race.prediction_href }}">開く</a></td>
+            <td class="nowrap result-link-column" data-label="結果">{% if race.result_href %}<a class="page-link" href="{{ race.result_href }}">開く</a>{% else %}-{% endif %}</td>
           </tr>
 {% else %}
           <tr>
