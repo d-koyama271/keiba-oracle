@@ -1,16 +1,22 @@
 # keiba-oracle
 
-中央競馬の重賞を対象に、`netkeiba` から必要情報を取得し、Codex で各馬の 1 着確率を予想し、購入シミュレーションを行い、静的 HTML を生成する最小構成のファイルベース実装です。次の開催期間に重賞がない場合だけ、各開催場の 11R を対象にします。
+中央競馬の平地重賞を対象にレース情報を収集し、各馬の1着確率をAIで予想するファイルベースのシステムです。購入シミュレーションと予測評価は通常コードで計算し、静的HTMLをGitHub Pagesへ公開します。通常運用はschedulerから行います。
 
-実装方針は次の通りです。
+## 設計方針
 
-- 1 レース 1 JSON
-- `prediction` と `simulation` を分離
-- Codex は `predict.py` の予想だけで利用
-- 記事本文はテンプレート埋め込み
-- 出力サイトは静的 HTML
+- Python・DBなし・1レース1JSON。predictionとsimulationを分離します。
+- LLMはpredictionのみ担当し、記事・説明はテンプレートで生成します。
+- EV、Kelly、Dutching、馬連確率、払戻、evaluationは決定論的に計算し、乱数・Monte Carloを使いません。
+- `general`（総合AI予想）と`statistical`（統計重視予想）は独立し、片方だけでも保存・公開・評価できます。
+- prediction inputはAI実行前に確定snapshotとして保存し、resumeでは同じ入力を再利用します。
+- 自動運用では発走後に新しいpredictionを生成しません。保存済みpreを結果取得後に変更しません。
+- renderで業務計算を再実装せず、保存済みsimulationを優先します。
+- phase完了判定の主な根拠はrace JSONの成果物です。途中・失敗stateが残っていれば、一部成果物が存在しても復旧処理を続けます。
+- 過去JSONの一括migrationやblanket backfillは行いません。
 
 ## ディレクトリ構成
+
+標準設定での配置です。データ・公開先は`config/app.yaml`の`data_dir`・`public_dir`に従います。
 
 ```text
 config/
@@ -18,102 +24,152 @@ config/
   prompt_prediction.txt
   prompt_prediction_statistical.txt
 src/
-  run_pre.py
-  run_post.py
-  run_pre_collect.py
-  run_post_collect.py
-  collect.py
-  predict.py
-  simulate.py
-  quinella.py
-  evaluation.py
-  evaluation_summary.py
-  render.py
-  publish.py
-  response_importer.py
-  watcher.py
-  llm_client.py
-  utils.py
+  scheduler.py / automation_state.py
+  run_pre.py / run_post.py
+  run_pre_collect.py / run_post_collect.py
+  collect.py / predict.py / llm_client.py
+  simulate.py / quinella.py
+  evaluation.py / evaluation_summary.py / backtest.py
+  render.py / publish.py / deploy.py / utils.py
+  response_importer.py / watcher.py
 data/
-  races/
-  prediction_inputs/YYYY-MM-DD/
+  races/YYYY-MM-DD/<stem>.json
+  prediction_inputs/YYYY-MM-DD/<stem>.json
+  prediction_inputs/YYYY-MM-DD/<stem>.statistical.json
+  automation/YYYY-MM-DD/<stem>.json
+  automation/discovery_cache.json
+  automation/scheduler.lock
   evaluation_summary.json
-inbox/
-  prediction/
-outbox/
-  chat_input/
-    prediction/
+  _site_stage/
+  deploy/github_pages/         # 自動deploy専用clone
+  deploy/github_pages_state.json
 templates/
-  race.html.j2
-  index.html.j2
-  quinella.html.j2
+  index.html.j2 / race.html.j2 / quinella.html.j2
 public/
-  races/
+  index.html
+  races/YYYY-MM-DD/<stem>.html
+  races/YYYY-MM-DD/<stem>_result.html
+inbox/prediction/              # 旧手動応答の取込専用
+  processed/YYYY-MM-DD/
+logs/
+tests/
+.github/workflows/pages.yml
 requirements.txt
-README.md
 ```
+
+`<stem>`は`nakayama_11r`などの競馬場・レース番号です。日付別ディレクトリと組み合わせて識別します。runtimeデータ、評価集計、stage、専用clone、`public/`はmainのGit管理対象外です。
 
 ## セットアップ
 
-1. Python 3.11 以上を用意します。
-2. 依存関係を入れます。
+Python 3.11以上とGitを用意し、リポジトリルートで仮想環境を作成します。
 
 ```bash
-pip install -r requirements.txt
+python -m venv .venv
 ```
 
-3. Codex CLI を用意し、`codex` コマンドへログインします。
+以降の`python`は仮想環境のPythonを使用してください。Windowsでは`.venv\Scripts\python.exe`、POSIXでは`.venv/bin/python`です。
 
 ```bash
+python -m pip install -r requirements.txt
 codex login status
 ```
 
-4. 必要なら `config/app.yaml` を調整します。既定値は `llm_provider: codex` です。外部 AI API キーは使用しません。
+通常の予想runtimeはCodex CLIです。実行ユーザーで`codex`をPATHから起動でき、ログイン済みであることを確認します。GitHub Pagesへ自動公開するユーザーには、Gitのcommit用ユーザー設定と対象remoteへのpush権限も必要です。
 
-主な設定値:
+設定の正本は`config/app.yaml`です。モデル名や購入条件の具体値はこのファイルを参照してください。
 
-- `target_races`: 収集対象の開催場名
-- `odds_reference_minutes_before_start`: 通常運用における推奨取得目標分数
-- `simulation.budget`: 両方式共通の 1 レース予算上限
-- `simulation.stake_unit`: 両方式共通の購入金額単位
-- `simulation.value.ev_threshold`: 期待値重視方式の最低 EV（既定値 1.0）
-- `simulation.value.kelly_fraction`: 期待値重視方式の fractional Kelly 係数（既定値 0.75）
-- `simulation.dutching.*`: 単勝分配方式（内部キー `dutching`）の最大頭数、最低カバー確率、最低グループ期待値、最低利益率（既定値20%、合計購入額基準）
-- `simulation.quinella.*`: 馬連専用の確率近似・購入条件（下記参照）。単勝設定とは独立し、旧設定にこの項目がなくても単勝は動作します。
-- `publish_mode`: `github_pages` を想定
-- `llm_provider`: 通常運用では `codex`
-- `llm_model`: Codex で使用するモデル名
-- `llm_reasoning_effort`: Codex CLI の `model_reasoning_effort` に渡す設定値
-- `data_dir`: レース JSON 保存先
-- `public_dir`: 公開物の出力先
+| 設定 | 用途 |
+| --- | --- |
+| `target_races` | 対象競馬場 |
+| `automation.*` | phase実行時刻・retry間隔・上限 |
+| `odds_reference_minutes_before_start` | 手動収集時の推奨取得目標。schedulerの実行時刻とは別設定 |
+| `llm_provider` / `llm_model` / `llm_reasoning_effort` | 予想runtime・モデル・reasoning effort |
+| `simulation.budget` / `stake_unit` | 各シミュレーションの予算・購入単位 |
+| `simulation.value` / `simulation.dutching` | 単勝の購入条件 |
+| `simulation.quinella` | 馬連の確率近似・購入条件 |
+| `publish_mode` / `deployment.github_pages` | deploy backendとremote名・公開branch |
+| `data_dir` / `public_dir` | データ・公開物の保存先 |
 
-## 実行
+Codex CLIにはモデル・reasoning effortを明示して渡し、ユーザー設定に依存させません。一時ディレクトリのread-only sandbox・ephemeral・構造化出力を使用し、確定入力以外のファイルやWebを参照しないようプロンプトで指示します。1回のprediction実行につきCLI実行は1回で、内部retryはありません。`llm_provider: openai`のAPI経路もあり、その場合は`OPENAI_API_KEY`が必要です。
 
-レース前ジョブ:
+## 通常の自動運用
 
 ```bash
-python src/run_pre.py
+python src/scheduler.py             # 探索・予定・判定の確認のみ
+python src/scheduler.py --execute   # 対象phaseを実行し、deployまで行う
 ```
 
-レース後ジョブ:
+Task Scheduler / cron等で`--execute`を10分ごとに起動する運用です。scheduler自身は常駐せず、1回の起動で各対象phaseを最大1回実行します。Windowsでは仮想環境のPythonとスクリプトの絶対パスを指定し、作業ディレクトリをリポジトリルートにします。`pythonw.exe`にも対応し、runtimeのCodex・Git子プロセスはコンソールを表示しません。
+
+### 対象と予定時刻
+
+JSTの今日・明日について、実際の開催データから`target_races`内の平地GI/GII/GIIIを探索します。曜日や11Rに限定せず、障害重賞は対象外です。重賞がない日は空で正常終了し、自動運用では11Rへのfallbackを行いません。
+
+| phase | 実行予定 |
+| --- | --- |
+| statistical | レース前日の`automation.statistical_time` |
+| general | 発走の`automation.general_minutes_before_start`分前 |
+| result | 発走の`automation.result_minutes_after_start`分後 |
+
+予定はraceの日付・発走時刻から共通関数で計算します。indexの自動更新説明と次回更新予定も同じ設定・計算を使います。実処理は予定到達後のscheduler起動時に行われ、結果未公開やretryによって遅れる場合があります。
+
+### 探索キャッシュ・開催中止
+
+通常探索はキャッシュを再利用し、毎tick・毎時には再取得しません。日付構成・対象競馬場の変更、キャッシュ欠損・破損・対象日不足時に探索し、同日でも`statistical_time`到達後に未探索なら1回再探索します。正常な既存キャッシュがある場合、探索失敗後はそれを維持し、再探索まで1時間空けます。phase・retry判定は毎tick継続します。確認表示だけの起動は探索通信を行いますが、キャッシュ・state・公開物は更新しません。
+
+開催中止確認は、当日の未result・未cancelledの対象レースがある場合だけ、netkeiba公式お知らせを最大1時間に1回取得します。通信失敗時も同じ間隔を空けます。告知の日付・競馬場・レース範囲が一致した場合だけ中止とし、取得失敗や一覧からの消失を中止とは扱いません。
+
+中止後はpreと通常result取得を停止し、評価集計から除外します。予想と中止記録を残して予想ページを「開催中止」とし、結果ページは生成しません。中止表示の公開失敗もresult phaseで復旧します。
+
+告知に代替日が明記されている場合は`replacement_date`を保存します。通常探索の更新時に、その日付で同じrace_idを確認した場合だけ新日程のJSONを作成します。元日付のJSON・予想・中止記録は維持し、古い確定inputは流用しません。代替確認のために過去の告知記事を再取得しません。
+
+### retry・途中終了・lock
+
+処理単位は日付 × race_id × phaseです。race別automation stateには`in_progress`・`retry_wait`・`blocked`を保存します。開始時はattemptsを増やさず、失敗記録で加算します。retry間隔と上限はpre用・result用のautomation設定に従い、上限到達後はblockedとして自動再実行を止めます。不正なstateを黙って初期化しません。
+
+完了はrace JSONのpredictionやresultを根拠に判定します。ただし途中・失敗stateがあればそれを優先し、simulation・evaluation・render・publishを含むフローの正常終了と成果物確認後だけ解除します。result完了には存在するpredictionのevaluation、利用可能なpreに対応するpost、readyな馬連の精算完了が必要です。simulationがないこと自体は未完了理由にしません。
+
+前日以前の`retry_wait`・`in_progress`もローカルJSONから復旧対象へ追加します。blockedを復活させたり、過去レースを外部探索したりはしません。発走後のpre復旧は、有効な確定inputと現在のAI実行設定に対応する保存済みpredictionがある場合だけ許可し、新規predictionは生成しません。
+
+`--execute`全体をOS管理の非ブロッキングファイルlockで保護します。競合時は正常skipし、異常終了時はOSが解放するためlockファイルの手動削除は不要です。deployも同じlock内で実行します。
+
+## 手動実行・resume
 
 ```bash
-python src/run_post.py --date 2026-04-14
+python src/run_pre.py --date YYYY-MM-DD --phase statistical
+python src/run_pre.py --date YYYY-MM-DD --phase general
+python src/run_pre.py --date YYYY-MM-DD --phase all
+python src/run_post.py --date YYYY-MM-DD
 ```
 
-`run_pre.py` は日付を省略すると、次の連続する中央競馬開催期間を探索し、その期間の重賞をすべて対象にします。重賞が1件もない場合だけ、各開催場の11Rを対象にします。`run_post.py` は日付を省略すると当日を対象にします。過去レースを明示して検証する場合は、どちらも `--date YYYY-MM-DD` を使用できます。
+| pre phase | 処理 |
+| --- | --- |
+| statistical | 収集 → statistical input保存・予想 → render・publish。general input確定とsimulationは行わない |
+| general | 再収集 → general input確定・予想 → 保存済みgeneral/statisticalのpre simulation → render・publish |
+| all（省略時） | 1回の収集 → 両方式の入力保存・予想 → pre simulation → render・publish |
 
-## 生成物
+allでは片方の方式だけ成功しても、その予想のsimulation・公開を継続します。両方失敗したレースは成功対象から除外し、成功レースも中止レースもなければエラー終了します。general実行はstatisticalを新規生成しません。
 
-- レース JSON: `data/races/YYYY-MM-DD/track_Nr.json`
-- 予想ページ: `public/races/YYYY-MM-DD/track_Nr.html`
-- 結果ページ: `public/races/YYYY-MM-DD/track_Nr_result.html`（結果公開後のみ）
-- 一覧ページ: `public/index.html`
-- 全体評価集計: `data/evaluation_summary.json`
+日付省略のpreは次の開催期間を探索し、重賞がない場合だけ各場11Rへfallbackする手動選択です。日付指定時も対象場の重賞がなければ11Rへfallbackします。postの日付省略は当日です。自動運用の探索範囲とは異なります。
 
-自動運用の処理途中・失敗・再試行状態は `src/automation_state.py` で扱います。保存先は `data_dir/automation/YYYY-MM-DD/<race JSONと同じstem>.json` です。schedulerはphase開始前に `in_progress` を保存し、フロー正常終了と成果物の確認後だけ解除します。開始記録ではattemptsを増やさず、失敗記録ごとに加算します。`retry_wait` は `next_retry_at` 必須、`blocked`／`in_progress` はnullです。不正なstateはエラーとし、clearは指定phaseだけを削除します。`data/automation/` はGit管理対象外です。
+`--race-id <race_id>`でpre・post・resumeの対象を1レースに限定できます。postは利用可能なpreを精算し、predictionを評価して集計・render・publishします。statistical predictionとresultだけでも評価・結果ページを生成できます。手動pre/postはローカルpublishまでで、remote deployは行いません。
 
-各レース JSON のトップレベルは固定です。
+### 確定入力からの再開
+
+```bash
+python src/run_pre.py --date YYYY-MM-DD --phase general --race-id <race_id> --resume
+python src/run_pre.py --date YYYY-MM-DD --phase statistical --race-id <race_id> --resume
+```
+
+resumeは日付と単独phaseが必須です。再収集せず、generalは`prediction_inputs/YYYY-MM-DD/<stem>.json`、statisticalは同じ場所の`<stem>.statistical.json`を使用します。入力のrace_id・日付・競馬場・レース番号・方式を検証し、欠損・不正入力を現在のrace JSONから作り直しません。保存後にrace/horsesが更新されても、確定snapshotを入力の正本として扱います。有効な既存predictionは再利用して後続処理を続けます。
+
+通常のgeneral実行は再収集して入力を確定し直すため、失敗時に元のsnapshotで再開したい場合は`--resume`を使用してください。statisticalは既存の確定inputがあれば検証して再利用します。
+
+手動入口にはschedulerの発走後ガードが一律には適用されません。statisticalは明示inputによる手動復旧を許可しますが、resultが存在すれば新規生成を拒否します。generalの低レベル入口には同じ時刻ガードがありません。自動運用の制約を迂回して発走後の新規予想を通常成績へ追加する用途には使いません。`predicted_at`は実際の生成時刻です。
+
+## Race JSON・prediction
+
+トップレベル構造は固定、`meta.schema_version`は10です。
 
 ```json
 {
@@ -127,218 +183,107 @@ python src/run_post.py --date 2026-04-14
 }
 ```
 
-`meta.schema_version` は `10` です。`prediction[]` の各要素はレース内参照ID（現在は `p1`）とAI情報、独立した `general`（総合AI予想）／`statistical`（統計重視予想）を持ちます。片方のみの生成・表示・シミュレーション・評価も可能で、生成順には依存しません。AI情報は親に一度だけ保存し、`provider` は `OpenAI`、`family` は `GPT`、`model`／`runtime_provider`／`reasoning_effort` はそれぞれ設定の `llm_model`／`llm_provider`／`llm_reasoning_effort` に対応します。AI名やモデル名をJSONキーや参照IDには使用しません。
+`prediction[]`の各要素には`id`、AI情報、独立した`general`／`statistical`を保存します。AI情報は親に一度だけ保持します。`provider`・`family`・`model`・`runtime_provider`・`reasoning_effort`がすべて一致するentryを再利用し、設定が変われば別IDを作成します。`p1`等はレース内の参照IDで、AI名・モデル名をJSONキーやIDには使用しません。
 
-`simulation[]` と `evaluation[]` は `prediction_id` で予想へ対応付けます。simulationは `general`／`statistical` → `win`／`quinella` → `value`／`dutching` → `pre`／`post` の階層、evaluationは `general`／`statistical` 配下に従来の評価を保持します。
+現在のCodex運用では`provider`はOpenAI、`family`はGPTです。`model`・`runtime_provider`・`reasoning_effort`はそれぞれ設定の`llm_model`・`llm_provider`・`llm_reasoning_effort`に対応します。
 
-予想IDはAI実行設定のスナップショットを識別します。`provider`／`family`／`model`／`runtime_provider`／`reasoning_effort` がすべて一致するentryを再利用し、対象方式が未保存ならそこへ追加します。一致するentryがない場合のみ新しいIDを作成します。予想日時やプロンプト・入力のハッシュはIDの同一性判定に使用しません。
+```text
+prediction[]: id / AI情報 / general / statistical
+simulation[]: prediction_id → general|statistical → win|quinella → value|dutching → pre|post
+evaluation[]: prediction_id → general|statistical
+```
 
-schema v9以前は読み込み時に、本体を `general`、`variants` 内の統計重視予想を `statistical` へ正規化します。予想・simulation・evaluationを同じIDへ対応付け、保存済み確率・オッズ・計算結果・評価値は維持します。旧データに記録されていないAI情報は現在設定で補完しません。読み込みだけでは元ファイルを変更せず、通常処理で保存する場合にv10形式になります。一括移行・バックフィルは行いません。
+予想には各馬の確率・理由、総括、生成日時、使用プロンプト・入力のハッシュを保存します。generalは収集した市場情報を含み、statisticalは今回・過去走のオッズ、人気、取得元、市場由来情報を除外します。prediction・simulation・result・evaluationや馬連snapshotは予想入力へ含めません。
 
-結果取得時に全出走馬の確定単勝オッズが揃った場合のみ、予想時点の `horses[].win_odds` を変更せず `result.final_win_odds` へ保存します。馬連の追加キーがない旧JSONも読み込み可能です。
+収集では単勝オッズをnetkeibaから取得し、完全な検証に失敗した場合だけJRA公式へfallbackします。取得元を混在させず、採用元と取得時刻を記録します。馬の対象レース自身を除く直近5走と、取得した履歴に基づく条件別`career_summaries`を保存します。
 
-`race` には取得時点の `weather` と正規化した `class_grade` を保存します。各馬の `past_runs` は対象レース自身を除外した直近5走で、走破タイム、ペース、馬体重、当時の人気・オッズなどの詳細を含みます。
+結果取得は全出走馬・勝ち馬の払戻等を検証します。確定単勝オッズは`result.final_win_odds`に保存し、postフローでは予想時点の単勝オッズを置き換えません。retryで欠けた確定オッズ・天候・馬場や確定済み馬連払戻は既存値を維持し、有効な新値があれば優先します。
 
-単勝オッズはnetkeibaを優先し、全出走馬分を検証できない場合だけJRA公式へ切り替えます。同一レース内で取得元は混在させず、`race.odds_source` と採用元の `race.odds_source_url` を保存します。`race.odds_captured_at` は全馬の単勝オッズと人気の検証に成功した時刻で、両取得元とも失敗した場合は3項目とも `null` です。
-
-馬成績のAJAXレスポンスに含まれる全JRA履歴はJSONへ保存せず、競馬場・surface・距離±200m・馬場・天候・クラス・騎手別の `career_summaries` に集計します。季節・枠番・馬番別集計や全履歴配列は生成しません。
-
-## ジョブの流れ
-
-`python src/scheduler.py` はJSTの今日・明日の開催データから、`target_races` 内の重賞と各フェーズの予定日時・現在の実行可否を表示します。曜日判定や11Rへのfallbackは行いません。予定は `automation.statistical_time`（前日の時刻）、`automation.general_minutes_before_start`（発走何分前）、`automation.result_minutes_after_start`（発走何分後）から毎回計算します。既存の `odds_reference_minutes_before_start` とは別設定です。この段階では予定を保存せず、予想・結果取得・retry・公開も実行しません。
-
-通常探索したレースは3つの `PhaseTask`（日付・race_id・phase）へ展開し、過去retryは保存stateに残る対象phaseだけを追加します。`decide_phases()` は各taskのrace JSON、automation state、保存済みinputを参照し、`state`（scheduled／running／completed／retry_wait／blocked）、`scheduled_at`、`mode`（normal／resume）、`runnable`、実行制約の `reason` を返します。runningは保存上の `in_progress` に対応し、modeとは独立しています。完了済み・blocked・予定時刻前・retry待機中は対象外です。発走後のpre再開には有効な確定inputと現在の実行設定に対応する既存predictionが必要です。判定処理はrace JSONやautomation stateへ書き込みません。中止公開もresult taskとして同じ実行・成果物確認・state更新の経路を通ります。
-
-`python src/scheduler.py --execute` を指定すると、判定に従ってレース単位で既存pre／postフローを実行し、ローカルの `public/` まで更新します。resultは少なくとも一方のpredictionがある場合だけ実行します。実行後のrace JSONで成果物を確認し、成功したphaseの失敗stateをclearします。失敗時は `automation.retry_interval_minutes`／`max_attempts`、resultでは `result_retry_interval_minutes`／`result_max_attempts` に従ってretry待機またはblockedを記録します。これらは正の整数です。発走時刻以降にinputがないpre phaseは実行せず即blockedとし、既にblockedのphaseは再記録しません。各phaseは1回の起動で最大1回実行し、自動待機ループは行いません。`--execute` なしでは表示のみで、stateや `public/` を変更しません。
-
-`--execute` は `data_dir/automation/scheduler.lock` のOS管理の非ブロッキングlockで重賞検知から実処理全体を保護します。競合時は失敗stateを更新せず正常skipします。異常終了時もOSがlockを解放するため、残ったlockファイルの削除は不要です。確認表示のみの場合はlockを取得しません。
-
-前日以前でも `retry_wait`／`in_progress` が残るレースはローカルrace JSONから候補へ追加し、その未完了phaseだけを再開します。blockedやstate解除済みのレースは追加せず、過去の探索・中止記事取得は行いません。発走後のpre再開には保存済み確定inputと現在の実行設定に対応する既存predictionが必要で、新たなpredictionは生成しません。
-
-`--execute` の重賞探索結果は `data_dir/automation/discovery_cache.json` に保存します。キャッシュ未作成・破損・対象日不足・日付構成変更時に探索し、同じ日でも当日の `statistical_time` 以降にまだ探索していなければ1回再探索します。それ以外はキャッシュを再利用します。正常な既存キャッシュがある場合、探索失敗後の再試行は1時間空けます。phase判定・retry判定・deployは起動ごとに継続します。確認表示のみの場合は従来どおり探索し、キャッシュを書き込みません。
-
-開催中止確認は当日の対象レースのうち未result・未cancelledだけを対象に最大1時間に1回行い、通信失敗時も同じ間隔を空けます。過去の中止記録は探索更新時だけ代替開催確認のために走査し、中止確定済み記事は再取得しません。
-
-`run_pre.py`
-
-`run_pre.py`、`run_post.py`、`run_post_collect.py` は `--race-id <race_id>` で対象を1レースに限定できます。preの各phaseとresumeでも指定でき、対象外のレースのinput・予想・結果・公開済みHTMLは更新しません。トップページと結果集計は対象レースの更新を反映します。省略時は従来の日付単位処理です。resume／postで対象日のrace JSONが見つからない場合はエラーになります。
-
-失敗後の再開は `python src/run_pre.py --date YYYY-MM-DD --phase general --resume` または `--phase statistical --resume` を使用します。再収集せず、`data_dir/prediction_inputs/YYYY-MM-DD/<stem>.json`（general）／`<stem>.statistical.json`（statistical）を読み込みます。statistical inputもCodex実行前に保存します。race_id・日付・競馬場・レース番号・方式を照合し、不正なinputは再生成・上書きしません。後日の再収集でrace／horsesが変わっていても、予想には確定済みsnapshotを使用します。statisticalの市場情報除外と結果取得後の生成禁止は維持します。対象日の該当inputがない場合は失敗し、旧outboxや現在のrace JSONから補完しません。`--resume` には日付と単独フェーズの指定が必要です。通常のgeneral実行は従来どおり再収集・input確定を行います。
-
-`--phase statistical` は収集後に統計重視予想のみ生成・公開し、総合用inputの確定とsimulationは行いません。`--phase general` は再収集時点の総合用inputを確定して総合予想のみ生成し、保存済みの両予想方式でpre simulation・公開を行います。`--phase all`（省略時）は以下の一括処理です。各フェーズで `--date YYYY-MM-DD` を指定できます。
-
-1. `collect.py` で対象レース情報を取得
-2. 予想開始時点の `meta` / `race` / `horses` を確定し、総合AI予想入力と、市場情報を除いた統計重視予想入力を独立して作成
-3. `predict.py` から Codex を実行し、総合AI予想と統計重視予想の各馬の 1 着確率・理由・総括を検証して保存
-4. 両AI予想を個別に入力として、`simulate.py` で単勝・馬連の期待値重視方式と分配方式のpreを生成（馬連は発走前の完全なデータがある場合のみ）
-5. `render.py` で予想ページと index を生成
-6. `publish.py` で `public/` を更新
-
-各レースで片方の予想方式だけ成功した場合も、成功した方式のシミュレーション・表示・公開を継続します。両方式とも失敗したレースは処理対象から除外し、全レースが失敗した場合は公開せずエラーで終了します。
-
-Codex は一時作業ディレクトリ内の読み取り専用・構造化出力モードで実行され、プロンプトに埋め込んだ確定済み予想入力 JSON だけを予想材料にします。Web、リポジトリ内ファイル、公開済み HTML、結果、過去の別予想、評価データは参照させません。
-
-正常に保存した新規予想の `general`／`statistical` には `horses`、`optional_summary`、`predicted_at` に加え、実際に使用したプロンプトと安定化した予想入力 JSON の `prompt_sha256`、`prediction_input_sha256` を記録します。過去予想へは補完しません。通常フローの再実行では、現在のAI実行設定に一致するentryの有効な予想を再利用します。設定変更時も以前のentryは上書きしません。
-
-統計重視予想は `config/prompt_prediction_statistical.txt` を使用します。今回・過去走のオッズ、人気、オッズ取得元・時刻・URL、市場由来の順位・確率を再帰的に除外し、レース条件、過去成績、走破タイム、着差、通過順、上がり、馬体重、`career_summaries` などの客観データだけを渡します。`prediction`、`simulation`、`result`、`evaluation` は入力に含めません。通常は発走後の生成を禁止しますが、inputを明示指定した復旧では、race JSONとの整合性検証後に生成可能です。結果取得済みの場合は引き続き拒否し、`predicted_at` は実際の生成時刻を記録します。
-
-`run_post.py`
-
-1. `collect.py` で結果と払戻を取得
-2. `simulate.py` で保存済みの各AI予想・両購入方式の `post` を確定
-3. `evaluation.py` で総合AI予想と統計重視予想へ同じ予測評価指標を生成
-4. `evaluation_summary.py` で総合AI予想の集計、方式別集計、同一レース比較を更新
-5. `render.py` で予想ページを維持し、結果ページと index を生成・更新
-6. `publish.py` で `public/` を更新
+schema v9以前は読み込み時に旧本体をgeneral、統計重視variantをstatisticalへ正規化し、prediction・simulation・evaluationのIDを対応付けます。読み込みだけでは元ファイルを変更せず、通常処理で保存する場合にv10形式になります。既存の監査情報・計算値は維持し、一括移行はしません。
 
 ## 購入シミュレーション
 
-単勝の購入シミュレーションは次の2方式です。レース前想定と収支は `simulation[].general.win`／`simulation[].statistical.win` の各購入方式の `pre/post` に保存します。レース結果を取得しても各 `pre` は変更しません。
+general/statistical × 単勝/馬連 × value/dutchingはそれぞれ独立した仮想シミュレーションです。各々に設定の予算上限を適用し、全方式へ予算を分割したり、一つの実運用収支に合算したりしません。
 
-- `value`: 予測勝率と単勝オッズから EV と fractional Kelly を計算します。理論購入額が予算を超える場合だけ比例縮小し、余った予算の強制配分は行いません。
-- `dutching`（画面表示: 単勝分配方式）: 予測勝率上位を1頭から設定上限まで評価し、逆オッズ配分を購入単位へ丸めます。カバー確率、グループ期待値、的中時最低利益を満たす候補からグループ期待値が最大の頭数を採用します。
+- **value（期待値重視）**：確率×オッズでEVを計算し、fractional Kellyで購入額を決定します。予算超過時だけ比例縮小し、購入単位へ切り捨てます。余った予算は強制配分しません。
+- **dutching（分配）**：確率上位1件から設定上限まで評価します。各対象に1単位を配り、想定払戻が最小の対象へ残りを順次配分します。カバー確率・グループEV・最低利益率を満たす候補を、グループEV、カバー確率、少ない選択数の順で選びます。最低利益率の分母は実際の合計購入額です。
 
-予想ページではAI予想と正式シミュレーションを総合AI予想／統計重視予想のタブで切り替えます。購入シミュレーション・カスタム・購入結果には、その下に単勝／馬連の券種タブがあります。初期表示は総合AI予想（統計重視のみの場合は統計重視予想）・単勝です。AI予想表は券種にかかわらず各馬の1着確率を表示します。カスタムでは選択中のAI・券種の保存済み確率、オッズ、設定を使い、自動選択に加え確認用の固定頭数・固定組数を指定できます。入力値と計算結果はrace JSON、正式な収支、localStorage、Cookieへ保存されません。馬連の確率はPythonで算出した保存値を埋め込み、ブラウザで再推定しません。
+単勝・馬連はDutchingの配分・候補評価・選択処理を共有し、丸め・EPSILON・閾値判定も揃えています。利益率0では、他の条件を満たせば損益分岐も適格です。
 
-### 馬連
-
-総合AI／統計重視 × 単勝／馬連 × 分配／期待値の8通りは、各々が共通予算上限3,000円・購入単位100円の独立した仮想シミュレーションです。8通りへ予算を分割したり、1つの実運用収支へ合算したりしません。
-
-`config/app.yaml` の `simulation.quinella` の条件は次の通りです。最適化済みの設定ではありません。
-
-| 項目 | 値 |
-| --- | ---: |
-| `harville_lambda` | 0.81 |
-| `value.ev_threshold` | 1.10 |
-| `value.kelly_fraction` | 0.80 |
-| `dutching.max_selection_count` | 10 |
-| `dutching.min_coverage_probability` | 0.40 |
-| `dutching.min_group_expected_value` | 0.75 |
-| `dutching.min_profit_rate` | 0.20 |
-
-既存netkeiba APIの `type=all` レスポンスから単勝 `odds["1"]` と馬連 `odds["4"]` を同時に取得します。組番は辞書キーではなく `row[3]`、オッズは `row[0]` を読みます。昇順整数ペアの完全な集合、重複、欠落、有限・有効な数値を検証し、`race.quinella_odds` に `pairs`、`fetched_at`、`source`、`source_url`、`official_datetime`、`api_status`、`api_reason`、`update_count`、`available`、`reason` を保存します。不完全なスナップショットを部分利用したり、取消馬を推定したりしません。APIの発走前状態と更新・取得時刻も確認し、結果時点のオッズはpreに使いません。馬連取得失敗時も単勝の検証とJRAフォールバックは継続します。馬連情報は両AIの予想入力から除外します。
-
-全出走馬の1着確率から、同着なしの近似であるDiscounted Harvilleを使用します。
+馬連は全出走馬の1着確率からDiscounted Harvilleで組確率を算出します。
 
 ```text
 P(i,j) = p_i * p_j^lambda / sum(k != i, p_k^lambda)
        + p_j * p_i^lambda / sum(k != j, p_k^lambda)
 ```
 
-全ペア合計を許容誤差1e-6以内で検証し、単勝オッズによる対象除外や候補内の再正規化は行いません。馬連valueは既存のEV・Kelly計算と比例縮小・購入単位切り捨てを再利用します。馬連dutchingは確率上位1～設定上限組数を評価し、各組へ1単位を配分後、想定払戻が最小の組へ順に残りを配ります。確率同率や払戻同額は馬番ペアの数値昇順です。条件適合候補をグループEV最大、カバー確率最大、組数最小の順で選びます。最低利益率の基準は実際の合計購入額です。
+全ペアの確率合計・発走前の完全な馬連オッズsnapshotを検証し、候補だけへの再正規化は行いません。`probabilities`・`harville_lambda`・`odds_snapshot`を同じ予想方式のvalue/dutchingで共有します。馬連データが利用不可でも単勝処理は継続します。
 
-保存先は `simulation[].general.quinella` と `simulation[].statistical.quinella` です。`probabilities`、`harville_lambda`、`odds_snapshot` を方式間で共有し、その配下に `value.pre/post` と `dutching.pre/post` を持ちます。preには予算・購入単位・設定・ペアごとの購入値・候補評価を保持します。`status: ready` の中でpreの `purchased` / `no_purchase` を区別し、計算不可は `status: unavailable` と理由を保存してpreを `null` にします。結果待ちは `post_status: awaiting_result`、払戻未確定は `awaiting_payouts`、確定後は `settled` です。保存済みpreは単勝・馬連とも再実行で上書きしません。新規馬連preは発走前・結果未取得時に限定し、過去へのバックフィルは行いません。
+保存済みの有効なpreは再実行で上書きせず、結果取得後も維持します。新規馬連preは発走前・result未取得時だけ生成します。postは保存済み購入対象を公式払戻で精算し、同着・返還を扱います。馬連払戻未確定は`awaiting_payouts`、確定後は`settled`とし、未確定を外れ扱いにしません。返還だけでは的中に数えません。
 
-結果ページの馬連払戻DOMを組番と金額の対応を維持して読み、`result.payouts.quinella` に `horse_numbers` と `payout_per_100` を保存します。同着時は全払戻組を照合し、`result.quinella_settlement` に完全性・確定した取消／除外の馬番を保持します。中止・失格は返還しません。postは実払戻一覧だけで的中を判定し、当初購入額 `total_stake`、返還 `total_refund`、的中払戻＋返還 `total_return`、損益 `profit` を保存します。`roi` は損益／当初購入額（購入0円なら0）です。払戻や返還情報が不完全ならpostは `null` のままとし、外れとして確定せず、単勝結果の処理を継続します。保存済みの正常な馬連結果・postを取得失敗で消しません。全面中止など払戻一覧を確認できないケースも未確定として残します。
+単勝valueのpreにはEV、Kelly、理論購入額、最低予算等の`details`も保存します。renderは保存値を使い、詳細のない旧JSONだけ共通の計算関数へfallbackします。設定変更後の再renderで新しい購入計算を保存結果へ混ぜません。
 
-馬連の集計は保存済みの確定postだけから `evaluation_summary.simulation.quinella` と `methods.*.simulation.quinella` に生成します。対象・購入・的中レース数、購入額、返還額、回収額、損益、回収率を方式別に保持し、返還を的中へ数えません。正常な購入なしは対象数に含め、計算不可・未確定は除外します。`overall_roi` は回収／当初購入額（購入0円ならnull）で、既存の定義を維持します。indexでは各AIの単勝と馬連の方式別収支を分けて表示します。1着予想のevaluation指標は変更しません。
+カスタム購入シミュレーションは保存済み確率・オッズ・設定を基にブラウザ内で計算します。馬連確率をブラウザで再推定せず、結果をrace JSONや正式収支へ保存しません。PythonとJavaScriptの計算一致をテストします。
 
-## 予測評価
+## 評価・backtest
 
-結果取得後、各race JSONの `evaluation[].general`／`evaluation[].statistical` に次を保存します。
+`evaluation`は保存済みpredictionとresultを対応付け、勝ち馬の予測確率・順位、Top1/3/5、Log Loss、Brier Score、市場ベースライン比較を方式別に計算します。simulationの有無に依存せず評価し、開催中止は対象外です。
 
-- 勝ち馬の予測確率と予測順位。順位は勝率降順、同率は馬番昇順です。
-- `log_loss`: `-log(max(勝ち馬確率, 1e-12))`
-- `brier_score`: 全出走馬の二乗誤差の平均
-- `top1_hit` / `top3_hit` / `top5_hit`
-- 単勝オッズの逆数を全馬で正規化した市場ベースライン。差分はモデル指標から市場指標を引きます。
-- 総合AI予想の `win.value.post` と `win.dutching.post` の収支要約
-
-総合AI予想と統計重視予想に同じ勝ち馬確率・順位、Top1/3/5、Log Loss、Brier Score、市場ベースライン比較を独立して計算し、対応する `prediction_id` の `general`／`statistical` へ保存します。統計重視予想の評価にはシミュレーション収支を混在させません。
-
-有効な単勝オッズが全馬分そろわない場合、`market_baseline.available` は `false` です。発走後に記録されたオッズを使用した比較には `odds_recorded_after_start: true` と注記を保存します。購入なしの評価用ROIは `null` です。
-
-`data/evaluation_summary.json` は正常な `evaluation` があるrace JSONだけから再生成する派生データです。既存のトップレベル集計と `simulation` は総合AI予想の意味を維持します。`methods.general` と `methods.statistical` に方式別のTop1・Top3・Top5成績、Log Loss・Brier Score、確率校正、条件別精度を保存し、各方式の `simulation` は保存済みpostだけを集計します。`paired_comparison` は両方式の評価がそろう同一レース・同一 `prediction_id` だけを母数とし、Log Loss・Brier Score差は `statistical - general`（負なら統計重視予想が優位）です。race JSONへは書き戻さず、発走後オッズのレースは正式な市場比較から除外します。任意に再集計する場合は次を実行します。
+`evaluation_summary.json`は評価済みrace JSONと保存済みpostから再生成する派生データです。方式別の成績・条件別集計・確率校正・収支を保持し、同一race・prediction_idの両方式が揃う場合だけ対比較します。発走後オッズは正式な市場比較から除外します。馬連収支は確定postだけを集計し、返還を的中扱いにしません。
 
 ```bash
 python src/evaluation_summary.py
+python src/backtest.py
 ```
 
-トップページの「総合AI予想の予測成績」と「統計重視予想の予測成績」はこの集計ファイルを読み込みます。統計重視予想の累計収支は、保存済みのsimulation postだけを集計します。ファイルがない場合は未算出として `-` を表示し、予想入力にはこの集計を含めません。
+backtestは保存済みprediction・単勝オッズ・resultを使い、現在の設定で単勝value/dutchingを再計算して方式別の収支を表示します。馬連backtestではなく、race JSONや保存済みsimulationも変更しません。通常の評価集計は再計算値ではなく保存済みpostを使用します。
 
-result完了には、result・存在する全predictionのevaluation・利用可能なpre simulationに対応するpostが必要です。simulation自体がない場合はevaluationを確認します。`status: ready` の馬連simulationは全ての `quinella.post_status` が `settled` になるまで未完了です。
+## render・publish・deploy
 
-post処理では利用可能なpre simulationを精算し、simulationの有無とは独立して保存済みpredictionを評価・公開します。statistical predictionとresultだけでも評価・結果ページを生成します。
+```text
+scheduler → run_pre / run_post → render → data/_site_stage
+                                      → publish → public
+                                                → deploy → deploy-pages → GitHub Pages
+```
 
-stateがある場合は成果物より `in_progress`／`retry_wait`／`blocked` を優先し、後続のsimulation・evaluation・render・publishを含むフローが正常終了した後だけstateを解除します。stateのない既存データは成果物で完了判定します。中止保存前にもresultの `in_progress` を記録し、中断・公開失敗後は中止記事を再取得せず公開を再試行します。
+`render_site()`は保存済みデータからstageへHTMLを生成し、`publish_site()`がローカルpublicを差し替えます。途中終了でpublicがなくbackupだけ残った場合は復旧します。publish自体はホスティング先を知りません。
 
-## Codex 予想フロー
+indexには公開済み予想と中止レースを掲載し、前日予想公開・直前予想公開・結果公開・開催中止を表示します。未結果の公開済み予想には次回更新予定を併記します。結果ページは正常な結果・評価がある場合に生成します。
 
-通常のレース前運用は `run_pre.py` だけで完了します。確定した予想入力 JSON は監査・復旧用に `data_dir/prediction_inputs/YYYY-MM-DD/` へ保存します。`outbox/chat_input/prediction/` は自動運用では使用しません。
-
-新規公開では総合AI予想と統計重視予想の両方が正常に保存されてからシミュレーションへ進みます。総合AI予想だけが既にある場合はそれを再利用し、欠けている統計重視予想だけを生成します。統計重視予想に失敗した場合は総合AI予想を残したまま停止し、不完全なページを公開しません。
-
-引数なしでは、次の連続する中央競馬開催日を1開催期間として探索します。その期間の重賞（G1・G2・G3）をレース番号に関係なくすべて収集し、重賞が1件もない場合だけ各開催場の11Rをすべて収集します。各レースについて `odds_reference_minutes_before_start` に基づく推奨取得目標時刻を表示し、目標時刻より前でも警告だけを表示して処理を続行します。
-
-過去レース検証・再収集では日付を明示します。取得できるのはnetkeibaが返す単一スナップショットであり、発走後の時刻でもフロー検証に使用しますが、厳密なT-60履歴オッズではありません。
+全体の再render・publish・deployを手動で行う場合は、リポジトリルートから次を実行します。業務データの再計算は行いません。手動の関数呼出しにはscheduler lockが自動適用されないため、定期実行と重ならないようにします。
 
 ```bash
-python src/run_pre.py --date 2026-04-12
+python -c "import sys; sys.path.insert(0, 'src'); from utils import load_config; from render import render_site; from publish import publish_site; from deploy import deploy_site; c=load_config(); render_site(c, 'manual-render'); publish_site(c); deploy_site(c)"
 ```
 
-`run_pre_collect.py`、`response_importer.py`、`watcher.py`、`inbox/prediction/` は、過去の手動応答を扱う後方互換用として残しています。通常のCodex予想公開では使用しません。手動応答の取込時も、既に有効な予想があるレースは上書きしません。
+`render.py`のCLIは日付指定のrender用で、日付省略時は当日です。全体再生成は上記のように`render_site()`の日付を省略します。
 
-レース後:
+mainはソース管理、deploy-pagesは公開物の管理に使います。`deploy_site()`は現在`github_pages`のみ対応し、`deployment.github_pages.remote`からURLを取得して専用cloneを使用します。公開branchは初回のみ手動作成が必要です。
+
+publicのハッシュが成功済み公開と一致すれば、GitHubへ通信せず終了します。変更時・push失敗後は専用cloneをremote基準へ同期し、publicを削除分も含め完全同期して、差分がある場合だけpublicをcommit/pushします。開発用working treeをcommit・reset・stashしません。
+
+schedulerはphase実行0件でもdeployを試みます。deploy失敗はraceのattemptsと分離し、次回起動で再試行します。GitHub Actionsはdeploy-pagesの`public/**`更新を受けてPagesへ配布し、Actions上で予想やサイト生成は行いません。
+
+## 旧manual flow
+
+`response_importer.py`・`watcher.py`・`inbox/prediction/`は、手動作成した予想応答の後方互換用です。通常の自動予想では使用しません。`run_pre_collect.py`は現在も通常preの収集・input生成に使用します。
+
+手動応答には`meta.race_id`（またはトップレベルの`race_id`）と、全出走馬分の`prediction.horses`、必要な総括を含めます。importerは応答を検証してgeneralへ保存し、既存generalがあれば上書きせず拒否します。
 
 ```bash
-python src/run_post_collect.py --date 2026-04-12
+python src/response_importer.py --kind prediction --file inbox/prediction/response.json  # 単独取込
+# または、watcherで取込から公開まで行う
+python src/watcher.py --once
 ```
 
-1. `run_post_collect.py` が予想済みrace JSONの `meta.race_id` から結果だけを取得して `result` を反映し、既存の決定的な計算で両方式の `post` を確定します。
-2. `evaluation` を決定的に生成します。
-3. 既存予想ページを維持したまま結果HTML（`*_result.html`）を生成し、`public/` と index の結果リンクを更新します。レース後のAI予想処理や追加の `watcher.py` 実行は不要です。
-
-後方互換用の inbox response JSON の想定:
-
-prediction:
-
-```json
-{
-  "meta": {
-    "race_id": "202606030611"
-  },
-  "prediction": {
-    "horses": [
-      {
-        "horse_number": 1,
-        "win_probability": 0.12,
-        "reason": "短い理由"
-      }
-    ],
-    "optional_summary": "短い総括"
-  }
-}
-```
-
-## 補足
-
-- `collect.py` は `netkeiba` の HTML 構造に依存します。取得に失敗したレースはスキップし、ログへ出します。
-- 1回のprediction実行でCodex CLIは1回だけ実行します。CLI失敗・不正JSONはphase失敗とし、自動運用の再試行はschedulerが管理します。
-- `prediction` がない場合は両方式の `pre` を作りません。
-- `result` がない場合は両方式の `post` を作りません。
-- `prediction`、`result`、両方式の `post` がそろわない場合は `evaluation` を作りません。
-- `render.py` はいったんステージング領域へ出力し、`publish.py` が成功したときだけ `public/` を差し替えます。
+importer単独は取込のみです。watcherは未取込の応答を取り込み、pre simulation・render・publish後、`inbox/prediction/processed/YYYY-MM-DD/`へ移動します。常駐監視には`--interval`を使えます。remote deployは行いません。
 
 ## テスト
-
-固定データとモックしたCodex CLI応答だけを使用し、netkeibaやCodexサービスへ接続しません。
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-## GitHub Pages
+固定fixtureとモックでparser・prediction・保存互換・simulation・評価・scheduler復旧・公開処理を検証します。netkeibaや実際のLLMには接続しません。Git deployは一時ローカルrepo、Python/JavaScript parityはNode.jsを使用します。Node.jsがない場合、そのテストはskipされます。
 
-レース一覧と予想ページには、統計重視のみの「前日予想公開」、総合予想ありの「直前予想公開」、結果・評価がある「結果公開」、優先表示の「開催中止」を使用します。予想ページは予想の公開段階を表示し、結果ページは常に「結果公開」です。
-
-schedulerの `--execute` は今日の未完了・未中止レースがある場合だけ、通常探索と独立してnetkeiba公式お知らせ（`https://info.netkeiba.com/`）を最大1時間に1回確認します。確認開始前に同じ探索キャッシュへ `cancellation_checked_at` を保存するため、通信失敗時も10分ごとには再取得しません。明日のレース、result保存済み、中止確定済みは確認対象外です。過去の中止記事や中止確定の根拠URLを再取得せず、代替開催は保存済み `replacement_date` と通常探索の同一race_id・日付を照合します。中止判定には公式告知と対象日付・競馬場・レース範囲の一致を必要とし、取得失敗や一覧からの消失では中止にしません。
-
-公式記事に代替日が明記されている場合は `replacement_date` を記録し、その日付の探索で同じrace_idを確認できたら、新しい日付のrace JSONを `rescheduled_from` 付きで作成します。元日のJSON・予想は中止記録として残し、新日程は既存フローで処理します。元日付の確定inputを新日程のresumeに流用しません。日付やレース範囲を確定できない告知は推測で適用しません。過去JSONの一括移行は不要です。
-
-ソースコードは `main`、公開用 `public/` は `deploy-pages` で管理します。mainでは `public/` をGit管理せず、ローカルの生成物として保持します。公開先ブランチは初回のみ手動作成が必要です。GitHub Actionsのpushトリガーは `deploy-pages` の `public/**` を対象とします。
-
-`publish_site()` はホスティング先に依存せず、stageをローカル `public/` へ反映します。`deploy_site()` は `publish_mode` に応じて公開し、現在は `github_pages` のみ対応します。schedulerの `--execute` はphase処理後、処理件数が0件でも同じlock内でdeployを試みます。deploy失敗はraceの失敗回数に加算せず、次回起動で再試行します。
-
-GitHub Pagesへのdeployは `deployment.github_pages.remote`（実行元repoのremote名）と `branch` を使います。成功済み公開内容のハッシュをローカルに記録し、`public/` に変更も再送待ちもなければネットワークアクセスせず終了します。変更時・失敗後は `data_dir/deploy/github_pages/` の専用cloneをremoteへ同期し、完成済み `public/` を完全コピーして、差分がある場合だけ `public/` をcommit／pushします。開発用working treeはcommit／resetしません。実行環境にはGitのcommit用ユーザー設定とremoteへのpush権限が必要です。
-
-この実装では `public/` を静的サイト出力先にしています。GitHub Actions の `Deploy Pages` workflow が `public/` を Pages artifact としてアップロードし、GitHub Pages へ配布します。Actions 側ではビルド処理を行いません。
+UI文言・装飾値を固定するテストは増やさず、identity、境界条件、snapshot再利用、成果物、状態遷移を優先します。

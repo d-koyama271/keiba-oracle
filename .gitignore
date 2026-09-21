@@ -35,7 +35,6 @@ data/deploy/
 data/_site_stage/
 data/evaluation_summary.json
 inbox/
-outbox/
 archive/
 tmp/
 logs/

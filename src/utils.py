@@ -156,10 +156,6 @@ def inbox_dir(kind: str, root: Path | None = None) -> Path:
     return resolve_path(Path("inbox") / kind, root or repo_root())
 
 
-def outbox_chat_input_dir(kind: str, root: Path | None = None) -> Path:
-    return resolve_path(Path("outbox") / "chat_input" / kind, root or repo_root())
-
-
 def prediction_input_path(config: dict[str, Any], race_path: str | Path,
                           method: str = "general", root: Path | None = None) -> Path:
     if method not in ("general", "statistical"):
