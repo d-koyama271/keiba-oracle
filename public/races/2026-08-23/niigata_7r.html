@@ -1683,7 +1683,13 @@
       const SIMULATION_EPSILON = 1e-12;
 
       function roundSimulationValue(value) {
-        return Math.round(value * 1000000) / 1000000;
+        const scaled = value * 1000000;
+        // An exact binary midpoint at six decimal places is an odd multiple of 1/128.
+        // Match Python round(value, 6): ties to even, without rounding the scaled product first.
+        if (Number.isInteger(value * 128) && Math.abs(scaled % 1) === 0.5) {
+          return 2 * Math.round(scaled / 2) / 1000000;
+        }
+        return Number(value.toFixed(6));
       }
 
       function parseMinimumEv(value) {
@@ -1955,21 +1961,11 @@
           const rows = horses.map((h) => ({horse_number: h.horse_number, predicted_probability: h.win_probability, win_odds: h.win_odds})).sort((a,b) => (b.predicted_probability-a.predicted_probability) || (a.horse_number-b.horse_number));
           const evaluations = [];
           for (let count = 1; count <= Math.min(settings.max_selection_count, rows.length); count += 1) {
-            const chosen = rows.slice(0, count);
-            const selections = allocateDutchingStakes(chosen, budget, stakeUnit);
-            selections.forEach((s, i) => { s.predicted_probability = chosen[i].predicted_probability; });
-            const stake = selections.reduce((sum, s) => sum+s.stake, 0);
-            const expectedReturn = selections.reduce((sum, s) => sum+s.predicted_probability*s.estimated_payout, 0);
-            const coverage = chosen.reduce((sum, r) => sum+r.predicted_probability, 0);
-            const groupEv = stake ? expectedReturn/stake : 0;
-            const payout = selections.length ? Math.min(...selections.map((s) => s.estimated_payout)) : 0;
-            const profit = payout-stake;
-            const reasons = [];
-            if (coverage+SIMULATION_EPSILON < settings.min_coverage_probability) reasons.push("coverage_probability_below_threshold");
-            if (groupEv+SIMULATION_EPSILON < settings.min_group_expected_value) reasons.push("group_expected_value_below_threshold");
-            if (!selections.length) reasons.push("insufficient_budget_units");
-            if (profit+SIMULATION_EPSILON < stake*settings.min_profit_rate) reasons.push("minimum_profit_rate_below_threshold");
-            evaluations.push({evaluation: {selection_count: count, horse_pairs: chosen.map((r) => ordered[r.horse_number-1].horse_numbers), coverage_probability: coverage, expected_return: expectedReturn, group_expected_value: groupEv, minimum_payout: payout, minimum_profit: profit, eligible: !reasons.length, rejection_reasons: reasons}, selections: selections.map(restore)});
+            const {evaluation, selections} = evaluateDutchingCount(rows.slice(0, count), budget, stakeUnit, settings);
+            evaluation.horse_pairs = evaluation.horse_numbers.map((number) => ordered[number-1].horse_numbers);
+            delete evaluation.horse_numbers;
+            selections.forEach((selection, i) => { selection.predicted_probability = rows[i].predicted_probability; });
+            evaluations.push({evaluation, selections: selections.map(restore)});
           }
           const selected = fixedCount ? evaluations.find((item) => item.evaluation.selection_count === fixedCount) : selectBestDutching(evaluations);
           Object.assign(result, {selected_count: 0, coverage_probability: 0, expected_return: 0, group_expected_value: 0, minimum_payout: 0, minimum_profit: 0, evaluated_counts: evaluations.map((item) => item.evaluation)});
