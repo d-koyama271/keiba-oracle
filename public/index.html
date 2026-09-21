@@ -168,22 +168,56 @@
       .profit-grid { grid-template-columns: 1fr; }
       table { font-size: 13px; }
       th, td { padding: 8px 7px; }
+      .index-panel {
+        padding-right: 8px;
+        padding-left: 8px;
+      }
+      .index-table {
+        width: 100%;
+        table-layout: fixed;
+        font-size: 11px;
+      }
       .index-table th,
-      .index-table td { padding: 8px 6px; }
-      .index-table { min-width: 680px; }
+      .index-table td {
+        box-sizing: border-box;
+        padding: 6px 1px;
+        line-height: 1.35;
+      }
+      .index-table th:nth-child(1),
+      .index-table td:nth-child(1) {
+        width: 15%;
+        white-space: normal;
+        word-break: normal;
+      }
+      .index-table th:nth-child(2),
+      .index-table td:nth-child(2) { width: 10%; }
+      .index-table th:nth-child(3),
+      .index-table td:nth-child(3) { width: 9%; }
+      .index-table th:nth-child(4),
+      .index-table td:nth-child(4) { width: 33%; }
+      .index-table th:nth-child(5),
+      .index-table td:nth-child(5) { width: 17%; }
+      .index-table th:nth-child(6),
+      .index-table td:nth-child(6),
+      .index-table th:nth-child(7),
+      .index-table td:nth-child(7) {
+        width: 8%;
+        text-align: center;
+      }
       .index-table .status {
-        padding: 3px 7px;
-        font-size: 12px;
+        padding: 2px;
+        font-size: 10px;
       }
       .index-table .race-name-column {
-        min-width: 12em;
-        white-space: nowrap;
+        white-space: normal;
+        line-break: strict;
+        word-break: normal;
       }
-      .index-table th:not(:nth-child(4)),
-      .index-table td:not(:nth-child(4)) {
-        width: 1%;
-        white-space: nowrap;
+      .index-table .status-column {
+        white-space: normal;
+        word-break: keep-all;
       }
+      .index-table .next-update { font-size: 9px; }
     }
   </style>
 </head>
@@ -373,7 +407,7 @@
         </div>
       </div>
     </section>
-    <div class="panel">
+    <div class="panel index-panel">
       <h2>レース一覧</h2>
       <div class="table-scroll">
       <table class="index-table">
