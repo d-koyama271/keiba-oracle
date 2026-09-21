@@ -14,6 +14,7 @@ from evaluation_summary import load_evaluation_summary
 from publish import restore_public_backup
 from simulate import calculate_value_details, minimum_budget_for_value_stake, round_ratio
 from utils import (
+    calculate_phase_times,
     STATISTICAL_PREDICTION_METHOD,
     GENERAL_PREDICTION_METHOD,
     ensure_dir,
@@ -641,6 +642,13 @@ def render_site(
     env = build_environment(root)
     race_template = env.get_template("race.html.j2")
     index_template = env.get_template("index.html.j2")
+    automation = config.get("automation")
+    update_description = (
+        f"統計重視予想は前日{automation['statistical_time']}頃、"
+        f"総合AI予想は発走{automation['general_minutes_before_start']}分前頃、"
+        f"結果は発走{automation['result_minutes_after_start']}分後以降に自動更新します。"
+        if automation else None
+    )
 
     output_dir = stage_dir(config, root)
     if output_dir.exists():
@@ -707,6 +715,16 @@ def render_site(
             result_target = output_dir / result_path
             ensure_dir(result_target.parent)
             result_target.write_bytes(rendered_html_bytes(race_template.render(**result_context)))
+        next_update = None
+        phase = {"statistical_published": "general", "general_published": "result"}.get(context["status"])
+        if phase and automation and race_start_datetime(race.get("date"), race.get("start_time")):
+            scheduled_at = calculate_phase_times(race, config)[phase]
+            time_format = "%H:%M" if scheduled_at.date().isoformat() == race["date"] else "%m/%d %H:%M"
+            next_update = {
+                "at": scheduled_at.isoformat(),
+                "label": ("直前予想 " if phase == "general" else "結果 ")
+                + scheduled_at.strftime(time_format) + ("頃" if phase == "general" else "以降"),
+            }
         index_rows.append(
             {
                 "date": race["date"],
@@ -720,6 +738,7 @@ def render_site(
                 "status": context["status"],
                 "status_label": context["status_label"],
                 "status_class": context["status_class"],
+                "next_update": next_update,
                 "href": prediction_path.as_posix(),
                 "prediction_href": prediction_path.as_posix(),
                 "result_href": result_path.as_posix() if context["has_result_page"] else None,
@@ -729,6 +748,7 @@ def render_site(
     index_rows.sort(key=index_row_sort_key)
     index_html = index_template.render(
         races=index_rows,
+        update_description=update_description,
         evaluation_summary=load_evaluation_summary(config, root),
         site_background=SITE_BACKGROUND,
         status_colors=STATUS_COLORS,

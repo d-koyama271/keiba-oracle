@@ -75,6 +75,23 @@ def race_start_datetime(race_date: str | None, start_time: str | None) -> dateti
     return parse_jst_datetime(f"{race_date}T{start_time}")
 
 
+def calculate_phase_times(race: dict, config: dict) -> dict[str, datetime]:
+    start = race_start_datetime(race.get("date"), race.get("start_time"))
+    if start is None:
+        raise ValueError("phase scheduling requires race date and start_time")
+    settings = config["automation"]
+    statistical_time = datetime.strptime(settings["statistical_time"], "%H:%M").time()
+    before = settings["general_minutes_before_start"]
+    after = settings["result_minutes_after_start"]
+    if any(type(value) is not int or value < 0 for value in (before, after)):
+        raise ValueError("automation minute offsets must be nonnegative integers")
+    return {
+        "statistical": datetime.combine(start.date() - timedelta(days=1), statistical_time, tzinfo=JST),
+        "general": start - timedelta(minutes=before),
+        "result": start + timedelta(minutes=after),
+    }
+
+
 def parse_target_date(value: str | None) -> str:
     if not value:
         return today_jst()

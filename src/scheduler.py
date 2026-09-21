@@ -18,7 +18,7 @@ from run_pre import run_pre_flow
 from predict import validate_prediction_input, validate_statistical_prediction_input
 from deploy import deploy_site
 from run_post_collect import run_post_flow, publish_post_results
-from utils import (JST, atomic_write_json, data_dir, load_config, load_race_json, now_jst, prediction_input_path,
+from utils import (calculate_phase_times, JST, atomic_write_json, data_dir, load_config, load_race_json, now_jst, prediction_input_path,
                    list_race_files, ensure_race_payload, save_race_json, prediction_entries, linked_record, runtime_prediction_entry,
                    parse_jst_datetime, prediction_for_method, race_json_path,
                    race_start_datetime, track_name_from_race_id)
@@ -48,23 +48,6 @@ class PhaseTask:
 def create_phase_tasks(races: list[dict], config: dict, root: Path | None = None) -> list[PhaseTask]:
     return [PhaseTask.from_race(item["race_id"], item["race"], phase, config, root)
             for item in races for phase in ("statistical", "general", "result")]
-
-
-def calculate_phase_times(race: dict, config: dict) -> dict[str, datetime]:
-    start = race_start_datetime(race.get("date"), race.get("start_time"))
-    if start is None:
-        raise ValueError("phase scheduling requires race date and start_time")
-    settings = config["automation"]
-    statistical_time = datetime.strptime(settings["statistical_time"], "%H:%M").time()
-    before = settings["general_minutes_before_start"]
-    after = settings["result_minutes_after_start"]
-    if any(type(value) is not int or value < 0 for value in (before, after)):
-        raise ValueError("automation minute offsets must be nonnegative integers")
-    return {
-        "statistical": datetime.combine(start.date() - timedelta(days=1), statistical_time, tzinfo=JST),
-        "general": start - timedelta(minutes=before),
-        "result": start + timedelta(minutes=after),
-    }
 
 
 def discover_scheduled_races(config: dict, now: datetime | None = None) -> list[dict]:

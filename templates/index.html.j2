@@ -158,6 +158,7 @@
       font-size: 14px;
       line-height: 1.7;
     }
+    .next-update { font-size: 12px; }
     @media (max-width: 640px) {
       main { padding: 20px 12px 40px; }
       .panel { padding: 15px; }
@@ -229,6 +230,9 @@
   <main>
     <div class="panel">
       <h1>中央競馬 AI予想</h1>
+{% if update_description %}
+      <p class="small">{{ update_description }}</p>
+{% endif %}
       <p class="small">ChatGPTが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。</p>
     </div>
 {% set method_summaries = evaluation_summary.get("methods", {}) if evaluation_summary else {} %}
@@ -262,7 +266,7 @@
             <td class="nowrap">{{ race.start_time or "-" }}</td>
             <td class="nowrap">{{ race.track }}</td>
             <td>{{ race.race_name|e }}{% if race.is_new %}<span class="new-badge">NEW!</span>{% endif %}</td>
-            <td class="nowrap"><span class="status {{ race.status_class }}">{{ race.status_label }}</span></td>
+            <td class="nowrap"><span class="status {{ race.status_class }}">{{ race.status_label }}</span>{% if race.next_update %}<div class="small next-update"><time datetime="{{ race.next_update.at }}">{{ race.next_update.label }}</time></div>{% endif %}</td>
             <td class="nowrap"><a class="page-link" href="{{ race.prediction_href }}">開く</a></td>
             <td class="nowrap result-link-column">{% if race.result_href %}<a class="page-link" href="{{ race.result_href }}">開く</a>{% else %}-{% endif %}</td>
           </tr>

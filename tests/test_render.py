@@ -85,8 +85,12 @@ def make_payload(*, predicted: bool, track: str, date: str, name: str) -> dict:
 
 class RenderTests(unittest.TestCase):
     def test_publication_states_and_cancelled_pages(self):
-        from utils import ensure_race_payload, atomic_write_json
+        from utils import ensure_race_payload, atomic_write_json, calculate_phase_times
         payload = ensure_race_payload(make_payload(predicted=True, track="中山", date="2026-09-20", name="状態テスト"))
+        payload["race"]["start_time"] = "00:10"
+        config = {"data_dir": "data", "public_dir": "public", "automation": {
+            "statistical_time": "17:25", "general_minutes_before_start": 37, "result_minutes_after_start": 19,
+        }}
         entry = payload["prediction"][0]
         entry["statistical"] = entry.pop("general")
         self.assertEqual(build_race_context(payload)["status_label"], "前日予想公開")
@@ -94,20 +98,36 @@ class RenderTests(unittest.TestCase):
             root = Path(tmp)
             shutil.copytree(ROOT / "templates", root / "templates")
             path = root / "data/races/2026-09-20/nakayama_11r.json"
-            for state, label in (("statistical", "前日予想公開"), ("general", "直前予想公開"), ("cancelled", "開催中止")):
+            for state, label in (("statistical", "前日予想公開"), ("general", "直前予想公開"), ("result", "結果公開"), ("cancelled", "開催中止")):
                 if state == "general":
                     entry["general"] = entry["statistical"]
+                if state == "result":
+                    payload["result"] = make_result(1, 400, [1, 2, 3])
+                    payload["evaluation"] = build_evaluation(payload)
                 if state == "cancelled":
                     payload["race"]["cancelled"] = True
                     payload["result"] = {"horses": []}
                     payload["evaluation"] = [{"prediction_id": entry["id"], "general": {"metrics": {}}}]
                 atomic_write_json(path, payload)
-                output = render_site({"data_dir": "data", "public_dir": "public"}, "test-status", root=root)
+                output = render_site(config, "test-status", root=root)
                 index = BeautifulSoup((output / "index.html").read_text(encoding="utf-8"), "html.parser")
                 page = BeautifulSoup((output / "races/2026-09-20/nakayama_11r.html").read_text(encoding="utf-8"), "html.parser")
                 self.assertEqual(index.select_one(".status").get_text(), label)
-                self.assertEqual(page.select_one(".status").get_text(), label)
-                self.assertFalse((output / "races/2026-09-20/nakayama_11r_result.html").exists())
+                self.assertEqual(page.select_one(".status").get_text(), "直前予想公開" if state == "result" else label)
+                self.assertEqual((output / "races/2026-09-20/nakayama_11r_result.html").exists(), state == "result")
+                next_update = index.select_one(".status").parent.find("time")
+                if state in ("statistical", "general"):
+                    phase = "general" if state == "statistical" else "result"
+                    expected = calculate_phase_times(payload["race"], config)[phase]
+                    self.assertEqual(next_update["datetime"], expected.isoformat())
+                    self.assertIn(expected.strftime("%H:%M"), next_update.get_text())
+                    if state == "statistical":
+                        self.assertIn(expected.strftime("%m/%d"), next_update.get_text())
+                else:
+                    self.assertIsNone(next_update)
+                for value in config["automation"].values():
+                    self.assertIn(str(value), index.get_text())
+                self.assertIsNone(page.select_one(".next-update"))
 
     def test_index_sort_prioritizes_status_then_latest_start(self) -> None:
         rows = [
