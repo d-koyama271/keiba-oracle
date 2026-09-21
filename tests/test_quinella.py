@@ -28,9 +28,9 @@ from quinella import (
     harville_probabilities, pair_numbers, validate_pair_odds,
 )
 from run_pre_collect import export_prediction_chat_input
-from simulate import calculate_pre_simulation, simulate_file
+from simulate import calculate_dutching_pre, calculate_pre_simulation, simulate_file
 from utils import ensure_race_payload, load_config, load_race_json, parse_jst_datetime, save_race_json
-from test_simulation import make_payload
+from test_simulation import make_config, make_payload
 
 CAPTURED = "2026-09-05T12:00:00+09:00"
 
@@ -226,6 +226,20 @@ class ProbabilityAndPurchaseTests(unittest.TestCase):
             self.assertEqual(excluded["status"], "no_purchase")
             self.assertEqual(excluded["selections"], [])
 
+    def test_dutching_ticket_types_share_rounding_and_thresholds(self):
+        rows = [(1, .33333334, 4.0000001), (2, .33333333, 4.2), (3, .33333333, 4.3)]
+        for budget, coverage in ((100, .3333332), (1000, .3333332), (1000, .3333334)):
+            with self.subTest(budget=budget, coverage=coverage):
+                config = make_config(budget=budget, min_coverage_probability=coverage)
+                win = calculate_dutching_pre(make_payload(rows), config)
+                pairs = [{"horse_numbers": [1, n + 1], "probability": p, "odds": o} for n, p, o in rows]
+                quinella = calculate_quinella_purchase(pairs, budget, 100, config["simulation"]["dutching"], "dutching")
+                for left, right in zip(win["evaluated_counts"], quinella["evaluated_counts"]):
+                    self.assertEqual({k: v for k, v in left.items() if k != "horse_numbers"},
+                                     {k: v for k, v in right.items() if k != "horse_pairs"})
+                self.assertEqual(win["selected_count"], quinella["selected_count"])
+                self.assertEqual(win["total_stake"], quinella["total_stake"])
+
     def test_dutching_all_counts_limit_and_no_candidate_renormalization(self):
         rows = [{"horse_numbers": list(pair), "probability": 1/21, "odds": 30.0} for pair in combinations(range(1, 8), 2)]
         settings = load_config()["simulation"]["quinella"]["dutching"]
@@ -298,44 +312,39 @@ class SettlementTests(unittest.TestCase):
         self.assertIsNone(calculate_quinella_post(pre, result))
 
     @patch("collect.setup_logger", return_value=logging.getLogger("test-quinella-collect"))
-    def test_collect_retry_preserves_previous_complete_settlement(self, _logger):
-        config = load_config()
-        payload = payload_with_odds()
-        payload["result"] = parse_result(result_html())
-        old = copy.deepcopy(payload)
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            path = root / "race.json"
-            save_race_json(path, payload)
-            with patch("collect.fetch_html", return_value=result_html(pairs=(), amounts=())):
-                self.assertEqual(collect_results(config, "test-quinella-collect", [path], root), [path])
-            saved = load_race_json(path)
-        self.assertEqual(saved["result"]["quinella_settlement"], old["result"]["quinella_settlement"])
-        self.assertEqual(saved["result"]["payouts"]["quinella"], old["result"]["payouts"]["quinella"])
-        self.assertEqual(saved["horses"], old["horses"])
-        self.assertEqual(saved["prediction"], old["prediction"])
-
-    @patch("collect.setup_logger", return_value=logging.getLogger("test-quinella-legacy"))
-    def test_direct_post_collection_keeps_confirmed_quinella_on_retry(self, _logger):
-        payload, config = payload_with_odds(), load_config()
-        payload["meta"]["race_id"] = "202606040111"
-        payload["result"] = parse_result(result_html())
-        expected = copy.deepcopy(payload["result"])
-        with tempfile.TemporaryDirectory() as temporary:
-            root, path = Path(temporary), Path(temporary) / "race.json"
-            save_race_json(path, payload)
-            with (
-                patch("collect.race_json_path", return_value=path),
-                patch("collect.fetch_html", side_effect=[("entry", "https://race.netkeiba.com"), result_html(pairs=(), amounts=())]),
-                patch("collect.parse_race_overview", return_value=payload["race"]),
-                patch("collect.parse_entry_horse_identities", return_value={h["horse_number"]: h["horse_name"] for h in payload["horses"]}),
-                patch("collect.fetch_validated_win_odds", return_value=({}, CAPTURED, "netkeiba", "https://example.invalid")),
-                patch("collect.parse_horses", return_value=payload["horses"]),
-            ):
-                self.assertEqual(collect_races(config, "test", "2026-09-05", "post", root, [payload["meta"]["race_id"]]), [path])
-            saved = load_race_json(path)["result"]
-        self.assertEqual(saved["quinella_settlement"], expected["quinella_settlement"])
-        self.assertEqual(saved["payouts"]["quinella"], expected["payouts"]["quinella"])
+    def test_post_entries_validate_before_saving_and_preserve_confirmed_payouts(self, _logger):
+        for entry in ("results", "post"):
+            for complete in (True, False):
+                with self.subTest(entry=entry, complete=complete), tempfile.TemporaryDirectory() as temporary:
+                    payload, config = payload_with_odds(), load_config()
+                    payload["meta"]["race_id"] = "202606040111"
+                    payload["result"] = parse_result(result_html())
+                    previous = copy.deepcopy(payload["result"])
+                    result = parse_result(result_html(pairs=(), amounts=()))
+                    if not complete:
+                        result["horses"].pop()
+                    root, path = Path(temporary), Path(temporary) / "race.json"
+                    save_race_json(path, payload)
+                    before = path.read_bytes()
+                    with (
+                        patch("collect.race_json_path", return_value=path),
+                        patch("collect.fetch_html", side_effect=lambda *a, **kw: ("entry", "https://race.netkeiba.com") if kw.get("return_source_url") else "result"),
+                        patch("collect.parse_result", return_value=result),
+                        patch("collect.parse_race_overview", return_value=payload["race"]),
+                        patch("collect.parse_entry_horse_identities", return_value={h["horse_number"]: h["horse_name"] for h in payload["horses"]}),
+                        patch("collect.fetch_validated_win_odds", return_value=({}, CAPTURED, "netkeiba", "https://example.invalid")),
+                        patch("collect.parse_horses", return_value=payload["horses"]),
+                    ):
+                        updated = (collect_results(config, "test", [path], root) if entry == "results" else
+                                   collect_races(config, "test", "2026-09-05", "post", root, [payload["meta"]["race_id"]]))
+                    self.assertEqual(updated, [path] if complete else [])
+                    if not complete:
+                        self.assertEqual(path.read_bytes(), before)
+                    saved = load_race_json(path)
+                    self.assertEqual(saved["result"]["quinella_settlement"], previous["quinella_settlement"])
+                    self.assertEqual(saved["result"]["payouts"]["quinella"], previous["payouts"]["quinella"])
+                    self.assertEqual(saved["prediction"], payload["prediction"])
+                    self.assertEqual(saved["horses"], payload["horses"])
 
 
 class FlowAndSummaryTests(unittest.TestCase):
@@ -493,6 +502,9 @@ class JavaScriptParityTests(unittest.TestCase):
         settings = load_config()["simulation"]["quinella"]
         rows = [{"horse_numbers": list(pair), "probability": 1/21, "odds": 30.0} for pair in combinations(range(1, 8), 2)]
         cases = []
+        for probability in (.0078125, .0234375):
+            cases.append([[{"horse_numbers": [1, 2], "probability": probability, "odds": 128.0}],
+                          100, 100, {**settings["dutching"], "min_coverage_probability": probability}, "dutching", 0])
         for budget in (3000, 3099):
             for method in ("value", "dutching"):
                 for fixed in ((0, 4) if method == "dutching" else (0,)):

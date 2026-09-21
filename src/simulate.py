@@ -176,6 +176,11 @@ def calculate_value_pre(
     ev_threshold = float(settings["ev_threshold"])
     kelly_fraction = float(settings["kelly_fraction"])
     details = calculate_value_details(payload, budget, stake_unit, settings, prediction)
+    for item in details:
+        item["minimum_budget"] = (
+            minimum_budget_for_value_stake(payload, stake_unit, settings, item["horse_number"], prediction)
+            if item["eligible"] else None
+        )
     selections = []
     for item in sorted(
         details,
@@ -205,6 +210,7 @@ def calculate_value_pre(
         },
         "total_stake": total_stake,
         "unused_budget": budget - total_stake,
+        "details": details,
         "selections": selections,
     }
 

@@ -217,7 +217,8 @@ def build_expected_value_rows(
     budget = int(value_pre["budget"])
     stake_unit = int(value_pre["stake_unit"])
     settings = value_pre["settings"]
-    details = calculate_value_details(payload, budget, stake_unit, settings, prediction)
+    saved_details = value_pre.get("details")
+    details = saved_details if saved_details is not None else calculate_value_details(payload, budget, stake_unit, settings, prediction)
     detail_lookup = {item["horse_number"]: item for item in details}
     selection_lookup = {
         item["horse_number"]: item
@@ -228,6 +229,9 @@ def build_expected_value_rows(
         probability = finite_float((horse.get("prediction") or {}).get("win_probability"))
         odds = finite_float(horse.get("win_odds"))
         detail = detail_lookup.get(horse["horse_number"])
+        if detail is not None:
+            probability = detail["predicted_probability"]
+            odds = detail["win_odds"]
         selection = selection_lookup.get(horse["horse_number"])
         if detail is None:
             purchase_status = "unavailable"
@@ -257,13 +261,13 @@ def build_expected_value_rows(
                 "fractional_kelly": detail["fractional_kelly"] if detail else None,
                 "theoretical_stake": detail["theoretical_stake"] if detail else None,
                 "minimum_budget": (
-                    minimum_budget_for_value_stake(
+                    (detail.get("minimum_budget") if saved_details is not None else minimum_budget_for_value_stake(
                         payload,
                         stake_unit,
                         settings,
                         horse["horse_number"],
                         prediction,
-                    )
+                    ))
                     if detail and detail["eligible"]
                     else None
                 ),

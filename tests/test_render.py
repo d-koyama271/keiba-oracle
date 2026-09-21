@@ -853,6 +853,15 @@ class SimulationRenderTests(unittest.TestCase):
         payload = ensure_race_payload(payload)
         payload["simulation"] = calculate_pre_simulation(payload, simulation_config())
         simulation_before = copy.deepcopy(payload["simulation"])
+        original_rows = build_race_context(payload)["expected_value_rows"]
+        legacy = copy.deepcopy(payload)
+        del legacy["simulation"][0]["general"]["win"]["value"]["pre"]["details"]
+        self.assertEqual(build_race_context(legacy)["expected_value_rows"], original_rows)
+        for horse in payload["horses"][:3]:
+            horse["win_odds"] = 1.1
+        for horse in payload["prediction"][0]["general"]["horses"][:3]:
+            horse["win_probability"] = .01
+        self.assertEqual(build_race_context(payload)["expected_value_rows"], original_rows)
 
         rendered = build_environment(ROOT).get_template("race.html.j2").render(**build_race_context(payload))
         soup = BeautifulSoup(rendered, "html.parser")

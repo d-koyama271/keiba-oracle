@@ -214,6 +214,8 @@ class ValueSimulationTests(unittest.TestCase):
         self.assertAlmostEqual(doubled["theoretical_stake"], detail["theoretical_stake"] * 2)
         self.assertEqual(detail["stake"], 0)
         self.assertEqual(minimum_budget, 59000)
+        saved_detail = calculate_value_pre(payload, make_config())["details"][0]
+        self.assertEqual(saved_detail, {**detail, "minimum_budget": minimum_budget})
         self.assertEqual(
             calculate_value_pre(payload, make_config(budget=minimum_budget))["selections"][0]["stake"],
             100,
@@ -607,6 +609,9 @@ process.stdout.write(JSON.stringify(output));
             payload,
             make_config(budget=1000, ev_threshold=0.5),
         )
+        # Persisted render snapshots are not part of the interactive calculator's response.
+        for key in ("value", "value_below_one"):
+            python_result[key].pop("details")
         self.assertEqual(javascript_result, python_result)
 
 

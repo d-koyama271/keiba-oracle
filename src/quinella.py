@@ -105,7 +105,7 @@ def calculate_quinella_pre(payload: dict, config: dict, prediction: dict) -> dic
 
 def calculate_quinella_purchase(rows: list[dict], budget: int, stake_unit: int, settings: dict, method: str, fixed_count: int = 0) -> dict:
     # Numeric pair IDs are local adapters for the existing stake allocators, never horse IDs in JSON.
-    from simulate import EPSILON, allocate_dutching_stakes, calculate_value_details, select_best_dutching
+    from simulate import EPSILON, evaluate_dutching_count, calculate_value_details, select_best_dutching
 
     if type(budget) is not int or type(stake_unit) is not int or budget <= 0 or stake_unit <= 0:
         raise ValueError("invalid_budget_or_unit")
@@ -147,22 +147,10 @@ def calculate_quinella_purchase(rows: list[dict], budget: int, stake_unit: int, 
         ordered = sorted(adapters, key=lambda r: (-r["predicted_probability"], r["horse_number"]))
         evaluations = []
         for count in range(1, min(int(settings["max_selection_count"]), len(ordered)) + 1):
-            selected_rows = ordered[:count]
-            selections = allocate_dutching_stakes(selected_rows, budget, stake_unit)
-            for selection, row in zip(selections, selected_rows):
+            evaluation, selections = evaluate_dutching_count(ordered[:count], budget, stake_unit, settings)
+            evaluation["horse_pairs"] = [pairs[number] for number in evaluation.pop("horse_numbers")]
+            for selection, row in zip(selections, ordered[:count]):
                 selection["predicted_probability"] = row["predicted_probability"]
-            stake = sum(s["stake"] for s in selections)
-            expected_return = sum(s["predicted_probability"] * s["estimated_payout"] for s in selections)
-            coverage = sum(r["predicted_probability"] for r in selected_rows)
-            group_ev = expected_return / stake if stake else 0
-            payout = min((s["estimated_payout"] for s in selections), default=0)
-            profit = payout - stake
-            reasons = []
-            if coverage + EPSILON < settings["min_coverage_probability"]: reasons.append("coverage_probability_below_threshold")
-            if group_ev + EPSILON < settings["min_group_expected_value"]: reasons.append("group_expected_value_below_threshold")
-            if not selections: reasons.append("insufficient_budget_units")
-            if profit + EPSILON < stake * settings["min_profit_rate"]: reasons.append("minimum_profit_rate_below_threshold")
-            evaluation = {"selection_count": count, "horse_pairs": [pairs[r["horse_number"]] for r in selected_rows], "coverage_probability": coverage, "expected_return": expected_return, "group_expected_value": group_ev, "minimum_payout": payout, "minimum_profit": profit, "eligible": not reasons, "rejection_reasons": reasons}
             evaluations.append((evaluation, [restore(s) for s in selections]))
         selected = next((entry for entry in evaluations if entry[0]["selection_count"] == fixed_count), None) if fixed_count else select_best_dutching(evaluations)
         result.update(selected_count=0, coverage_probability=0, expected_return=0, group_expected_value=0, minimum_payout=0, minimum_profit=0, evaluated_counts=[e for e, _ in evaluations])

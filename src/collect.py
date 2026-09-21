@@ -1493,6 +1493,16 @@ def fetch_cancellation_notices(session: requests.Session, *,
             if urlparse(url).hostname == "info.netkeiba.com" and url not in excluded_urls]
 
 
+def fetch_validated_result(session: requests.Session, race_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    result = parse_result(fetch_html(session, RESULT_URL.format(race_id=race_id)))
+    validate_complete_result(result, payload.get("horses", []))
+    previous = payload.get("result") or {}
+    if (previous.get("quinella_settlement") or {}).get("status") == "complete" and (result.get("quinella_settlement") or {}).get("status") != "complete":
+        result.setdefault("payouts", {})["quinella"] = previous["payouts"]["quinella"]
+        result["quinella_settlement"] = previous["quinella_settlement"]
+    return result
+
+
 def collect_results(
     config: dict[str, Any],
     job_name: str,
@@ -1514,13 +1524,7 @@ def collect_results(
             processed.append(path)
             continue
         try:
-            result_html = fetch_html(session, RESULT_URL.format(race_id=race_id))
-            result = parse_result(result_html)
-            validate_complete_result(result, payload.get("horses", []))
-            previous = payload.get("result") or {}
-            if (previous.get("quinella_settlement") or {}).get("status") == "complete" and (result.get("quinella_settlement") or {}).get("status") != "complete":
-                result.setdefault("payouts", {})["quinella"] = previous["payouts"]["quinella"]
-                result["quinella_settlement"] = previous["quinella_settlement"]
+            result = fetch_validated_result(session, race_id, payload)
             payload["result"] = result
             save_race_json(path, payload)
             processed.append(path)
@@ -1625,16 +1629,10 @@ def collect_races(
 
             if mode == "post":
                 try:
-                    result_html = fetch_html(session, RESULT_URL.format(race_id=race_id))
-                    result = parse_result(result_html)
-                    previous = payload.get("result") or {}
-                    if result is not None:
-                        if (previous.get("quinella_settlement") or {}).get("status") == "complete" and (result.get("quinella_settlement") or {}).get("status") != "complete":
-                            result.setdefault("payouts", {})["quinella"] = previous["payouts"]["quinella"]
-                            result["quinella_settlement"] = previous["quinella_settlement"]
-                        payload["result"] = result
+                    payload["result"] = fetch_validated_result(session, race_id, payload)
                 except Exception as exc:  # noqa: BLE001
                     log_job(logger, job_name, race_id, f"result scraping skipped: {exc}")
+                    continue
 
             save_race_json(path, payload)
             processed.append(path)
