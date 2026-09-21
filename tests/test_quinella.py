@@ -314,15 +314,29 @@ class SettlementTests(unittest.TestCase):
     @patch("collect.setup_logger", return_value=logging.getLogger("test-quinella-collect"))
     def test_post_entries_validate_before_saving_and_preserve_confirmed_payouts(self, _logger):
         for entry in ("results", "post"):
-            for complete in (True, False):
-                with self.subTest(entry=entry, complete=complete), tempfile.TemporaryDirectory() as temporary:
+            for case in ("missing", "null", "new_values", "incomplete"):
+                with self.subTest(entry=entry, case=case), tempfile.TemporaryDirectory() as temporary:
                     payload, config = payload_with_odds(), load_config()
                     payload["meta"]["race_id"] = "202606040111"
                     payload["result"] = parse_result(result_html())
+                    fields = {"final_win_odds": [{"horse_number": h["horse_number"], "win_odds": 4.5} for h in payload["horses"]],
+                              "weather": "sunny", "going": "firm"}
+                    payload["result"].update(copy.deepcopy(fields))
                     previous = copy.deepcopy(payload["result"])
                     result = parse_result(result_html(pairs=(), amounts=()))
-                    if not complete:
+                    for key in fields:
+                        result.pop(key, None)
+                    if case == "null":
+                        result.update(dict.fromkeys(fields))
+                    elif case == "new_values":
+                        fields = {"final_win_odds": [{"horse_number": h["horse_number"], "win_odds": 6.5} for h in payload["horses"]],
+                                  "weather": "rainy", "going": "soft"}
+                        result.update(copy.deepcopy(fields))
+                    elif case == "incomplete":
                         result["horses"].pop()
+                    collected_race = {**payload["race"], "start_time": "15:45"}
+                    collected_horses = copy.deepcopy(payload["horses"])
+                    collected_horses[0]["win_odds"] = 9.9
                     root, path = Path(temporary), Path(temporary) / "race.json"
                     save_race_json(path, payload)
                     before = path.read_bytes()
@@ -330,21 +344,25 @@ class SettlementTests(unittest.TestCase):
                         patch("collect.race_json_path", return_value=path),
                         patch("collect.fetch_html", side_effect=lambda *a, **kw: ("entry", "https://race.netkeiba.com") if kw.get("return_source_url") else "result"),
                         patch("collect.parse_result", return_value=result),
-                        patch("collect.parse_race_overview", return_value=payload["race"]),
+                        patch("collect.parse_race_overview", return_value=collected_race),
                         patch("collect.parse_entry_horse_identities", return_value={h["horse_number"]: h["horse_name"] for h in payload["horses"]}),
                         patch("collect.fetch_validated_win_odds", return_value=({}, CAPTURED, "netkeiba", "https://example.invalid")),
-                        patch("collect.parse_horses", return_value=payload["horses"]),
+                        patch("collect.parse_horses", return_value=collected_horses),
                     ):
                         updated = (collect_results(config, "test", [path], root) if entry == "results" else
                                    collect_races(config, "test", "2026-09-05", "post", root, [payload["meta"]["race_id"]]))
-                    self.assertEqual(updated, [path] if complete else [])
-                    if not complete:
-                        self.assertEqual(path.read_bytes(), before)
+                    self.assertEqual(updated, [] if entry == "results" and case == "incomplete" else [path])
                     saved = load_race_json(path)
+                    if case == "incomplete":
+                        self.assertEqual(saved["result"], previous)
+                        if entry == "results":
+                            self.assertEqual(path.read_bytes(), before)
+                    self.assertEqual({key: saved["result"][key] for key in fields}, fields)
                     self.assertEqual(saved["result"]["quinella_settlement"], previous["quinella_settlement"])
                     self.assertEqual(saved["result"]["payouts"]["quinella"], previous["payouts"]["quinella"])
                     self.assertEqual(saved["prediction"], payload["prediction"])
-                    self.assertEqual(saved["horses"], payload["horses"])
+                    self.assertEqual(saved["horses"], collected_horses if entry == "post" else payload["horses"])
+                    self.assertEqual(saved["race"], collected_race if entry == "post" else payload["race"])
 
 
 class FlowAndSummaryTests(unittest.TestCase):

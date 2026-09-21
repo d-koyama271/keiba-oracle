@@ -1497,6 +1497,9 @@ def fetch_validated_result(session: requests.Session, race_id: str, payload: dic
     result = parse_result(fetch_html(session, RESULT_URL.format(race_id=race_id)))
     validate_complete_result(result, payload.get("horses", []))
     previous = payload.get("result") or {}
+    for key in ("final_win_odds", "weather", "going"):
+        if result.get(key) is None and key in previous:
+            result[key] = previous[key]
     if (previous.get("quinella_settlement") or {}).get("status") == "complete" and (result.get("quinella_settlement") or {}).get("status") != "complete":
         result.setdefault("payouts", {})["quinella"] = previous["payouts"]["quinella"]
         result["quinella_settlement"] = previous["quinella_settlement"]
@@ -1632,7 +1635,6 @@ def collect_races(
                     payload["result"] = fetch_validated_result(session, race_id, payload)
                 except Exception as exc:  # noqa: BLE001
                     log_job(logger, job_name, race_id, f"result scraping skipped: {exc}")
-                    continue
 
             save_race_json(path, payload)
             processed.append(path)
