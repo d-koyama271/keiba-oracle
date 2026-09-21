@@ -67,11 +67,12 @@
       margin-top: 8px;
       line-height: 1.5;
     }
-    .performance-breakdown > div {
+    .profit-line-main {
       display: flex;
       flex-wrap: wrap;
       gap: 0 0.4em;
     }
+    .profit-meta { margin-top: 2px; }
     .profit-amount { font-weight: 700; }
     .profit-positive { color: #2f6b63; }
     .profit-negative { color: #9b352b; }
@@ -178,11 +179,17 @@
 </head>
 <body>
 {% macro profit_line(label, simulation) -%}
-{% set available = simulation and simulation.get("simulation_races", 0) %}
+{% set simulation_races = simulation.get("simulation_races", 0)|int if simulation else 0 %}
+{% set purchase_races = simulation.get("purchase_races", 0)|int if simulation else 0 %}
+{% set available = simulation and simulation_races %}
 {% set profit = simulation.get("cumulative_profit", 0)|int if available else none %}
-            <div>
+{% set overall_roi = simulation.get("overall_roi") if available else none %}
+            <div class="profit-line">
+              <div class="profit-line-main">
               <span>{{ label }}</span>
-              <strong class="profit-amount {% if profit is none or profit == 0 %}profit-neutral{% elif profit > 0 %}profit-positive{% else %}profit-negative{% endif %}">{% if profit is not none %}{{ "{:,}".format(profit) }}円{% else %}-{% endif %}</strong>
+              <strong class="profit-amount {% if profit is none or profit == 0 %}profit-neutral{% elif profit > 0 %}profit-positive{% else %}profit-negative{% endif %}">{% if profit is not none %}{% if profit > 0 %}+{% endif %}{{ "{:,}".format(profit) }}円{% else %}-{% endif %}</strong>
+              </div>
+              <div class="small profit-meta">回収率 {% if overall_roi is not none %}{{ "%.1f"|format(overall_roi * 100) }}%{% else %}-{% endif %} ・ 購入 {{ purchase_races }} / {{ simulation_races }}レース</div>
             </div>
 {%- endmacro %}
 {% macro performance_panel(title, description, overall, simulation) -%}

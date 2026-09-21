@@ -666,7 +666,35 @@ process.stdout.write(JSON.stringify({
                                     "top5_hits": 4,
                                     "top5_hit_rate": 0.8,
                                     "average_winner_predicted_rank": 3.4,
-                                }
+                                },
+                                "simulation": {
+                                    "value": {
+                                        "simulation_races": 5,
+                                        "purchase_races": 2,
+                                        "cumulative_profit": 300,
+                                        "overall_roi": 1.234,
+                                    },
+                                    "dutching": {
+                                        "simulation_races": 5,
+                                        "purchase_races": 4,
+                                        "cumulative_profit": -9670,
+                                        "overall_roi": 0.679,
+                                    },
+                                    "quinella": {
+                                        "value": {
+                                            "simulation_races": 14,
+                                            "purchase_races": 0,
+                                            "cumulative_profit": 0,
+                                            "overall_roi": None,
+                                        },
+                                        "dutching": {
+                                            "simulation_races": 14,
+                                            "purchase_races": 12,
+                                            "cumulative_profit": 690,
+                                            "overall_roi": 1.074,
+                                        },
+                                    },
+                                },
                             },
                             "statistical": {
                                 "overall": {
@@ -680,8 +708,18 @@ process.stdout.write(JSON.stringify({
                                     "average_winner_predicted_rank": 1.5,
                                 },
                                 "simulation": {
-                                    "value": {"simulation_races": 1, "cumulative_profit": 300},
-                                    "dutching": {"simulation_races": 1, "cumulative_profit": -100},
+                                    "value": {
+                                        "simulation_races": 1,
+                                        "purchase_races": 1,
+                                        "cumulative_profit": 300,
+                                        "overall_roi": 1.5,
+                                    },
+                                    "dutching": {
+                                        "simulation_races": 1,
+                                        "purchase_races": 1,
+                                        "cumulative_profit": -100,
+                                        "overall_roi": 0.9,
+                                    },
                                 },
                             },
                         },
@@ -705,6 +743,31 @@ process.stdout.write(JSON.stringify({
             self.assertEqual(len(performance_panels), 2)
             self.assertTrue(
                 all(len(panel.select(".profit-amount")) == 4 for panel in performance_panels)
+            )
+            general_profit_lines = performance_panels[0].select(".profit-line")
+            general_profit_amounts = [
+                line.select_one(".profit-amount") for line in general_profit_lines
+            ]
+            self.assertEqual(
+                [amount.get_text(strip=True) for amount in general_profit_amounts],
+                ["-9,670円", "+300円", "+690円", "0円"],
+            )
+            self.assertIn("profit-negative", general_profit_amounts[0].get("class", []))
+            self.assertTrue(
+                all(
+                    "profit-positive" in amount.get("class", [])
+                    for amount in general_profit_amounts[1:3]
+                )
+            )
+            self.assertIn("profit-neutral", general_profit_amounts[3].get("class", []))
+            self.assertEqual(
+                [line.select_one(".profit-meta").get_text(" ", strip=True) for line in general_profit_lines],
+                [
+                    "回収率 67.9% ・ 購入 4 / 5レース",
+                    "回収率 123.4% ・ 購入 2 / 5レース",
+                    "回収率 107.4% ・ 購入 12 / 14レース",
+                    "回収率 - ・ 購入 0 / 14レース",
+                ],
             )
             self.assertTrue(
                 all(
