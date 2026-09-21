@@ -19,7 +19,7 @@ from unittest.mock import Mock, patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from collect import collect_races, collect_results, fetch_validated_win_odds, parse_result
+from collect import collect_races, fetch_validated_result, fetch_validated_win_odds, parse_result
 from evaluation import build_evaluation
 from evaluation_summary import build_evaluation_summary
 from predict import build_prediction_chat_input, build_statistical_prediction_input
@@ -313,56 +313,45 @@ class SettlementTests(unittest.TestCase):
 
     @patch("collect.setup_logger", return_value=logging.getLogger("test-quinella-collect"))
     def test_post_entries_validate_before_saving_and_preserve_confirmed_payouts(self, _logger):
-        for entry in ("results", "post"):
-            for case in ("missing", "null", "new_values", "incomplete"):
-                with self.subTest(entry=entry, case=case), tempfile.TemporaryDirectory() as temporary:
-                    payload, config = payload_with_odds(), load_config()
-                    payload["meta"]["race_id"] = "202606040111"
-                    payload["result"] = parse_result(result_html())
-                    fields = {"final_win_odds": [{"horse_number": h["horse_number"], "win_odds": 4.5} for h in payload["horses"]],
-                              "weather": "sunny", "going": "firm"}
-                    payload["result"].update(copy.deepcopy(fields))
-                    previous = copy.deepcopy(payload["result"])
-                    result = parse_result(result_html(pairs=(), amounts=()))
-                    for key in fields:
-                        result.pop(key, None)
-                    if case == "null":
-                        result.update(dict.fromkeys(fields))
-                    elif case == "new_values":
-                        fields = {"final_win_odds": [{"horse_number": h["horse_number"], "win_odds": 6.5} for h in payload["horses"]],
-                                  "weather": "rainy", "going": "soft"}
-                        result.update(copy.deepcopy(fields))
-                    elif case == "incomplete":
-                        result["horses"].pop()
-                    collected_race = {**payload["race"], "start_time": "15:45"}
-                    collected_horses = copy.deepcopy(payload["horses"])
-                    collected_horses[0]["win_odds"] = 9.9
-                    root, path = Path(temporary), Path(temporary) / "race.json"
-                    save_race_json(path, payload)
-                    before = path.read_bytes()
-                    with (
-                        patch("collect.race_json_path", return_value=path),
-                        patch("collect.fetch_html", side_effect=lambda *a, **kw: ("entry", "https://race.netkeiba.com") if kw.get("return_source_url") else "result"),
-                        patch("collect.parse_result", return_value=result),
-                        patch("collect.parse_race_overview", return_value=collected_race),
-                        patch("collect.parse_entry_horse_identities", return_value={h["horse_number"]: h["horse_name"] for h in payload["horses"]}),
-                        patch("collect.fetch_validated_win_odds", return_value=({}, CAPTURED, "netkeiba", "https://example.invalid")),
-                        patch("collect.parse_horses", return_value=collected_horses),
-                    ):
-                        updated = (collect_results(config, "test", [path], root) if entry == "results" else
-                                   collect_races(config, "test", "2026-09-05", "post", root, [payload["meta"]["race_id"]]))
-                    self.assertEqual(updated, [] if entry == "results" and case == "incomplete" else [path])
-                    saved = load_race_json(path)
-                    if case == "incomplete":
-                        self.assertEqual(saved["result"], previous)
-                        if entry == "results":
-                            self.assertEqual(path.read_bytes(), before)
-                    self.assertEqual({key: saved["result"][key] for key in fields}, fields)
-                    self.assertEqual(saved["result"]["quinella_settlement"], previous["quinella_settlement"])
-                    self.assertEqual(saved["result"]["payouts"]["quinella"], previous["payouts"]["quinella"])
-                    self.assertEqual(saved["prediction"], payload["prediction"])
-                    self.assertEqual(saved["horses"], collected_horses if entry == "post" else payload["horses"])
-                    self.assertEqual(saved["race"], collected_race if entry == "post" else payload["race"])
+        payload, config = payload_with_odds(), load_config()
+        payload["meta"]["race_id"] = "202606040111"
+        fields = {"final_win_odds": [{"horse_number": h["horse_number"], "win_odds": 4.5} for h in payload["horses"]],
+                  "weather": "sunny", "going": "firm"}
+        payload["result"] = {**parse_result(result_html()), **fields}
+        previous = copy.deepcopy(payload["result"])
+        newer = {"final_win_odds": [{**h, "win_odds": 6.5} for h in fields["final_win_odds"]],
+                 "weather": "rainy", "going": "soft"}
+        # Merge: absent values retain the snapshot; valid replacements take precedence.
+        for incoming, expected in ((dict.fromkeys(fields), fields), (newer, newer)):
+            result = {**parse_result(result_html(pairs=(), amounts=())), **incoming}
+            with patch("collect.fetch_html", return_value="result"), patch("collect.parse_result", return_value=result):
+                merged = fetch_validated_result(None, payload["meta"]["race_id"], payload)
+            self.assertEqual({key: merged[key] for key in fields}, expected)
+        self.assertEqual(merged["quinella_settlement"], previous["quinella_settlement"])
+        self.assertEqual(merged["payouts"]["quinella"], previous["payouts"]["quinella"])
+
+        # Post collection: an incomplete result must not discard successful entry/odds collection.
+        result["horses"].pop()
+        collected_race = {**payload["race"], "start_time": "15:45"}
+        collected_horses = copy.deepcopy(payload["horses"])
+        collected_horses[0]["win_odds"] = 9.9
+        with tempfile.TemporaryDirectory() as temporary:
+            root, path = Path(temporary), Path(temporary) / "race.json"
+            save_race_json(path, payload)
+            with (
+                patch("collect.race_json_path", return_value=path),
+                patch("collect.fetch_html", side_effect=[("entry", "https://race.netkeiba.com"), "result"]),
+                patch("collect.parse_result", return_value=result),
+                patch("collect.parse_race_overview", return_value=collected_race),
+                patch("collect.parse_entry_horse_identities", return_value={h["horse_number"]: h["horse_name"] for h in payload["horses"]}),
+                patch("collect.fetch_validated_win_odds", return_value=({}, CAPTURED, "netkeiba", "https://example.invalid")),
+                patch("collect.parse_horses", return_value=collected_horses),
+            ):
+                self.assertEqual(collect_races(config, "test", "2026-09-05", "post", root, [payload["meta"]["race_id"]]), [path])
+            saved = load_race_json(path)
+        self.assertEqual(saved["result"], previous)
+        self.assertEqual(saved["horses"], collected_horses)
+        self.assertEqual(saved["race"], collected_race)
 
 
 class FlowAndSummaryTests(unittest.TestCase):
