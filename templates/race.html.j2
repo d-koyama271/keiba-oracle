@@ -171,6 +171,18 @@
       line-height: 1.2;
       vertical-align: middle;
     }
+    .race-grade-g3 {
+      border-color: #c8c1b7;
+      background: #f3f0ea;
+      color: #615c55;
+      font-weight: 500;
+    }
+    .race-grade-g2 {
+      border-color: #9fb8ae;
+      background: #edf4f1;
+      color: #3f675b;
+      font-weight: 600;
+    }
     .race-grade-g1 {
       border-color: #b99543;
       background: #f7edcf;
@@ -572,7 +584,7 @@
         {% if model_name %}<span class="ai-badge">{{ model_name }}</span>{% endif %}
         <span class="status {{ status_class }}">{{ status_label }}</span>
       </div>
-      <h1>{{ race.track }} {{ race.race_number }}R {{ race.race_name }}{% if race.class_grade %} <span class="race-grade{% if race.class_grade == 'G1' %} race-grade-g1{% endif %}">{{ race.class_grade }}</span>{% endif %}</h1>
+      <h1>{{ race.track }} {{ race.race_number }}R {{ race.race_name }}{% if race.class_grade %} <span class="race-grade{% if race.class_grade in ('G1', 'G2', 'G3') %} race-grade-{{ race.class_grade|lower }}{% endif %}">{{ race.class_grade }}</span>{% endif %}</h1>
       <h2>レース基本情報</h2>
       <div class="meta race-meta-grid">
         <div><strong>日付</strong><br>{{ race.date }}</div>

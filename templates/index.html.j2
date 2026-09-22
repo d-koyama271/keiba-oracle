@@ -116,6 +116,19 @@
       font-size: 11px;
       font-weight: 500;
       line-height: 1.2;
+      vertical-align: middle;
+    }
+    .race-grade-g3 {
+      border-color: #c8c1b7;
+      background: #f3f0ea;
+      color: #615c55;
+      font-weight: 500;
+    }
+    .race-grade-g2 {
+      border-color: #9fb8ae;
+      background: #edf4f1;
+      color: #3f675b;
+      font-weight: 600;
     }
     .race-grade-g1 {
       border-color: #b99543;
@@ -349,7 +362,7 @@
             <th class="nowrap">発走</th>
             <th class="nowrap">開催場</th>
             <th class="race-name-column">レース名</th>
-            <th class="nowrap condition-column">概要</th>
+            <th class="nowrap condition-column">コース</th>
             <th class="nowrap status-column">状態</th>
             <th class="nowrap">予想</th>
             <th class="nowrap result-link-column">結果</th>
@@ -361,8 +374,8 @@
             <td class="nowrap">{{ race.date }}</td>
             <td class="nowrap">{{ race.start_time or "-" }}</td>
             <td class="nowrap">{{ race.track }}</td>
-            <td class="race-name-column">{{ race.race_name|e }}{% if race.race_condition %}<span class="race-condition mobile-race-condition">{% if race.race_grade %}<span class="race-grade{% if race.race_grade == 'G1' %} race-grade-g1{% endif %}">{{ race.race_grade|e }}</span>{% endif %}{% if race.race_course %}<span class="race-course">{{ race.race_course|e }}</span>{% endif %}</span>{% endif %}{% if race.is_new %}<span class="new-badge">NEW!</span>{% endif %}</td>
-            <td class="nowrap condition-column">{% if race.race_grade %}<span class="race-grade{% if race.race_grade == 'G1' %} race-grade-g1{% endif %}">{{ race.race_grade|e }}</span>{% endif %}{% if race.race_course %}<span class="race-course">{{ race.race_course|e }}</span>{% endif %}</td>
+            <td class="race-name-column">{{ race.race_name|e }}{% if race.race_grade %} <span class="race-grade{% if race.race_grade in ('G1', 'G2', 'G3') %} race-grade-{{ race.race_grade|lower }}{% endif %}">{{ race.race_grade|e }}</span>{% endif %}{% if race.is_new %}<span class="new-badge">NEW!</span>{% endif %}{% if race.race_course %}<span class="race-condition mobile-race-condition"><span class="race-course">{{ race.race_course|e }}</span></span>{% endif %}</td>
+            <td class="nowrap condition-column">{{ race.race_course|e }}</td>
             <td class="nowrap status-column"><span class="status {{ race.status_class }}">{{ race.status_label }}</span>{% if race.next_update %}<div class="small next-update"><time datetime="{{ race.next_update.at }}">{{ race.next_update.label }}</time></div>{% endif %}</td>
             <td class="nowrap"><a class="page-link" href="{{ race.prediction_href }}"><span class="desktop-link-label">開く</span><span class="mobile-link-label">予想</span></a></td>
             <td class="nowrap result-link-column">{% if race.result_href %}<a class="page-link" href="{{ race.result_href }}"><span class="desktop-link-label">開く</span><span class="mobile-link-label">結果</span></a>{% else %}<span class="mobile-link-label">結果 </span>-{% endif %}</td>

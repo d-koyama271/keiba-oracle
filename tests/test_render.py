@@ -355,6 +355,33 @@ class RenderTests(unittest.TestCase):
 
         self.assertIn("A&B", title)
 
+    def test_race_page_grade_badges_use_grade_specific_classes(self) -> None:
+        template = build_environment(ROOT).get_template("race.html.j2")
+        for grade, expected_class in (
+            ("G3", "race-grade-g3"),
+            ("G2", "race-grade-g2"),
+            ("G1", "race-grade-g1"),
+            ("Listed", None),
+        ):
+            with self.subTest(grade=grade):
+                payload = make_payload(
+                    predicted=True,
+                    track="中山",
+                    date="2026-01-01",
+                    name="検証レース",
+                )
+                payload["race"]["class_grade"] = grade
+                soup = BeautifulSoup(
+                    template.render(**build_race_context(payload)),
+                    "html.parser",
+                )
+                badge = soup.select_one("h1 .race-grade")
+                self.assertEqual(badge.get_text(strip=True), grade)
+                grade_classes = {
+                    name for name in badge.get("class", []) if name.startswith("race-grade-g")
+                }
+                self.assertEqual(grade_classes, {expected_class} if expected_class else set())
+
     def test_race_pages_show_saved_prediction_model_badge(self) -> None:
         payload = make_payload(
             predicted=True,
@@ -871,19 +898,20 @@ process.stdout.write(JSON.stringify({
             self.assertIsNotNone(index_table)
             self.assertEqual(
                 [header.get_text(strip=True) for header in index_table.select("thead th")],
-                ["日付", "発走", "開催場", "レース名", "概要", "状態", "予想", "結果"],
+                ["日付", "発走", "開催場", "レース名", "コース", "状態", "予想", "結果"],
             )
             row_cells = index_table.select_one("tbody tr").find_all("td", recursive=False)
             self.assertEqual(len(row_cells), 8)
             self.assertIn("race-name-column", row_cells[3].get("class", []))
+            self.assertEqual(row_cells[3].select_one(".race-grade").get_text(strip=True), "G2")
+            self.assertIn("race-grade-g2", row_cells[3].select_one(".race-grade").get("class", []))
             self.assertEqual(
                 row_cells[3].select_one(".mobile-race-condition").get_text(" ", strip=True),
-                "G2 芝2400m",
+                "芝2400m",
             )
-            self.assertEqual(row_cells[4].get_text(" ", strip=True), "G2 芝2400m")
+            self.assertEqual(row_cells[4].get_text(" ", strip=True), "芝2400m")
             self.assertIn("condition-column", row_cells[4].get("class", []))
-            self.assertEqual(row_cells[4].select_one(".race-grade").get_text(strip=True), "G2")
-            self.assertEqual(row_cells[4].select_one(".race-course").get_text(strip=True), "芝2400m")
+            self.assertIsNone(row_cells[4].select_one(".race-grade"))
             self.assertIn("status-column", index_table.select("thead th")[5].get("class", []))
             self.assertIn("status-column", row_cells[5].get("class", []))
             self.assertEqual(row_cells[6].select_one(".mobile-link-label").get_text(strip=True), "予想")
