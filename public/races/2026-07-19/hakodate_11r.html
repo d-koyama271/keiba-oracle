@@ -164,7 +164,7 @@
       color: #705514;
       font-weight: 700;
     }
-    .meta-secondary { margin-top: 10px; }
+    .race-meta-spacer { display: none; }
     .small {
       color: var(--muted);
       font-size: 13px;
@@ -438,6 +438,10 @@
       margin-top: 10px;
     }
     @media (min-width: 900px) {
+      .race-meta-grid {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+      }
+      .race-meta-spacer { display: block; }
       .simulation-primary-metrics {
         grid-template-columns: repeat(5, minmax(0, 1fr));
       }
@@ -557,22 +561,20 @@
       </div>
       <h1>函館 11R 函館2歳S <span class="race-grade">G3</span></h1>
       <h2>レース基本情報</h2>
-      <div class="meta">
+      
+      <div class="meta race-meta-grid">
         <div><strong>日付</strong><br>2026-07-19</div>
         <div><strong>発走</strong><br>15:20</div>
         <div><strong>コース</strong><br>芝1200m</div>
-        
         <div><strong>馬場</strong><br>-</div>
         <div><strong>天候</strong><br>-</div>
-        
-      </div>
-      
-      <div class="meta meta-secondary">
+        <div class="race-meta-spacer" aria-hidden="true"></div>
+        <div class="race-meta-spacer" aria-hidden="true"></div>
         <div><strong>頭数</strong><br>13頭</div>
         <div><strong>条件</strong><br>-</div>
         <div><strong>負担重量</strong><br>-</div>
       </div>
-      <p class="small">情報時点 -</p>
+      <p class="small race-info-time">情報時点 -</p>
       
       <p class="small">
         <a href="../../index.html">一覧へ戻る</a>
@@ -593,9 +595,7 @@
         
         <p class="small prediction-description">過去成績や今回のレース条件、市場評価などを総合して1着確率を推定しています。</p>
         
-        <p class="small">使用オッズ: 14:55取得</p>
-        <p class="small">単勝オッズと人気は取得時点の値です。現在のオッズとは異なる場合があります。</p>
-        
+        <p class="small used-odds">使用オッズ: 14:55取得（単勝オッズ・人気は取得時点の値です）</p>
         
         
         <p class="table-scroll-hint">表は横にスクロールできます</p>
