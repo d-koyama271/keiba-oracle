@@ -39,7 +39,9 @@
       min-width: 0;
     }
     .panel + .panel { margin-top: 20px; }
-    .performance-panel h2 { margin-top: 0; }
+    .panel > h1,
+    .panel > h2 { margin-top: 0; }
+    .mobile-link-label { display: none; }
     .performance-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -220,10 +222,8 @@
         text-align: right;
       }
       .index-table .next-update { font-size: 12px; }
-      .index-table td[data-label]::before {
-        content: attr(data-label) " ";
-        color: #666;
-      }
+      .index-table .desktop-link-label { display: none; }
+      .index-table .mobile-link-label { display: inline; }
       .index-table td[colspan] {
         grid-column: 1 / -1;
         grid-area: auto;
@@ -328,8 +328,8 @@
             <td class="nowrap">{{ race.track }}</td>
             <td class="race-name-column">{{ race.race_name|e }}{% if race.is_new %}<span class="new-badge">NEW!</span>{% endif %}</td>
             <td class="nowrap status-column"><span class="status {{ race.status_class }}">{{ race.status_label }}</span>{% if race.next_update %}<div class="small next-update"><time datetime="{{ race.next_update.at }}">{{ race.next_update.label }}</time></div>{% endif %}</td>
-            <td class="nowrap" data-label="予想"><a class="page-link" href="{{ race.prediction_href }}">開く</a></td>
-            <td class="nowrap result-link-column" data-label="結果">{% if race.result_href %}<a class="page-link" href="{{ race.result_href }}">開く</a>{% else %}-{% endif %}</td>
+            <td class="nowrap"><a class="page-link" href="{{ race.prediction_href }}"><span class="desktop-link-label">開く</span><span class="mobile-link-label">予想</span></a></td>
+            <td class="nowrap result-link-column">{% if race.result_href %}<a class="page-link" href="{{ race.result_href }}"><span class="desktop-link-label">開く</span><span class="mobile-link-label">結果</span></a>{% else %}<span class="mobile-link-label">結果 </span>-{% endif %}</td>
           </tr>
 {% else %}
           <tr>
