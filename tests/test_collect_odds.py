@@ -123,30 +123,34 @@ class FakeSession:
 
 
 class OddsFallbackTests(TestCase):
-    def fetch(self):
-        return fetch_validated_win_odds(None, RACE_ID, race(), EXPECTED_HORSES, logger(), "test-odds")
+    def fetch(self, current_race=None):
+        return fetch_validated_win_odds(None, RACE_ID, current_race if current_race is not None else race(), EXPECTED_HORSES, logger(), "test-odds")
 
     def test_netkeiba_success_does_not_call_jra(self) -> None:
+        current_race = race()
         with ExitStack() as stack:
-            stack.enter_context(patch("collect.fetch_win_odds", return_value=(NETKEIBA_ODDS, None)))
+            stack.enter_context(patch("collect.fetch_win_odds", return_value=(NETKEIBA_ODDS, "2026-07-18 17:59:00")))
             discover = stack.enter_context(patch("collect.discover_jra_race_url"))
             stack.enter_context(patch("collect.now_jst_iso", return_value=CAPTURED_AT))
-            odds, captured_at, source, source_url = self.fetch()
+            odds, captured_at, source, source_url = self.fetch(current_race)
 
         self.assertEqual(odds, NETKEIBA_ODDS)
         self.assertEqual(captured_at, CAPTURED_AT)
         self.assertEqual(source, "netkeiba")
+        self.assertEqual(current_race["odds_official_datetime"], "2026-07-18T17:59:00+09:00")
         self.assertEqual(source_url, f"{NETKEIBA_ODDS_URL}?race_id={RACE_ID}")
         discover.assert_not_called()
 
     def test_empty_or_partial_netkeiba_snapshot_is_fully_replaced_by_jra(self) -> None:
         for snapshot in ({}, {1: NETKEIBA_ODDS[1]}):
+            current_race = {**race(), "odds_official_datetime": "old timestamp"}
             with self.subTest(snapshot=snapshot), ExitStack() as stack:
-                stack.enter_context(patch("collect.fetch_win_odds", return_value=(snapshot, None)))
+                stack.enter_context(patch("collect.fetch_win_odds", return_value=(snapshot, "2026-07-18 17:59:00")))
                 stack.enter_context(patch("collect.discover_jra_race_url", return_value=JRA_URL))
                 stack.enter_context(patch("collect.fetch_html", return_value=jra_html()))
                 stack.enter_context(patch("collect.now_jst_iso", return_value=CAPTURED_AT))
-                odds, captured_at, source, source_url = self.fetch()
+                odds, captured_at, source, source_url = self.fetch(current_race)
+                self.assertIsNone(current_race["odds_official_datetime"])
                 self.assertEqual(odds, JRA_ODDS)
                 self.assertNotEqual(odds[1], NETKEIBA_ODDS[1])
                 self.assertEqual((captured_at, source, source_url), (CAPTURED_AT, "jra", JRA_URL))

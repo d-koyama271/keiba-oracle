@@ -234,6 +234,11 @@ class PredictionValidationTests(unittest.TestCase):
                 "surface": "芝",
                 "distance": 2000,
                 "odds_captured_at": "2026-08-16T14:45:00+09:00",
+                "odds_official_datetime": "2026-08-16T14:44:00+09:00",
+                "age_condition": "3歳以上",
+                "sex_condition": "牝",
+                "weight_condition": "別定",
+                "race_info_captured_at": "2026-08-16T14:45:00+09:00",
                 "odds_source": "netkeiba",
                 "odds_source_url": "https://example.invalid/odds",
                 "odds_reference_minutes_before_start": 60,
@@ -269,6 +274,8 @@ class PredictionValidationTests(unittest.TestCase):
         self.assertEqual(first["meta"]["method"], "statistical")
         self.assertEqual(first["race"]["surface"], "芝")
         self.assertEqual(first["race"]["distance"], 2000)
+        for key in ("age_condition", "sex_condition", "weight_condition", "race_info_captured_at"):
+            self.assertEqual(first["race"][key], payload["race"][key])
         self.assertEqual(first["horses"][0]["jockey"], "騎手A")
         self.assertEqual(first["horses"][0]["past_runs"][0]["finish_position"], 2)
         self.assertEqual(first["horses"][0]["past_runs"][0]["race_time_seconds"], 120.4)
@@ -289,6 +296,7 @@ class PredictionValidationTests(unittest.TestCase):
             "market_probability",
             "normalized_market_probability",
             "odds_captured_at",
+            "odds_official_datetime",
             "odds_source",
             "odds_source_url",
             "odds_reference_minutes_before_start",

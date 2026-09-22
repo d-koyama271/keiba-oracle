@@ -88,6 +88,8 @@ class RenderTests(unittest.TestCase):
         from utils import ensure_race_payload, atomic_write_json, calculate_phase_times
         payload = ensure_race_payload(make_payload(predicted=True, track="中山", date="2026-09-20", name="状態テスト"))
         payload["race"]["start_time"] = "00:10"
+        payload["race"].update(going="良", weather="晴", class_grade="G2", age_condition="3歳", sex_condition="牡牝", weight_condition="馬齢",
+                               race_info_captured_at="2026-09-19T23:00:02+09:00", odds_captured_at="2026-09-19T23:01:02+09:00")
         config = {"data_dir": "data", "public_dir": "public", "automation": {
             "statistical_time": "17:25", "general_minutes_before_start": 37, "result_minutes_after_start": 19,
         }}
@@ -103,6 +105,8 @@ class RenderTests(unittest.TestCase):
                     entry["general"] = entry["statistical"]
                 if state == "result":
                     payload["result"] = make_result(1, 400, [1, 2, 3])
+                    payload["result"].update(going="重", weather="雨")
+                    payload["race"]["odds_official_datetime"] = "2026-09-19T23:00:00+09:00"
                     payload["evaluation"] = build_evaluation(payload)
                 if state == "cancelled":
                     payload["race"]["cancelled"] = True
@@ -113,8 +117,30 @@ class RenderTests(unittest.TestCase):
                 index = BeautifulSoup((output / "index.html").read_text(encoding="utf-8"), "html.parser")
                 page = BeautifulSoup((output / "races/2026-09-20/nakayama_11r.html").read_text(encoding="utf-8"), "html.parser")
                 self.assertEqual(index.select_one(".status").get_text(), label)
-                self.assertEqual(page.select_one(".status").get_text(), "直前予想公開" if state == "result" else label)
+                self.assertEqual(page.select_one(".status").get_text(), label)
+                basic = page.select_one(".panel")
+                self.assertIn("G2", basic.h1.get_text())
+                values = {
+                    node.strong.get_text(): node.get_text(" ", strip=True).split(" ", 1)[1]
+                    for node in basic.select(".meta > div")
+                    if node.strong
+                }
+                self.assertEqual({key: values[key] for key in ("馬場", "天候", "頭数", "条件", "負担重量")},
+                                 {"馬場": "良", "天候": "晴", "頭数": "3頭", "条件": "3歳・牡牝", "負担重量": "馬齢"})
+                self.assertIn("2026-09-19 23:00", basic.get_text())
+                statistical = page.select_one('.prediction-method-content[data-ai-method$="statistical"]')
+                self.assertNotIn("使用オッズ", statistical.get_text())
+                general = page.select_one('.prediction-method-content[data-ai-method$="general"]')
+                if state == "statistical":
+                    self.assertIsNone(general)
+                    self.assertNotIn("使用オッズ", page.get_text())
+                else:
+                    self.assertIn("23:01取得" if state == "general" else "23:00時点", general.get_text())
                 self.assertEqual((output / "races/2026-09-20/nakayama_11r_result.html").exists(), state == "result")
+                if state == "result":
+                    result_page = BeautifulSoup((output / "races/2026-09-20/nakayama_11r_result.html").read_text(encoding="utf-8"), "html.parser")
+                    self.assertEqual(result_page.select_one(".status").get_text(), "結果公開")
+                    self.assertIn("雨", result_page.select_one(".meta").get_text())
                 next_update = index.select_one(".status").parent.find("time")
                 if state in ("statistical", "general"):
                     phase = "general" if state == "statistical" else "result"
@@ -251,6 +277,69 @@ class RenderTests(unittest.TestCase):
         for horse in payload["horses"]:
             horse["win_odds"] = None
         self.assertFalse(build_race_context(payload)["has_recorded_odds"])
+
+    def test_prediction_basic_info_grid_and_used_odds_line(self) -> None:
+        payload = ensure_race_payload(
+            make_payload(predicted=True, track="中山", date="2026-01-01", name="検証レース")
+        )
+        payload["prediction"][0]["statistical"] = copy.deepcopy(
+            payload["prediction"][0]["general"]
+        )
+        payload["race"].update(
+            going="良",
+            weather="晴",
+            age_condition="3歳",
+            sex_condition="牡牝",
+            weight_condition="馬齢",
+            race_info_captured_at="2026-01-01T14:30:00+09:00",
+            odds_captured_at="2026-01-01T15:00:00+09:00",
+            quinella_odds={"official_datetime": "2026-01-01T14:59:00+09:00"},
+        )
+        template = build_environment(ROOT).get_template("race.html.j2")
+        soup = BeautifulSoup(
+            template.render(**build_race_context(payload), page_kind="prediction"),
+            "html.parser",
+        )
+
+        grid = soup.select_one(".race-meta-grid")
+        cells = grid.find_all("div", recursive=False)
+        self.assertEqual(len(cells), 10)
+        self.assertEqual(len(grid.select(".race-meta-spacer")), 2)
+        self.assertEqual(
+            [cell.strong.get_text(strip=True) for cell in cells if cell.strong],
+            ["日付", "発走", "コース", "馬場", "天候", "頭数", "条件", "負担重量"],
+        )
+        self.assertIn("2026-01-01 14:30", soup.select_one(".race-info-time").get_text())
+
+        general = soup.select_one('.prediction-method-content[data-ai-method$="general"]')
+        statistical = soup.select_one('.prediction-method-content[data-ai-method$="statistical"]')
+        self.assertEqual(
+            general.select_one(".used-odds").get_text(" ", strip=True),
+            "使用オッズ: 14:59時点（単勝オッズ・人気はこの時点の値です）",
+        )
+        self.assertNotIn("使用オッズ", statistical.get_text())
+        self.assertNotIn("現在のオッズとは異なる場合があります。", soup.get_text())
+
+        payload["race"]["quinella_odds"] = {}
+        soup = BeautifulSoup(
+            template.render(**build_race_context(payload), page_kind="prediction"),
+            "html.parser",
+        )
+        self.assertEqual(
+            soup.select_one(".used-odds").get_text(" ", strip=True),
+            "使用オッズ: 15:00取得（単勝オッズ・人気は取得時点の値です）",
+        )
+
+        payload["race"]["odds_captured_at"] = "2026-01-01T15:31:00+09:00"
+        soup = BeautifulSoup(
+            template.render(**build_race_context(payload), page_kind="prediction"),
+            "html.parser",
+        )
+        self.assertEqual(len(soup.select(".used-odds")), 1)
+        self.assertIn(
+            "発走後に取得されたオッズスナップショット",
+            soup.select_one(".used-odds").get_text(" ", strip=True),
+        )
 
     def test_race_title_escapes_race_name(self) -> None:
         payload = make_payload(

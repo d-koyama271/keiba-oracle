@@ -592,8 +592,20 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
     prediction_status = "cancelled" if race.get("cancelled") else (
         "general_published" if any(entry.get("general") for entry in payload["prediction"]) else "statistical_published")
     status = "result_published" if has_result_page else prediction_status
+    odds_snapshot = race.get("quinella_odds") or {}
+    official_odds_time = parse_jst_datetime(
+        race.get("odds_official_datetime") or odds_snapshot.get("official_datetime")
+    )
+    captured_odds_time = parse_jst_datetime(race.get("odds_captured_at"))
+    used_odds_time = official_odds_time or captured_odds_time
+    info_time = parse_jst_datetime(race.get("race_info_captured_at"))
     return {
         "race": race,
+        "horse_count": len(payload.get("horses", [])),
+        "race_condition": "・".join(str(race[key]) for key in ("age_condition", "sex_condition") if race.get(key)) or "-",
+        "race_info_captured_at_label": info_time.strftime("%Y-%m-%d %H:%M") if info_time else "-",
+        "used_odds_label": (used_odds_time.strftime("%H:%M") + ("時点" if official_odds_time else "取得")) if used_odds_time else None,
+        "used_odds_is_official": official_odds_time is not None,
         "prediction": prediction,
         "model_name": primary_view["model"],
         "statistical_prediction": statistical_prediction,
@@ -695,9 +707,6 @@ def render_site(
             **context,
             **page_links,
             "page_kind": "prediction",
-            "status": context["prediction_status"],
-            "status_label": status_label(context["prediction_status"]),
-            "status_class": status_class(context["prediction_status"]),
         }
         prediction_target = output_dir / prediction_path
         ensure_dir(prediction_target.parent)

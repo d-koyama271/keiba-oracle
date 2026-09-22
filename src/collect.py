@@ -534,9 +534,10 @@ def fetch_validated_win_odds(
 ) -> tuple[dict[int, dict[str, Any]], str | None, str | None, str | None]:
     snapshot = {"available": False, "reason": "odds_unavailable", "pairs": [], "fetched_at": None, "source": "netkeiba", "source_url": f"{NETKEIBA_ODDS_URL}?race_id={race_id}"}
     race["quinella_odds"] = snapshot
+    race["odds_official_datetime"] = None
     log_job(logger, job_name, race_id, "netkeiba win odds fetch started")
     try:
-        netkeiba_odds, _ = fetch_win_odds(session, race_id, quinella_snapshot=snapshot)
+        netkeiba_odds, win_official_datetime = fetch_win_odds(session, race_id, quinella_snapshot=snapshot)
         log_job(logger, job_name, race_id, f"netkeiba win odds fetched: {len(netkeiba_odds)} horses")
         reason = validate_odds_snapshot(netkeiba_odds, expected_horses, expected_horses)
     except Exception as exc:  # noqa: BLE001
@@ -558,6 +559,8 @@ def fetch_validated_win_odds(
         snapshot.update(available=False, reason=str(exc), pairs=[])
 
     if reason is None:
+        official = parse_jst_datetime(win_official_datetime)
+        race["odds_official_datetime"] = official.isoformat() if official else None
         captured_at = now_jst_iso()
         source_url = f"{NETKEIBA_ODDS_URL}?race_id={race_id}"
         log_job(logger, job_name, race_id, f"odds source adopted: netkeiba captured_at={captured_at}")
@@ -1020,6 +1023,9 @@ def parse_race_overview(
         distance = int(distance_match.group(2))
 
     conditions = parse_race_conditions(soup, detail_text)
+    age_match = re.search(r"(\d+歳(?:以上|以下)?)", detail_text)
+    sex_match = re.search(r"牡\s*[・･]?\s*牝|牝|牡(?:\s*[・･]?\s*セ(?:ン)?)?", detail_text)
+    weight_match = re.search(r"馬齢|定量|別定|ハンデ(?:キャップ)?", detail_text)
 
     return {
         "date": target_date,
@@ -1031,6 +1037,9 @@ def parse_race_overview(
         "surface": surface,
         "going": conditions["going"],
         "weather": conditions["weather"],
+        "age_condition": age_match.group(1) if age_match else None,
+        "sex_condition": re.sub(r"[\s・･]", "", sex_match.group()) if sex_match else None,
+        "weight_condition": weight_match.group() if weight_match else None,
         "class_grade": normalize_class_grade(f"{race_name} {detail_text}", soup),
         "source_url": source_url or SHUTUBA_URL.format(race_id=race_id),
         "odds_captured_at": None,
@@ -1591,6 +1600,8 @@ def collect_races(
                 int(config["odds_reference_minutes_before_start"]),
                 source_url=entry_source_url,
             )
+            if mode == "pre":
+                race["race_info_captured_at"] = now_jst_iso()
             race_number = int(race.get("race_number") or race_id[-2:])
             path = race_json_path(config, target_date, track_name, race_number, root)
             existing = load_race_json(path)
@@ -1625,7 +1636,8 @@ def collect_races(
             )
 
             payload = ensure_race_payload(existing, race_id)
-            payload["race"] = race
+            if mode != "post" or not payload.get("race"):
+                payload["race"] = race
             if (existing or {}).get("race", {}).get("rescheduled_from"):
                 payload["race"]["rescheduled_from"] = existing["race"]["rescheduled_from"]
             payload["horses"] = horses

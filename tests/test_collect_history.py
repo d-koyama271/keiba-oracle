@@ -153,7 +153,7 @@ class HistoryParsingTests(unittest.TestCase):
             """
             <h1 class="RaceName">小倉記念<span class="Icon_GradeType Icon_GradeType3"></span></h1>
             <div class="RaceData01">15:45発走 / 芝2000m / 天候:晴 / 馬場:稍重</div>
-            <div class="RaceData02">サラ系3歳以上 オープン</div>
+            <div class="RaceData02">サラ系3歳以上 オープン (国際) 牝 (特指) ハンデ</div>
             """,
             "202610020811",
             "2026-07-19",
@@ -163,6 +163,11 @@ class HistoryParsingTests(unittest.TestCase):
         self.assertEqual(race["weather"], "晴")
         self.assertEqual(race["going"], "稍重")
         self.assertEqual(race["class_grade"], "G3")
+        self.assertEqual((race["age_condition"], race["sex_condition"], race["weight_condition"]), ("3歳以上", "牝", "ハンデ"))
+        for condition, expected in (("3歳 牡・牝 馬齢", ("3歳", "牡牝", "馬齢")), ("4歳以上 定量", ("4歳以上", None, "定量")), ("牝 別定", (None, "牝", "別定")), ("", (None, None, None))):
+            with self.subTest(condition=condition):
+                parsed = parse_race_overview(f'<div class="RaceData02">{condition}</div>', "202610020811", "2026-07-19", 60)
+                self.assertEqual(tuple(parsed[key] for key in ("age_condition", "sex_condition", "weight_condition")), expected)
 
     def test_mobile_race_overview_and_history_rows(self) -> None:
         race = parse_race_overview(

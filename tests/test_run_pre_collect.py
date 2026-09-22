@@ -465,6 +465,7 @@ class MultipleRaceGenerationTests(unittest.TestCase):
                     ),
                 ))
                 stack.enter_context(patch.object(collect_module, "parse_horses", side_effect=horses))
+                stack.enter_context(patch.object(collect_module, "now_jst_iso", return_value="2026-07-18T12:00:00+09:00"))
                 paths = collect_module.collect_races(
                     config,
                     "test-multiple-collect",
@@ -487,6 +488,7 @@ class MultipleRaceGenerationTests(unittest.TestCase):
 
             for path in paths:
                 payload = load_race_json(path)
+                self.assertEqual(payload["race"]["race_info_captured_at"], "2026-07-18T12:00:00+09:00")
                 chat_input = json.loads((outbox / path.name).read_text(encoding="utf-8"))
                 self.assertEqual(chat_input["meta"]["race_id"], payload["meta"]["race_id"])
                 self.assertEqual(chat_input["race"], payload["race"])

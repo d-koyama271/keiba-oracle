@@ -330,8 +330,9 @@ class SettlementTests(unittest.TestCase):
         self.assertEqual(merged["quinella_settlement"], previous["quinella_settlement"])
         self.assertEqual(merged["payouts"]["quinella"], previous["payouts"]["quinella"])
 
-        # Post collection: an incomplete result must not discard successful entry/odds collection.
+        # Post collection retains pre-race information, even if the new result is incomplete.
         result["horses"].pop()
+        payload["race"].update(weather="晴", going="良", race_info_captured_at=CAPTURED, odds_official_datetime=CAPTURED)
         collected_race = {**payload["race"], "start_time": "15:45"}
         collected_horses = copy.deepcopy(payload["horses"])
         collected_horses[0]["win_odds"] = 9.9
@@ -351,7 +352,7 @@ class SettlementTests(unittest.TestCase):
             saved = load_race_json(path)
         self.assertEqual(saved["result"], previous)
         self.assertEqual(saved["horses"], collected_horses)
-        self.assertEqual(saved["race"], collected_race)
+        self.assertEqual(saved["race"], payload["race"])
 
 
 class FlowAndSummaryTests(unittest.TestCase):
