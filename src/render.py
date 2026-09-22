@@ -727,7 +727,7 @@ def render_site(
             }
         distance = race.get("distance")
         course_condition = f"{race.get('surface') or ''}{f'{distance}m' if distance not in (None, '') else ''}"
-        race_condition = "・".join(
+        race_condition = " ".join(
             part for part in (race.get("class_grade"), course_condition) if part
         )
         index_rows.append(
@@ -737,6 +737,8 @@ def render_site(
                 "track": race["track"],
                 "race_name": race["race_name"],
                 "race_condition": race_condition,
+                "race_grade": race.get("class_grade"),
+                "race_course": course_condition,
                 "is_new": (
                     is_created_this_week(persisted_created_at)
                     and context["status"] in ("general_published", "statistical_published")

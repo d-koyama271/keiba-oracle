@@ -788,12 +788,13 @@ process.stdout.write(JSON.stringify({
             self.assertEqual(len(row_cells), 8)
             self.assertIn("race-name-column", row_cells[3].get("class", []))
             self.assertEqual(
-                row_cells[3].select_one(".mobile-race-condition").get_text(strip=True),
-                "G2・芝2400m",
+                row_cells[3].select_one(".mobile-race-condition").get_text(" ", strip=True),
+                "G2 芝2400m",
             )
-            self.assertEqual(row_cells[4].get_text(strip=True), "G2・芝2400m")
+            self.assertEqual(row_cells[4].get_text(" ", strip=True), "G2 芝2400m")
             self.assertIn("condition-column", row_cells[4].get("class", []))
-            self.assertIsNone(row_cells[4].select_one(".race-condition"))
+            self.assertEqual(row_cells[4].select_one(".race-grade").get_text(strip=True), "G2")
+            self.assertEqual(row_cells[4].select_one(".race-course").get_text(strip=True), "芝2400m")
             self.assertIn("status-column", index_table.select("thead th")[5].get("class", []))
             self.assertIn("status-column", row_cells[5].get("class", []))
             self.assertEqual(row_cells[6].select_one(".mobile-link-label").get_text(strip=True), "予想")
