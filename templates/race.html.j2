@@ -574,30 +574,19 @@
       </div>
       <h1>{{ race.track }} {{ race.race_number }}R {{ race.race_name }}{% if race.class_grade %} <span class="race-grade{% if race.class_grade == 'G1' %} race-grade-g1{% endif %}">{{ race.class_grade }}</span>{% endif %}</h1>
       <h2>レース基本情報</h2>
-      {% if page_kind == "prediction" %}
       <div class="meta race-meta-grid">
         <div><strong>日付</strong><br>{{ race.date }}</div>
         <div><strong>発走</strong><br>{{ race.start_time or "-" }}</div>
         <div><strong>コース</strong><br>{{ race.surface or "-" }}{{ race.distance|string + "m" if race.distance else "" }}</div>
-        <div><strong>馬場</strong><br>{{ race.going or "-" }}</div>
-        <div><strong>天候</strong><br>{{ race.weather or "-" }}</div>
+        <div><strong>馬場</strong><br>{{ (result.going if page_kind == "result" else race.going) or "-" }}</div>
+        <div><strong>天候</strong><br>{{ (result.weather if page_kind == "result" else race.weather) or "-" }}</div>
         <div class="race-meta-spacer" aria-hidden="true"></div>
         <div class="race-meta-spacer" aria-hidden="true"></div>
         <div><strong>頭数</strong><br>{{ horse_count }}頭</div>
         <div><strong>条件</strong><br>{{ race_condition }}</div>
         <div><strong>負担重量</strong><br>{{ race.weight_condition or "-" }}</div>
       </div>
-      <p class="small race-info-time">情報時点 {{ race_info_captured_at_label }}</p>
-      {% else %}
-      <div class="meta">
-        <div><strong>日付</strong><br>{{ race.date }}</div>
-        <div><strong>発走</strong><br>{{ race.start_time or "-" }}</div>
-        <div><strong>コース</strong><br>{{ race.surface or "-" }}{{ race.distance|string + "m" if race.distance else "" }}</div>
-        <div><strong>馬場</strong><br>{{ result.going or "-" }}</div>
-        <div><strong>天候</strong><br>{{ result.weather or "-" }}</div>
-        <div><strong>結果取得日時</strong><br>{{ result_fetched_at_label }}</div>
-      </div>
-      {% endif %}
+      <p class="small race-info-time">{% if page_kind == "result" %}結果取得日時 {{ result_fetched_at_label }}{% else %}情報時点 {{ race_info_captured_at_label }}{% endif %}</p>
       <p class="small">
         <a href="../../index.html">一覧へ戻る</a>
         {% if page_kind == "prediction" and result_page_name %} / <a href="{{ result_page_name }}">結果ページ</a>{% endif %}

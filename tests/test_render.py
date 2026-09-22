@@ -1268,12 +1268,22 @@ class QuinellaRenderTests(unittest.TestCase):
         template = build_environment(ROOT).get_template("race.html.j2")
         for kind, weather in (("prediction", "晴"), ("result", "雨")):
             soup = BeautifulSoup(template.render(**build_race_context(payload), page_kind=kind), "html.parser")
-            self.assertIn(weather, soup.select_one(".meta").get_text(" ", strip=True))
+            grid = soup.select_one(".race-meta-grid")
+            self.assertIn(weather, grid.get_text(" ", strip=True))
+            self.assertEqual(
+                [node.strong.get_text(strip=True) for node in grid.select(":scope > div") if node.strong],
+                ["日付", "発走", "コース", "馬場", "天候", "頭数", "条件", "負担重量"],
+            )
+            self.assertEqual(len(grid.select(".race-meta-spacer")), 2)
             if kind == "result":
-                basic_info = soup.select_one(".meta").get_text(" ", strip=True)
+                basic_info = grid.get_text(" ", strip=True)
                 self.assertIn("post-going", basic_info)
                 self.assertNotIn("pre-going", basic_info)
-                self.assertIn("2026-08-30 16:10:11", basic_info)
+                self.assertNotIn("結果取得日時", basic_info)
+                self.assertEqual(
+                    soup.select_one(".race-info-time").get_text(" ", strip=True),
+                    "結果取得日時 2026-08-30 16:10:11",
+                )
                 for table in soup.select(".result-table"):
                     self.assertEqual([row.select("td")[2].get("data-sort-value") for row in table.select("tbody tr")], ["10", "2", ""])
                     header = table.select("thead .sort-button")[2]
