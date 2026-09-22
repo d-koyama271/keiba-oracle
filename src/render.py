@@ -725,12 +725,18 @@ def render_site(
                 "label": ("直前予想 " if phase == "general" else "結果 ")
                 + scheduled_at.strftime(time_format) + ("頃" if phase == "general" else "以降"),
             }
+        distance = race.get("distance")
+        course_condition = f"{race.get('surface') or ''}{f'{distance}m' if distance not in (None, '') else ''}"
+        race_condition = "・".join(
+            part for part in (race.get("class_grade"), course_condition) if part
+        )
         index_rows.append(
             {
                 "date": race["date"],
                 "start_time": race.get("start_time"),
                 "track": race["track"],
                 "race_name": race["race_name"],
+                "race_condition": race_condition,
                 "is_new": (
                     is_created_this_week(persisted_created_at)
                     and context["status"] in ("general_published", "statistical_published")

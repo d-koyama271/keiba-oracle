@@ -94,6 +94,14 @@
     .index-table th,
     .index-table td { padding: 10px 6px; }
     .index-table tbody tr:nth-child(even) { background: #faf6ee; }
+    .race-condition {
+      display: inline-block;
+      margin-left: 0.45em;
+      color: #777067;
+      font-size: 12px;
+      font-weight: 400;
+      white-space: nowrap;
+    }
     .status-column { text-align: center; }
     .nowrap {
       white-space: nowrap;
@@ -326,7 +334,7 @@
             <td class="nowrap">{{ race.date }}</td>
             <td class="nowrap">{{ race.start_time or "-" }}</td>
             <td class="nowrap">{{ race.track }}</td>
-            <td class="race-name-column">{{ race.race_name|e }}{% if race.is_new %}<span class="new-badge">NEW!</span>{% endif %}</td>
+            <td class="race-name-column">{{ race.race_name|e }}{% if race.race_condition %}<span class="race-condition">{{ race.race_condition|e }}</span>{% endif %}{% if race.is_new %}<span class="new-badge">NEW!</span>{% endif %}</td>
             <td class="nowrap status-column"><span class="status {{ race.status_class }}">{{ race.status_label }}</span>{% if race.next_update %}<div class="small next-update"><time datetime="{{ race.next_update.at }}">{{ race.next_update.label }}</time></div>{% endif %}</td>
             <td class="nowrap"><a class="page-link" href="{{ race.prediction_href }}"><span class="desktop-link-label">開く</span><span class="mobile-link-label">予想</span></a></td>
             <td class="nowrap result-link-column">{% if race.result_href %}<a class="page-link" href="{{ race.result_href }}"><span class="desktop-link-label">開く</span><span class="mobile-link-label">結果</span></a>{% else %}<span class="mobile-link-label">結果 </span>-{% endif %}</td>

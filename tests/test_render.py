@@ -630,9 +630,11 @@ process.stdout.write(JSON.stringify({
             shutil.copytree(ROOT / "templates", root / "templates")
             race_path = root / "data" / "races" / "2026-01-01" / "nakayama_11r.json"
             race_path.parent.mkdir(parents=True)
+            race_payload = make_payload(predicted=True, track="中山", date="2026-01-01", name="予想済み")
+            race_payload["race"].update({"class_grade": "G2", "surface": "芝", "distance": 2400})
             race_path.write_text(
                 json.dumps(
-                    make_payload(predicted=True, track="中山", date="2026-01-01", name="予想済み"),
+                    race_payload,
                     ensure_ascii=False,
                 ),
                 encoding="utf-8",
@@ -785,6 +787,10 @@ process.stdout.write(JSON.stringify({
             row_cells = index_table.select_one("tbody tr").find_all("td", recursive=False)
             self.assertEqual(len(row_cells), 7)
             self.assertIn("race-name-column", row_cells[3].get("class", []))
+            self.assertEqual(
+                row_cells[3].select_one(".race-condition").get_text(strip=True),
+                "G2・芝2400m",
+            )
             self.assertIn("status-column", index_table.select("thead th")[4].get("class", []))
             self.assertIn("status-column", row_cells[4].get("class", []))
             self.assertEqual(row_cells[5].select_one(".mobile-link-label").get_text(strip=True), "予想")
