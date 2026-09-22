@@ -146,6 +146,25 @@
       opacity: 0.75;
     }
     table tbody tr.selected-row { background: #fff6dc; }
+    .race-grade {
+      display: inline-block;
+      padding: 1px 5px;
+      border: 1px solid #c8c1b7;
+      border-radius: 999px;
+      background: #f3f0ea;
+      color: #615c55;
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.2;
+      vertical-align: middle;
+    }
+    .race-grade-g1 {
+      border-color: #b99543;
+      background: #f7edcf;
+      color: #705514;
+      font-weight: 700;
+    }
+    .meta-secondary { margin-top: 10px; }
     .small {
       color: var(--muted);
       font-size: 13px;
@@ -534,24 +553,26 @@
     <div class="panel">
       <div class="page-badges">
         <span class="ai-badge">gpt-5.6-luna</span>
-        <span class="status status-prediction">直前予想公開</span>
+        <span class="status status-result">結果公開</span>
       </div>
-      <h1>札幌 11R 札幌2歳S</h1>
+      <h1>札幌 11R 札幌2歳S <span class="race-grade">G3</span></h1>
       <h2>レース基本情報</h2>
       <div class="meta">
         <div><strong>日付</strong><br>2026-09-05</div>
         <div><strong>発走</strong><br>15:20</div>
-        <div><strong>距離</strong><br>芝 1800m</div>
+        <div><strong>コース</strong><br>芝1800m</div>
         
         <div><strong>馬場</strong><br>稍重</div>
         <div><strong>天候</strong><br>晴</div>
-        <div><strong>オッズ記録時刻</strong><br>2026-09-05 15:03:13</div>
-        <div><strong>発走時点との差</strong><br>発走17分前</div>
         
       </div>
       
-      <p class="small">単勝オッズと人気は記録時点の値です。現在のオッズとは異なる場合があります。</p>
-      
+      <div class="meta meta-secondary">
+        <div><strong>頭数</strong><br>9頭</div>
+        <div><strong>条件</strong><br>-</div>
+        <div><strong>負担重量</strong><br>-</div>
+      </div>
+      <p class="small">情報時点 -</p>
       
       <p class="small">
         <a href="../../index.html">一覧へ戻る</a>
@@ -577,6 +598,11 @@
       <div class="ai-method-panel prediction-method-content" id="prediction-general" role="tabpanel" data-ai-panel data-ai-method="general">
         
         <p class="small prediction-description">過去成績や今回のレース条件、市場評価などを総合して1着確率を推定しています。</p>
+        
+        <p class="small">使用オッズ: 15:03取得</p>
+        <p class="small">単勝オッズと人気は取得時点の値です。現在のオッズとは異なる場合があります。</p>
+        
+        
         
         <p class="table-scroll-hint">表は横にスクロールできます</p>
         <div class="table-scroll">
@@ -752,6 +778,7 @@
       <div class="ai-method-panel prediction-method-content" id="prediction-statistical" role="tabpanel" data-ai-panel data-ai-method="statistical" hidden>
         
         <p class="small prediction-description">市場情報を使用せず、過去成績や今回のレース条件などの客観データから1着確率を推定しています。</p>
+        
         
         <p class="table-scroll-hint">表は横にスクロールできます</p>
         <div class="table-scroll">

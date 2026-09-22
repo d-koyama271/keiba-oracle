@@ -146,6 +146,25 @@
       opacity: 0.75;
     }
     table tbody tr.selected-row { background: #fff6dc; }
+    .race-grade {
+      display: inline-block;
+      padding: 1px 5px;
+      border: 1px solid #c8c1b7;
+      border-radius: 999px;
+      background: #f3f0ea;
+      color: #615c55;
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.2;
+      vertical-align: middle;
+    }
+    .race-grade-g1 {
+      border-color: #b99543;
+      background: #f7edcf;
+      color: #705514;
+      font-weight: 700;
+    }
+    .meta-secondary { margin-top: 10px; }
     .small {
       color: var(--muted);
       font-size: 13px;
@@ -534,24 +553,26 @@
     <div class="panel">
       <div class="page-badges">
         <span class="ai-badge">manual-chat</span>
-        <span class="status status-prediction">直前予想公開</span>
+        <span class="status status-result">結果公開</span>
       </div>
-      <h1>中京 7R 東海S</h1>
+      <h1>中京 7R 東海S <span class="race-grade">G3</span></h1>
       <h2>レース基本情報</h2>
       <div class="meta">
         <div><strong>日付</strong><br>2026-07-26</div>
         <div><strong>発走</strong><br>15:35</div>
-        <div><strong>距離</strong><br>ダート 1400m</div>
+        <div><strong>コース</strong><br>ダート1400m</div>
         
         <div><strong>馬場</strong><br>良</div>
         <div><strong>天候</strong><br>晴</div>
-        <div><strong>オッズ記録時刻</strong><br>2026-07-26 00:28:28</div>
-        <div><strong>発走時点との差</strong><br>発走907分前</div>
         
       </div>
       
-      <p class="small">単勝オッズと人気は記録時点の値です。現在のオッズとは異なる場合があります。</p>
-      
+      <div class="meta meta-secondary">
+        <div><strong>頭数</strong><br>14頭</div>
+        <div><strong>条件</strong><br>-</div>
+        <div><strong>負担重量</strong><br>-</div>
+      </div>
+      <p class="small">情報時点 -</p>
       
       <p class="small">
         <a href="../../index.html">一覧へ戻る</a>
@@ -571,6 +592,11 @@
         <h3>総合AI予想</h3>
         
         <p class="small prediction-description">過去成績や今回のレース条件、市場評価などを総合して1着確率を推定しています。</p>
+        
+        <p class="small">使用オッズ: 00:28取得</p>
+        <p class="small">単勝オッズと人気は取得時点の値です。現在のオッズとは異なる場合があります。</p>
+        
+        
         
         <p class="table-scroll-hint">表は横にスクロールできます</p>
         <div class="table-scroll">
