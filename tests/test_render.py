@@ -782,7 +782,7 @@ process.stdout.write(JSON.stringify({
             self.assertIsNotNone(index_table)
             self.assertEqual(
                 [header.get_text(strip=True) for header in index_table.select("thead th")],
-                ["日付", "発走", "開催場", "レース名", "条件", "状態", "予想", "結果"],
+                ["日付", "発走", "開催場", "レース名", "概要", "状態", "予想", "結果"],
             )
             row_cells = index_table.select_one("tbody tr").find_all("td", recursive=False)
             self.assertEqual(len(row_cells), 8)
@@ -793,6 +793,7 @@ process.stdout.write(JSON.stringify({
             )
             self.assertEqual(row_cells[4].get_text(strip=True), "G2・芝2400m")
             self.assertIn("condition-column", row_cells[4].get("class", []))
+            self.assertIsNone(row_cells[4].select_one(".race-condition"))
             self.assertIn("status-column", index_table.select("thead th")[5].get("class", []))
             self.assertIn("status-column", row_cells[5].get("class", []))
             self.assertEqual(row_cells[6].select_one(".mobile-link-label").get_text(strip=True), "予想")
