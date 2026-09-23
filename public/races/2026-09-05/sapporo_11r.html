@@ -446,6 +446,40 @@
     .simulation-panel h4.simulation-result-title {
       margin-top: 20px;
     }
+    .dutching-pairs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+      gap: 16px 20px;
+      margin-top: 16px;
+    }
+    .dutching-pair {
+      min-width: 0;
+    }
+    .dutching-setting {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .dutching-setting-value,
+    .dutching-result-value {
+      display: block;
+      margin-top: 4px;
+    }
+    .dutching-result {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #e8e1d6;
+    }
+    .dutching-result-value {
+      font-size: 17px;
+      font-weight: 700;
+    }
+    .simulation-panel h4.purchase-breakdown-title {
+      margin: 22px 0 10px;
+      font-size: 1rem;
+    }
+    .purchase-breakdown-table thead th {
+      background: #faf8f3;
+    }
     .simulation-secondary-metrics {
       margin-top: 10px;
     }
@@ -455,6 +489,9 @@
       }
       .race-meta-spacer { display: block; }
       .simulation-primary-metrics {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+      .dutching-pairs {
         grid-template-columns: repeat(5, minmax(0, 1fr));
       }
     }
@@ -960,6 +997,7 @@
       <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
       
       
+      
       <h4 class="simulation-block-title">設定条件</h4>
       <div class="metric-grid simulation-primary-metrics">
         <div><strong>予算</strong><br>3000円</div>
@@ -978,13 +1016,11 @@
 </span></span></strong><br>20%</div>
       </div>
       <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
-      
       <div class="metric-grid">
         <div><strong>判定</strong><br>購入なし</div>
         <div><strong>合計購入額</strong><br>0円</div>
         <div><strong>未使用予算</strong><br>3000円</div>
       </div>
-      
       
       <details class="simulation-details">
         <summary>頭数別比較の詳細を見る</summary>
@@ -1354,6 +1390,7 @@
       <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
       
       
+      
       <h4 class="simulation-block-title">設定条件</h4>
       <div class="metric-grid simulation-primary-metrics">
         <div><strong>予算</strong><br>3000円</div>
@@ -1372,13 +1409,11 @@
 </span></span></strong><br>20%</div>
       </div>
       <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
-      
       <div class="metric-grid">
         <div><strong>判定</strong><br>購入なし</div>
         <div><strong>合計購入額</strong><br>0円</div>
         <div><strong>未使用予算</strong><br>3000円</div>
       </div>
-      
       
       <details class="simulation-details">
         <summary>頭数別比較の詳細を見る</summary>

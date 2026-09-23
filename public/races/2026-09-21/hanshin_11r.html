@@ -446,6 +446,40 @@
     .simulation-panel h4.simulation-result-title {
       margin-top: 20px;
     }
+    .dutching-pairs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+      gap: 16px 20px;
+      margin-top: 16px;
+    }
+    .dutching-pair {
+      min-width: 0;
+    }
+    .dutching-setting {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .dutching-setting-value,
+    .dutching-result-value {
+      display: block;
+      margin-top: 4px;
+    }
+    .dutching-result {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #e8e1d6;
+    }
+    .dutching-result-value {
+      font-size: 17px;
+      font-weight: 700;
+    }
+    .simulation-panel h4.purchase-breakdown-title {
+      margin: 22px 0 10px;
+      font-size: 1rem;
+    }
+    .purchase-breakdown-table thead th {
+      background: #faf8f3;
+    }
     .simulation-secondary-metrics {
       margin-top: 10px;
     }
@@ -455,6 +489,9 @@
       }
       .race-meta-spacer { display: block; }
       .simulation-primary-metrics {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+      .dutching-pairs {
         grid-template-columns: repeat(5, minmax(0, 1fr));
       }
     }
@@ -1004,45 +1041,50 @@
       <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
       
       
-      <h4 class="simulation-block-title">設定条件</h4>
-      <div class="metric-grid simulation-primary-metrics">
-        <div><strong>予算</strong><br>3000円</div>
-        <div><strong>最大対象頭数</strong><br>5頭</div>
-        <div><strong><span class="term-with-tooltip"><span>最低カバー確率</span><span class="term-tooltip" data-term-key="min_coverage_probability">
+      
+      <div class="dutching-pairs" aria-label="設定条件と計算結果">
+        <div class="dutching-pair">
+          <div class="dutching-setting"><strong>予算</strong><span class="dutching-setting-value">3000円</span></div>
+          <div class="dutching-result"><strong>合計購入額</strong><span class="dutching-result-value">3000円</span></div>
+        </div>
+        <div class="dutching-pair">
+          <div class="dutching-setting"><strong>最大対象頭数</strong><span class="dutching-setting-value">5頭</span></div>
+          <div class="dutching-result"><strong>選択頭数</strong><span class="dutching-result-value">2頭</span></div>
+        </div>
+        <div class="dutching-pair">
+          <div class="dutching-setting"><strong><span class="term-with-tooltip"><span>最低カバー確率</span><span class="term-tooltip" data-term-key="min_coverage_probability">
   <button type="button" class="tooltip-trigger" aria-label="最低カバー確率: 購入候補として採用するために必要な、選択馬の1着確率合計の最低値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">購入候補として採用するために必要な、選択馬の1着確率合計の最低値です。</span>
-</span></span></strong><br>40.00%</div>
-        <div><strong><span class="term-with-tooltip"><span>最低グループ期待値</span><span class="term-tooltip" data-term-key="min_group_expected_value">
-  <button type="button" class="tooltip-trigger" aria-label="最低グループ期待値: 購入候補として採用するために必要な、グループ期待値の最低値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">購入候補として採用するために必要な、グループ期待値の最低値です。</span>
-</span></span></strong><br>0.700</div>
-        <div><strong><span class="term-with-tooltip"><span>最低利益率</span><span class="term-tooltip" data-term-key="min_profit_rate">
-  <button type="button" class="tooltip-trigger" aria-label="最低利益率: 最も払戻額が低い選択馬が的中した場合でも確保したい、合計購入額に対する最低利益率です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">最も払戻額が低い選択馬が的中した場合でも確保したい、合計購入額に対する最低利益率です。</span>
-</span></span></strong><br>20%</div>
-      </div>
-      <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
-      
-      <div class="metric-grid simulation-primary-metrics">
-        <div><strong>合計購入額</strong><br>3000円</div>
-        <div><strong>選択頭数</strong><br>2頭</div>
-        <div><strong><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
+</span></span></strong><span class="dutching-setting-value">40.00%</span></div>
+          <div class="dutching-result"><strong><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
   <button type="button" class="tooltip-trigger" aria-label="カバー確率: 実際に採用された選択馬の1着確率を合計した値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">実際に採用された選択馬の1着確率を合計した値です。</span>
-</span></span></strong><br>67.00%</div>
-        <div><strong><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
+</span></span></strong><span class="dutching-result-value">67.00%</span></div>
+        </div>
+        <div class="dutching-pair">
+          <div class="dutching-setting"><strong><span class="term-with-tooltip"><span>最低グループ期待値</span><span class="term-tooltip" data-term-key="min_group_expected_value">
+  <button type="button" class="tooltip-trigger" aria-label="最低グループ期待値: 購入候補として採用するために必要な、グループ期待値の最低値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">購入候補として採用するために必要な、グループ期待値の最低値です。</span>
+</span></span></strong><span class="dutching-setting-value">0.700</span></div>
+          <div class="dutching-result"><strong><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
   <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択馬それぞれの予測確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択馬それぞれの予測確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。</span>
-</span></span></strong><br>0.843</div>
-        <div><strong><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
+</span></span></strong><span class="dutching-result-value">0.843</span></div>
+        </div>
+        <div class="dutching-pair">
+          <div class="dutching-setting"><strong><span class="term-with-tooltip"><span>最低利益率</span><span class="term-tooltip" data-term-key="min_profit_rate">
+  <button type="button" class="tooltip-trigger" aria-label="最低利益率: 最も払戻額が低い選択馬が的中した場合でも確保したい、合計購入額に対する最低利益率です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">最も払戻額が低い選択馬が的中した場合でも確保したい、合計購入額に対する最低利益率です。</span>
+</span></span></strong><span class="dutching-setting-value">20%</span></div>
+          <div class="dutching-result"><strong><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
   <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択馬のうち最も払戻額が低い馬が的中した場合の利益です。最低払戻額から合計購入額を引いて計算します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択馬のうち最も払戻額が低い馬が的中した場合の利益です。最低払戻額から合計購入額を引いて計算します。</span>
-</span></span></strong><br>750円</div>
+</span></span></strong><span class="dutching-result-value">750円</span></div>
+        </div>
       </div>
-      
-      
+      <h4 class="purchase-breakdown-title">購入内訳</h4>
       <div class="table-scroll">
-        <table class="simulation-table">
+        <table class="simulation-table purchase-breakdown-table">
           <thead><tr><th class="nowrap">馬番</th><th class="nowrap">予測勝率</th><th class="nowrap">単勝オッズ</th><th class="nowrap">購入額</th><th class="nowrap">的中時払戻額</th><th class="nowrap">的中時利益</th></tr></thead>
           <tbody>
             
@@ -1398,59 +1440,62 @@
   <span class="tooltip-content" role="tooltip">馬連的中確率の上位から1組〜最大対象組数までを候補として評価し、予算を的中時の払戻額が近くなるよう配分します。最低カバー確率・最低グループ期待値・最低利益率を満たす候補の中から、グループ期待値を優先して採用する方式です。</span>
 </span></span></span></h3>
   
-    <h4 class="simulation-block-title">設定条件</h4>
-    <div class="metric-grid simulation-primary-metrics">
-      <div><strong>予算</strong><br>3000円</div>
-      
-      <div><strong><span class="term-with-tooltip"><span>最大対象組数</span><span class="term-tooltip" data-term-key="max_selection_count">
+    
+    <div class="dutching-pairs" aria-label="設定条件と計算結果">
+      <div class="dutching-pair">
+        <div class="dutching-setting"><strong>予算</strong><span class="dutching-setting-value">3000円</span></div>
+        <div class="dutching-result"><strong>合計購入額</strong><span class="dutching-result-value">3000円</span></div>
+      </div>
+      <div class="dutching-pair">
+        <div class="dutching-setting"><strong><span class="term-with-tooltip"><span>最大対象組数</span><span class="term-tooltip" data-term-key="max_selection_count">
   <button type="button" class="tooltip-trigger" aria-label="最大対象組数: 馬連分配方式で購入候補として検討する組数の上限です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">馬連分配方式で購入候補として検討する組数の上限です。</span>
-</span></span></strong><br>10組</div>
-      <div><strong><span class="term-with-tooltip"><span>最低カバー確率</span><span class="term-tooltip" data-term-key="min_coverage_probability">
-  <button type="button" class="tooltip-trigger" aria-label="最低カバー確率: 購入候補として採用するために必要な、選択組の馬連的中確率合計の最低値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">購入候補として採用するために必要な、選択組の馬連的中確率合計の最低値です。</span>
-</span></span></strong><br>40.00%</div>
-      <div><strong><span class="term-with-tooltip"><span>最低グループ期待値</span><span class="term-tooltip" data-term-key="min_group_expected_value">
-  <button type="button" class="tooltip-trigger" aria-label="最低グループ期待値: 購入候補として採用するために必要な、グループ期待値の最低値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">購入候補として採用するために必要な、グループ期待値の最低値です。</span>
-</span></span></strong><br>0.750</div>
-      <div><strong><span class="term-with-tooltip"><span>最低利益率</span><span class="term-tooltip" data-term-key="min_profit_rate">
-  <button type="button" class="tooltip-trigger" aria-label="最低利益率: 最も払戻額が低い選択組が的中した場合でも確保したい、合計購入額に対する最低利益率です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">最も払戻額が低い選択組が的中した場合でも確保したい、合計購入額に対する最低利益率です。</span>
-</span></span></strong><br>20%</div>
-      
-    </div>
-    <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
-    
-    <div class="metric-grid simulation-primary-metrics">
-      <div><strong>合計購入額</strong><br>3000円</div>
-      <div><strong><span class="term-with-tooltip"><span>選択組数</span><span class="term-tooltip" data-term-key="selection_count">
+</span></span></strong><span class="dutching-setting-value">10組</span></div>
+        <div class="dutching-result"><strong><span class="term-with-tooltip"><span>選択組数</span><span class="term-tooltip" data-term-key="selection_count">
   <button type="button" class="tooltip-trigger" aria-label="選択組数: 設定条件を満たして実際の購入対象として採用された組数です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">設定条件を満たして実際の購入対象として採用された組数です。</span>
-</span></span></strong><br>3組</div>
-      <div><strong><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
+</span></span></strong><span class="dutching-result-value">3組</span></div>
+      </div>
+      <div class="dutching-pair">
+        <div class="dutching-setting"><strong><span class="term-with-tooltip"><span>最低カバー確率</span><span class="term-tooltip" data-term-key="min_coverage_probability">
+  <button type="button" class="tooltip-trigger" aria-label="最低カバー確率: 購入候補として採用するために必要な、選択組の馬連的中確率合計の最低値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">購入候補として採用するために必要な、選択組の馬連的中確率合計の最低値です。</span>
+</span></span></strong><span class="dutching-setting-value">40.00%</span></div>
+        <div class="dutching-result"><strong><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
   <button type="button" class="tooltip-trigger" aria-label="カバー確率: 実際に採用された選択組の馬連的中確率を合計した値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">実際に採用された選択組の馬連的中確率を合計した値です。</span>
-</span></span></strong><br>40.07%</div>
-      <div><strong><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
+</span></span></strong><span class="dutching-result-value">40.07%</span></div>
+      </div>
+      <div class="dutching-pair">
+        <div class="dutching-setting"><strong><span class="term-with-tooltip"><span>最低グループ期待値</span><span class="term-tooltip" data-term-key="min_group_expected_value">
+  <button type="button" class="tooltip-trigger" aria-label="最低グループ期待値: 購入候補として採用するために必要な、グループ期待値の最低値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">購入候補として採用するために必要な、グループ期待値の最低値です。</span>
+</span></span></strong><span class="dutching-setting-value">0.750</span></div>
+        <div class="dutching-result"><strong><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
   <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択組それぞれの馬連的中確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択組それぞれの馬連的中確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。</span>
-</span></span></strong><br>0.860</div>
-      <div><strong><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
+</span></span></strong><span class="dutching-result-value">0.860</span></div>
+      </div>
+      <div class="dutching-pair">
+        <div class="dutching-setting"><strong><span class="term-with-tooltip"><span>最低利益率</span><span class="term-tooltip" data-term-key="min_profit_rate">
+  <button type="button" class="tooltip-trigger" aria-label="最低利益率: 最も払戻額が低い選択組が的中した場合でも確保したい、合計購入額に対する最低利益率です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">最も払戻額が低い選択組が的中した場合でも確保したい、合計購入額に対する最低利益率です。</span>
+</span></span></strong><span class="dutching-setting-value">20%</span></div>
+        <div class="dutching-result"><strong><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
   <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択組のうち最も払戻額が低い組が的中した場合の利益です。最低払戻額から合計購入額を引いて計算します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択組のうち最も払戻額が低い組が的中した場合の利益です。最低払戻額から合計購入額を引いて計算します。</span>
-</span></span></strong><br>3210円</div>
+</span></span></strong><span class="dutching-result-value">3210円</span></div>
+      </div>
     </div>
-    
-    
-      
-      <div class="table-scroll"><table class="simulation-table"><thead><tr><th>馬番ペア</th><th>馬連的中確率</th><th>馬連オッズ</th><th><span class="term-with-tooltip"><span>EV</span><span class="term-tooltip" data-term-key="ev">
+    <h4 class="purchase-breakdown-title">購入内訳</h4>
+    <div class="table-scroll"><table class="simulation-table purchase-breakdown-table"><thead><tr><th>馬番ペア</th><th>馬連的中確率</th><th>馬連オッズ</th><th><span class="term-with-tooltip"><span>EV</span><span class="term-tooltip" data-term-key="ev">
   <button type="button" class="tooltip-trigger" aria-label="EV: 馬連的中確率×馬連オッズで計算する期待値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">馬連的中確率×馬連オッズで計算する期待値です。1.0が損益分岐の目安です。</span>
 </span></span></th><th>購入額</th><th>的中時払戻額</th><th>的中時利益</th></tr></thead><tbody>
-        <tr><td class="nowrap">1-4</td><td class="nowrap">15.72%</td><td class="nowrap">6.1</td><td class="nowrap">0.959</td><td class="nowrap">1100円</td><td class="nowrap">6710円</td><td class="nowrap">3710円</td></tr><tr><td class="nowrap">1-7</td><td class="nowrap">13.37%</td><td class="nowrap">6.3</td><td class="nowrap">0.842</td><td class="nowrap">1000円</td><td class="nowrap">6300円</td><td class="nowrap">3300円</td></tr><tr><td class="nowrap">1-3</td><td class="nowrap">10.98%</td><td class="nowrap">6.9</td><td class="nowrap">0.758</td><td class="nowrap">900円</td><td class="nowrap">6210円</td><td class="nowrap">3210円</td></tr>
-      </tbody></table></div>
-      
+      <tr><td class="nowrap">1-4</td><td class="nowrap">15.72%</td><td class="nowrap">6.1</td><td class="nowrap">0.959</td><td class="nowrap">1100円</td><td class="nowrap">6710円</td><td class="nowrap">3710円</td></tr><tr><td class="nowrap">1-7</td><td class="nowrap">13.37%</td><td class="nowrap">6.3</td><td class="nowrap">0.842</td><td class="nowrap">1000円</td><td class="nowrap">6300円</td><td class="nowrap">3300円</td></tr><tr><td class="nowrap">1-3</td><td class="nowrap">10.98%</td><td class="nowrap">6.9</td><td class="nowrap">0.758</td><td class="nowrap">900円</td><td class="nowrap">6210円</td><td class="nowrap">3210円</td></tr>
+    </tbody></table></div>
+    
+    
       <details class="simulation-details"><summary>組数別比較の詳細を見る</summary>
       <div class="table-scroll"><table class="evaluation-table">
         <thead><tr><th>組数</th><th>対象ペア</th><th><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
@@ -1477,6 +1522,7 @@
 <div class="panel simulation-panel" data-quinella-method="value">
   <h3 class="result-comparison-title"><span>期待値重視方式</span></h3>
   
+    
     <h4 class="simulation-block-title">設定条件</h4>
     <div class="metric-grid">
       <div><strong>予算</strong><br>3000円</div>
@@ -1492,13 +1538,10 @@
       
     </div>
     <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
-    
     <div class="metric-grid">
       <div><strong>判定</strong><br>購入なし</div>
-      
       <div><strong>合計購入額</strong><br>0円</div>
       <div><strong>未使用予算</strong><br>3000円</div>
-      
     </div>
     
     
@@ -1549,45 +1592,50 @@
       <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
       
       
-      <h4 class="simulation-block-title">設定条件</h4>
-      <div class="metric-grid simulation-primary-metrics">
-        <div><strong>予算</strong><br>3000円</div>
-        <div><strong>最大対象頭数</strong><br>5頭</div>
-        <div><strong><span class="term-with-tooltip"><span>最低カバー確率</span><span class="term-tooltip" data-term-key="min_coverage_probability">
+      
+      <div class="dutching-pairs" aria-label="設定条件と計算結果">
+        <div class="dutching-pair">
+          <div class="dutching-setting"><strong>予算</strong><span class="dutching-setting-value">3000円</span></div>
+          <div class="dutching-result"><strong>合計購入額</strong><span class="dutching-result-value">3000円</span></div>
+        </div>
+        <div class="dutching-pair">
+          <div class="dutching-setting"><strong>最大対象頭数</strong><span class="dutching-setting-value">5頭</span></div>
+          <div class="dutching-result"><strong>選択頭数</strong><span class="dutching-result-value">2頭</span></div>
+        </div>
+        <div class="dutching-pair">
+          <div class="dutching-setting"><strong><span class="term-with-tooltip"><span>最低カバー確率</span><span class="term-tooltip" data-term-key="min_coverage_probability">
   <button type="button" class="tooltip-trigger" aria-label="最低カバー確率: 購入候補として採用するために必要な、選択馬の1着確率合計の最低値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">購入候補として採用するために必要な、選択馬の1着確率合計の最低値です。</span>
-</span></span></strong><br>40.00%</div>
-        <div><strong><span class="term-with-tooltip"><span>最低グループ期待値</span><span class="term-tooltip" data-term-key="min_group_expected_value">
-  <button type="button" class="tooltip-trigger" aria-label="最低グループ期待値: 購入候補として採用するために必要な、グループ期待値の最低値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">購入候補として採用するために必要な、グループ期待値の最低値です。</span>
-</span></span></strong><br>0.700</div>
-        <div><strong><span class="term-with-tooltip"><span>最低利益率</span><span class="term-tooltip" data-term-key="min_profit_rate">
-  <button type="button" class="tooltip-trigger" aria-label="最低利益率: 最も払戻額が低い選択馬が的中した場合でも確保したい、合計購入額に対する最低利益率です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">最も払戻額が低い選択馬が的中した場合でも確保したい、合計購入額に対する最低利益率です。</span>
-</span></span></strong><br>20%</div>
-      </div>
-      <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
-      
-      <div class="metric-grid simulation-primary-metrics">
-        <div><strong>合計購入額</strong><br>3000円</div>
-        <div><strong>選択頭数</strong><br>2頭</div>
-        <div><strong><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
+</span></span></strong><span class="dutching-setting-value">40.00%</span></div>
+          <div class="dutching-result"><strong><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
   <button type="button" class="tooltip-trigger" aria-label="カバー確率: 実際に採用された選択馬の1着確率を合計した値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">実際に採用された選択馬の1着確率を合計した値です。</span>
-</span></span></strong><br>65.00%</div>
-        <div><strong><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
+</span></span></strong><span class="dutching-result-value">65.00%</span></div>
+        </div>
+        <div class="dutching-pair">
+          <div class="dutching-setting"><strong><span class="term-with-tooltip"><span>最低グループ期待値</span><span class="term-tooltip" data-term-key="min_group_expected_value">
+  <button type="button" class="tooltip-trigger" aria-label="最低グループ期待値: 購入候補として採用するために必要な、グループ期待値の最低値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">購入候補として採用するために必要な、グループ期待値の最低値です。</span>
+</span></span></strong><span class="dutching-setting-value">0.700</span></div>
+          <div class="dutching-result"><strong><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
   <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択馬それぞれの予測確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択馬それぞれの予測確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。</span>
-</span></span></strong><br>0.818</div>
-        <div><strong><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
+</span></span></strong><span class="dutching-result-value">0.818</span></div>
+        </div>
+        <div class="dutching-pair">
+          <div class="dutching-setting"><strong><span class="term-with-tooltip"><span>最低利益率</span><span class="term-tooltip" data-term-key="min_profit_rate">
+  <button type="button" class="tooltip-trigger" aria-label="最低利益率: 最も払戻額が低い選択馬が的中した場合でも確保したい、合計購入額に対する最低利益率です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">最も払戻額が低い選択馬が的中した場合でも確保したい、合計購入額に対する最低利益率です。</span>
+</span></span></strong><span class="dutching-setting-value">20%</span></div>
+          <div class="dutching-result"><strong><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
   <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択馬のうち最も払戻額が低い馬が的中した場合の利益です。最低払戻額から合計購入額を引いて計算します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択馬のうち最も払戻額が低い馬が的中した場合の利益です。最低払戻額から合計購入額を引いて計算します。</span>
-</span></span></strong><br>750円</div>
+</span></span></strong><span class="dutching-result-value">750円</span></div>
+        </div>
       </div>
-      
-      
+      <h4 class="purchase-breakdown-title">購入内訳</h4>
       <div class="table-scroll">
-        <table class="simulation-table">
+        <table class="simulation-table purchase-breakdown-table">
           <thead><tr><th class="nowrap">馬番</th><th class="nowrap">予測勝率</th><th class="nowrap">単勝オッズ</th><th class="nowrap">購入額</th><th class="nowrap">的中時払戻額</th><th class="nowrap">的中時利益</th></tr></thead>
           <tbody>
             
@@ -1943,59 +1991,62 @@
   <span class="tooltip-content" role="tooltip">馬連的中確率の上位から1組〜最大対象組数までを候補として評価し、予算を的中時の払戻額が近くなるよう配分します。最低カバー確率・最低グループ期待値・最低利益率を満たす候補の中から、グループ期待値を優先して採用する方式です。</span>
 </span></span></span></h3>
   
-    <h4 class="simulation-block-title">設定条件</h4>
-    <div class="metric-grid simulation-primary-metrics">
-      <div><strong>予算</strong><br>3000円</div>
-      
-      <div><strong><span class="term-with-tooltip"><span>最大対象組数</span><span class="term-tooltip" data-term-key="max_selection_count">
+    
+    <div class="dutching-pairs" aria-label="設定条件と計算結果">
+      <div class="dutching-pair">
+        <div class="dutching-setting"><strong>予算</strong><span class="dutching-setting-value">3000円</span></div>
+        <div class="dutching-result"><strong>合計購入額</strong><span class="dutching-result-value">3000円</span></div>
+      </div>
+      <div class="dutching-pair">
+        <div class="dutching-setting"><strong><span class="term-with-tooltip"><span>最大対象組数</span><span class="term-tooltip" data-term-key="max_selection_count">
   <button type="button" class="tooltip-trigger" aria-label="最大対象組数: 馬連分配方式で購入候補として検討する組数の上限です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">馬連分配方式で購入候補として検討する組数の上限です。</span>
-</span></span></strong><br>10組</div>
-      <div><strong><span class="term-with-tooltip"><span>最低カバー確率</span><span class="term-tooltip" data-term-key="min_coverage_probability">
-  <button type="button" class="tooltip-trigger" aria-label="最低カバー確率: 購入候補として採用するために必要な、選択組の馬連的中確率合計の最低値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">購入候補として採用するために必要な、選択組の馬連的中確率合計の最低値です。</span>
-</span></span></strong><br>40.00%</div>
-      <div><strong><span class="term-with-tooltip"><span>最低グループ期待値</span><span class="term-tooltip" data-term-key="min_group_expected_value">
-  <button type="button" class="tooltip-trigger" aria-label="最低グループ期待値: 購入候補として採用するために必要な、グループ期待値の最低値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">購入候補として採用するために必要な、グループ期待値の最低値です。</span>
-</span></span></strong><br>0.750</div>
-      <div><strong><span class="term-with-tooltip"><span>最低利益率</span><span class="term-tooltip" data-term-key="min_profit_rate">
-  <button type="button" class="tooltip-trigger" aria-label="最低利益率: 最も払戻額が低い選択組が的中した場合でも確保したい、合計購入額に対する最低利益率です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">最も払戻額が低い選択組が的中した場合でも確保したい、合計購入額に対する最低利益率です。</span>
-</span></span></strong><br>20%</div>
-      
-    </div>
-    <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
-    
-    <div class="metric-grid simulation-primary-metrics">
-      <div><strong>合計購入額</strong><br>3000円</div>
-      <div><strong><span class="term-with-tooltip"><span>選択組数</span><span class="term-tooltip" data-term-key="selection_count">
+</span></span></strong><span class="dutching-setting-value">10組</span></div>
+        <div class="dutching-result"><strong><span class="term-with-tooltip"><span>選択組数</span><span class="term-tooltip" data-term-key="selection_count">
   <button type="button" class="tooltip-trigger" aria-label="選択組数: 設定条件を満たして実際の購入対象として採用された組数です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">設定条件を満たして実際の購入対象として採用された組数です。</span>
-</span></span></strong><br>3組</div>
-      <div><strong><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
+</span></span></strong><span class="dutching-result-value">3組</span></div>
+      </div>
+      <div class="dutching-pair">
+        <div class="dutching-setting"><strong><span class="term-with-tooltip"><span>最低カバー確率</span><span class="term-tooltip" data-term-key="min_coverage_probability">
+  <button type="button" class="tooltip-trigger" aria-label="最低カバー確率: 購入候補として採用するために必要な、選択組の馬連的中確率合計の最低値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">購入候補として採用するために必要な、選択組の馬連的中確率合計の最低値です。</span>
+</span></span></strong><span class="dutching-setting-value">40.00%</span></div>
+        <div class="dutching-result"><strong><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
   <button type="button" class="tooltip-trigger" aria-label="カバー確率: 実際に採用された選択組の馬連的中確率を合計した値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">実際に採用された選択組の馬連的中確率を合計した値です。</span>
-</span></span></strong><br>40.85%</div>
-      <div><strong><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
+</span></span></strong><span class="dutching-result-value">40.85%</span></div>
+      </div>
+      <div class="dutching-pair">
+        <div class="dutching-setting"><strong><span class="term-with-tooltip"><span>最低グループ期待値</span><span class="term-tooltip" data-term-key="min_group_expected_value">
+  <button type="button" class="tooltip-trigger" aria-label="最低グループ期待値: 購入候補として採用するために必要な、グループ期待値の最低値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">購入候補として採用するために必要な、グループ期待値の最低値です。</span>
+</span></span></strong><span class="dutching-setting-value">0.750</span></div>
+        <div class="dutching-result"><strong><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
   <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択組それぞれの馬連的中確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択組それぞれの馬連的中確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。</span>
-</span></span></strong><br>1.094</div>
-      <div><strong><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
+</span></span></strong><span class="dutching-result-value">1.094</span></div>
+      </div>
+      <div class="dutching-pair">
+        <div class="dutching-setting"><strong><span class="term-with-tooltip"><span>最低利益率</span><span class="term-tooltip" data-term-key="min_profit_rate">
+  <button type="button" class="tooltip-trigger" aria-label="最低利益率: 最も払戻額が低い選択組が的中した場合でも確保したい、合計購入額に対する最低利益率です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">最も払戻額が低い選択組が的中した場合でも確保したい、合計購入額に対する最低利益率です。</span>
+</span></span></strong><span class="dutching-setting-value">20%</span></div>
+        <div class="dutching-result"><strong><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
   <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択組のうち最も払戻額が低い組が的中した場合の利益です。最低払戻額から合計購入額を引いて計算します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択組のうち最も払戻額が低い組が的中した場合の利益です。最低払戻額から合計購入額を引いて計算します。</span>
-</span></span></strong><br>4560円</div>
+</span></span></strong><span class="dutching-result-value">4560円</span></div>
+      </div>
     </div>
-    
-    
-      
-      <div class="table-scroll"><table class="simulation-table"><thead><tr><th>馬番ペア</th><th>馬連的中確率</th><th>馬連オッズ</th><th><span class="term-with-tooltip"><span>EV</span><span class="term-tooltip" data-term-key="ev">
+    <h4 class="purchase-breakdown-title">購入内訳</h4>
+    <div class="table-scroll"><table class="simulation-table purchase-breakdown-table"><thead><tr><th>馬番ペア</th><th>馬連的中確率</th><th>馬連オッズ</th><th><span class="term-with-tooltip"><span>EV</span><span class="term-tooltip" data-term-key="ev">
   <button type="button" class="tooltip-trigger" aria-label="EV: 馬連的中確率×馬連オッズで計算する期待値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">馬連的中確率×馬連オッズで計算する期待値です。1.0が損益分岐の目安です。</span>
 </span></span></th><th>購入額</th><th>的中時払戻額</th><th>的中時利益</th></tr></thead><tbody>
-        <tr><td class="nowrap">1-4</td><td class="nowrap">15.79%</td><td class="nowrap">6.1</td><td class="nowrap">0.963</td><td class="nowrap">1300円</td><td class="nowrap">7930円</td><td class="nowrap">4930円</td></tr><tr><td class="nowrap">1-7</td><td class="nowrap">15.79%</td><td class="nowrap">6.3</td><td class="nowrap">0.995</td><td class="nowrap">1200円</td><td class="nowrap">7560円</td><td class="nowrap">4560円</td></tr><tr><td class="nowrap">1-10</td><td class="nowrap">9.28%</td><td class="nowrap">18.0</td><td class="nowrap">1.670</td><td class="nowrap">500円</td><td class="nowrap">9000円</td><td class="nowrap">6000円</td></tr>
-      </tbody></table></div>
-      
+      <tr><td class="nowrap">1-4</td><td class="nowrap">15.79%</td><td class="nowrap">6.1</td><td class="nowrap">0.963</td><td class="nowrap">1300円</td><td class="nowrap">7930円</td><td class="nowrap">4930円</td></tr><tr><td class="nowrap">1-7</td><td class="nowrap">15.79%</td><td class="nowrap">6.3</td><td class="nowrap">0.995</td><td class="nowrap">1200円</td><td class="nowrap">7560円</td><td class="nowrap">4560円</td></tr><tr><td class="nowrap">1-10</td><td class="nowrap">9.28%</td><td class="nowrap">18.0</td><td class="nowrap">1.670</td><td class="nowrap">500円</td><td class="nowrap">9000円</td><td class="nowrap">6000円</td></tr>
+    </tbody></table></div>
+    
+    
       <details class="simulation-details"><summary>組数別比較の詳細を見る</summary>
       <div class="table-scroll"><table class="evaluation-table">
         <thead><tr><th>組数</th><th>対象ペア</th><th><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
@@ -2022,6 +2073,7 @@
 <div class="panel simulation-panel" data-quinella-method="value">
   <h3 class="result-comparison-title"><span>期待値重視方式</span></h3>
   
+    
     <h4 class="simulation-block-title">設定条件</h4>
     <div class="metric-grid">
       <div><strong>予算</strong><br>3000円</div>
@@ -2037,13 +2089,10 @@
       
     </div>
     <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
-    
     <div class="metric-grid">
       <div><strong>判定</strong><br>購入なし</div>
-      
       <div><strong>合計購入額</strong><br>0円</div>
       <div><strong>未使用予算</strong><br>3000円</div>
-      
     </div>
     
     
