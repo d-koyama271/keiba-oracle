@@ -446,6 +446,12 @@
     .simulation-panel h4.simulation-result-title {
       margin-top: 20px;
     }
+    .value-simulation-panel .simulation-details {
+      margin-top: 18px;
+    }
+    .value-simulation-panel .simulation-details + h4 {
+      margin-top: 24px;
+    }
     .dutching-pairs {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
@@ -1338,7 +1344,7 @@
       
     </div>
 
-    <div class="panel simulation-panel">
+    <div class="panel simulation-panel value-simulation-panel">
       <h3><span class="term-with-tooltip"><span>期待値重視方式</span><span class="term-tooltip" data-term-key="value_method">
   <button type="button" class="tooltip-trigger" aria-label="期待値重視方式: AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。</span>
@@ -1356,11 +1362,9 @@
   <span class="tooltip-content" role="tooltip">Kelly基準は、予測確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。</span>
 </span></span></strong><br>0.5</div>
       </div>
-      <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
-      <div class="metric-grid">
-        <div><strong>判定</strong><br>購入なし</div>
-        <div><strong>合計購入額</strong><br>0円</div>
-        <div><strong>未使用予算</strong><br>3000円</div>
+      <h4 class="simulation-block-title simulation-result-title">購入結果</h4>
+      <div class="metric-grid value-purchase-result">
+        <div><strong>購入額</strong><br>0円 / 3000円</div>
       </div>
       <details class="simulation-details">
         <summary>全馬期待値の詳細を見る</summary>
@@ -1855,7 +1859,7 @@
       
     </div>
 
-    <div class="panel simulation-panel">
+    <div class="panel simulation-panel value-simulation-panel">
       <h3><span class="term-with-tooltip"><span>期待値重視方式</span><span class="term-tooltip" data-term-key="value_method">
   <button type="button" class="tooltip-trigger" aria-label="期待値重視方式: AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。</span>

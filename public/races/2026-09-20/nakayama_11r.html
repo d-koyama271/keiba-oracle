@@ -446,6 +446,12 @@
     .simulation-panel h4.simulation-result-title {
       margin-top: 20px;
     }
+    .value-simulation-panel .simulation-details {
+      margin-top: 18px;
+    }
+    .value-simulation-panel .simulation-details + h4 {
+      margin-top: 24px;
+    }
     .dutching-pairs {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
@@ -878,7 +884,7 @@
       
     </div>
 
-    <div class="panel simulation-panel">
+    <div class="panel simulation-panel value-simulation-panel">
       <h3><span class="term-with-tooltip"><span>期待値重視方式</span><span class="term-tooltip" data-term-key="value_method">
   <button type="button" class="tooltip-trigger" aria-label="期待値重視方式: AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。</span>
