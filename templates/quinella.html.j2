@@ -15,7 +15,7 @@
 {% set pre = q[method].pre %}
 {% set post = q[method].post %}
 <div class="panel {{ 'result-panel' if page_kind == 'result' else 'simulation-panel' }}" data-quinella-method="{{ method }}">
-  <h3 class="result-comparison-title"><span>{{ label }}{% if page_kind == 'result' %}のシミュレーション結果{% endif %}</span>{% if page_kind == 'result' and post and post.selections | selectattr('hit', 'sameas', true) | list %}<span class="hit-badge">的中!</span>{% endif %}</h3>
+  <h3 class="result-comparison-title"><span>{% if page_kind != 'result' and method == 'dutching' %}{{ explained_term(label, 'dutching_method', quinella_tooltips) }}{% else %}{{ label }}{% if page_kind == 'result' %}のシミュレーション結果{% endif %}{% endif %}</span>{% if page_kind == 'result' and post and post.selections | selectattr('hit', 'sameas', true) | list %}<span class="hit-badge">的中!</span>{% endif %}</h3>
   {% if page_kind == 'result' %}
     {% if post %}
     <div class="metric-grid">
@@ -40,29 +40,27 @@
       <div><strong>{{ explained_term('Kelly係数', 'kelly_fraction', quinella_tooltips) }}</strong><br>{{ pre.settings.kelly_fraction }}</div>
       {% else %}
       <div><strong>{{ explained_term('最大対象組数', 'max_selection_count', quinella_tooltips) }}</strong><br>{{ pre.settings.max_selection_count }}組</div>
-      <div><strong>{{ explained_term('最低カバー確率', 'coverage_probability', quinella_tooltips) }}</strong><br>{{ '%.2f'|format(pre.settings.min_coverage_probability * 100) }}%</div>
-      <div><strong>{{ explained_term('最低グループ期待値', 'group_expected_value', quinella_tooltips) }}</strong><br>{{ '%.3f'|format(pre.settings.min_group_expected_value) }}</div>
-      <div><strong>{{ explained_term('最低利益率', 'minimum_profit_rate', quinella_tooltips) }}</strong><br>{{ '%.0f'|format(pre.settings.min_profit_rate * 100) }}%</div>
+      <div><strong>{{ explained_term('最低カバー確率', 'min_coverage_probability', quinella_tooltips) }}</strong><br>{{ '%.2f'|format(pre.settings.min_coverage_probability * 100) }}%</div>
+      <div><strong>{{ explained_term('最低グループ期待値', 'min_group_expected_value', quinella_tooltips) }}</strong><br>{{ '%.3f'|format(pre.settings.min_group_expected_value) }}</div>
+      <div><strong>{{ explained_term('最低利益率', 'min_profit_rate', quinella_tooltips) }}</strong><br>{{ '%.0f'|format(pre.settings.min_profit_rate * 100) }}%</div>
       {% endif %}
     </div>
     <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
-    <div class="metric-grid{% if method == 'dutching' and pre.selections %} simulation-primary-metrics{% endif %}">
-      <div><strong>判定</strong><br>{{ '購入あり' if pre.selections else '購入なし' }}</div>
-      {% if method == 'dutching' and pre.selections %}
+    {% if method == 'dutching' and pre.selections %}
+    <div class="metric-grid simulation-primary-metrics">
+      <div><strong>合計購入額</strong><br>{{ pre.total_stake }}円</div>
       <div><strong>{{ explained_term('選択組数', 'selection_count', quinella_tooltips) }}</strong><br>{{ pre.selected_count }}組</div>
       <div><strong>{{ explained_term('カバー確率', 'coverage_probability', quinella_tooltips) }}</strong><br>{{ '%.2f'|format(pre.coverage_probability * 100) }}%</div>
       <div><strong>{{ explained_term('グループ期待値', 'group_expected_value', quinella_tooltips) }}</strong><br>{{ '%.3f'|format(pre.group_expected_value) }}</div>
       <div><strong>{{ explained_term('最低利益', 'minimum_profit', quinella_tooltips) }}</strong><br>{{ '%.0f'|format(pre.minimum_profit) }}円</div>
-      {% endif %}
-      {% if method == 'value' %}
-      <div><strong>合計購入額</strong><br>{{ pre.total_stake }}円</div>
-      <div><strong>未使用予算</strong><br>{{ pre.unused_budget }}円</div>
-      {% endif %}
     </div>
-    {% if method == 'dutching' %}
-    <div class="metric-grid simulation-secondary-metrics">
+    {% else %}
+    <div class="metric-grid">
+      <div><strong>判定</strong><br>{{ '購入あり' if pre.selections else '購入なし' }}</div>
+      {% if method == 'value' or not pre.selections %}
       <div><strong>合計購入額</strong><br>{{ pre.total_stake }}円</div>
       <div><strong>未使用予算</strong><br>{{ pre.unused_budget }}円</div>
+      {% endif %}
     </div>
     {% endif %}
     {% if method == 'dutching' %}

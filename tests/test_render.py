@@ -1038,6 +1038,47 @@ class SimulationRenderTests(unittest.TestCase):
         self.assertEqual(set(embedded["methods"]), {"general"})
         self.assertIsNotNone(custom.select_one("#custom-simulator-empty-reason"))
 
+    def test_win_dutching_result_metrics_and_threshold_tooltips(self) -> None:
+        soup = BeautifulSoup(self.render_page(self.full_payload()), "html.parser")
+        panel = soup.select_one('[data-ticket-panel="win"] .simulation-panel')
+        titles = panel.select(".simulation-block-title")
+        settings = titles[0].find_next_sibling("div", class_="metric-grid")
+        result = titles[1].find_next_sibling("div", class_="metric-grid")
+
+        def metric_labels(grid):
+            return [
+                (item.select_one(".term-with-tooltip > span") or item.find("strong")).get_text(strip=True)
+                for item in grid.find_all("div", recursive=False)
+            ]
+
+        self.assertEqual(
+            metric_labels(result),
+            ["合計購入額", "選択頭数", "カバー確率", "グループ期待値", "最低利益"],
+        )
+        self.assertEqual(
+            [item["data-term-key"] for item in settings.select(".term-tooltip")],
+            ["min_coverage_probability", "min_group_expected_value", "min_profit_rate"],
+        )
+        self.assertEqual(
+            [item["data-term-key"] for item in result.select(".term-tooltip")],
+            ["coverage_probability", "group_expected_value", "minimum_profit"],
+        )
+        self.assertIsNone(panel.select_one(".simulation-secondary-metrics"))
+
+        payload = self.full_payload()
+        pre = payload["simulation"][0]["general"]["win"]["dutching"]["pre"]
+        pre.update(selections=[], selected_count=0, total_stake=0, unused_budget=pre["budget"])
+        empty_soup = BeautifulSoup(self.render_page(payload), "html.parser")
+        empty_panel = empty_soup.select_one('[data-ticket-panel="win"] .simulation-panel')
+        empty_result = empty_panel.select(".simulation-block-title")[1].find_next_sibling(
+            "div", class_="metric-grid"
+        )
+        self.assertEqual(
+            metric_labels(empty_result),
+            ["判定", "合計購入額", "未使用予算"],
+        )
+        self.assertIn("購入なし", empty_result.get_text(" ", strip=True))
+
     def test_only_prediction_and_result_tables_are_sortable_with_raw_values(self) -> None:
         payload = self.full_payload()
         rendered = self.render_page(payload)
@@ -1283,6 +1324,45 @@ process.stdout.write(JSON.stringify(output));
 
 
 class QuinellaRenderTests(unittest.TestCase):
+    def test_quinella_dutching_result_metrics_and_threshold_tooltips(self):
+        payload = payload_with_odds()
+        with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
+            payload["simulation"] = calculate_pre_simulation(payload, load_config())
+        soup = BeautifulSoup(
+            build_environment(ROOT).get_template("race.html.j2").render(**build_race_context(payload)),
+            "html.parser",
+        )
+        panel = soup.select_one('[data-ticket-panel="quinella"] [data-quinella-method="dutching"]')
+        titles = panel.select(".simulation-block-title")
+        settings = titles[0].find_next_sibling("div", class_="metric-grid")
+        result = titles[1].find_next_sibling("div", class_="metric-grid")
+
+        def metric_labels(grid):
+            return [
+                (item.select_one(".term-with-tooltip > span") or item.find("strong")).get_text(strip=True)
+                for item in grid.find_all("div", recursive=False)
+            ]
+
+        self.assertEqual(
+            metric_labels(result),
+            ["合計購入額", "選択組数", "カバー確率", "グループ期待値", "最低利益"],
+        )
+        self.assertEqual(
+            [item["data-term-key"] for item in settings.select(".term-tooltip")],
+            [
+                "max_selection_count",
+                "min_coverage_probability",
+                "min_group_expected_value",
+                "min_profit_rate",
+            ],
+        )
+        self.assertEqual(
+            [item["data-term-key"] for item in result.select(".term-tooltip")],
+            ["selection_count", "coverage_probability", "group_expected_value", "minimum_profit"],
+        )
+        self.assertEqual(panel.select_one("h3 .term-tooltip")["data-term-key"], "dutching_method")
+        self.assertIsNone(panel.select_one(".simulation-secondary-metrics"))
+
     def test_legacy_purchase_settings_render_without_mutation(self):
         payload = payload_with_odds()
         with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):

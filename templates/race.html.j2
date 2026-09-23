@@ -698,24 +698,26 @@
       <div class="metric-grid simulation-primary-metrics">
         <div><strong>予算</strong><br>{{ simulation_dutching_pre.budget }}円</div>
         <div><strong>最大対象頭数</strong><br>{{ simulation_dutching_pre.settings.max_selection_count }}頭</div>
-        <div><strong>{{ explained_term("最低カバー確率", "coverage_probability") }}</strong><br>{{ "%.2f"|format(simulation_dutching_pre.settings.min_coverage_probability * 100) }}%</div>
-        <div><strong>{{ explained_term("最低グループ期待値", "group_expected_value") }}</strong><br>{{ "%.3f"|format(simulation_dutching_pre.settings.min_group_expected_value) }}</div>
-        <div><strong>{{ explained_term("最低利益率", "minimum_profit_rate") }}</strong><br>{% if dutching_min_profit_rate is not none %}{{ "%.0f"|format(dutching_min_profit_rate * 100) }}%{% else %}-{% endif %}</div>
+        <div><strong>{{ explained_term("最低カバー確率", "min_coverage_probability") }}</strong><br>{{ "%.2f"|format(simulation_dutching_pre.settings.min_coverage_probability * 100) }}%</div>
+        <div><strong>{{ explained_term("最低グループ期待値", "min_group_expected_value") }}</strong><br>{{ "%.3f"|format(simulation_dutching_pre.settings.min_group_expected_value) }}</div>
+        <div><strong>{{ explained_term("最低利益率", "min_profit_rate") }}</strong><br>{% if dutching_min_profit_rate is not none %}{{ "%.0f"|format(dutching_min_profit_rate * 100) }}%{% else %}-{% endif %}</div>
       </div>
       <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
-      <div class="metric-grid{% if simulation_dutching_pre.selections %} simulation-primary-metrics{% endif %}">
-        <div><strong>判定</strong><br>{{ "購入あり" if simulation_dutching_pre.selections else "購入なし" }}</div>
-        {% if simulation_dutching_pre.selections %}
+      {% if simulation_dutching_pre.selections %}
+      <div class="metric-grid simulation-primary-metrics">
+        <div><strong>合計購入額</strong><br>{{ simulation_dutching_pre.total_stake }}円</div>
         <div><strong>選択頭数</strong><br>{{ simulation_dutching_pre.selected_count }}頭</div>
         <div><strong>{{ explained_term("カバー確率", "coverage_probability") }}</strong><br>{{ "%.2f"|format(simulation_dutching_pre.coverage_probability * 100) }}%</div>
         <div><strong>{{ explained_term("グループ期待値", "group_expected_value") }}</strong><br>{{ "%.3f"|format(simulation_dutching_pre.group_expected_value) }}</div>
         <div><strong>{{ explained_term("最低利益", "minimum_profit") }}</strong><br>{{ "%.0f"|format(simulation_dutching_pre.minimum_profit) }}円</div>
-        {% endif %}
       </div>
-      <div class="metric-grid simulation-secondary-metrics">
+      {% else %}
+      <div class="metric-grid">
+        <div><strong>判定</strong><br>購入なし</div>
         <div><strong>合計購入額</strong><br>{{ simulation_dutching_pre.total_stake }}円</div>
         <div><strong>未使用予算</strong><br>{{ simulation_dutching_pre.unused_budget }}円</div>
       </div>
+      {% endif %}
       {% if simulation_dutching_pre.selections %}
       <div class="table-scroll">
         <table class="simulation-table">
@@ -874,15 +876,15 @@
           <input name="max_selection_count" type="number" min="1" max="{{ custom_simulation_data.horses | length }}" step="1" value="{{ simulation_dutching_pre.settings.max_selection_count }}">
         </label>
         <div class="simulator-field dutching-field">
-          <span class="simulator-field-label"><label for="custom-min-coverage">最低カバー確率</label>{{ info_tooltip("カバー確率", "coverage_probability") }}</span>
+          <span class="simulator-field-label"><label for="custom-min-coverage">最低カバー確率</label>{{ info_tooltip("最低カバー確率", "min_coverage_probability") }}</span>
           <input id="custom-min-coverage" name="min_coverage_probability" type="number" min="0" max="1" step="0.01" value="{{ simulation_dutching_pre.settings.min_coverage_probability }}">
         </div>
         <div class="simulator-field dutching-field">
-          <span class="simulator-field-label"><label for="custom-min-group-ev">最低グループ期待値</label>{{ info_tooltip("グループ期待値", "group_expected_value") }}</span>
+          <span class="simulator-field-label"><label for="custom-min-group-ev">最低グループ期待値</label>{{ info_tooltip("最低グループ期待値", "min_group_expected_value") }}</span>
           <input id="custom-min-group-ev" name="min_group_expected_value" type="number" min="0" step="0.01" value="{{ simulation_dutching_pre.settings.min_group_expected_value }}">
         </div>
         <div class="simulator-field dutching-field">
-          <span class="simulator-field-label"><label for="custom-min-profit-rate">最低利益率（%）</label>{{ info_tooltip("最低利益率", "minimum_profit_rate") }}</span>
+          <span class="simulator-field-label"><label for="custom-min-profit-rate">最低利益率（%）</label>{{ info_tooltip("最低利益率", "min_profit_rate") }}</span>
           <input id="custom-min-profit-rate" name="min_profit_rate" type="number" min="0" step="1" value="{{ "%.0f"|format(custom_min_profit_rate * 100) }}" required>
         </div>
         <label class="simulator-field dutching-field"><span data-count-label="頭数">頭数</span>
