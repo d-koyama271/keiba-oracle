@@ -32,6 +32,34 @@
     {% else %}<p>購入なし</p>{% endif %}
     {% else %}<p class="quinella-pending">結果・馬連払戻または返還情報の確定待ちです。</p>{% endif %}
   {% elif pre %}
+    {% if method == 'dutching' and pre.selections %}
+    <div class="dutching-pairs" aria-label="設定条件と計算結果">
+      <div class="dutching-pair">
+        <div class="dutching-setting"><strong>予算</strong><span class="dutching-setting-value">{{ pre.budget }}円</span></div>
+        <div class="dutching-result"><strong>合計購入額</strong><span class="dutching-result-value">{{ pre.total_stake }}円</span></div>
+      </div>
+      <div class="dutching-pair">
+        <div class="dutching-setting"><strong>{{ explained_term('最大対象組数', 'max_selection_count', quinella_tooltips) }}</strong><span class="dutching-setting-value">{{ pre.settings.max_selection_count }}組</span></div>
+        <div class="dutching-result"><strong>{{ explained_term('選択組数', 'selection_count', quinella_tooltips) }}</strong><span class="dutching-result-value">{{ pre.selected_count }}組</span></div>
+      </div>
+      <div class="dutching-pair">
+        <div class="dutching-setting"><strong>{{ explained_term('最低カバー確率', 'min_coverage_probability', quinella_tooltips) }}</strong><span class="dutching-setting-value">{{ '%.2f'|format(pre.settings.min_coverage_probability * 100) }}%</span></div>
+        <div class="dutching-result"><strong>{{ explained_term('カバー確率', 'coverage_probability', quinella_tooltips) }}</strong><span class="dutching-result-value">{{ '%.2f'|format(pre.coverage_probability * 100) }}%</span></div>
+      </div>
+      <div class="dutching-pair">
+        <div class="dutching-setting"><strong>{{ explained_term('最低グループ期待値', 'min_group_expected_value', quinella_tooltips) }}</strong><span class="dutching-setting-value">{{ '%.3f'|format(pre.settings.min_group_expected_value) }}</span></div>
+        <div class="dutching-result"><strong>{{ explained_term('グループ期待値', 'group_expected_value', quinella_tooltips) }}</strong><span class="dutching-result-value">{{ '%.3f'|format(pre.group_expected_value) }}</span></div>
+      </div>
+      <div class="dutching-pair">
+        <div class="dutching-setting"><strong>{{ explained_term('最低利益率', 'min_profit_rate', quinella_tooltips) }}</strong><span class="dutching-setting-value">{{ '%.0f'|format(pre.settings.min_profit_rate * 100) }}%</span></div>
+        <div class="dutching-result"><strong>{{ explained_term('最低利益', 'minimum_profit', quinella_tooltips) }}</strong><span class="dutching-result-value">{{ '%.0f'|format(pre.minimum_profit) }}円</span></div>
+      </div>
+    </div>
+    <h4 class="purchase-breakdown-title">購入内訳</h4>
+    <div class="table-scroll"><table class="simulation-table purchase-breakdown-table"><thead><tr><th>馬番ペア</th><th>馬連的中確率</th><th>馬連オッズ</th><th>{{ explained_term('EV', 'ev', quinella_tooltips) }}</th><th>購入額</th><th>的中時払戻額</th><th>的中時利益</th></tr></thead><tbody>
+      {% for item in pre.selections %}<tr><td class="nowrap">{{ item.horse_numbers|join('-') }}</td><td class="nowrap">{{ '%.2f'|format(item.predicted_probability * 100) }}%</td><td class="nowrap">{{ item.odds }}</td><td class="nowrap">{{ '%.3f'|format(item.expected_value) }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ '%.0f'|format(item.estimated_payout) }}円</td><td class="nowrap">{{ '%.0f'|format(item.estimated_profit) }}円</td></tr>{% endfor %}
+    </tbody></table></div>
+    {% else %}
     <h4 class="simulation-block-title">設定条件</h4>
     <div class="metric-grid{% if method == 'dutching' %} simulation-primary-metrics{% endif %}">
       <div><strong>予算</strong><br>{{ pre.budget }}円</div>
@@ -46,29 +74,13 @@
       {% endif %}
     </div>
     <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
-    {% if method == 'dutching' and pre.selections %}
-    <div class="metric-grid simulation-primary-metrics">
-      <div><strong>合計購入額</strong><br>{{ pre.total_stake }}円</div>
-      <div><strong>{{ explained_term('選択組数', 'selection_count', quinella_tooltips) }}</strong><br>{{ pre.selected_count }}組</div>
-      <div><strong>{{ explained_term('カバー確率', 'coverage_probability', quinella_tooltips) }}</strong><br>{{ '%.2f'|format(pre.coverage_probability * 100) }}%</div>
-      <div><strong>{{ explained_term('グループ期待値', 'group_expected_value', quinella_tooltips) }}</strong><br>{{ '%.3f'|format(pre.group_expected_value) }}</div>
-      <div><strong>{{ explained_term('最低利益', 'minimum_profit', quinella_tooltips) }}</strong><br>{{ '%.0f'|format(pre.minimum_profit) }}円</div>
-    </div>
-    {% else %}
     <div class="metric-grid">
       <div><strong>判定</strong><br>{{ '購入あり' if pre.selections else '購入なし' }}</div>
-      {% if method == 'value' or not pre.selections %}
       <div><strong>合計購入額</strong><br>{{ pre.total_stake }}円</div>
       <div><strong>未使用予算</strong><br>{{ pre.unused_budget }}円</div>
-      {% endif %}
     </div>
     {% endif %}
     {% if method == 'dutching' %}
-      {% if pre.selections %}
-      <div class="table-scroll"><table class="simulation-table"><thead><tr><th>馬番ペア</th><th>馬連的中確率</th><th>馬連オッズ</th><th>{{ explained_term('EV', 'ev', quinella_tooltips) }}</th><th>購入額</th><th>的中時払戻額</th><th>的中時利益</th></tr></thead><tbody>
-        {% for item in pre.selections %}<tr><td class="nowrap">{{ item.horse_numbers|join('-') }}</td><td class="nowrap">{{ '%.2f'|format(item.predicted_probability * 100) }}%</td><td class="nowrap">{{ item.odds }}</td><td class="nowrap">{{ '%.3f'|format(item.expected_value) }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ '%.0f'|format(item.estimated_payout) }}円</td><td class="nowrap">{{ '%.0f'|format(item.estimated_profit) }}円</td></tr>{% endfor %}
-      </tbody></table></div>
-      {% endif %}
       <details class="simulation-details"><summary>組数別比較の詳細を見る</summary>
       <div class="table-scroll"><table class="evaluation-table">
         <thead><tr><th>組数</th><th>対象ペア</th><th>{{ explained_term('カバー確率', 'coverage_probability', quinella_tooltips) }}</th><th>{{ explained_term('グループ期待値', 'group_expected_value', quinella_tooltips) }}</th><th>{{ explained_term('最低払戻額', 'minimum_payout', quinella_tooltips) }}</th><th>{{ explained_term('最低利益', 'minimum_profit', quinella_tooltips) }}</th><th>判定</th><th>除外理由</th></tr></thead><tbody>

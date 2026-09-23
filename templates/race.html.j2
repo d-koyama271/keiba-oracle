@@ -459,6 +459,40 @@
     .simulation-panel h4.simulation-result-title {
       margin-top: 20px;
     }
+    .dutching-pairs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+      gap: 16px 20px;
+      margin-top: 16px;
+    }
+    .dutching-pair {
+      min-width: 0;
+    }
+    .dutching-setting {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .dutching-setting-value,
+    .dutching-result-value {
+      display: block;
+      margin-top: 4px;
+    }
+    .dutching-result {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #e8e1d6;
+    }
+    .dutching-result-value {
+      font-size: 17px;
+      font-weight: 700;
+    }
+    .simulation-panel h4.purchase-breakdown-title {
+      margin: 22px 0 10px;
+      font-size: 1rem;
+    }
+    .purchase-breakdown-table thead th {
+      background: #faf8f3;
+    }
     .simulation-secondary-metrics {
       margin-top: 10px;
     }
@@ -468,6 +502,9 @@
       }
       .race-meta-spacer { display: block; }
       .simulation-primary-metrics {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+      .dutching-pairs {
         grid-template-columns: repeat(5, minmax(0, 1fr));
       }
     }
@@ -694,33 +731,32 @@
       <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
       {% if simulation_dutching_pre %}
       {% set dutching_min_profit_rate = simulation_dutching_pre.settings.min_profit_rate | default(none) %}
-      <h4 class="simulation-block-title">設定条件</h4>
-      <div class="metric-grid simulation-primary-metrics">
-        <div><strong>予算</strong><br>{{ simulation_dutching_pre.budget }}円</div>
-        <div><strong>最大対象頭数</strong><br>{{ simulation_dutching_pre.settings.max_selection_count }}頭</div>
-        <div><strong>{{ explained_term("最低カバー確率", "min_coverage_probability") }}</strong><br>{{ "%.2f"|format(simulation_dutching_pre.settings.min_coverage_probability * 100) }}%</div>
-        <div><strong>{{ explained_term("最低グループ期待値", "min_group_expected_value") }}</strong><br>{{ "%.3f"|format(simulation_dutching_pre.settings.min_group_expected_value) }}</div>
-        <div><strong>{{ explained_term("最低利益率", "min_profit_rate") }}</strong><br>{% if dutching_min_profit_rate is not none %}{{ "%.0f"|format(dutching_min_profit_rate * 100) }}%{% else %}-{% endif %}</div>
-      </div>
-      <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
       {% if simulation_dutching_pre.selections %}
-      <div class="metric-grid simulation-primary-metrics">
-        <div><strong>合計購入額</strong><br>{{ simulation_dutching_pre.total_stake }}円</div>
-        <div><strong>選択頭数</strong><br>{{ simulation_dutching_pre.selected_count }}頭</div>
-        <div><strong>{{ explained_term("カバー確率", "coverage_probability") }}</strong><br>{{ "%.2f"|format(simulation_dutching_pre.coverage_probability * 100) }}%</div>
-        <div><strong>{{ explained_term("グループ期待値", "group_expected_value") }}</strong><br>{{ "%.3f"|format(simulation_dutching_pre.group_expected_value) }}</div>
-        <div><strong>{{ explained_term("最低利益", "minimum_profit") }}</strong><br>{{ "%.0f"|format(simulation_dutching_pre.minimum_profit) }}円</div>
+      <div class="dutching-pairs" aria-label="設定条件と計算結果">
+        <div class="dutching-pair">
+          <div class="dutching-setting"><strong>予算</strong><span class="dutching-setting-value">{{ simulation_dutching_pre.budget }}円</span></div>
+          <div class="dutching-result"><strong>合計購入額</strong><span class="dutching-result-value">{{ simulation_dutching_pre.total_stake }}円</span></div>
+        </div>
+        <div class="dutching-pair">
+          <div class="dutching-setting"><strong>最大対象頭数</strong><span class="dutching-setting-value">{{ simulation_dutching_pre.settings.max_selection_count }}頭</span></div>
+          <div class="dutching-result"><strong>選択頭数</strong><span class="dutching-result-value">{{ simulation_dutching_pre.selected_count }}頭</span></div>
+        </div>
+        <div class="dutching-pair">
+          <div class="dutching-setting"><strong>{{ explained_term("最低カバー確率", "min_coverage_probability") }}</strong><span class="dutching-setting-value">{{ "%.2f"|format(simulation_dutching_pre.settings.min_coverage_probability * 100) }}%</span></div>
+          <div class="dutching-result"><strong>{{ explained_term("カバー確率", "coverage_probability") }}</strong><span class="dutching-result-value">{{ "%.2f"|format(simulation_dutching_pre.coverage_probability * 100) }}%</span></div>
+        </div>
+        <div class="dutching-pair">
+          <div class="dutching-setting"><strong>{{ explained_term("最低グループ期待値", "min_group_expected_value") }}</strong><span class="dutching-setting-value">{{ "%.3f"|format(simulation_dutching_pre.settings.min_group_expected_value) }}</span></div>
+          <div class="dutching-result"><strong>{{ explained_term("グループ期待値", "group_expected_value") }}</strong><span class="dutching-result-value">{{ "%.3f"|format(simulation_dutching_pre.group_expected_value) }}</span></div>
+        </div>
+        <div class="dutching-pair">
+          <div class="dutching-setting"><strong>{{ explained_term("最低利益率", "min_profit_rate") }}</strong><span class="dutching-setting-value">{% if dutching_min_profit_rate is not none %}{{ "%.0f"|format(dutching_min_profit_rate * 100) }}%{% else %}-{% endif %}</span></div>
+          <div class="dutching-result"><strong>{{ explained_term("最低利益", "minimum_profit") }}</strong><span class="dutching-result-value">{{ "%.0f"|format(simulation_dutching_pre.minimum_profit) }}円</span></div>
+        </div>
       </div>
-      {% else %}
-      <div class="metric-grid">
-        <div><strong>判定</strong><br>購入なし</div>
-        <div><strong>合計購入額</strong><br>{{ simulation_dutching_pre.total_stake }}円</div>
-        <div><strong>未使用予算</strong><br>{{ simulation_dutching_pre.unused_budget }}円</div>
-      </div>
-      {% endif %}
-      {% if simulation_dutching_pre.selections %}
+      <h4 class="purchase-breakdown-title">購入内訳</h4>
       <div class="table-scroll">
-        <table class="simulation-table">
+        <table class="simulation-table purchase-breakdown-table">
           <thead><tr><th class="nowrap">馬番</th><th class="nowrap">予測勝率</th><th class="nowrap">単勝オッズ</th><th class="nowrap">購入額</th><th class="nowrap">的中時払戻額</th><th class="nowrap">的中時利益</th></tr></thead>
           <tbody>
             {% for item in simulation_dutching_pre.selections %}
@@ -735,6 +771,21 @@
             {% endfor %}
           </tbody>
         </table>
+      </div>
+      {% else %}
+      <h4 class="simulation-block-title">設定条件</h4>
+      <div class="metric-grid simulation-primary-metrics">
+        <div><strong>予算</strong><br>{{ simulation_dutching_pre.budget }}円</div>
+        <div><strong>最大対象頭数</strong><br>{{ simulation_dutching_pre.settings.max_selection_count }}頭</div>
+        <div><strong>{{ explained_term("最低カバー確率", "min_coverage_probability") }}</strong><br>{{ "%.2f"|format(simulation_dutching_pre.settings.min_coverage_probability * 100) }}%</div>
+        <div><strong>{{ explained_term("最低グループ期待値", "min_group_expected_value") }}</strong><br>{{ "%.3f"|format(simulation_dutching_pre.settings.min_group_expected_value) }}</div>
+        <div><strong>{{ explained_term("最低利益率", "min_profit_rate") }}</strong><br>{% if dutching_min_profit_rate is not none %}{{ "%.0f"|format(dutching_min_profit_rate * 100) }}%{% else %}-{% endif %}</div>
+      </div>
+      <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
+      <div class="metric-grid">
+        <div><strong>判定</strong><br>購入なし</div>
+        <div><strong>合計購入額</strong><br>{{ simulation_dutching_pre.total_stake }}円</div>
+        <div><strong>未使用予算</strong><br>{{ simulation_dutching_pre.unused_budget }}円</div>
       </div>
       {% endif %}
       <details class="simulation-details">
