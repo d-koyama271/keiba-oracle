@@ -459,6 +459,12 @@
     .simulation-panel h4.simulation-result-title {
       margin-top: 20px;
     }
+    .value-simulation-panel .simulation-details {
+      margin-top: 18px;
+    }
+    .value-simulation-panel .simulation-details + h4 {
+      margin-top: 24px;
+    }
     .dutching-pairs {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
@@ -826,7 +832,7 @@
       {% endif %}
     </div>
 
-    <div class="panel simulation-panel">
+    <div class="panel simulation-panel value-simulation-panel">
       <h3>{{ explained_term("期待値重視方式", "value_method") }}</h3>
       {% if simulation_value_pre %}
       <h4 class="simulation-block-title">設定条件</h4>
@@ -835,11 +841,9 @@
         <div><strong>{{ explained_term("最低EV", "minimum_ev") }}</strong><br>{{ simulation_value_pre.settings.ev_threshold }}</div>
         <div><strong>{{ explained_term("Kelly係数", "kelly_fraction") }}</strong><br>{{ simulation_value_pre.settings.kelly_fraction }}</div>
       </div>
-      <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
-      <div class="metric-grid">
-        <div><strong>判定</strong><br>{{ "購入あり" if simulation_value_pre.selections else "購入なし" }}</div>
-        <div><strong>合計購入額</strong><br>{{ simulation_value_pre.total_stake }}円</div>
-        <div><strong>未使用予算</strong><br>{{ simulation_value_pre.unused_budget }}円</div>
+      <h4 class="simulation-block-title simulation-result-title">購入結果</h4>
+      <div class="metric-grid value-purchase-result">
+        <div><strong>購入額</strong><br>{{ simulation_value_pre.total_stake }}円 / {{ simulation_value_pre.budget }}円</div>
       </div>
       <details class="simulation-details">
         <summary>全馬期待値の詳細を見る</summary>

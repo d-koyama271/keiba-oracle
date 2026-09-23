@@ -1038,6 +1038,33 @@ class SimulationRenderTests(unittest.TestCase):
         self.assertEqual(set(embedded["methods"]), {"general"})
         self.assertIsNotNone(custom.select_one("#custom-simulator-empty-reason"))
 
+    def test_value_purchase_result_shows_stake_over_budget_without_decision(self) -> None:
+        payload = self.full_payload()
+        pre = payload["simulation"][0]["general"]["win"]["value"]["pre"]
+
+        def value_panel(current_payload):
+            soup = BeautifulSoup(self.render_page(current_payload), "html.parser")
+            return soup.select_one('[data-ticket-panel="win"] .value-simulation-panel')
+
+        panel = value_panel(payload)
+        result = panel.select_one(".value-purchase-result")
+        self.assertEqual(
+            result.get_text(" ", strip=True),
+            f"購入額 {pre['total_stake']}円 / {pre['budget']}円",
+        )
+        self.assertEqual(panel.select_one(".simulation-result-title").get_text(strip=True), "購入結果")
+        self.assertNotIn("判定", result.get_text())
+        self.assertNotIn("未使用予算", result.get_text())
+
+        pre.update(selections=[], total_stake=0, unused_budget=pre["budget"])
+        empty_panel = value_panel(payload)
+        self.assertEqual(
+            empty_panel.select_one(".value-purchase-result").get_text(" ", strip=True),
+            f"購入額 0円 / {pre['budget']}円",
+        )
+        purchase_target = empty_panel.find("h4", string="購入対象")
+        self.assertIn("購入なし", purchase_target.find_next_sibling("p").get_text(" ", strip=True))
+
     def test_win_dutching_result_metrics_and_threshold_tooltips(self) -> None:
         soup = BeautifulSoup(self.render_page(self.full_payload()), "html.parser")
         panel = soup.select_one('[data-ticket-panel="win"] .simulation-panel')
