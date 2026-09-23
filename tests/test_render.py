@@ -500,10 +500,31 @@ class RenderTests(unittest.TestCase):
                 for method in methods:
                     expected = [h["win_probability"] for h in entry[method]["horses"]]
                     panel = soup.select_one(f"#prediction-{method}")
-                    column = 5 if method == "general" else 3
+                    table = panel.select_one("table.prediction-table")
+                    self.assertEqual(
+                        [header.get_text(" ", strip=True).removesuffix(" ↕") for header in table.select("thead th")],
+                        ["馬番", "馬名", "騎手", "1着確率", "予想順位", "単勝オッズ", "人気", "理由"],
+                    )
+                    self.assertEqual(
+                        [int(button["data-sort-column"]) for button in table.select("thead .sort-button")],
+                        list(range(7)),
+                    )
                     rows = panel.select("tbody tr")
-                    self.assertEqual([float(r.select("td")[column]["data-sort-value"]) for r in rows], expected)
+                    self.assertEqual([float(r.select("td")[3]["data-sort-value"]) for r in rows], expected)
+                    self.assertEqual(
+                        [r.select("td")[5]["data-sort-value"] for r in rows],
+                        [str(horse["win_odds"]) for horse in sorted(current["horses"], key=lambda horse: horse["horse_number"])],
+                    )
+                    self.assertEqual(
+                        [r.select("td")[6]["data-sort-value"] for r in rows],
+                        [str(horse["popularity"]) for horse in sorted(current["horses"], key=lambda horse: horse["horse_number"])],
+                    )
                     self.assertEqual([h["win_probability"] for h in embedded["methods"][method]["horses"]], expected)
+                    if method == "statistical":
+                        self.assertIn(
+                            "単勝オッズ・人気は比較用表示で、統計重視予想には使用していません。",
+                            panel.get_text(" ", strip=True),
+                        )
                 current["result"] = make_result(3, 500, [1, 2, 3, 4, 5])
                 current["evaluation"] = build_evaluation(current)
                 result = BeautifulSoup(template.render(**build_race_context(current), page_kind="result"), "html.parser")
@@ -512,6 +533,27 @@ class RenderTests(unittest.TestCase):
                     self.assertEqual([float(r.select("td")[3]["data-sort-value"]) for r in rows],
                                      [h["win_probability"] for h in entry[method]["horses"]])
                 self.assertEqual(len(result.select("table.result-table")), len(methods))
+
+    def test_prediction_tables_show_missing_market_values_as_dash(self) -> None:
+        payload = ensure_race_payload(simulation_payload(DUTCHING_ROWS))
+        payload["prediction"][0]["statistical"] = copy.deepcopy(
+            payload["prediction"][0]["general"]
+        )
+        first_horse = min(payload["horses"], key=lambda horse: horse["horse_number"])
+        first_horse["win_odds"] = None
+        first_horse["popularity"] = None
+        soup = BeautifulSoup(
+            build_environment(ROOT).get_template("race.html.j2").render(
+                **build_race_context(payload), page_kind="prediction"
+            ),
+            "html.parser",
+        )
+
+        for method in ("general", "statistical"):
+            with self.subTest(method=method):
+                cells = soup.select_one(f"#prediction-{method} tbody tr").select("td")
+                self.assertEqual([cells[5].get_text(strip=True), cells[6].get_text(strip=True)], ["-", "-"])
+                self.assertEqual([cells[5]["data-sort-value"], cells[6]["data-sort-value"]], ["", ""])
 
     @unittest.skipUnless(shutil.which("node"), "Node.js required for tab scope test")
     def test_ai_and_ticket_panel_switching_is_scoped(self) -> None:
@@ -1032,9 +1074,9 @@ class SimulationRenderTests(unittest.TestCase):
                 ("number", "ascending", 0, "none"),
                 ("text", "ascending", 1, "none"),
                 ("text", "ascending", 2, "none"),
-                ("number", "ascending", 3, "none"),
+                ("number", "descending", 3, "none"),
                 ("number", "ascending", 4, "none"),
-                ("number", "descending", 5, "none"),
+                ("number", "ascending", 5, "none"),
                 ("number", "ascending", 6, "none"),
             ],
         )
@@ -1060,7 +1102,7 @@ class SimulationRenderTests(unittest.TestCase):
         prediction_first = prediction_table.select_one("tbody tr")
         self.assertEqual(
             [cell.get("data-sort-value") for cell in prediction_first.select("td")],
-            ["1", None, None, "4.0", "1", "0.3", "1", None],
+            ["1", None, None, "0.3", "1", "4.0", "1", None],
         )
         result_first = result_table.select_one("tbody tr")
         self.assertEqual(
