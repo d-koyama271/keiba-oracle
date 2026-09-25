@@ -9,7 +9,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>エルムS AI予想 | keiba-oracle</title>
-  <meta name="description" content="エルムSのAI予想。各馬の1着確率、予想理由、単勝分配方式と期待値重視方式による購入シミュレーションを掲載します。">
+  <meta name="description" content="エルムSのAI予想。各馬の1着確率、予想理由、予算配分方式と期待値重視方式による購入シミュレーションを掲載します。">
   <style>
     :root {
       color-scheme: light;
@@ -852,22 +852,22 @@
 </div>
       <div id="purchase-general-win" data-ticket-panel="win" role="tabpanel">
     <div class="panel simulation-panel">
-      <h3><span class="term-with-tooltip"><span>単勝分配方式</span><span class="term-tooltip" data-term-key="dutching_method">
-  <button type="button" class="tooltip-trigger" aria-label="単勝分配方式: 予測1着確率の上位から1頭〜最大対象頭数までを候補として評価し、予算を的中時の払戻額が近くなるよう配分します。最低カバー確率・最低グループ期待値・最低利益率を満たす候補の中から、グループ期待値を優先して採用する方式です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">予測1着確率の上位から1頭〜最大対象頭数までを候補として評価し、予算を的中時の払戻額が近くなるよう配分します。最低カバー確率・最低グループ期待値・最低利益率を満たす候補の中から、グループ期待値を優先して採用する方式です。</span>
+      <h3><span class="term-with-tooltip"><span>予算配分方式</span><span class="term-tooltip" data-term-key="dutching_method">
+  <button type="button" class="tooltip-trigger" aria-label="予算配分方式: 1着確率の上位から1頭〜最大対象頭数までを候補として評価し、予算を的中時の払戻額が近くなるよう配分します。最低カバー確率・最低グループ期待値・最低利益率を満たす候補の中から、グループ期待値を優先して採用する方式です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">1着確率の上位から1頭〜最大対象頭数までを候補として評価し、予算を的中時の払戻額が近くなるよう配分します。最低カバー確率・最低グループ期待値・最低利益率を満たす候補の中から、グループ期待値を優先して採用する方式です。</span>
 </span></span></h3>
       <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
       
       
       
-      <div class="dutching-pairs" aria-label="設定条件と計算結果">
+      <div class="dutching-pairs" aria-label="設定条件と購入結果">
         <div class="dutching-pair">
           <div class="dutching-setting"><strong>予算</strong><span class="dutching-setting-value">3000円</span></div>
           <div class="dutching-result"><strong>合計購入額</strong><span class="dutching-result-value">3000円</span></div>
         </div>
         <div class="dutching-pair">
           <div class="dutching-setting"><strong>最大対象頭数</strong><span class="dutching-setting-value">5頭</span></div>
-          <div class="dutching-result"><strong>選択頭数</strong><span class="dutching-result-value">4頭</span></div>
+          <div class="dutching-result"><strong>購入対象頭数</strong><span class="dutching-result-value">4頭</span></div>
         </div>
         <div class="dutching-pair">
           <div class="dutching-setting"><strong><span class="term-with-tooltip"><span>最低カバー確率</span><span class="term-tooltip" data-term-key="min_coverage_probability">
@@ -881,12 +881,12 @@
         </div>
         <div class="dutching-pair">
           <div class="dutching-setting"><strong><span class="term-with-tooltip"><span>最低グループ期待値</span><span class="term-tooltip" data-term-key="min_group_expected_value">
-  <button type="button" class="tooltip-trigger" aria-label="最低グループ期待値: 購入候補として採用するために必要な、グループ期待値の最低値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">購入候補として採用するために必要な、グループ期待値の最低値です。</span>
+  <button type="button" class="tooltip-trigger" aria-label="最低グループ期待値: 購入候補として採用するために必要な、最低グループ期待値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">購入候補として採用するために必要な、最低グループ期待値です。</span>
 </span></span></strong><span class="dutching-setting-value">0.000</span></div>
           <div class="dutching-result"><strong><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
-  <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択馬それぞれの予測確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">選択馬それぞれの予測確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。</span>
+  <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択馬それぞれの1着確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択馬それぞれの1着確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。</span>
 </span></span></strong><span class="dutching-result-value">0.870</span></div>
         </div>
         <div class="dutching-pair">
@@ -895,15 +895,15 @@
   <span class="tooltip-content" role="tooltip">最も払戻額が低い選択馬が的中した場合でも確保したい、合計購入額に対する最低利益率です。</span>
 </span></span></strong><span class="dutching-setting-value">-</span></div>
           <div class="dutching-result"><strong><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
-  <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択馬のうち最も払戻額が低い馬が的中した場合の利益です。最低払戻額から合計購入額を引いて計算します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">選択馬のうち最も払戻額が低い馬が的中した場合の利益です。最低払戻額から合計購入額を引いて計算します。</span>
+  <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択馬のうち最も払戻額が低い馬が的中した場合の最低利益です。最低払戻額から合計購入額を引いて計算します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択馬のうち最も払戻額が低い馬が的中した場合の最低利益です。最低払戻額から合計購入額を引いて計算します。</span>
 </span></span></strong><span class="dutching-result-value">520円</span></div>
         </div>
       </div>
       <h4 class="purchase-breakdown-title">購入内訳</h4>
       <div class="table-scroll">
         <table class="simulation-table purchase-breakdown-table">
-          <thead><tr><th class="nowrap">馬番</th><th class="nowrap">予測勝率</th><th class="nowrap">単勝オッズ</th><th class="nowrap">購入額</th><th class="nowrap">的中時払戻額</th><th class="nowrap">的中時利益</th></tr></thead>
+          <thead><tr><th class="nowrap">馬番</th><th class="nowrap">1着確率</th><th class="nowrap">単勝オッズ</th><th class="nowrap">購入額</th><th class="nowrap">的中時払戻額</th><th class="nowrap">的中時利益</th></tr></thead>
           <tbody>
             
             <tr>
@@ -956,14 +956,14 @@
   <button type="button" class="tooltip-trigger" aria-label="カバー確率: 実際に採用された選択馬の1着確率を合計した値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">実際に採用された選択馬の1着確率を合計した値です。</span>
 </span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
-  <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択馬それぞれの予測確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">選択馬それぞれの予測確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。</span>
+  <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択馬それぞれの1着確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択馬それぞれの1着確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。</span>
 </span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>最低払戻額</span><span class="term-tooltip" data-term-key="minimum_payout">
   <button type="button" class="tooltip-trigger" aria-label="最低払戻額: 選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。</span>
 </span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
-  <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択馬のうち最も払戻額が低い馬が的中した場合の利益です。最低払戻額から合計購入額を引いて計算します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">選択馬のうち最も払戻額が低い馬が的中した場合の利益です。最低払戻額から合計購入額を引いて計算します。</span>
+  <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択馬のうち最も払戻額が低い馬が的中した場合の最低利益です。最低払戻額から合計購入額を引いて計算します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択馬のうち最も払戻額が低い馬が的中した場合の最低利益です。最低払戻額から合計購入額を引いて計算します。</span>
 </span></span></th><th class="nowrap">判定</th><th>除外理由</th></tr></thead>
           <tbody>
             
@@ -1041,20 +1041,20 @@
 
     <div class="panel simulation-panel value-simulation-panel">
       <h3><span class="term-with-tooltip"><span>期待値重視方式</span><span class="term-tooltip" data-term-key="value_method">
-  <button type="button" class="tooltip-trigger" aria-label="期待値重視方式: AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。</span>
+  <button type="button" class="tooltip-trigger" aria-label="期待値重視方式: AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低期待値を満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低期待値を満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。</span>
 </span></span></h3>
       
       <h4 class="simulation-block-title">設定条件</h4>
       <div class="metric-grid">
         <div><strong>予算</strong><br>3000円</div>
-        <div><strong><span class="term-with-tooltip"><span>最低EV</span><span class="term-tooltip" data-term-key="minimum_ev">
-  <button type="button" class="tooltip-trigger" aria-label="最低EV: 1着確率と単勝オッズから計算した期待値について、購入対象とする最低ラインです。1.0が損益分岐の目安です。1.0未満も入力できますが、Kelly基準で購入割合が0以下になる馬には購入額を割り当てません。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+        <div><strong><span class="term-with-tooltip"><span>最低期待値</span><span class="term-tooltip" data-term-key="minimum_ev">
+  <button type="button" class="tooltip-trigger" aria-label="最低期待値: 1着確率と単勝オッズから計算した期待値について、購入対象とする最低ラインです。1.0が損益分岐の目安です。1.0未満も入力できますが、Kelly基準で購入割合が0以下になる馬には購入額を割り当てません。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">1着確率と単勝オッズから計算した期待値について、購入対象とする最低ラインです。1.0が損益分岐の目安です。1.0未満も入力できますが、Kelly基準で購入割合が0以下になる馬には購入額を割り当てません。</span>
 </span></span></strong><br>1.0</div>
         <div><strong><span class="term-with-tooltip"><span>Kelly係数</span><span class="term-tooltip" data-term-key="kelly_fraction">
-  <button type="button" class="tooltip-trigger" aria-label="Kelly係数: Kelly基準は、予測確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">Kelly基準は、予測確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。</span>
+  <button type="button" class="tooltip-trigger" aria-label="Kelly係数: Kelly基準は、1着確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">Kelly基準は、1着確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。</span>
 </span></span></strong><br>0.5</div>
       </div>
       <h4 class="simulation-block-title simulation-result-title">購入結果</h4>
@@ -1067,12 +1067,12 @@
         <p class="table-scroll-hint">表は横にスクロールできます</p>
         <div class="table-scroll">
           <table class="value-detail-table">
-          <thead><tr><th class="nowrap">EV順位</th><th class="nowrap">馬番</th><th class="horse-name">馬名</th><th class="nowrap">1着確率</th><th class="nowrap">単勝オッズ</th><th class="nowrap"><span class="term-with-tooltip"><span>EV</span><span class="term-tooltip" data-term-key="ev">
-  <button type="button" class="tooltip-trigger" aria-label="EV: 1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+          <thead><tr><th class="nowrap">期待値順位</th><th class="nowrap">馬番</th><th class="horse-name">馬名</th><th class="nowrap">1着確率</th><th class="nowrap">単勝オッズ</th><th class="nowrap"><span class="term-with-tooltip"><span>期待値</span><span class="term-tooltip" data-term-key="ev">
+  <button type="button" class="tooltip-trigger" aria-label="期待値: 1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。</span>
-</span></span></th><th class="nowrap">EV基準</th><th class="nowrap"><span class="term-with-tooltip"><span>Full Kelly</span><span class="term-tooltip" data-term-key="full_kelly">
-  <button type="button" class="tooltip-trigger" aria-label="Full Kelly: 予測確率と単勝オッズからKelly基準で算出した、予算に対する購入割合です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">予測確率と単勝オッズからKelly基準で算出した、予算に対する購入割合です。</span>
+</span></span></th><th class="nowrap">期待値基準</th><th class="nowrap"><span class="term-with-tooltip"><span>Full Kelly</span><span class="term-tooltip" data-term-key="full_kelly">
+  <button type="button" class="tooltip-trigger" aria-label="Full Kelly: 1着確率と単勝オッズからKelly基準で算出した、予算に対する購入割合です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">1着確率と単勝オッズからKelly基準で算出した、予算に対する購入割合です。</span>
 </span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>適用Kelly</span><span class="term-tooltip" data-term-key="applied_kelly">
   <button type="button" class="tooltip-trigger" aria-label="適用Kelly: Full KellyへKelly係数を掛けた、実際のシミュレーションで使用する購入割合です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">Full KellyへKelly係数を掛けた、実際のシミュレーションで使用する購入割合です。</span>
@@ -1112,7 +1112,7 @@
               <td class="nowrap">0.0000%</td>
               <td class="nowrap">-</td>
               <td class="nowrap">-</td>
-              <td class="nowrap">EV基準未満</td>
+              <td class="nowrap">期待値基準未満</td>
             </tr>
             
             <tr>
@@ -1127,7 +1127,7 @@
               <td class="nowrap">0.0000%</td>
               <td class="nowrap">-</td>
               <td class="nowrap">-</td>
-              <td class="nowrap">EV基準未満</td>
+              <td class="nowrap">期待値基準未満</td>
             </tr>
             
             <tr>
@@ -1142,7 +1142,7 @@
               <td class="nowrap">0.0000%</td>
               <td class="nowrap">-</td>
               <td class="nowrap">-</td>
-              <td class="nowrap">EV基準未満</td>
+              <td class="nowrap">期待値基準未満</td>
             </tr>
             
             <tr>
@@ -1157,7 +1157,7 @@
               <td class="nowrap">0.0000%</td>
               <td class="nowrap">-</td>
               <td class="nowrap">-</td>
-              <td class="nowrap">EV基準未満</td>
+              <td class="nowrap">期待値基準未満</td>
             </tr>
             
             <tr>
@@ -1172,7 +1172,7 @@
               <td class="nowrap">0.0000%</td>
               <td class="nowrap">-</td>
               <td class="nowrap">-</td>
-              <td class="nowrap">EV基準未満</td>
+              <td class="nowrap">期待値基準未満</td>
             </tr>
             
             <tr>
@@ -1187,7 +1187,7 @@
               <td class="nowrap">0.0000%</td>
               <td class="nowrap">-</td>
               <td class="nowrap">-</td>
-              <td class="nowrap">EV基準未満</td>
+              <td class="nowrap">期待値基準未満</td>
             </tr>
             
             <tr>
@@ -1202,7 +1202,7 @@
               <td class="nowrap">0.0000%</td>
               <td class="nowrap">-</td>
               <td class="nowrap">-</td>
-              <td class="nowrap">EV基準未満</td>
+              <td class="nowrap">期待値基準未満</td>
             </tr>
             
             <tr>
@@ -1217,7 +1217,7 @@
               <td class="nowrap">0.0000%</td>
               <td class="nowrap">-</td>
               <td class="nowrap">-</td>
-              <td class="nowrap">EV基準未満</td>
+              <td class="nowrap">期待値基準未満</td>
             </tr>
             
             <tr>
@@ -1232,7 +1232,7 @@
               <td class="nowrap">0.0000%</td>
               <td class="nowrap">-</td>
               <td class="nowrap">-</td>
-              <td class="nowrap">EV基準未満</td>
+              <td class="nowrap">期待値基準未満</td>
             </tr>
             
             <tr>
@@ -1247,7 +1247,7 @@
               <td class="nowrap">0.0000%</td>
               <td class="nowrap">-</td>
               <td class="nowrap">-</td>
-              <td class="nowrap">EV基準未満</td>
+              <td class="nowrap">期待値基準未満</td>
             </tr>
             
           </tbody>
@@ -1256,13 +1256,13 @@
       </details>
       <h4>購入対象</h4>
       
-      <p><strong>購入なし</strong><br><span class="small">EV基準以上の馬はありますが、現在の予算ではKelly基準の購入額が100円未満となるため、購入対象はありません。</span></p>
+      <p><strong>購入なし</strong><br><span class="small">期待値基準以上の馬はありますが、現在の予算ではKelly基準の購入額が100円未満となるため、購入対象はありません。</span></p>
       
       
     </div>
       </div>
       <div id="purchase-general-quinella" data-ticket-panel="quinella" role="tabpanel" hidden>
-        
+      
 <p class="small">馬連的中確率は各馬の1着確率から算出した、同着を考慮しない近似値です。</p>
 
 <p class="quinella-unavailable">馬連は計算できません。発走前の完全なオッズ・確率データが記録されていません。</p>
@@ -1285,7 +1285,7 @@
       <form class="simulator-form" id="custom-simulator-form">
         <label class="simulator-field">方式
           <select name="method">
-            <option value="dutching" selected>単勝分配方式</option>
+            <option value="dutching" selected>予算配分方式</option>
             <option value="value">期待値重視方式</option>
           </select>
         </label>
@@ -1293,16 +1293,16 @@
           <input name="budget" type="number" min="100" step="100" value="3000" required>
         </label>
         <div class="simulator-field value-field" hidden>
-          <span class="simulator-field-label"><label for="custom-ev-threshold">最低EV</label><span class="term-tooltip" data-term-key="minimum_ev">
-  <button type="button" class="tooltip-trigger" aria-label="最低EV: 1着確率と単勝オッズから計算した期待値について、購入対象とする最低ラインです。1.0が損益分岐の目安です。1.0未満も入力できますが、Kelly基準で購入割合が0以下になる馬には購入額を割り当てません。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+          <span class="simulator-field-label"><label for="custom-ev-threshold">最低期待値</label><span class="term-tooltip" data-term-key="minimum_ev">
+  <button type="button" class="tooltip-trigger" aria-label="最低期待値: 1着確率と単勝オッズから計算した期待値について、購入対象とする最低ラインです。1.0が損益分岐の目安です。1.0未満も入力できますが、Kelly基準で購入割合が0以下になる馬には購入額を割り当てません。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">1着確率と単勝オッズから計算した期待値について、購入対象とする最低ラインです。1.0が損益分岐の目安です。1.0未満も入力できますが、Kelly基準で購入割合が0以下になる馬には購入額を割り当てません。</span>
 </span></span>
           <input id="custom-ev-threshold" name="ev_threshold" type="number" min="0" step="0.01" value="1.0">
         </div>
         <div class="simulator-field value-field" hidden>
           <span class="simulator-field-label"><label for="custom-kelly-fraction">Kelly係数</label><span class="term-tooltip" data-term-key="kelly_fraction">
-  <button type="button" class="tooltip-trigger" aria-label="Kelly係数: Kelly基準は、予測確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">Kelly基準は、予測確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。</span>
+  <button type="button" class="tooltip-trigger" aria-label="Kelly係数: Kelly基準は、1着確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">Kelly基準は、1着確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。</span>
 </span></span>
           <input id="custom-kelly-fraction" name="kelly_fraction" type="number" min="0" max="1" step="0.05" value="0.5">
         </div>
@@ -1318,8 +1318,8 @@
         </div>
         <div class="simulator-field dutching-field">
           <span class="simulator-field-label"><label for="custom-min-group-ev">最低グループ期待値</label><span class="term-tooltip" data-term-key="min_group_expected_value">
-  <button type="button" class="tooltip-trigger" aria-label="最低グループ期待値: 購入候補として採用するために必要な、グループ期待値の最低値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">購入候補として採用するために必要な、グループ期待値の最低値です。</span>
+  <button type="button" class="tooltip-trigger" aria-label="最低グループ期待値: 購入候補として採用するために必要な、最低グループ期待値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">購入候補として採用するために必要な、最低グループ期待値です。</span>
 </span></span>
           <input id="custom-min-group-ev" name="min_group_expected_value" type="number" min="0" step="0.01" value="0.0">
         </div>
@@ -1330,7 +1330,7 @@
 </span></span>
           <input id="custom-min-profit-rate" name="min_profit_rate" type="number" min="0" step="1" value="20" required>
         </div>
-        <label class="simulator-field dutching-field"><span data-count-label="頭数">頭数</span>
+        <label class="simulator-field dutching-field"><span data-count-label="購入対象頭数">購入対象頭数</span>
           <select name="fixed_selection_count">
             <option value="0">自動</option>
             <option value="1">1頭</option><option value="2">2頭</option><option value="3">3頭</option><option value="4">4頭</option><option value="5">5頭</option><option value="6">6頭</option><option value="7">7頭</option><option value="8">8頭</option><option value="9">9頭</option><option value="10">10頭</option><option value="11">11頭</option>
@@ -1344,46 +1344,46 @@
         <p id="custom-simulator-empty" hidden><strong>購入なし</strong><span id="custom-simulator-empty-reason"></span></p>
         <div class="simulator-summary" id="custom-simulator-summary" hidden>
           <span>方式: <strong id="custom-simulator-method">-</strong></span>
-          <span>計算予算: <strong id="custom-simulator-budget">0円</strong></span>
+          <span>予算: <strong id="custom-simulator-budget">0円</strong></span>
           <span>合計購入額: <strong id="custom-simulator-total">0円</strong></span>
           <span>未使用予算: <strong id="custom-simulator-unused">0円</strong></span>
         </div>
         <div class="metric-grid" id="custom-dutching-metrics" hidden>
-          <div><strong>選択頭数</strong><br><span id="custom-dutching-count">0頭</span></div>
+          <div><strong>購入対象頭数</strong><br><span id="custom-dutching-count">0頭</span></div>
           <div><strong><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
   <button type="button" class="tooltip-trigger" aria-label="カバー確率: 実際に採用された選択馬の1着確率を合計した値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">実際に採用された選択馬の1着確率を合計した値です。</span>
 </span></span></strong><br><span id="custom-dutching-coverage">0%</span></div>
           <div><strong><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
-  <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択馬それぞれの予測確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">選択馬それぞれの予測確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。</span>
+  <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択馬それぞれの1着確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択馬それぞれの1着確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。</span>
 </span></span></strong><br><span id="custom-dutching-ev">0</span></div>
           <div><strong><span class="term-with-tooltip"><span>最低払戻額</span><span class="term-tooltip" data-term-key="minimum_payout">
   <button type="button" class="tooltip-trigger" aria-label="最低払戻額: 選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。</span>
 </span></span></strong><br><span id="custom-dutching-min-payout">0円</span></div>
           <div><strong><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
-  <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択馬のうち最も払戻額が低い馬が的中した場合の利益です。最低払戻額から合計購入額を引いて計算します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">選択馬のうち最も払戻額が低い馬が的中した場合の利益です。最低払戻額から合計購入額を引いて計算します。</span>
+  <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択馬のうち最も払戻額が低い馬が的中した場合の最低利益です。最低払戻額から合計購入額を引いて計算します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択馬のうち最も払戻額が低い馬が的中した場合の最低利益です。最低払戻額から合計購入額を引いて計算します。</span>
 </span></span></strong><br><span id="custom-dutching-min-profit">0円</span></div>
         </div>
         <div class="table-scroll" id="custom-value-table" hidden>
-          <table class="simulation-table"><thead><tr><th class="nowrap">馬番</th><th class="nowrap">予測勝率</th><th class="nowrap">単勝オッズ</th><th class="nowrap"><span class="term-with-tooltip"><span>EV</span><span class="term-tooltip" data-term-key="ev">
-  <button type="button" class="tooltip-trigger" aria-label="EV: 1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+          <table class="simulation-table"><thead><tr><th class="nowrap">馬番</th><th class="nowrap">1着確率</th><th class="nowrap">単勝オッズ</th><th class="nowrap"><span class="term-with-tooltip"><span>期待値</span><span class="term-tooltip" data-term-key="ev">
+  <button type="button" class="tooltip-trigger" aria-label="期待値: 1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。</span>
 </span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>Full Kelly</span><span class="term-tooltip" data-term-key="full_kelly">
-  <button type="button" class="tooltip-trigger" aria-label="Full Kelly: 予測確率と単勝オッズからKelly基準で算出した、予算に対する購入割合です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">予測確率と単勝オッズからKelly基準で算出した、予算に対する購入割合です。</span>
+  <button type="button" class="tooltip-trigger" aria-label="Full Kelly: 1着確率と単勝オッズからKelly基準で算出した、予算に対する購入割合です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">1着確率と単勝オッズからKelly基準で算出した、予算に対する購入割合です。</span>
 </span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>Fractional Kelly</span><span class="term-tooltip" data-term-key="fractional_kelly">
   <button type="button" class="tooltip-trigger" aria-label="Fractional Kelly: Full KellyにKelly係数を掛けて抑制した購入割合です。係数0.5ならハーフケリーとなります。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">Full KellyにKelly係数を掛けて抑制した購入割合です。係数0.5ならハーフケリーとなります。</span>
-</span></span></th><th class="nowrap">購入額</th><th class="nowrap"><span class="term-with-tooltip"><span>期待払戻額</span><span class="term-tooltip" data-term-key="expected_return">
-  <button type="button" class="tooltip-trigger" aria-label="期待払戻額: 各馬の予測確率を考慮した、平均的な払戻見込み額です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">各馬の予測確率を考慮した、平均的な払戻見込み額です。</span>
+</span></span></th><th class="nowrap">購入額</th><th class="nowrap"><span class="term-with-tooltip"><span>的中時払戻額</span><span class="term-tooltip" data-term-key="expected_return">
+  <button type="button" class="tooltip-trigger" aria-label="的中時払戻額: 各馬の1着確率を考慮した、平均的な払戻見込み額です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">各馬の1着確率を考慮した、平均的な払戻見込み額です。</span>
 </span></span></th></tr></thead><tbody id="custom-value-rows"></tbody></table>
         </div>
         <div class="table-scroll" id="custom-dutching-table" hidden>
-          <table class="simulation-table"><thead><tr><th class="nowrap">馬番</th><th class="nowrap">予測勝率</th><th class="nowrap">単勝オッズ</th><th class="nowrap">購入額</th><th class="nowrap">的中時払戻額</th><th class="nowrap">的中時利益</th></tr></thead><tbody id="custom-dutching-rows"></tbody></table>
+          <table class="simulation-table"><thead><tr><th class="nowrap">馬番</th><th class="nowrap">1着確率</th><th class="nowrap">単勝オッズ</th><th class="nowrap">購入額</th><th class="nowrap">的中時払戻額</th><th class="nowrap">的中時利益</th></tr></thead><tbody id="custom-dutching-rows"></tbody></table>
         </div>
         <div id="custom-dutching-evaluations" hidden>
           <h3>頭数別比較</h3>
@@ -1392,22 +1392,23 @@
   <button type="button" class="tooltip-trigger" aria-label="カバー確率: 実際に採用された選択馬の1着確率を合計した値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">実際に採用された選択馬の1着確率を合計した値です。</span>
 </span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
-  <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択馬それぞれの予測確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">選択馬それぞれの予測確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。</span>
+  <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択馬それぞれの1着確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択馬それぞれの1着確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。</span>
 </span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>最低払戻額</span><span class="term-tooltip" data-term-key="minimum_payout">
   <button type="button" class="tooltip-trigger" aria-label="最低払戻額: 選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。</span>
 </span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
-  <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択馬のうち最も払戻額が低い馬が的中した場合の利益です。最低払戻額から合計購入額を引いて計算します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">選択馬のうち最も払戻額が低い馬が的中した場合の利益です。最低払戻額から合計購入額を引いて計算します。</span>
+  <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択馬のうち最も払戻額が低い馬が的中した場合の最低利益です。最低払戻額から合計購入額を引いて計算します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">選択馬のうち最も払戻額が低い馬が的中した場合の最低利益です。最低払戻額から合計購入額を引いて計算します。</span>
 </span></span></th><th class="nowrap">判定</th><th>除外理由</th></tr></thead><tbody id="custom-dutching-evaluation-rows"></tbody></table></div>
         </div>
       </div>
     </div>
       </div>
-    <script type="application/json" id="custom-simulator-data">{"display": {"quinella_tooltips": {"applied_kelly": "Full Kelly\u306bKelly\u4fc2\u6570\u3092\u639b\u3051\u305f\u3001\u5b9f\u969b\u306e\u30b7\u30df\u30e5\u30ec\u30fc\u30b7\u30e7\u30f3\u3067\u4f7f\u7528\u3059\u308b\u8cfc\u5165\u5272\u5408\u3067\u3059\u3002", "coverage_probability": "\u5b9f\u969b\u306b\u63a1\u7528\u3055\u308c\u305f\u9078\u629e\u7d44\u306e\u99ac\u9023\u7684\u4e2d\u78ba\u7387\u3092\u5408\u8a08\u3057\u305f\u5024\u3067\u3059\u3002", "dutching_method": "\u99ac\u9023\u7684\u4e2d\u78ba\u7387\u306e\u4e0a\u4f4d\u304b\u30891\u7d44\u301c\u6700\u5927\u5bfe\u8c61\u7d44\u6570\u307e\u3067\u3092\u5019\u88dc\u3068\u3057\u3066\u8a55\u4fa1\u3057\u3001\u4e88\u7b97\u3092\u7684\u4e2d\u6642\u306e\u6255\u623b\u984d\u304c\u8fd1\u304f\u306a\u308b\u3088\u3046\u914d\u5206\u3057\u307e\u3059\u3002\u6700\u4f4e\u30ab\u30d0\u30fc\u78ba\u7387\u30fb\u6700\u4f4e\u30b0\u30eb\u30fc\u30d7\u671f\u5f85\u5024\u30fb\u6700\u4f4e\u5229\u76ca\u7387\u3092\u6e80\u305f\u3059\u5019\u88dc\u306e\u4e2d\u304b\u3089\u3001\u30b0\u30eb\u30fc\u30d7\u671f\u5f85\u5024\u3092\u512a\u5148\u3057\u3066\u63a1\u7528\u3059\u308b\u65b9\u5f0f\u3067\u3059\u3002", "ev": "\u99ac\u9023\u7684\u4e2d\u78ba\u7387\u00d7\u99ac\u9023\u30aa\u30c3\u30ba\u3067\u8a08\u7b97\u3059\u308b\u671f\u5f85\u5024\u3067\u3059\u30021.0\u304c\u640d\u76ca\u5206\u5c90\u306e\u76ee\u5b89\u3067\u3059\u3002", "expected_return": "\u5404\u7d44\u306e\u99ac\u9023\u7684\u4e2d\u78ba\u7387\u3092\u8003\u616e\u3057\u305f\u3001\u5e73\u5747\u7684\u306a\u6255\u623b\u898b\u8fbc\u307f\u984d\u3067\u3059\u3002", "fractional_kelly": "Full Kelly\u306bKelly\u4fc2\u6570\u3092\u639b\u3051\u3066\u6291\u5236\u3057\u305f\u8cfc\u5165\u5272\u5408\u3067\u3059\u3002", "full_kelly": "\u99ac\u9023\u7684\u4e2d\u78ba\u7387\u3068\u99ac\u9023\u30aa\u30c3\u30ba\u304b\u3089Kelly\u57fa\u6e96\u3067\u7b97\u51fa\u3057\u305f\u3001\u4e88\u7b97\u306b\u5bfe\u3059\u308b\u8cfc\u5165\u5272\u5408\u3067\u3059\u3002", "group_expected_value": "\u9078\u629e\u7d44\u305d\u308c\u305e\u308c\u306e\u99ac\u9023\u7684\u4e2d\u78ba\u7387\u3068\u7684\u4e2d\u6642\u6255\u623b\u984d\u304b\u3089\u6c42\u3081\u305f\u671f\u5f85\u6255\u623b\u984d\u3092\u3001\u5408\u8a08\u8cfc\u5165\u984d\u3067\u5272\u3063\u305f\u5024\u3067\u3059\u30021.0\u304c\u640d\u76ca\u5206\u5c90\u306e\u76ee\u5b89\u3067\u3059\u3002", "kelly_fraction": "Kelly\u57fa\u6e96\u3067\u7b97\u51fa\u3057\u305f\u8cfc\u5165\u5272\u5408\u3092\u5b9f\u969b\u306b\u4f55\u5272\u4f7f\u3046\u304b\u3092\u793a\u3059\u4fc2\u6570\u3067\u3059\u30020.5\u306a\u3089\u7b97\u51fa\u984d\u306e\u534a\u5206\u3092\u4f7f\u7528\u3057\u307e\u3059\u3002", "max_selection_count": "\u99ac\u9023\u5206\u914d\u65b9\u5f0f\u3067\u8cfc\u5165\u5019\u88dc\u3068\u3057\u3066\u691c\u8a0e\u3059\u308b\u7d44\u6570\u306e\u4e0a\u9650\u3067\u3059\u3002", "min_coverage_probability": "\u8cfc\u5165\u5019\u88dc\u3068\u3057\u3066\u63a1\u7528\u3059\u308b\u305f\u3081\u306b\u5fc5\u8981\u306a\u3001\u9078\u629e\u7d44\u306e\u99ac\u9023\u7684\u4e2d\u78ba\u7387\u5408\u8a08\u306e\u6700\u4f4e\u5024\u3067\u3059\u3002", "min_group_expected_value": "\u8cfc\u5165\u5019\u88dc\u3068\u3057\u3066\u63a1\u7528\u3059\u308b\u305f\u3081\u306b\u5fc5\u8981\u306a\u3001\u30b0\u30eb\u30fc\u30d7\u671f\u5f85\u5024\u306e\u6700\u4f4e\u5024\u3067\u3059\u3002", "min_profit_rate": "\u6700\u3082\u6255\u623b\u984d\u304c\u4f4e\u3044\u9078\u629e\u7d44\u304c\u7684\u4e2d\u3057\u305f\u5834\u5408\u3067\u3082\u78ba\u4fdd\u3057\u305f\u3044\u3001\u5408\u8a08\u8cfc\u5165\u984d\u306b\u5bfe\u3059\u308b\u6700\u4f4e\u5229\u76ca\u7387\u3067\u3059\u3002", "minimum_ev": "\u99ac\u9023\u7684\u4e2d\u78ba\u7387\u3068\u99ac\u9023\u30aa\u30c3\u30ba\u304b\u3089\u8a08\u7b97\u3057\u305f\u671f\u5f85\u5024\u306e\u6700\u4f4e\u30e9\u30a4\u30f3\u3067\u3059\u3002Kelly\u5272\u5408\u304c0\u4ee5\u4e0b\u306e\u7d44\u306b\u306f\u8cfc\u5165\u984d\u3092\u5272\u308a\u5f53\u3066\u307e\u305b\u3093\u3002", "minimum_payout": "\u9078\u629e\u3057\u305f\u7d44\u306e\u3046\u3061\u6700\u3082\u6255\u623b\u984d\u304c\u4f4e\u3044\u7d44\u304c\u7684\u4e2d\u3057\u305f\u5834\u5408\u306e\u6255\u623b\u984d\u3067\u3059\u3002", "minimum_profit": "\u9078\u629e\u7d44\u306e\u3046\u3061\u6700\u3082\u6255\u623b\u984d\u304c\u4f4e\u3044\u7d44\u304c\u7684\u4e2d\u3057\u305f\u5834\u5408\u306e\u5229\u76ca\u3067\u3059\u3002\u6700\u4f4e\u6255\u623b\u984d\u304b\u3089\u5408\u8a08\u8cfc\u5165\u984d\u3092\u5f15\u3044\u3066\u8a08\u7b97\u3057\u307e\u3059\u3002", "selection_count": "\u8a2d\u5b9a\u6761\u4ef6\u3092\u6e80\u305f\u3057\u3066\u5b9f\u969b\u306e\u8cfc\u5165\u5bfe\u8c61\u3068\u3057\u3066\u63a1\u7528\u3055\u308c\u305f\u7d44\u6570\u3067\u3059\u3002", "theoretical_stake": "\u73fe\u5728\u306e\u4e88\u7b97\u306b\u9069\u7528Kelly\u3092\u639b\u3051\u305f\u3001\u8cfc\u5165\u5358\u4f4d\u3078\u4e38\u3081\u308b\u524d\u306e\u8cfc\u5165\u984d\u3067\u3059\u3002"}, "rejection_reason_labels": {"coverage_probability_below_threshold": "\u30ab\u30d0\u30fc\u78ba\u7387\u304c\u6700\u4f4e\u57fa\u6e96\u672a\u6e80", "group_expected_value_below_threshold": "\u30b0\u30eb\u30fc\u30d7\u671f\u5f85\u5024\u304c\u6700\u4f4e\u57fa\u6e96\u672a\u6e80", "insufficient_budget_units": "\u4e88\u7b97\u304c\u8cfc\u5165\u5358\u4f4d\u307e\u305f\u306f\u9078\u629e\u982d\u6570\u306b\u5bfe\u3057\u3066\u4e0d\u8db3", "minimum_profit_rate_below_threshold": "\u6700\u4f4e\u5229\u76ca\u7387\u304c\u6700\u4f4e\u57fa\u6e96\u672a\u6e80"}, "unknown_rejection_reason_label": "\u6761\u4ef6\u3092\u6e80\u305f\u3057\u3066\u3044\u307e\u305b\u3093"}, "horses": [{"horse_number": 1, "win_odds": 34.1, "win_probability": 0.018}, {"horse_number": 2, "win_odds": 15.5, "win_probability": 0.045}, {"horse_number": 3, "win_odds": 6.0, "win_probability": 0.13}, {"horse_number": 4, "win_odds": 11.0, "win_probability": 0.06}, {"horse_number": 5, "win_odds": 3.9, "win_probability": 0.2}, {"horse_number": 6, "win_odds": 16.1, "win_probability": 0.1}, {"horse_number": 7, "win_odds": 143.2, "win_probability": 0.002}, {"horse_number": 8, "win_odds": 3.2, "win_probability": 0.25}, {"horse_number": 9, "win_odds": 39.0, "win_probability": 0.025}, {"horse_number": 10, "win_odds": 10.5, "win_probability": 0.07}, {"horse_number": 11, "win_odds": 6.6, "win_probability": 0.1}], "methods": {"general": {"horses": [{"horse_number": 1, "win_odds": 34.1, "win_probability": 0.018}, {"horse_number": 2, "win_odds": 15.5, "win_probability": 0.045}, {"horse_number": 3, "win_odds": 6.0, "win_probability": 0.13}, {"horse_number": 4, "win_odds": 11.0, "win_probability": 0.06}, {"horse_number": 5, "win_odds": 3.9, "win_probability": 0.2}, {"horse_number": 6, "win_odds": 16.1, "win_probability": 0.1}, {"horse_number": 7, "win_odds": 143.2, "win_probability": 0.002}, {"horse_number": 8, "win_odds": 3.2, "win_probability": 0.25}, {"horse_number": 9, "win_odds": 39.0, "win_probability": 0.025}, {"horse_number": 10, "win_odds": 10.5, "win_probability": 0.07}, {"horse_number": 11, "win_odds": 6.6, "win_probability": 0.1}], "quinella": {"available": false, "dutching": null, "pairs": [], "value": null}, "win": {"dutching": {"budget": 3000, "coverage_probability": 0.68, "evaluated_counts": [{"coverage_probability": 0.25, "eligible": false, "expected_return": 2400.0, "group_expected_value": 0.8, "horse_numbers": [8], "minimum_payout": 9600.0, "minimum_profit": 6600.0, "rejection_reasons": ["coverage_probability_below_threshold"], "selection_count": 1}, {"coverage_probability": 0.45, "eligible": true, "expected_return": 2372.0, "group_expected_value": 0.790667, "horse_numbers": [8, 5], "minimum_payout": 5120.0, "minimum_profit": 2120.0, "rejection_reasons": [], "selection_count": 2}, {"coverage_probability": 0.58, "eligible": true, "expected_return": 2366.0, "group_expected_value": 0.788667, "horse_numbers": [8, 5, 3], "minimum_payout": 3900.0, "minimum_profit": 900.0, "rejection_reasons": [], "selection_count": 3}, {"coverage_probability": 0.68, "eligible": true, "expected_return": 2611.0, "group_expected_value": 0.870333, "horse_numbers": [8, 5, 3, 6], "minimum_payout": 3520.0, "minimum_profit": 520.0, "rejection_reasons": [], "selection_count": 4}, {"coverage_probability": 0.78, "eligible": false, "expected_return": 2466.0, "group_expected_value": 0.822, "horse_numbers": [8, 5, 3, 6, 11], "minimum_payout": 3000.0, "minimum_profit": 0.0, "rejection_reasons": ["minimum_profit_not_positive"], "selection_count": 5}], "expected_return": 2611.0, "group_expected_value": 0.870333, "minimum_payout": 3520.0, "minimum_profit": 520.0, "selected_count": 4, "selections": [{"estimated_payout": 3520.0, "estimated_profit": 520.0, "horse_number": 8, "predicted_probability": 0.25, "stake": 1100, "win_odds": 3.2}, {"estimated_payout": 3900.0, "estimated_profit": 900.0, "horse_number": 5, "predicted_probability": 0.2, "stake": 1000, "win_odds": 3.9}, {"estimated_payout": 3600.0, "estimated_profit": 600.0, "horse_number": 3, "predicted_probability": 0.13, "stake": 600, "win_odds": 6.0}, {"estimated_payout": 4830.0, "estimated_profit": 1830.0, "horse_number": 6, "predicted_probability": 0.1, "stake": 300, "win_odds": 16.1}], "settings": {"max_selection_count": 5, "min_coverage_probability": 0.4, "min_group_expected_value": 0.0, "require_profit_if_hit": true}, "stake_unit": 100, "total_stake": 3000, "unused_budget": 0}, "value": {"budget": 3000, "selections": [], "settings": {"ev_threshold": 1.0, "kelly_fraction": 0.5}, "stake_unit": 100, "total_stake": 0, "unused_budget": 3000}}}}, "stake_unit": 100}</script>
+    <script type="application/json" id="custom-simulator-data">{"display": {"quinella_tooltips": {"applied_kelly": "Full Kelly\u306bKelly\u4fc2\u6570\u3092\u639b\u3051\u305f\u3001\u5b9f\u969b\u306e\u30b7\u30df\u30e5\u30ec\u30fc\u30b7\u30e7\u30f3\u3067\u4f7f\u7528\u3059\u308b\u8cfc\u5165\u5272\u5408\u3067\u3059\u3002", "coverage_probability": "\u5b9f\u969b\u306b\u63a1\u7528\u3055\u308c\u305f\u9078\u629e\u7d44\u306e\u99ac\u9023\u7684\u4e2d\u78ba\u7387\u3092\u5408\u8a08\u3057\u305f\u5024\u3067\u3059\u3002", "dutching_method": "\u99ac\u9023\u7684\u4e2d\u78ba\u7387\u306e\u4e0a\u4f4d\u304b\u30891\u7d44\u301c\u6700\u5927\u5bfe\u8c61\u7d44\u6570\u307e\u3067\u3092\u5019\u88dc\u3068\u3057\u3066\u8a55\u4fa1\u3057\u3001\u4e88\u7b97\u3092\u7684\u4e2d\u6642\u306e\u6255\u623b\u984d\u304c\u8fd1\u304f\u306a\u308b\u3088\u3046\u914d\u5206\u3057\u307e\u3059\u3002\u6700\u4f4e\u30ab\u30d0\u30fc\u78ba\u7387\u30fb\u6700\u4f4e\u30b0\u30eb\u30fc\u30d7\u671f\u5f85\u5024\u30fb\u6700\u4f4e\u5229\u76ca\u7387\u3092\u6e80\u305f\u3059\u5019\u88dc\u306e\u4e2d\u304b\u3089\u3001\u30b0\u30eb\u30fc\u30d7\u671f\u5f85\u5024\u3092\u512a\u5148\u3057\u3066\u63a1\u7528\u3059\u308b\u65b9\u5f0f\u3067\u3059\u3002", "ev": "\u99ac\u9023\u7684\u4e2d\u78ba\u7387\u00d7\u99ac\u9023\u30aa\u30c3\u30ba\u3067\u8a08\u7b97\u3059\u308b\u671f\u5f85\u5024\u3067\u3059\u30021.0\u304c\u640d\u76ca\u5206\u5c90\u306e\u76ee\u5b89\u3067\u3059\u3002", "expected_return": "\u5404\u7d44\u306e\u99ac\u9023\u7684\u4e2d\u78ba\u7387\u3092\u8003\u616e\u3057\u305f\u3001\u5e73\u5747\u7684\u306a\u6255\u623b\u898b\u8fbc\u307f\u984d\u3067\u3059\u3002", "fractional_kelly": "Full Kelly\u306bKelly\u4fc2\u6570\u3092\u639b\u3051\u3066\u6291\u5236\u3057\u305f\u8cfc\u5165\u5272\u5408\u3067\u3059\u3002", "full_kelly": "\u99ac\u9023\u7684\u4e2d\u78ba\u7387\u3068\u99ac\u9023\u30aa\u30c3\u30ba\u304b\u3089Kelly\u57fa\u6e96\u3067\u7b97\u51fa\u3057\u305f\u3001\u4e88\u7b97\u306b\u5bfe\u3059\u308b\u8cfc\u5165\u5272\u5408\u3067\u3059\u3002", "group_expected_value": "\u9078\u629e\u7d44\u305d\u308c\u305e\u308c\u306e\u99ac\u9023\u7684\u4e2d\u78ba\u7387\u3068\u7684\u4e2d\u6642\u6255\u623b\u984d\u304b\u3089\u6c42\u3081\u305f\u671f\u5f85\u6255\u623b\u984d\u3092\u3001\u5408\u8a08\u8cfc\u5165\u984d\u3067\u5272\u3063\u305f\u5024\u3067\u3059\u30021.0\u304c\u640d\u76ca\u5206\u5c90\u306e\u76ee\u5b89\u3067\u3059\u3002", "kelly_fraction": "Kelly\u57fa\u6e96\u3067\u7b97\u51fa\u3057\u305f\u8cfc\u5165\u5272\u5408\u3092\u5b9f\u969b\u306b\u4f55\u5272\u4f7f\u3046\u304b\u3092\u793a\u3059\u4fc2\u6570\u3067\u3059\u30020.5\u306a\u3089\u7b97\u51fa\u984d\u306e\u534a\u5206\u3092\u4f7f\u7528\u3057\u307e\u3059\u3002", "max_selection_count": "\u6700\u5927\u5bfe\u8c61\u7d44\u6570\u306f\u99ac\u9023\u306e\u8cfc\u5165\u5019\u88dc\u3068\u3057\u3066\u691c\u8a0e\u3059\u308b\u7d44\u6570\u306e\u4e0a\u9650\u3067\u3059\u3002", "min_coverage_probability": "\u8cfc\u5165\u5019\u88dc\u3068\u3057\u3066\u63a1\u7528\u3059\u308b\u305f\u3081\u306b\u5fc5\u8981\u306a\u3001\u9078\u629e\u7d44\u306e\u99ac\u9023\u7684\u4e2d\u78ba\u7387\u5408\u8a08\u306e\u6700\u4f4e\u5024\u3067\u3059\u3002", "min_group_expected_value": "\u8cfc\u5165\u5019\u88dc\u3068\u3057\u3066\u63a1\u7528\u3059\u308b\u305f\u3081\u306b\u5fc5\u8981\u306a\u3001\u6700\u4f4e\u30b0\u30eb\u30fc\u30d7\u671f\u5f85\u5024\u3067\u3059\u3002", "min_profit_rate": "\u6700\u3082\u6255\u623b\u984d\u304c\u4f4e\u3044\u9078\u629e\u7d44\u304c\u7684\u4e2d\u3057\u305f\u5834\u5408\u3067\u3082\u78ba\u4fdd\u3057\u305f\u3044\u3001\u5408\u8a08\u8cfc\u5165\u984d\u306b\u5bfe\u3059\u308b\u6700\u4f4e\u5229\u76ca\u7387\u3067\u3059\u3002", "minimum_ev": "\u99ac\u9023\u7684\u4e2d\u78ba\u7387\u3068\u99ac\u9023\u30aa\u30c3\u30ba\u304b\u3089\u8a08\u7b97\u3057\u305f\u671f\u5f85\u5024\u306e\u6700\u4f4e\u30e9\u30a4\u30f3\u3067\u3059\u3002Kelly\u5272\u5408\u304c0\u4ee5\u4e0b\u306e\u7d44\u306b\u306f\u8cfc\u5165\u984d\u3092\u5272\u308a\u5f53\u3066\u307e\u305b\u3093\u3002", "minimum_payout": "\u9078\u629e\u3057\u305f\u7d44\u306e\u3046\u3061\u6700\u3082\u6255\u623b\u984d\u304c\u4f4e\u3044\u7d44\u304c\u7684\u4e2d\u3057\u305f\u5834\u5408\u306e\u6255\u623b\u984d\u3067\u3059\u3002", "minimum_profit": "\u9078\u629e\u7d44\u306e\u3046\u3061\u6700\u3082\u6255\u623b\u984d\u304c\u4f4e\u3044\u7d44\u304c\u7684\u4e2d\u3057\u305f\u5834\u5408\u306e\u6700\u4f4e\u5229\u76ca\u3067\u3059\u3002\u6700\u4f4e\u6255\u623b\u984d\u304b\u3089\u5408\u8a08\u8cfc\u5165\u984d\u3092\u5f15\u3044\u3066\u8a08\u7b97\u3057\u307e\u3059\u3002", "selection_count": "\u8a2d\u5b9a\u6761\u4ef6\u3092\u6e80\u305f\u3057\u3066\u5b9f\u969b\u306e\u8cfc\u5165\u5bfe\u8c61\u7d44\u6570\u3068\u3057\u3066\u63a1\u7528\u3055\u308c\u305f\u7d44\u6570\u3067\u3059\u3002", "theoretical_stake": "\u73fe\u5728\u306e\u4e88\u7b97\u306b\u9069\u7528Kelly\u3092\u639b\u3051\u305f\u3001\u8cfc\u5165\u5358\u4f4d\u3078\u4e38\u3081\u308b\u524d\u306e\u8cfc\u5165\u984d\u3067\u3059\u3002"}, "rejection_reason_labels": {"coverage_probability_below_threshold": "\u30ab\u30d0\u30fc\u78ba\u7387\u304c\u6700\u4f4e\u57fa\u6e96\u672a\u6e80", "group_expected_value_below_threshold": "\u30b0\u30eb\u30fc\u30d7\u671f\u5f85\u5024\u304c\u6700\u4f4e\u57fa\u6e96\u672a\u6e80", "insufficient_budget_units": "\u4e88\u7b97\u304c\u8cfc\u5165\u5358\u4f4d\u307e\u305f\u306f\u8cfc\u5165\u5bfe\u8c61\u982d\u6570\u306b\u5bfe\u3057\u3066\u4e0d\u8db3", "minimum_profit_rate_below_threshold": "\u6700\u4f4e\u5229\u76ca\u7387\u304c\u6700\u4f4e\u57fa\u6e96\u672a\u6e80"}, "unknown_rejection_reason_label": "\u6761\u4ef6\u3092\u6e80\u305f\u3057\u3066\u3044\u307e\u305b\u3093"}, "horses": [{"horse_number": 1, "win_odds": 34.1, "win_probability": 0.018}, {"horse_number": 2, "win_odds": 15.5, "win_probability": 0.045}, {"horse_number": 3, "win_odds": 6.0, "win_probability": 0.13}, {"horse_number": 4, "win_odds": 11.0, "win_probability": 0.06}, {"horse_number": 5, "win_odds": 3.9, "win_probability": 0.2}, {"horse_number": 6, "win_odds": 16.1, "win_probability": 0.1}, {"horse_number": 7, "win_odds": 143.2, "win_probability": 0.002}, {"horse_number": 8, "win_odds": 3.2, "win_probability": 0.25}, {"horse_number": 9, "win_odds": 39.0, "win_probability": 0.025}, {"horse_number": 10, "win_odds": 10.5, "win_probability": 0.07}, {"horse_number": 11, "win_odds": 6.6, "win_probability": 0.1}], "methods": {"general": {"horses": [{"horse_number": 1, "win_odds": 34.1, "win_probability": 0.018}, {"horse_number": 2, "win_odds": 15.5, "win_probability": 0.045}, {"horse_number": 3, "win_odds": 6.0, "win_probability": 0.13}, {"horse_number": 4, "win_odds": 11.0, "win_probability": 0.06}, {"horse_number": 5, "win_odds": 3.9, "win_probability": 0.2}, {"horse_number": 6, "win_odds": 16.1, "win_probability": 0.1}, {"horse_number": 7, "win_odds": 143.2, "win_probability": 0.002}, {"horse_number": 8, "win_odds": 3.2, "win_probability": 0.25}, {"horse_number": 9, "win_odds": 39.0, "win_probability": 0.025}, {"horse_number": 10, "win_odds": 10.5, "win_probability": 0.07}, {"horse_number": 11, "win_odds": 6.6, "win_probability": 0.1}], "quinella": {"available": false, "dutching": null, "pairs": [], "value": null}, "win": {"dutching": {"budget": 3000, "coverage_probability": 0.68, "evaluated_counts": [{"coverage_probability": 0.25, "eligible": false, "expected_return": 2400.0, "group_expected_value": 0.8, "horse_numbers": [8], "minimum_payout": 9600.0, "minimum_profit": 6600.0, "rejection_reasons": ["coverage_probability_below_threshold"], "selection_count": 1}, {"coverage_probability": 0.45, "eligible": true, "expected_return": 2372.0, "group_expected_value": 0.790667, "horse_numbers": [8, 5], "minimum_payout": 5120.0, "minimum_profit": 2120.0, "rejection_reasons": [], "selection_count": 2}, {"coverage_probability": 0.58, "eligible": true, "expected_return": 2366.0, "group_expected_value": 0.788667, "horse_numbers": [8, 5, 3], "minimum_payout": 3900.0, "minimum_profit": 900.0, "rejection_reasons": [], "selection_count": 3}, {"coverage_probability": 0.68, "eligible": true, "expected_return": 2611.0, "group_expected_value": 0.870333, "horse_numbers": [8, 5, 3, 6], "minimum_payout": 3520.0, "minimum_profit": 520.0, "rejection_reasons": [], "selection_count": 4}, {"coverage_probability": 0.78, "eligible": false, "expected_return": 2466.0, "group_expected_value": 0.822, "horse_numbers": [8, 5, 3, 6, 11], "minimum_payout": 3000.0, "minimum_profit": 0.0, "rejection_reasons": ["minimum_profit_not_positive"], "selection_count": 5}], "expected_return": 2611.0, "group_expected_value": 0.870333, "minimum_payout": 3520.0, "minimum_profit": 520.0, "selected_count": 4, "selections": [{"estimated_payout": 3520.0, "estimated_profit": 520.0, "horse_number": 8, "predicted_probability": 0.25, "stake": 1100, "win_odds": 3.2}, {"estimated_payout": 3900.0, "estimated_profit": 900.0, "horse_number": 5, "predicted_probability": 0.2, "stake": 1000, "win_odds": 3.9}, {"estimated_payout": 3600.0, "estimated_profit": 600.0, "horse_number": 3, "predicted_probability": 0.13, "stake": 600, "win_odds": 6.0}, {"estimated_payout": 4830.0, "estimated_profit": 1830.0, "horse_number": 6, "predicted_probability": 0.1, "stake": 300, "win_odds": 16.1}], "settings": {"max_selection_count": 5, "min_coverage_probability": 0.4, "min_group_expected_value": 0.0, "require_profit_if_hit": true}, "stake_unit": 100, "total_stake": 3000, "unused_budget": 0}, "value": {"budget": 3000, "selections": [], "settings": {"ev_threshold": 1.0, "kelly_fraction": 0.5}, "stake_unit": 100, "total_stake": 0, "unused_budget": 3000}}}}, "stake_unit": 100}</script>
     <script>
       const SIMULATION_EPSILON = 1e-12;
+      const uiLabels = {"budget": "\u4e88\u7b97", "calculation_details": "\u8a08\u7b97\u8a73\u7d30", "coverage_probability": "\u30ab\u30d0\u30fc\u78ba\u7387", "cumulative_profit": "\u7d2f\u8a08\u640d\u76ca", "estimated_payout_amount": "\u7684\u4e2d\u6642\u6255\u623b\u984d", "expected_value": "\u671f\u5f85\u5024", "expected_value_rank": "\u671f\u5f85\u5024\u9806\u4f4d", "expected_value_threshold": "\u671f\u5f85\u5024\u57fa\u6e96", "group_expected_value": "\u30b0\u30eb\u30fc\u30d7\u671f\u5f85\u5024", "hit_count": "\u7684\u4e2d", "max_pair_count": "\u6700\u5927\u5bfe\u8c61\u7d44\u6570", "max_selection_count": "\u6700\u5927\u5bfe\u8c61\u982d\u6570", "minimum_coverage_probability": "\u6700\u4f4e\u30ab\u30d0\u30fc\u78ba\u7387", "minimum_expected_value": "\u6700\u4f4e\u671f\u5f85\u5024", "minimum_group_expected_value": "\u6700\u4f4e\u30b0\u30eb\u30fc\u30d7\u671f\u5f85\u5024", "minimum_payout": "\u6700\u4f4e\u6255\u623b\u984d", "minimum_profit": "\u6700\u4f4e\u5229\u76ca", "minimum_profit_rate": "\u6700\u4f4e\u5229\u76ca\u7387", "payout_amount": "\u6255\u623b\u984d", "predicted_rank": "\u4e88\u60f3\u9806\u4f4d", "prediction_method_general": "\u7dcf\u5408AI\u4e88\u60f3", "prediction_method_statistical": "\u7d71\u8a08\u91cd\u8996\u4e88\u60f3", "profit": "\u640d\u76ca", "profit_rate": "\u640d\u76ca\u7387", "purchase_amount": "\u8cfc\u5165\u984d", "purchase_breakdown": "\u8cfc\u5165\u5185\u8a33", "purchase_count": "\u8cfc\u5165", "purchase_pair_count": "\u8cfc\u5165\u5bfe\u8c61\u7d44\u6570", "purchase_result": "\u8cfc\u5165\u7d50\u679c", "purchase_selection_count": "\u8cfc\u5165\u5bfe\u8c61\u982d\u6570", "quinella_probability": "\u99ac\u9023\u7684\u4e2d\u78ba\u7387", "rank_top1": "\u4e88\u60f31\u4f4d", "rank_top3": "\u4e88\u60f33\u4f4d\u4ee5\u5185", "rank_top5": "\u4e88\u60f35\u4f4d\u4ee5\u5185", "refund_amount": "\u8fd4\u9084\u984d", "return_amount": "\u56de\u53ce\u984d", "return_rate": "\u56de\u53ce\u7387", "settings_conditions": "\u8a2d\u5b9a\u6761\u4ef6", "simulation_method_dutching": "\u4e88\u7b97\u914d\u5206\u65b9\u5f0f", "simulation_method_value": "\u671f\u5f85\u5024\u91cd\u8996\u65b9\u5f0f", "status_cancelled": "\u958b\u50ac\u4e2d\u6b62", "status_general": "\u7dcf\u5408AI\u4e88\u60f3\u516c\u958b", "status_result": "\u7d50\u679c\u516c\u958b", "status_statistical": "\u7d71\u8a08\u91cd\u8996\u4e88\u60f3\u516c\u958b", "total_purchase_amount": "\u5408\u8a08\u8cfc\u5165\u984d", "unused_budget": "\u672a\u4f7f\u7528\u4e88\u7b97", "win_probability": "1\u7740\u78ba\u7387"};
 
       function roundSimulationValue(value) {
         const scaled = value * 1000000;
@@ -1520,11 +1521,11 @@
 
       function valueNoPurchaseReason(details, stakeUnit, kellyFraction) {
         if (!details.length) {
-          return "オッズまたは予測確率を算出できる馬がありません。";
+          return `オッズまたは${uiLabels.win_probability}を算出できる馬がありません。`;
         }
         const aboveThreshold = details.filter((item) => item.meets_threshold);
         if (!aboveThreshold.length) {
-          return "最低EVを満たす馬がありません。";
+          return `${uiLabels.minimum_expected_value}を満たす馬がありません。`;
         }
         if (aboveThreshold.some((item) => item.eligible && item.stake < stakeUnit)) {
           return `現在の予算では全候補の購入額が${stakeUnit}円未満です。`;
@@ -1721,7 +1722,7 @@
         const rejectionReasonText = (reasons) => reasons.length
           ? reasons.map((reason) => {
               const label = data.display.rejection_reason_labels[reason] || data.display.unknown_rejection_reason_label;
-              return activeTicket === "quinella" ? label.replaceAll("頭数", "組数") : label;
+              return activeTicket === "quinella" ? label.replaceAll(uiLabels.max_selection_count, uiLabels.max_pair_count).replaceAll(uiLabels.purchase_selection_count, uiLabels.purchase_pair_count) : label;
             }).join("、")
           : "-";
         const form = document.getElementById("custom-simulator-form");
@@ -1758,16 +1759,16 @@
           const enteredBudget = Number(form.elements.budget.value);
           const stakeUnit = Number(data.stake_unit);
           if (!Number.isInteger(enteredBudget) || enteredBudget <= 0) {
-            return "予算は正の整数で入力してください。";
+            return `${uiLabels.budget}は正の整数で入力してください。`;
           }
           if (Math.floor(enteredBudget / stakeUnit) * stakeUnit < stakeUnit) {
-            return `予算は購入単位の${stakeUnit}円以上にしてください。`;
+            return `${uiLabels.budget}は購入単位の${stakeUnit}円以上にしてください。`;
           }
           if (form.elements.method.value === "value") {
             const evThreshold = parseMinimumEv(form.elements.ev_threshold.value);
             const kellyFraction = Number(form.elements.kelly_fraction.value);
             if (evThreshold === null) {
-              return "最低EVは0以上で入力してください。";
+              return `${uiLabels.minimum_expected_value}は0以上で入力してください。`;
             }
             if (!Number.isFinite(kellyFraction) || kellyFraction < 0 || kellyFraction > 1) {
               return "Kelly係数は0以上1以下で入力してください。";
@@ -1780,16 +1781,16 @@
             const profitRate = Number(profitRateText);
             const fixedCount = Number(form.elements.fixed_selection_count.value);
             if (!Number.isInteger(maxCount) || maxCount < 1 || (activeTicket === "win" && maxCount > activeHorses().length)) {
-              return activeTicket === "quinella" ? "最大対象組数は正の整数で入力してください。" : "最大対象頭数を出走頭数以内の正の整数で入力してください。";
+              return activeTicket === "quinella" ? `${uiLabels.max_pair_count}は正の整数で入力してください。` : `${uiLabels.max_selection_count}を出走頭数以内の正の整数で入力してください。`;
             }
             if (!Number.isFinite(coverage) || coverage < 0 || coverage > 1) {
-              return "最低カバー確率は0以上1以下で入力してください。";
+              return `${uiLabels.minimum_coverage_probability}は0以上1以下で入力してください。`;
             }
             if (!Number.isFinite(groupEv) || groupEv < 0) {
-              return "最低グループ期待値は0以上で入力してください。";
+              return `${uiLabels.minimum_group_expected_value}は0以上で入力してください。`;
             }
             if (!profitRateText || !Number.isFinite(profitRate) || profitRate < 0) {
-              return "最低利益率は0以上で入力してください。";
+              return `${uiLabels.minimum_profit_rate}は0以上で入力してください。`;
             }
             if (!Number.isInteger(fixedCount) || fixedCount < 0 || fixedCount > maxCount || fixedCount > activeHorses().length) {
               return "手動指定数は対象数以内の整数で入力してください。";
@@ -1877,7 +1878,7 @@
             const details = activeTicket === "quinella" ? [] : calculateValueDetails(activeHorses(), budget, stakeUnit, settings);
             result = activeTicket === "quinella" ? calculateQuinellaSimulation(activeHorses(), budget, stakeUnit, settings, "value") : valueSimulationResult(details, budget, stakeUnit, settings);
             noPurchaseReason = valueNoPurchaseReason(details, stakeUnit, settings.kelly_fraction);
-            if (activeTicket === "quinella") noPurchaseReason = "最低EVとKelly基準を満たす購入単位以上の候補がありません。";
+            if (activeTicket === "quinella") noPurchaseReason = `${uiLabels.minimum_expected_value}とKelly基準を満たす購入単位以上の候補がありません。`;
             renderValue(result);
           } else {
             const settings = {
@@ -1891,7 +1892,7 @@
             renderDutching(result);
           }
 
-          document.getElementById("custom-simulator-method").textContent = method === "value" ? "期待値重視方式" : (activeTicket === "quinella" ? "馬連分配方式" : "単勝分配方式");
+          document.getElementById("custom-simulator-method").textContent = method === "value" ? uiLabels.simulation_method_value : uiLabels.simulation_method_dutching;
           document.getElementById("custom-simulator-budget").textContent = `${yen.format(result.budget)}円`;
           document.getElementById("custom-simulator-total").textContent = `${yen.format(result.total_stake)}円`;
           document.getElementById("custom-simulator-unused").textContent = `${yen.format(result.unused_budget)}円`;
@@ -1925,15 +1926,15 @@
           form.elements.max_selection_count.max = String(Math.max(count, Number(form.elements.max_selection_count.value)));
           form.elements.fixed_selection_count.replaceChildren(new Option("自動選択", "0"));
           for (let i = 1; i <= count; i += 1) form.elements.fixed_selection_count.add(new Option(`${i}${pairMode ? "組" : "頭"}`, String(i)));
-          form.elements.method.querySelector('option[value="dutching"]').textContent = pairMode ? "馬連分配方式" : "単勝分配方式";
+          form.elements.method.querySelector('option[value="dutching"]').textContent = uiLabels.simulation_method_dutching;
           root.querySelectorAll("th, label, h3, strong").forEach((element) => {
             if (element.children.length) return;
             element.dataset.winLabel ??= element.textContent;
             const original = element.dataset.winLabel;
-            element.textContent = pairMode ? original.replaceAll("頭数", "組数").replaceAll("馬番", "馬番ペア").replaceAll("予測勝率", "馬連的中確率").replaceAll("単勝オッズ", "馬連オッズ") : original;
+            element.textContent = pairMode ? original.replaceAll(uiLabels.max_selection_count, uiLabels.max_pair_count).replaceAll(uiLabels.purchase_selection_count, uiLabels.purchase_pair_count).replaceAll("馬番", "馬番ペア").replaceAll(uiLabels.win_probability, uiLabels.quinella_probability).replaceAll("単勝オッズ", "馬連オッズ") : original;
           });
           root.querySelectorAll('[data-count-label]').forEach((element) => {
-            element.textContent = pairMode ? element.dataset.countLabel.replaceAll('頭数', '組数') : element.dataset.countLabel;
+            element.textContent = pairMode ? element.dataset.countLabel.replaceAll(uiLabels.max_selection_count, uiLabels.max_pair_count).replaceAll(uiLabels.purchase_selection_count, uiLabels.purchase_pair_count) : element.dataset.countLabel;
           });
           root.querySelectorAll('[data-term-key]').forEach((element) => {
             const trigger = element.querySelector('.tooltip-trigger');

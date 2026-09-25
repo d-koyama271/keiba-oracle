@@ -9,7 +9,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>シリウスS AI予想 | keiba-oracle</title>
-  <meta name="description" content="シリウスSのAI予想。各馬の1着確率、予想理由、単勝分配方式と期待値重視方式による購入シミュレーションを掲載します。">
+  <meta name="description" content="シリウスSのAI予想。各馬の1着確率、予想理由、予算配分方式と期待値重視方式による購入シミュレーションを掲載します。">
   <style>
     :root {
       color-scheme: light;
@@ -619,7 +619,7 @@
     <div class="panel">
       <div class="page-badges">
         <span class="ai-badge">gpt-6-sol</span>
-        <span class="status status-pending">前日予想公開</span>
+        <span class="status status-pending">統計重視予想公開</span>
       </div>
       <h1>阪神 11R シリウスS <span class="race-grade race-grade-g3">G3</span></h1>
       <h2>レース基本情報</h2>
@@ -907,9 +907,9 @@
 </div>
       <div id="purchase-statistical-win" data-ticket-panel="win" role="tabpanel">
     <div class="panel simulation-panel">
-      <h3><span class="term-with-tooltip"><span>単勝分配方式</span><span class="term-tooltip" data-term-key="dutching_method">
-  <button type="button" class="tooltip-trigger" aria-label="単勝分配方式: 予測1着確率の上位から1頭〜最大対象頭数までを候補として評価し、予算を的中時の払戻額が近くなるよう配分します。最低カバー確率・最低グループ期待値・最低利益率を満たす候補の中から、グループ期待値を優先して採用する方式です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">予測1着確率の上位から1頭〜最大対象頭数までを候補として評価し、予算を的中時の払戻額が近くなるよう配分します。最低カバー確率・最低グループ期待値・最低利益率を満たす候補の中から、グループ期待値を優先して採用する方式です。</span>
+      <h3><span class="term-with-tooltip"><span>予算配分方式</span><span class="term-tooltip" data-term-key="dutching_method">
+  <button type="button" class="tooltip-trigger" aria-label="予算配分方式: 1着確率の上位から1頭〜最大対象頭数までを候補として評価し、予算を的中時の払戻額が近くなるよう配分します。最低カバー確率・最低グループ期待値・最低利益率を満たす候補の中から、グループ期待値を優先して採用する方式です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">1着確率の上位から1頭〜最大対象頭数までを候補として評価し、予算を的中時の払戻額が近くなるよう配分します。最低カバー確率・最低グループ期待値・最低利益率を満たす候補の中から、グループ期待値を優先して採用する方式です。</span>
 </span></span></h3>
       <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
       
@@ -919,8 +919,8 @@
 
     <div class="panel simulation-panel value-simulation-panel">
       <h3><span class="term-with-tooltip"><span>期待値重視方式</span><span class="term-tooltip" data-term-key="value_method">
-  <button type="button" class="tooltip-trigger" aria-label="期待値重視方式: AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
-  <span class="tooltip-content" role="tooltip">AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。</span>
+  <button type="button" class="tooltip-trigger" aria-label="期待値重視方式: AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低期待値を満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低期待値を満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。</span>
 </span></span></h3>
       
       <p>このレースでは統計重視予想の購入シミュレーションは記録されていません。</p>
@@ -928,7 +928,7 @@
     </div>
       </div>
       <div id="purchase-statistical-quinella" data-ticket-panel="quinella" role="tabpanel" hidden>
-        
+      
 <p class="small">馬連的中確率は各馬の1着確率から算出した、同着を考慮しない近似値です。</p>
 
 <p class="quinella-unavailable">馬連は計算できません。発走前の完全なオッズ・確率データが記録されていません。</p>

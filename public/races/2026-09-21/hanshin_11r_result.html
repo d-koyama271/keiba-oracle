@@ -691,7 +691,7 @@
   </button>
 </th><th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
-    予測順位 <span class="sort-indicator" aria-hidden="true">↕</span>
+    予想順位 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="ascending">
@@ -707,7 +707,7 @@
   </button>
 </th><th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="8" data-sort-type="number" data-sort-first="descending">
-    単勝払戻 <span class="sort-indicator" aria-hidden="true">↕</span>
+    払戻額 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th></tr></thead>
               <tbody>
@@ -854,18 +854,18 @@
         <div class="panel result-panel">
           <h3>総合AI予想の予測評価</h3>
           <div class="metric-grid">
-            <div><strong>勝ち馬の予測順位</strong><br>1位</div>
-            <div><strong>勝ち馬の予測確率</strong><br>58.00%</div>
-            <div><strong>Top1</strong><br>的中</div>
-            <div><strong>Top3</strong><br>的中</div>
-            <div><strong>Top5</strong><br>的中</div>
+            <div><strong>勝ち馬の予想順位</strong><br>1位</div>
+            <div><strong>勝ち馬の1着確率</strong><br>58.00%</div>
+            <div><strong>予想1位</strong><br>的中</div>
+            <div><strong>予想3位以内</strong><br>的中</div>
+            <div><strong>予想5位以内</strong><br>的中</div>
             <div><strong>Log Loss</strong><br>0.544727</div>
             <div><strong>Brier Score</strong><br>0.018236</div>
           </div>
           
           
           <h4>市場ベースライン比較</h4>
-          <p>市場の勝ち馬確率 55.93% / 順位 1位</p>
+          <p>市場の1着確率 55.93% / 予想順位 1位</p>
           <p>Log Loss差 -0.036430 / Brier Score差 -0.001826</p>
           
           
@@ -881,9 +881,9 @@
 
         
         <div class="panel result-panel">
-          <h3 class="result-comparison-title"><span>単勝分配方式のシミュレーション結果</span><span class="hit-badge">的中!</span></h3>
+          <h3 class="result-comparison-title"><span>予算配分方式のシミュレーション結果</span><span class="hit-badge">的中!</span></h3>
           
-          <p><strong>投資:</strong> 3000円 / <strong>回収:</strong> 3780円 / <strong>損益:</strong> 780円 / <strong>ROI:</strong> 26.00%</p>
+          <p><strong>購入額:</strong> 3000円 / <strong>回収額:</strong> 3780円 / <strong>損益:</strong> 780円 / <strong>損益率:</strong> 26.00%</p>
           <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">1</td><td class="nowrap">2700円</td><td class="nowrap">1.4</td><td class="nowrap">的中</td><td class="nowrap">3780円</td></tr><tr><td class="nowrap">4</td><td class="nowrap">300円</td><td class="nowrap">9.6</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
           
         </div>
@@ -893,7 +893,7 @@
         <div class="panel result-panel">
           <h3 class="result-comparison-title"><span>期待値重視方式のシミュレーション結果</span></h3>
           
-          <p><strong>購入なし</strong></p><p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
+          <p><strong>購入なし</strong></p><p><strong>購入額:</strong> 0円 / <strong>回収額:</strong> 0円 / <strong>損益:</strong> 0円</p>
           
         </div>
         
@@ -906,18 +906,18 @@
 
 
 <div class="panel result-panel" data-quinella-method="dutching">
-  <h3 class="result-comparison-title"><span>馬連分配方式のシミュレーション結果</span><span class="hit-badge">的中!</span></h3>
+  <h3 class="result-comparison-title"><span>予算配分方式のシミュレーション結果</span><span class="hit-badge">的中!</span></h3>
   
     
     <div class="metric-grid">
-      <div><strong>当初購入額</strong><br>3000円</div>
+      <div><strong>合計購入額</strong><br>3000円</div>
       <div><strong>返還額</strong><br>0円</div>
       <div><strong>回収額（返還含む）</strong><br>6490円</div>
       <div><strong>損益</strong><br>3490円</div>
-      <div><strong>ROI（損益率）</strong><br>116.33%</div>
+      <div><strong>損益率</strong><br>116.33%</div>
     </div>
     
-    <div class="table-scroll"><table class="simulation-table"><thead><tr><th>馬番ペア</th><th>購入額</th><th>判定</th><th>的中払戻</th><th>返還額</th><th>回収額</th></tr></thead><tbody>
+    <div class="table-scroll"><table class="simulation-table"><thead><tr><th>馬番ペア</th><th>購入額</th><th>判定</th><th>払戻額</th><th>返還額</th><th>回収額</th></tr></thead><tbody>
       <tr><td class="nowrap">1-4</td><td class="nowrap">1100円</td><td class="nowrap">的中</td><td class="nowrap">6490円</td><td class="nowrap">0円</td><td class="nowrap">6490円</td></tr><tr><td class="nowrap">1-7</td><td class="nowrap">1000円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">1-3</td><td class="nowrap">900円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr>
     </tbody></table></div>
     
@@ -932,11 +932,11 @@
   
     
     <div class="metric-grid">
-      <div><strong>当初購入額</strong><br>0円</div>
+      <div><strong>合計購入額</strong><br>0円</div>
       <div><strong>返還額</strong><br>0円</div>
       <div><strong>回収額（返還含む）</strong><br>0円</div>
       <div><strong>損益</strong><br>0円</div>
-      <div><strong>ROI（損益率）</strong><br>0.00%</div>
+      <div><strong>損益率</strong><br>0.00%</div>
     </div>
     <p>購入なし</p>
     
@@ -979,7 +979,7 @@
   </button>
 </th><th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
-    予測順位 <span class="sort-indicator" aria-hidden="true">↕</span>
+    予想順位 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="ascending">
@@ -995,7 +995,7 @@
   </button>
 </th><th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="8" data-sort-type="number" data-sort-first="descending">
-    単勝払戻 <span class="sort-indicator" aria-hidden="true">↕</span>
+    払戻額 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th></tr></thead>
               <tbody>
@@ -1142,18 +1142,18 @@
         <div class="panel result-panel">
           <h3>統計重視予想の予測評価</h3>
           <div class="metric-grid">
-            <div><strong>勝ち馬の予測順位</strong><br>1位</div>
-            <div><strong>勝ち馬の予測確率</strong><br>55.00%</div>
-            <div><strong>Top1</strong><br>的中</div>
-            <div><strong>Top3</strong><br>的中</div>
-            <div><strong>Top5</strong><br>的中</div>
+            <div><strong>勝ち馬の予想順位</strong><br>1位</div>
+            <div><strong>勝ち馬の1着確率</strong><br>55.00%</div>
+            <div><strong>予想1位</strong><br>的中</div>
+            <div><strong>予想3位以内</strong><br>的中</div>
+            <div><strong>予想5位以内</strong><br>的中</div>
             <div><strong>Log Loss</strong><br>0.597837</div>
             <div><strong>Brier Score</strong><br>0.021076</div>
           </div>
           <p class="small">市場情報は予想には使用せず、結果評価の比較基準としてのみ使用しています。</p>
           
           <h4>市場ベースライン比較</h4>
-          <p>市場の勝ち馬確率 55.93% / 順位 1位</p>
+          <p>市場の1着確率 55.93% / 予想順位 1位</p>
           <p>Log Loss差 +0.016680 / Brier Score差 +0.001014</p>
           
           
@@ -1169,9 +1169,9 @@
 
         
         <div class="panel result-panel">
-          <h3 class="result-comparison-title"><span>単勝分配方式のシミュレーション結果</span><span class="hit-badge">的中!</span></h3>
+          <h3 class="result-comparison-title"><span>予算配分方式のシミュレーション結果</span><span class="hit-badge">的中!</span></h3>
           
-          <p><strong>投資:</strong> 3000円 / <strong>回収:</strong> 3780円 / <strong>損益:</strong> 780円 / <strong>ROI:</strong> 26.00%</p>
+          <p><strong>購入額:</strong> 3000円 / <strong>回収額:</strong> 3780円 / <strong>損益:</strong> 780円 / <strong>損益率:</strong> 26.00%</p>
           <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">1</td><td class="nowrap">2700円</td><td class="nowrap">1.4</td><td class="nowrap">的中</td><td class="nowrap">3780円</td></tr><tr><td class="nowrap">4</td><td class="nowrap">300円</td><td class="nowrap">9.6</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
           
         </div>
@@ -1181,7 +1181,7 @@
         <div class="panel result-panel">
           <h3 class="result-comparison-title"><span>期待値重視方式のシミュレーション結果</span></h3>
           
-          <p><strong>購入なし</strong></p><p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
+          <p><strong>購入なし</strong></p><p><strong>購入額:</strong> 0円 / <strong>回収額:</strong> 0円 / <strong>損益:</strong> 0円</p>
           
         </div>
         
@@ -1194,18 +1194,18 @@
 
 
 <div class="panel result-panel" data-quinella-method="dutching">
-  <h3 class="result-comparison-title"><span>馬連分配方式のシミュレーション結果</span><span class="hit-badge">的中!</span></h3>
+  <h3 class="result-comparison-title"><span>予算配分方式のシミュレーション結果</span><span class="hit-badge">的中!</span></h3>
   
     
     <div class="metric-grid">
-      <div><strong>当初購入額</strong><br>3000円</div>
+      <div><strong>合計購入額</strong><br>3000円</div>
       <div><strong>返還額</strong><br>0円</div>
       <div><strong>回収額（返還含む）</strong><br>7670円</div>
       <div><strong>損益</strong><br>4670円</div>
-      <div><strong>ROI（損益率）</strong><br>155.67%</div>
+      <div><strong>損益率</strong><br>155.67%</div>
     </div>
     
-    <div class="table-scroll"><table class="simulation-table"><thead><tr><th>馬番ペア</th><th>購入額</th><th>判定</th><th>的中払戻</th><th>返還額</th><th>回収額</th></tr></thead><tbody>
+    <div class="table-scroll"><table class="simulation-table"><thead><tr><th>馬番ペア</th><th>購入額</th><th>判定</th><th>払戻額</th><th>返還額</th><th>回収額</th></tr></thead><tbody>
       <tr><td class="nowrap">1-4</td><td class="nowrap">1300円</td><td class="nowrap">的中</td><td class="nowrap">7670円</td><td class="nowrap">0円</td><td class="nowrap">7670円</td></tr><tr><td class="nowrap">1-7</td><td class="nowrap">1200円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">1-10</td><td class="nowrap">500円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr>
     </tbody></table></div>
     
@@ -1220,11 +1220,11 @@
   
     
     <div class="metric-grid">
-      <div><strong>当初購入額</strong><br>0円</div>
+      <div><strong>合計購入額</strong><br>0円</div>
       <div><strong>返還額</strong><br>0円</div>
       <div><strong>回収額（返還含む）</strong><br>0円</div>
       <div><strong>損益</strong><br>0円</div>
-      <div><strong>ROI（損益率）</strong><br>0.00%</div>
+      <div><strong>損益率</strong><br>0.00%</div>
     </div>
     <p>購入なし</p>
     

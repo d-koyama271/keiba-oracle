@@ -683,7 +683,7 @@
   </button>
 </th><th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
-    予測順位 <span class="sort-indicator" aria-hidden="true">↕</span>
+    予想順位 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th><th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="ascending">
@@ -699,7 +699,7 @@
   </button>
 </th><th class="nowrap" aria-sort="none">
   <button type="button" class="sort-button" data-sort-column="8" data-sort-type="number" data-sort-first="descending">
-    単勝払戻 <span class="sort-indicator" aria-hidden="true">↕</span>
+    払戻額 <span class="sort-indicator" aria-hidden="true">↕</span>
   </button>
 </th></tr></thead>
               <tbody>
@@ -906,18 +906,18 @@
         <div class="panel result-panel">
           <h3>総合AI予想の予測評価</h3>
           <div class="metric-grid">
-            <div><strong>勝ち馬の予測順位</strong><br>3位</div>
-            <div><strong>勝ち馬の予測確率</strong><br>12.96%</div>
-            <div><strong>Top1</strong><br>不的中</div>
-            <div><strong>Top3</strong><br>的中</div>
-            <div><strong>Top5</strong><br>的中</div>
+            <div><strong>勝ち馬の予想順位</strong><br>3位</div>
+            <div><strong>勝ち馬の1着確率</strong><br>12.96%</div>
+            <div><strong>予想1位</strong><br>不的中</div>
+            <div><strong>予想3位以内</strong><br>的中</div>
+            <div><strong>予想5位以内</strong><br>的中</div>
             <div><strong>Log Loss</strong><br>2.043333</div>
             <div><strong>Brier Score</strong><br>0.052615</div>
           </div>
           
           
           <h4>市場ベースライン比較</h4>
-          <p>市場の勝ち馬確率 15.91% / 順位 2位</p>
+          <p>市場の1着確率 15.91% / 予想順位 2位</p>
           <p>Log Loss差 +0.205295 / Brier Score差 +0.003447</p>
           <p class="notice">市場比較には発走後に記録されたオッズを使用しているため、正式な発走前性能比較ではありません。</p>
           
@@ -933,9 +933,9 @@
 
         
         <div class="panel result-panel">
-          <h3 class="result-comparison-title"><span>単勝分配方式のシミュレーション結果</span><span class="hit-badge">的中!</span></h3>
+          <h3 class="result-comparison-title"><span>予算配分方式のシミュレーション結果</span><span class="hit-badge">的中!</span></h3>
           
-          <p><strong>投資:</strong> 3000円 / <strong>回収:</strong> 4000円 / <strong>損益:</strong> 1000円 / <strong>ROI:</strong> 33.33%</p>
+          <p><strong>購入額:</strong> 3000円 / <strong>回収額:</strong> 4000円 / <strong>損益:</strong> 1000円 / <strong>損益率:</strong> 33.33%</p>
           <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">4</td><td class="nowrap">900円</td><td class="nowrap">4.7</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">16</td><td class="nowrap">700円</td><td class="nowrap">6.4</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">11</td><td class="nowrap">800円</td><td class="nowrap">5.0</td><td class="nowrap">的中</td><td class="nowrap">4000円</td></tr><tr><td class="nowrap">13</td><td class="nowrap">600円</td><td class="nowrap">6.9</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
           
         </div>
@@ -945,7 +945,7 @@
         <div class="panel result-panel">
           <h3 class="result-comparison-title"><span>期待値重視方式のシミュレーション結果</span></h3>
           
-          <p><strong>購入なし</strong></p><p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
+          <p><strong>購入なし</strong></p><p><strong>購入額:</strong> 0円 / <strong>回収額:</strong> 0円 / <strong>損益:</strong> 0円</p>
           
         </div>
         
