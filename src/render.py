@@ -13,6 +13,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from evaluation_summary import load_evaluation_summary
 from publish import restore_public_backup
 from simulate import calculate_value_details, minimum_budget_for_value_stake, round_ratio
+from ui_labels import UI_LABELS
 from utils import (
     calculate_phase_times,
     STATISTICAL_PREDICTION_METHOD,
@@ -37,10 +38,10 @@ from utils import (
 
 
 STATUS_LABELS = {
-    "statistical_published": "前日予想公開",
-    "general_published": "直前予想公開",
-    "cancelled": "開催中止",
-    "result_published": "結果公開",
+    "statistical_published": UI_LABELS["status_statistical"],
+    "general_published": UI_LABELS["status_general"],
+    "cancelled": UI_LABELS["status_cancelled"],
+    "result_published": UI_LABELS["status_result"],
 }
 STATUS_CLASSES = {
     "statistical_published": "status-pending",
@@ -62,61 +63,61 @@ STATUS_COLORS = {
 SITE_BACKGROUND = "#f2f2f0"
 
 PREDICTION_METHOD_LABELS = {
-    GENERAL_PREDICTION_METHOD: "総合AI予想",
-    STATISTICAL_PREDICTION_METHOD: "統計重視予想",
+    GENERAL_PREDICTION_METHOD: UI_LABELS["prediction_method_general"],
+    STATISTICAL_PREDICTION_METHOD: UI_LABELS["prediction_method_statistical"],
 }
 PREDICTION_METHOD_DESCRIPTIONS = {
-    GENERAL_PREDICTION_METHOD: "過去成績や今回のレース条件、市場評価などを総合して1着確率を推定しています。",
-    STATISTICAL_PREDICTION_METHOD: "市場情報を使用せず、過去成績や今回のレース条件などの客観データから1着確率を推定しています。",
+    GENERAL_PREDICTION_METHOD: f"過去成績や今回のレース条件、市場評価などを総合して{UI_LABELS['win_probability']}を推定しています。",
+    STATISTICAL_PREDICTION_METHOD: f"市場情報を使用せず、過去成績や今回のレース条件などの客観データから{UI_LABELS['win_probability']}を推定しています。",
 }
 
 TOOLTIPS = {
-    "dutching_method": "予測1着確率の上位から1頭〜最大対象頭数までを候補として評価し、予算を的中時の払戻額が近くなるよう配分します。最低カバー確率・最低グループ期待値・最低利益率を満たす候補の中から、グループ期待値を優先して採用する方式です。",
-    "value_method": "AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低EVを満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。",
-    "min_coverage_probability": "購入候補として採用するために必要な、選択馬の1着確率合計の最低値です。",
-    "coverage_probability": "実際に採用された選択馬の1着確率を合計した値です。",
-    "min_group_expected_value": "購入候補として採用するために必要な、グループ期待値の最低値です。",
-    "group_expected_value": "選択馬それぞれの予測確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。",
-    "minimum_ev": "1着確率と単勝オッズから計算した期待値について、購入対象とする最低ラインです。1.0が損益分岐の目安です。1.0未満も入力できますが、Kelly基準で購入割合が0以下になる馬には購入額を割り当てません。",
-    "kelly_fraction": "Kelly基準は、予測確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。",
-    "ev": "1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。",
-    "full_kelly": "予測確率と単勝オッズからKelly基準で算出した、予算に対する購入割合です。",
+    "dutching_method": f"{UI_LABELS['win_probability']}の上位から1頭〜{UI_LABELS['max_selection_count']}までを候補として評価し、{UI_LABELS['budget']}を的中時の払戻額が近くなるよう配分します。{UI_LABELS['minimum_coverage_probability']}・{UI_LABELS['minimum_group_expected_value']}・{UI_LABELS['minimum_profit_rate']}を満たす候補の中から、{UI_LABELS['group_expected_value']}を優先して採用する方式です。",
+    "value_method": f"AIが推定した{UI_LABELS['win_probability']}と単勝オッズから各馬の{UI_LABELS['expected_value']}を計算し、{UI_LABELS['minimum_expected_value']}を満たす馬についてKelly基準で{UI_LABELS['budget']}に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。",
+    "min_coverage_probability": f"購入候補として採用するために必要な、選択馬の{UI_LABELS['win_probability']}合計の最低値です。",
+    "coverage_probability": f"実際に採用された選択馬の{UI_LABELS['win_probability']}を合計した値です。",
+    "min_group_expected_value": f"購入候補として採用するために必要な、{UI_LABELS['minimum_group_expected_value']}です。",
+    "group_expected_value": f"選択馬それぞれの{UI_LABELS['win_probability']}と的中時払戻額から求めた期待払戻額を、{UI_LABELS['total_purchase_amount']}で割った値です。1.0が損益分岐の目安です。",
+    "minimum_ev": f"{UI_LABELS['win_probability']}と単勝オッズから計算した{UI_LABELS['expected_value']}について、購入対象とする最低ラインです。1.0が損益分岐の目安です。1.0未満も入力できますが、Kelly基準で購入割合が0以下になる馬には{UI_LABELS['purchase_amount']}を割り当てません。",
+    "kelly_fraction": f"Kelly基準は、{UI_LABELS['win_probability']}とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。",
+    "ev": f"{UI_LABELS['win_probability']}×単勝オッズで計算する{UI_LABELS['expected_value']}です。1.0が損益分岐の目安です。",
+    "full_kelly": f"{UI_LABELS['win_probability']}と単勝オッズからKelly基準で算出した、{UI_LABELS['budget']}に対する購入割合です。",
     "fractional_kelly": "Full KellyにKelly係数を掛けて抑制した購入割合です。係数0.5ならハーフケリーとなります。",
     "applied_kelly": "Full KellyへKelly係数を掛けた、実際のシミュレーションで使用する購入割合です。",
     "theoretical_stake": "現在の予算に適用Kellyを掛けた、購入単位へ丸める前の購入額です。",
     "minimum_budget": "現在の設定条件で、購入額が初めて1購入単位以上になる予算です。",
-    "minimum_payout": "選択した馬のうち、最も払戻額が低い馬が的中した場合の払戻額です。",
-    "min_profit_rate": "最も払戻額が低い選択馬が的中した場合でも確保したい、合計購入額に対する最低利益率です。",
-    "minimum_profit": "選択馬のうち最も払戻額が低い馬が的中した場合の利益です。最低払戻額から合計購入額を引いて計算します。",
-    "expected_return": "各馬の予測確率を考慮した、平均的な払戻見込み額です。",
+    "minimum_payout": f"選択した馬のうち、最も払戻額が低い馬が的中した場合の{UI_LABELS['payout_amount']}です。",
+    "min_profit_rate": f"最も払戻額が低い選択馬が的中した場合でも確保したい、{UI_LABELS['total_purchase_amount']}に対する{UI_LABELS['minimum_profit_rate']}です。",
+    "minimum_profit": f"選択馬のうち最も払戻額が低い馬が的中した場合の{UI_LABELS['minimum_profit']}です。最低払戻額から{UI_LABELS['total_purchase_amount']}を引いて計算します。",
+    "expected_return": f"各馬の{UI_LABELS['win_probability']}を考慮した、平均的な払戻見込み額です。",
 }
 
 QUINELLA_TOOLTIPS = {
-    "dutching_method": "馬連的中確率の上位から1組〜最大対象組数までを候補として評価し、予算を的中時の払戻額が近くなるよう配分します。最低カバー確率・最低グループ期待値・最低利益率を満たす候補の中から、グループ期待値を優先して採用する方式です。",
-    "max_selection_count": "馬連分配方式で購入候補として検討する組数の上限です。",
-    "selection_count": "設定条件を満たして実際の購入対象として採用された組数です。",
-    "min_coverage_probability": "購入候補として採用するために必要な、選択組の馬連的中確率合計の最低値です。",
-    "coverage_probability": "実際に採用された選択組の馬連的中確率を合計した値です。",
-    "min_group_expected_value": "購入候補として採用するために必要な、グループ期待値の最低値です。",
-    "group_expected_value": "選択組それぞれの馬連的中確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。",
-    "min_profit_rate": "最も払戻額が低い選択組が的中した場合でも確保したい、合計購入額に対する最低利益率です。",
-    "minimum_ev": "馬連的中確率と馬連オッズから計算した期待値の最低ラインです。Kelly割合が0以下の組には購入額を割り当てません。",
+    "dutching_method": f"{UI_LABELS['quinella_probability']}の上位から1組〜{UI_LABELS['max_pair_count']}までを候補として評価し、{UI_LABELS['budget']}を的中時の払戻額が近くなるよう配分します。{UI_LABELS['minimum_coverage_probability']}・{UI_LABELS['minimum_group_expected_value']}・{UI_LABELS['minimum_profit_rate']}を満たす候補の中から、{UI_LABELS['group_expected_value']}を優先して採用する方式です。",
+    "max_selection_count": f"{UI_LABELS['max_pair_count']}は馬連の購入候補として検討する組数の上限です。",
+    "selection_count": f"{UI_LABELS['settings_conditions']}を満たして実際の{UI_LABELS['purchase_pair_count']}として採用された組数です。",
+    "min_coverage_probability": f"購入候補として採用するために必要な、選択組の{UI_LABELS['quinella_probability']}合計の最低値です。",
+    "coverage_probability": f"実際に採用された選択組の{UI_LABELS['quinella_probability']}を合計した値です。",
+    "min_group_expected_value": f"購入候補として採用するために必要な、{UI_LABELS['minimum_group_expected_value']}です。",
+    "group_expected_value": f"選択組それぞれの{UI_LABELS['quinella_probability']}と的中時払戻額から求めた期待払戻額を、{UI_LABELS['total_purchase_amount']}で割った値です。1.0が損益分岐の目安です。",
+    "min_profit_rate": f"最も払戻額が低い選択組が的中した場合でも確保したい、{UI_LABELS['total_purchase_amount']}に対する{UI_LABELS['minimum_profit_rate']}です。",
+    "minimum_ev": f"{UI_LABELS['quinella_probability']}と馬連オッズから計算した{UI_LABELS['expected_value']}の最低ラインです。Kelly割合が0以下の組には{UI_LABELS['purchase_amount']}を割り当てません。",
     "kelly_fraction": "Kelly基準で算出した購入割合を実際に何割使うかを示す係数です。0.5なら算出額の半分を使用します。",
-    "ev": "馬連的中確率×馬連オッズで計算する期待値です。1.0が損益分岐の目安です。",
+    "ev": f"{UI_LABELS['quinella_probability']}×馬連オッズで計算する{UI_LABELS['expected_value']}です。1.0が損益分岐の目安です。",
     "full_kelly": "馬連的中確率と馬連オッズからKelly基準で算出した、予算に対する購入割合です。",
     "fractional_kelly": "Full KellyにKelly係数を掛けて抑制した購入割合です。",
     "applied_kelly": "Full KellyにKelly係数を掛けた、実際のシミュレーションで使用する購入割合です。",
     "theoretical_stake": "現在の予算に適用Kellyを掛けた、購入単位へ丸める前の購入額です。",
-    "minimum_payout": "選択した組のうち最も払戻額が低い組が的中した場合の払戻額です。",
-    "minimum_profit": "選択組のうち最も払戻額が低い組が的中した場合の利益です。最低払戻額から合計購入額を引いて計算します。",
-    "expected_return": "各組の馬連的中確率を考慮した、平均的な払戻見込み額です。",
+    "minimum_payout": f"選択した組のうち最も払戻額が低い組が的中した場合の{UI_LABELS['payout_amount']}です。",
+    "minimum_profit": f"選択組のうち最も払戻額が低い組が的中した場合の{UI_LABELS['minimum_profit']}です。最低払戻額から{UI_LABELS['total_purchase_amount']}を引いて計算します。",
+    "expected_return": f"各組の{UI_LABELS['quinella_probability']}を考慮した、平均的な払戻見込み額です。",
 }
 
 REJECTION_REASON_LABELS = {
-    "coverage_probability_below_threshold": "カバー確率が最低基準未満",
-    "group_expected_value_below_threshold": "グループ期待値が最低基準未満",
-    "minimum_profit_rate_below_threshold": "最低利益率が最低基準未満",
-    "insufficient_budget_units": "予算が購入単位または選択頭数に対して不足",
+    "coverage_probability_below_threshold": f"{UI_LABELS['coverage_probability']}が最低基準未満",
+    "group_expected_value_below_threshold": f"{UI_LABELS['group_expected_value']}が最低基準未満",
+    "minimum_profit_rate_below_threshold": f"{UI_LABELS['minimum_profit_rate']}が最低基準未満",
+    "insufficient_budget_units": f"予算が購入単位または{UI_LABELS['purchase_selection_count']}に対して不足",
 }
 UNKNOWN_REJECTION_REASON_LABEL = "条件を満たしていません"
 
@@ -244,7 +245,7 @@ def build_expected_value_rows(
             purchase_decision = "算出不可"
         elif not detail["meets_threshold"]:
             purchase_status = "ev_below"
-            purchase_decision = "EV基準未満"
+            purchase_decision = f"{UI_LABELS['expected_value_threshold']}未満"
         elif detail["full_kelly"] <= 0 or detail["fractional_kelly"] <= 0:
             purchase_status = "zero_kelly"
             purchase_decision = "Kelly割合が0"
@@ -321,18 +322,18 @@ def value_no_purchase_message(
         return ""
     calculable = [row for row in rows if row["expected_value"] is not None]
     if not calculable:
-        return "オッズまたは予測確率を算出できる馬がありません。"
+        return "オッズまたは1着確率を算出できる馬がありません。"
     above_threshold = [row for row in calculable if row["meets_threshold"]]
     if not above_threshold:
-        return "最低EVを満たす馬がありません。"
+        return f"{UI_LABELS['minimum_expected_value']}を満たす馬がありません。"
     if any(row["purchase_status"] == "below_unit" for row in above_threshold):
         return (
-            "EV基準以上の馬はありますが、現在の予算ではKelly基準の購入額が"
+            f"{UI_LABELS['expected_value_threshold']}以上の馬はありますが、現在の予算ではKelly基準の購入額が"
             f"{stake_unit}円未満となるため、購入対象はありません。"
         )
     if kelly_fraction <= 0:
         return "Kelly係数が0のため、購入対象はありません。"
-    return "EV基準以上の馬はありますが、Kelly割合が0のため、購入対象はありません。"
+    return f"{UI_LABELS['expected_value_threshold']}以上の馬はありますが、Kelly割合が0のため、購入対象はありません。"
 
 
 def build_environment(root: Path | None = None) -> Environment:
@@ -606,6 +607,7 @@ def build_race_context(payload: dict[str, Any]) -> dict[str, Any]:
     info_time = parse_jst_datetime(race.get("race_info_captured_at"))
     return {
         "race": race,
+        "ui_labels": UI_LABELS,
         "horse_count": len(payload.get("horses", [])),
         "race_condition": "・".join(str(race[key]) for key in ("age_condition", "sex_condition") if race.get(key)) or "-",
         "race_info_captured_at_label": info_time.strftime("%Y-%m-%d %H:%M") if info_time else "-",
@@ -775,6 +777,7 @@ def render_site(
         site_background=SITE_BACKGROUND,
         status_colors=STATUS_COLORS,
         prediction_method_descriptions=PREDICTION_METHOD_DESCRIPTIONS,
+        ui_labels=UI_LABELS,
     )
     (output_dir / "index.html").write_bytes(rendered_html_bytes(index_html))
     return output_dir

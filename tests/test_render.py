@@ -95,12 +95,12 @@ class RenderTests(unittest.TestCase):
         }}
         entry = payload["prediction"][0]
         entry["statistical"] = entry.pop("general")
-        self.assertEqual(build_race_context(payload)["status_label"], "前日予想公開")
+        self.assertEqual(build_race_context(payload)["status_label"], "統計重視予想公開")
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             shutil.copytree(ROOT / "templates", root / "templates")
             path = root / "data/races/2026-09-20/nakayama_11r.json"
-            for state, label in (("statistical", "前日予想公開"), ("general", "直前予想公開"), ("result", "結果公開"), ("cancelled", "開催中止")):
+            for state, label in (("statistical", "統計重視予想公開"), ("general", "総合AI予想公開"), ("result", "結果公開"), ("cancelled", "開催中止")):
                 if state == "general":
                     entry["general"] = entry["statistical"]
                 if state == "result":
@@ -1078,7 +1078,7 @@ class SimulationRenderTests(unittest.TestCase):
             [(metric_label(pair, "setting"), metric_label(pair, "result")) for pair in pairs],
             [
                 ("予算", "合計購入額"),
-                ("最大対象頭数", "選択頭数"),
+                ("最大対象頭数", "購入対象頭数"),
                 ("最低カバー確率", "カバー確率"),
                 ("最低グループ期待値", "グループ期待値"),
                 ("最低利益率", "最低利益"),
@@ -1375,7 +1375,7 @@ class QuinellaRenderTests(unittest.TestCase):
             [(metric_label(pair, "setting"), metric_label(pair, "result")) for pair in pairs],
             [
                 ("予算", "合計購入額"),
-                ("最大対象組数", "選択組数"),
+                ("最大対象組数", "購入対象組数"),
                 ("最低カバー確率", "カバー確率"),
                 ("最低グループ期待値", "グループ期待値"),
                 ("最低利益率", "最低利益"),

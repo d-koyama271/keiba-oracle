@@ -45,7 +45,7 @@ deployment:
     remote: origin
     branch: deploy-pages
 llm_provider: codex
-llm_model: gpt-5.6-sol
-llm_reasoning_effort: ultra
+llm_model: gpt-6-sol
+llm_reasoning_effort: max
 data_dir: data
 public_dir: public

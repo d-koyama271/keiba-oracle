@@ -22,7 +22,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% if page_kind == "result" %}{{ race.race_name|e }} 結果{% else %}{{ race.race_name|e }}{% if "AI予想" not in race.race_name %} AI予想{% endif %}{% endif %} | keiba-oracle</title>
-  <meta name="description" content="{% if page_kind == "result" %}{{ race.race_name|e }}のレース結果、AI予想との比較、予測評価、購入シミュレーション結果を掲載します。{% else %}{{ race.race_name|e }}のAI予想。各馬の1着確率、予想理由、単勝分配方式と期待値重視方式による購入シミュレーションを掲載します。{% endif %}">
+  <meta name="description" content="{% if page_kind == "result" %}{{ race.race_name|e }}のレース結果、AI予想との比較、予測評価、購入シミュレーション結果を掲載します。{% else %}{{ race.race_name|e }}のAI予想。各馬の{{ ui_labels.win_probability }}、予想理由、{{ ui_labels.simulation_method_dutching }}と{{ ui_labels.simulation_method_value }}による購入シミュレーションを掲載します。{% endif %}">
   <style>
     :root {
       color-scheme: light;
@@ -688,8 +688,8 @@
                 {{ sortable_header("馬番", 0, "number", "ascending") }}
                 {{ sortable_header("馬名", 1, "text", "ascending", "horse-name") }}
                 {{ sortable_header("騎手", 2, "text", "ascending") }}
-                {{ sortable_header("1着確率", 3, "number", "descending") }}
-                {{ sortable_header("予想順位", 4, "number", "ascending") }}
+                {{ sortable_header(ui_labels.win_probability, 3, "number", "descending") }}
+                {{ sortable_header(ui_labels.predicted_rank, 4, "number", "ascending") }}
                 {{ sortable_header("単勝オッズ", 5, "number", "ascending") }}
                 {{ sortable_header("人気", 6, "number", "ascending") }}
                 <th class="reason-cell">理由</th>
@@ -737,40 +737,40 @@
       {% set value_no_purchase_reason = view.value_no_purchase_reason %}
       {% set missing_simulation_message = "このレースでは統計重視予想の購入シミュレーションは記録されていません。" if view.prediction_method == "statistical" and view.prediction else "予想取込後に生成されます。" %}
       <div class="ai-method-panel simulation-method-content{% if ai_views | length == 1 %} panel{% endif %}" id="simulation-{{ view.method }}" role="tabpanel" data-ai-panel data-ai-method="{{ view.method }}"{% if not loop.first %} hidden{% endif %}>
-      {{ quinella_ui.ticket_tabs('purchase-' ~ view.method) }}
+      {{ quinella_ui.ticket_tabs('purchase-' ~ view.method, ui_labels) }}
       <div id="purchase-{{ view.method }}-win" data-ticket-panel="win" role="tabpanel">
     <div class="panel simulation-panel">
-      <h3>{{ explained_term("単勝分配方式", "dutching_method") }}</h3>
+      <h3>{{ explained_term(ui_labels.simulation_method_dutching, "dutching_method") }}</h3>
       <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
       {% if simulation_dutching_pre %}
       {% set dutching_min_profit_rate = simulation_dutching_pre.settings.min_profit_rate | default(none) %}
       {% if simulation_dutching_pre.selections %}
-      <div class="dutching-pairs" aria-label="設定条件と計算結果">
+      <div class="dutching-pairs" aria-label="設定条件と{{ ui_labels.purchase_result }}">
         <div class="dutching-pair">
-          <div class="dutching-setting"><strong>予算</strong><span class="dutching-setting-value">{{ simulation_dutching_pre.budget }}円</span></div>
-          <div class="dutching-result"><strong>合計購入額</strong><span class="dutching-result-value">{{ simulation_dutching_pre.total_stake }}円</span></div>
+          <div class="dutching-setting"><strong>{{ ui_labels.budget }}</strong><span class="dutching-setting-value">{{ simulation_dutching_pre.budget }}円</span></div>
+          <div class="dutching-result"><strong>{{ ui_labels.total_purchase_amount }}</strong><span class="dutching-result-value">{{ simulation_dutching_pre.total_stake }}円</span></div>
         </div>
         <div class="dutching-pair">
-          <div class="dutching-setting"><strong>最大対象頭数</strong><span class="dutching-setting-value">{{ simulation_dutching_pre.settings.max_selection_count }}頭</span></div>
-          <div class="dutching-result"><strong>選択頭数</strong><span class="dutching-result-value">{{ simulation_dutching_pre.selected_count }}頭</span></div>
+          <div class="dutching-setting"><strong>{{ ui_labels.max_selection_count }}</strong><span class="dutching-setting-value">{{ simulation_dutching_pre.settings.max_selection_count }}頭</span></div>
+          <div class="dutching-result"><strong>{{ ui_labels.purchase_selection_count }}</strong><span class="dutching-result-value">{{ simulation_dutching_pre.selected_count }}頭</span></div>
         </div>
         <div class="dutching-pair">
-          <div class="dutching-setting"><strong>{{ explained_term("最低カバー確率", "min_coverage_probability") }}</strong><span class="dutching-setting-value">{{ "%.2f"|format(simulation_dutching_pre.settings.min_coverage_probability * 100) }}%</span></div>
-          <div class="dutching-result"><strong>{{ explained_term("カバー確率", "coverage_probability") }}</strong><span class="dutching-result-value">{{ "%.2f"|format(simulation_dutching_pre.coverage_probability * 100) }}%</span></div>
+          <div class="dutching-setting"><strong>{{ explained_term(ui_labels.minimum_coverage_probability, "min_coverage_probability") }}</strong><span class="dutching-setting-value">{{ "%.2f"|format(simulation_dutching_pre.settings.min_coverage_probability * 100) }}%</span></div>
+          <div class="dutching-result"><strong>{{ explained_term(ui_labels.coverage_probability, "coverage_probability") }}</strong><span class="dutching-result-value">{{ "%.2f"|format(simulation_dutching_pre.coverage_probability * 100) }}%</span></div>
         </div>
         <div class="dutching-pair">
-          <div class="dutching-setting"><strong>{{ explained_term("最低グループ期待値", "min_group_expected_value") }}</strong><span class="dutching-setting-value">{{ "%.3f"|format(simulation_dutching_pre.settings.min_group_expected_value) }}</span></div>
-          <div class="dutching-result"><strong>{{ explained_term("グループ期待値", "group_expected_value") }}</strong><span class="dutching-result-value">{{ "%.3f"|format(simulation_dutching_pre.group_expected_value) }}</span></div>
+          <div class="dutching-setting"><strong>{{ explained_term(ui_labels.minimum_group_expected_value, "min_group_expected_value") }}</strong><span class="dutching-setting-value">{{ "%.3f"|format(simulation_dutching_pre.settings.min_group_expected_value) }}</span></div>
+          <div class="dutching-result"><strong>{{ explained_term(ui_labels.group_expected_value, "group_expected_value") }}</strong><span class="dutching-result-value">{{ "%.3f"|format(simulation_dutching_pre.group_expected_value) }}</span></div>
         </div>
         <div class="dutching-pair">
-          <div class="dutching-setting"><strong>{{ explained_term("最低利益率", "min_profit_rate") }}</strong><span class="dutching-setting-value">{% if dutching_min_profit_rate is not none %}{{ "%.0f"|format(dutching_min_profit_rate * 100) }}%{% else %}-{% endif %}</span></div>
-          <div class="dutching-result"><strong>{{ explained_term("最低利益", "minimum_profit") }}</strong><span class="dutching-result-value">{{ "%.0f"|format(simulation_dutching_pre.minimum_profit) }}円</span></div>
+          <div class="dutching-setting"><strong>{{ explained_term(ui_labels.minimum_profit_rate, "min_profit_rate") }}</strong><span class="dutching-setting-value">{% if dutching_min_profit_rate is not none %}{{ "%.0f"|format(dutching_min_profit_rate * 100) }}%{% else %}-{% endif %}</span></div>
+          <div class="dutching-result"><strong>{{ explained_term(ui_labels.minimum_profit, "minimum_profit") }}</strong><span class="dutching-result-value">{{ "%.0f"|format(simulation_dutching_pre.minimum_profit) }}円</span></div>
         </div>
       </div>
-      <h4 class="purchase-breakdown-title">購入内訳</h4>
+      <h4 class="purchase-breakdown-title">{{ ui_labels.purchase_breakdown }}</h4>
       <div class="table-scroll">
         <table class="simulation-table purchase-breakdown-table">
-          <thead><tr><th class="nowrap">馬番</th><th class="nowrap">予測勝率</th><th class="nowrap">単勝オッズ</th><th class="nowrap">購入額</th><th class="nowrap">的中時払戻額</th><th class="nowrap">的中時利益</th></tr></thead>
+          <thead><tr><th class="nowrap">馬番</th><th class="nowrap">{{ ui_labels.win_probability }}</th><th class="nowrap">単勝オッズ</th><th class="nowrap">{{ ui_labels.purchase_amount }}</th><th class="nowrap">{{ ui_labels.estimated_payout_amount }}</th><th class="nowrap">的中時利益</th></tr></thead>
           <tbody>
             {% for item in simulation_dutching_pre.selections %}
             <tr>
@@ -786,19 +786,19 @@
         </table>
       </div>
       {% else %}
-      <h4 class="simulation-block-title">設定条件</h4>
+      <h4 class="simulation-block-title">{{ ui_labels.settings_conditions }}</h4>
       <div class="metric-grid simulation-primary-metrics">
-        <div><strong>予算</strong><br>{{ simulation_dutching_pre.budget }}円</div>
-        <div><strong>最大対象頭数</strong><br>{{ simulation_dutching_pre.settings.max_selection_count }}頭</div>
-        <div><strong>{{ explained_term("最低カバー確率", "min_coverage_probability") }}</strong><br>{{ "%.2f"|format(simulation_dutching_pre.settings.min_coverage_probability * 100) }}%</div>
-        <div><strong>{{ explained_term("最低グループ期待値", "min_group_expected_value") }}</strong><br>{{ "%.3f"|format(simulation_dutching_pre.settings.min_group_expected_value) }}</div>
-        <div><strong>{{ explained_term("最低利益率", "min_profit_rate") }}</strong><br>{% if dutching_min_profit_rate is not none %}{{ "%.0f"|format(dutching_min_profit_rate * 100) }}%{% else %}-{% endif %}</div>
+        <div><strong>{{ ui_labels.budget }}</strong><br>{{ simulation_dutching_pre.budget }}円</div>
+        <div><strong>{{ ui_labels.max_selection_count }}</strong><br>{{ simulation_dutching_pre.settings.max_selection_count }}頭</div>
+        <div><strong>{{ explained_term(ui_labels.minimum_coverage_probability, "min_coverage_probability") }}</strong><br>{{ "%.2f"|format(simulation_dutching_pre.settings.min_coverage_probability * 100) }}%</div>
+        <div><strong>{{ explained_term(ui_labels.minimum_group_expected_value, "min_group_expected_value") }}</strong><br>{{ "%.3f"|format(simulation_dutching_pre.settings.min_group_expected_value) }}</div>
+        <div><strong>{{ explained_term(ui_labels.minimum_profit_rate, "min_profit_rate") }}</strong><br>{% if dutching_min_profit_rate is not none %}{{ "%.0f"|format(dutching_min_profit_rate * 100) }}%{% else %}-{% endif %}</div>
       </div>
-      <h4 class="simulation-block-title simulation-result-title">計算結果</h4>
+      <h4 class="simulation-block-title simulation-result-title">{{ ui_labels.purchase_result }}</h4>
       <div class="metric-grid">
         <div><strong>判定</strong><br>購入なし</div>
-        <div><strong>合計購入額</strong><br>{{ simulation_dutching_pre.total_stake }}円</div>
-        <div><strong>未使用予算</strong><br>{{ simulation_dutching_pre.unused_budget }}円</div>
+        <div><strong>{{ ui_labels.total_purchase_amount }}</strong><br>{{ simulation_dutching_pre.total_stake }}円</div>
+        <div><strong>{{ ui_labels.unused_budget }}</strong><br>{{ simulation_dutching_pre.unused_budget }}円</div>
       </div>
       {% endif %}
       <details class="simulation-details">
@@ -807,7 +807,7 @@
         <p class="table-scroll-hint">表は横にスクロールできます</p>
         <div class="table-scroll">
           <table class="evaluation-table">
-          <thead><tr><th class="nowrap">頭数</th><th class="nowrap">対象馬番</th><th class="nowrap">{{ explained_term("カバー確率", "coverage_probability") }}</th><th class="nowrap">{{ explained_term("グループ期待値", "group_expected_value") }}</th><th class="nowrap">{{ explained_term("最低払戻額", "minimum_payout") }}</th><th class="nowrap">{{ explained_term("最低利益", "minimum_profit") }}</th><th class="nowrap">判定</th><th>除外理由</th></tr></thead>
+          <thead><tr><th class="nowrap">頭数</th><th class="nowrap">対象馬番</th><th class="nowrap">{{ explained_term(ui_labels.coverage_probability, "coverage_probability") }}</th><th class="nowrap">{{ explained_term(ui_labels.group_expected_value, "group_expected_value") }}</th><th class="nowrap">{{ explained_term(ui_labels.minimum_payout, "minimum_payout") }}</th><th class="nowrap">{{ explained_term(ui_labels.minimum_profit, "minimum_profit") }}</th><th class="nowrap">判定</th><th>除外理由</th></tr></thead>
           <tbody>
             {% for item in simulation_dutching_pre.evaluated_counts %}
             <tr{% if simulation_dutching_pre.selections and item.selection_count == simulation_dutching_pre.selected_count %} class="selected-row"{% endif %}>
@@ -833,17 +833,17 @@
     </div>
 
     <div class="panel simulation-panel value-simulation-panel">
-      <h3>{{ explained_term("期待値重視方式", "value_method") }}</h3>
+      <h3>{{ explained_term(ui_labels.simulation_method_value, "value_method") }}</h3>
       {% if simulation_value_pre %}
-      <h4 class="simulation-block-title">設定条件</h4>
+      <h4 class="simulation-block-title">{{ ui_labels.settings_conditions }}</h4>
       <div class="metric-grid">
-        <div><strong>予算</strong><br>{{ simulation_value_pre.budget }}円</div>
-        <div><strong>{{ explained_term("最低EV", "minimum_ev") }}</strong><br>{{ simulation_value_pre.settings.ev_threshold }}</div>
+        <div><strong>{{ ui_labels.budget }}</strong><br>{{ simulation_value_pre.budget }}円</div>
+        <div><strong>{{ explained_term(ui_labels.minimum_expected_value, "minimum_ev") }}</strong><br>{{ simulation_value_pre.settings.ev_threshold }}</div>
         <div><strong>{{ explained_term("Kelly係数", "kelly_fraction") }}</strong><br>{{ simulation_value_pre.settings.kelly_fraction }}</div>
       </div>
-      <h4 class="simulation-block-title simulation-result-title">購入結果</h4>
+      <h4 class="simulation-block-title simulation-result-title">{{ ui_labels.purchase_result }}</h4>
       <div class="metric-grid value-purchase-result">
-        <div><strong>購入額</strong><br>{{ simulation_value_pre.total_stake }}円 / {{ simulation_value_pre.budget }}円</div>
+        <div><strong>{{ ui_labels.purchase_amount }}</strong><br>{{ simulation_value_pre.total_stake }}円 / {{ simulation_value_pre.budget }}円</div>
       </div>
       <details class="simulation-details">
         <summary>全馬期待値の詳細を見る</summary>
@@ -851,7 +851,7 @@
         <p class="table-scroll-hint">表は横にスクロールできます</p>
         <div class="table-scroll">
           <table class="value-detail-table">
-          <thead><tr><th class="nowrap">EV順位</th><th class="nowrap">馬番</th><th class="horse-name">馬名</th><th class="nowrap">1着確率</th><th class="nowrap">単勝オッズ</th><th class="nowrap">{{ explained_term("EV", "ev") }}</th><th class="nowrap">EV基準</th><th class="nowrap">{{ explained_term("Full Kelly", "full_kelly") }}</th><th class="nowrap">{{ explained_term("適用Kelly", "applied_kelly") }}</th><th class="nowrap">{{ explained_term("理論購入額", "theoretical_stake") }}</th><th class="nowrap">{{ explained_term((simulation_value_pre.stake_unit|string) ~ "円購入に必要な最低予算", "minimum_budget") }}</th><th class="nowrap">購入判定</th></tr></thead>
+          <thead><tr><th class="nowrap">{{ ui_labels.expected_value_rank }}</th><th class="nowrap">馬番</th><th class="horse-name">馬名</th><th class="nowrap">{{ ui_labels.win_probability }}</th><th class="nowrap">単勝オッズ</th><th class="nowrap">{{ explained_term(ui_labels.expected_value, "ev") }}</th><th class="nowrap">{{ ui_labels.expected_value_threshold }}</th><th class="nowrap">{{ explained_term("Full Kelly", "full_kelly") }}</th><th class="nowrap">{{ explained_term("適用Kelly", "applied_kelly") }}</th><th class="nowrap">{{ explained_term("理論購入額", "theoretical_stake") }}</th><th class="nowrap">{{ explained_term((simulation_value_pre.stake_unit|string) ~ "円購入に必要な最低予算", "minimum_budget") }}</th><th class="nowrap">購入判定</th></tr></thead>
           <tbody>
             {% for item in expected_value_rows %}
             <tr{% if item.purchase_status == "purchase" %} class="simulation-selected"{% elif item.meets_threshold %} class="ev-above-threshold"{% endif %}>
@@ -877,7 +877,7 @@
       {% if simulation_value_pre.selections %}
       <div class="table-scroll">
         <table class="simulation-table">
-          <thead><tr><th class="nowrap">馬番</th><th class="nowrap">予測勝率</th><th class="nowrap">単勝オッズ</th><th class="nowrap">{{ explained_term("EV", "ev") }}</th><th class="nowrap">{{ explained_term("Full Kelly", "full_kelly") }}</th><th class="nowrap">{{ explained_term("Fractional Kelly", "fractional_kelly") }}</th><th class="nowrap">購入額</th><th class="nowrap">{{ explained_term("期待払戻額", "expected_return") }}</th></tr></thead>
+          <thead><tr><th class="nowrap">馬番</th><th class="nowrap">{{ ui_labels.win_probability }}</th><th class="nowrap">単勝オッズ</th><th class="nowrap">{{ explained_term(ui_labels.expected_value, "ev") }}</th><th class="nowrap">{{ explained_term("Full Kelly", "full_kelly") }}</th><th class="nowrap">{{ explained_term("Fractional Kelly", "fractional_kelly") }}</th><th class="nowrap">{{ ui_labels.purchase_amount }}</th><th class="nowrap">{{ explained_term(ui_labels.estimated_payout_amount, "expected_return") }}</th></tr></thead>
           <tbody>
             {% for item in value_selection_rows %}
             <tr>
@@ -903,7 +903,7 @@
     </div>
       </div>
       <div id="purchase-{{ view.method }}-quinella" data-ticket-panel="quinella" role="tabpanel" hidden>
-        {{ quinella_ui.panels(view, 'prediction', rejection_reason_text, explained_term, quinella_tooltips) }}
+      {{ quinella_ui.panels(view, 'prediction', rejection_reason_text, explained_term, quinella_tooltips, ui_labels) }}
       </div>
       </div>
       {% endfor %}
@@ -913,43 +913,43 @@
     {% set custom_min_profit_rate = simulation_dutching_pre.settings.min_profit_rate | default(0.20) %}
     <div class="panel" id="custom-simulator">
       <h2>カスタム購入シミュレーション</h2>
-      {{ quinella_ui.ticket_tabs('custom', 'custom-controls') }}
+      {{ quinella_ui.ticket_tabs('custom', ui_labels, 'custom-controls') }}
       <div id="custom-controls" role="tabpanel">
       <p class="small">予算や各条件を任意に変更して、購入額や払戻額をシミュレーションできます。</p>
       <form class="simulator-form" id="custom-simulator-form">
         <label class="simulator-field">方式
           <select name="method">
-            <option value="dutching" selected>単勝分配方式</option>
-            <option value="value">期待値重視方式</option>
+            <option value="dutching" selected>{{ ui_labels.simulation_method_dutching }}</option>
+            <option value="value">{{ ui_labels.simulation_method_value }}</option>
           </select>
         </label>
-        <label class="simulator-field">予算（円）
+        <label class="simulator-field">{{ ui_labels.budget }}（円）
           <input name="budget" type="number" min="{{ custom_simulation_data.stake_unit }}" step="{{ custom_simulation_data.stake_unit }}" value="{{ simulation_value_pre.budget }}" required>
         </label>
         <div class="simulator-field value-field" hidden>
-          <span class="simulator-field-label"><label for="custom-ev-threshold">最低EV</label>{{ info_tooltip("最低EV", "minimum_ev") }}</span>
+          <span class="simulator-field-label"><label for="custom-ev-threshold">{{ ui_labels.minimum_expected_value }}</label>{{ info_tooltip(ui_labels.minimum_expected_value, "minimum_ev") }}</span>
           <input id="custom-ev-threshold" name="ev_threshold" type="number" min="0" step="0.01" value="{{ simulation_value_pre.settings.ev_threshold }}">
         </div>
         <div class="simulator-field value-field" hidden>
           <span class="simulator-field-label"><label for="custom-kelly-fraction">Kelly係数</label>{{ info_tooltip("Kelly係数", "kelly_fraction") }}</span>
           <input id="custom-kelly-fraction" name="kelly_fraction" type="number" min="0" max="1" step="0.05" value="{{ simulation_value_pre.settings.kelly_fraction }}">
         </div>
-        <label class="simulator-field dutching-field"><span data-count-label="最大対象頭数">最大対象頭数</span>
+        <label class="simulator-field dutching-field"><span data-count-label="{{ ui_labels.max_selection_count }}">{{ ui_labels.max_selection_count }}</span>
           <input name="max_selection_count" type="number" min="1" max="{{ custom_simulation_data.horses | length }}" step="1" value="{{ simulation_dutching_pre.settings.max_selection_count }}">
         </label>
         <div class="simulator-field dutching-field">
-          <span class="simulator-field-label"><label for="custom-min-coverage">最低カバー確率</label>{{ info_tooltip("最低カバー確率", "min_coverage_probability") }}</span>
+          <span class="simulator-field-label"><label for="custom-min-coverage">{{ ui_labels.minimum_coverage_probability }}</label>{{ info_tooltip(ui_labels.minimum_coverage_probability, "min_coverage_probability") }}</span>
           <input id="custom-min-coverage" name="min_coverage_probability" type="number" min="0" max="1" step="0.01" value="{{ simulation_dutching_pre.settings.min_coverage_probability }}">
         </div>
         <div class="simulator-field dutching-field">
-          <span class="simulator-field-label"><label for="custom-min-group-ev">最低グループ期待値</label>{{ info_tooltip("最低グループ期待値", "min_group_expected_value") }}</span>
+          <span class="simulator-field-label"><label for="custom-min-group-ev">{{ ui_labels.minimum_group_expected_value }}</label>{{ info_tooltip(ui_labels.minimum_group_expected_value, "min_group_expected_value") }}</span>
           <input id="custom-min-group-ev" name="min_group_expected_value" type="number" min="0" step="0.01" value="{{ simulation_dutching_pre.settings.min_group_expected_value }}">
         </div>
         <div class="simulator-field dutching-field">
-          <span class="simulator-field-label"><label for="custom-min-profit-rate">最低利益率（%）</label>{{ info_tooltip("最低利益率", "min_profit_rate") }}</span>
+          <span class="simulator-field-label"><label for="custom-min-profit-rate">{{ ui_labels.minimum_profit_rate }}（%）</label>{{ info_tooltip(ui_labels.minimum_profit_rate, "min_profit_rate") }}</span>
           <input id="custom-min-profit-rate" name="min_profit_rate" type="number" min="0" step="1" value="{{ "%.0f"|format(custom_min_profit_rate * 100) }}" required>
         </div>
-        <label class="simulator-field dutching-field"><span data-count-label="頭数">頭数</span>
+        <label class="simulator-field dutching-field"><span data-count-label="購入対象頭数">購入対象頭数</span>
           <select name="fixed_selection_count">
             <option value="0">自動</option>
             {% for count in range(1, (custom_simulation_data.horses | length) + 1) %}<option value="{{ count }}">{{ count }}頭</option>{% endfor %}
@@ -963,27 +963,27 @@
         <p id="custom-simulator-empty" hidden><strong>購入なし</strong><span id="custom-simulator-empty-reason"></span></p>
         <div class="simulator-summary" id="custom-simulator-summary" hidden>
           <span>方式: <strong id="custom-simulator-method">-</strong></span>
-          <span>計算予算: <strong id="custom-simulator-budget">0円</strong></span>
-          <span>合計購入額: <strong id="custom-simulator-total">0円</strong></span>
-          <span>未使用予算: <strong id="custom-simulator-unused">0円</strong></span>
+          <span>{{ ui_labels.budget }}: <strong id="custom-simulator-budget">0円</strong></span>
+          <span>{{ ui_labels.total_purchase_amount }}: <strong id="custom-simulator-total">0円</strong></span>
+          <span>{{ ui_labels.unused_budget }}: <strong id="custom-simulator-unused">0円</strong></span>
         </div>
         <div class="metric-grid" id="custom-dutching-metrics" hidden>
-          <div><strong>選択頭数</strong><br><span id="custom-dutching-count">0頭</span></div>
-          <div><strong>{{ explained_term("カバー確率", "coverage_probability") }}</strong><br><span id="custom-dutching-coverage">0%</span></div>
-          <div><strong>{{ explained_term("グループ期待値", "group_expected_value") }}</strong><br><span id="custom-dutching-ev">0</span></div>
-          <div><strong>{{ explained_term("最低払戻額", "minimum_payout") }}</strong><br><span id="custom-dutching-min-payout">0円</span></div>
-          <div><strong>{{ explained_term("最低利益", "minimum_profit") }}</strong><br><span id="custom-dutching-min-profit">0円</span></div>
+          <div><strong>{{ ui_labels.purchase_selection_count }}</strong><br><span id="custom-dutching-count">0頭</span></div>
+          <div><strong>{{ explained_term(ui_labels.coverage_probability, "coverage_probability") }}</strong><br><span id="custom-dutching-coverage">0%</span></div>
+          <div><strong>{{ explained_term(ui_labels.group_expected_value, "group_expected_value") }}</strong><br><span id="custom-dutching-ev">0</span></div>
+          <div><strong>{{ explained_term(ui_labels.minimum_payout, "minimum_payout") }}</strong><br><span id="custom-dutching-min-payout">0円</span></div>
+          <div><strong>{{ explained_term(ui_labels.minimum_profit, "minimum_profit") }}</strong><br><span id="custom-dutching-min-profit">0円</span></div>
         </div>
         <div class="table-scroll" id="custom-value-table" hidden>
-          <table class="simulation-table"><thead><tr><th class="nowrap">馬番</th><th class="nowrap">予測勝率</th><th class="nowrap">単勝オッズ</th><th class="nowrap">{{ explained_term("EV", "ev") }}</th><th class="nowrap">{{ explained_term("Full Kelly", "full_kelly") }}</th><th class="nowrap">{{ explained_term("Fractional Kelly", "fractional_kelly") }}</th><th class="nowrap">購入額</th><th class="nowrap">{{ explained_term("期待払戻額", "expected_return") }}</th></tr></thead><tbody id="custom-value-rows"></tbody></table>
+          <table class="simulation-table"><thead><tr><th class="nowrap">馬番</th><th class="nowrap">{{ ui_labels.win_probability }}</th><th class="nowrap">単勝オッズ</th><th class="nowrap">{{ explained_term(ui_labels.expected_value, "ev") }}</th><th class="nowrap">{{ explained_term("Full Kelly", "full_kelly") }}</th><th class="nowrap">{{ explained_term("Fractional Kelly", "fractional_kelly") }}</th><th class="nowrap">{{ ui_labels.purchase_amount }}</th><th class="nowrap">{{ explained_term(ui_labels.estimated_payout_amount, "expected_return") }}</th></tr></thead><tbody id="custom-value-rows"></tbody></table>
         </div>
         <div class="table-scroll" id="custom-dutching-table" hidden>
-          <table class="simulation-table"><thead><tr><th class="nowrap">馬番</th><th class="nowrap">予測勝率</th><th class="nowrap">単勝オッズ</th><th class="nowrap">購入額</th><th class="nowrap">的中時払戻額</th><th class="nowrap">的中時利益</th></tr></thead><tbody id="custom-dutching-rows"></tbody></table>
+          <table class="simulation-table"><thead><tr><th class="nowrap">馬番</th><th class="nowrap">{{ ui_labels.win_probability }}</th><th class="nowrap">単勝オッズ</th><th class="nowrap">{{ ui_labels.purchase_amount }}</th><th class="nowrap">{{ ui_labels.estimated_payout_amount }}</th><th class="nowrap">的中時利益</th></tr></thead><tbody id="custom-dutching-rows"></tbody></table>
         </div>
         <div id="custom-dutching-evaluations" hidden>
           <h3>頭数別比較</h3>
           <p class="table-scroll-hint">表は横にスクロールできます</p>
-          <div class="table-scroll"><table class="evaluation-table"><thead><tr><th class="nowrap">頭数</th><th class="nowrap">対象馬番</th><th class="nowrap">{{ explained_term("カバー確率", "coverage_probability") }}</th><th class="nowrap">{{ explained_term("グループ期待値", "group_expected_value") }}</th><th class="nowrap">{{ explained_term("最低払戻額", "minimum_payout") }}</th><th class="nowrap">{{ explained_term("最低利益", "minimum_profit") }}</th><th class="nowrap">判定</th><th>除外理由</th></tr></thead><tbody id="custom-dutching-evaluation-rows"></tbody></table></div>
+          <div class="table-scroll"><table class="evaluation-table"><thead><tr><th class="nowrap">頭数</th><th class="nowrap">対象馬番</th><th class="nowrap">{{ explained_term(ui_labels.coverage_probability, "coverage_probability") }}</th><th class="nowrap">{{ explained_term(ui_labels.group_expected_value, "group_expected_value") }}</th><th class="nowrap">{{ explained_term(ui_labels.minimum_payout, "minimum_payout") }}</th><th class="nowrap">{{ explained_term(ui_labels.minimum_profit, "minimum_profit") }}</th><th class="nowrap">判定</th><th>除外理由</th></tr></thead><tbody id="custom-dutching-evaluation-rows"></tbody></table></div>
         </div>
       </div>
     </div>
@@ -991,6 +991,7 @@
     <script type="application/json" id="custom-simulator-data">{{ custom_simulation_data | tojson }}</script>
     <script>
       const SIMULATION_EPSILON = 1e-12;
+      const uiLabels = {{ ui_labels | tojson }};
 
       function roundSimulationValue(value) {
         const scaled = value * 1000000;
@@ -1103,11 +1104,11 @@
 
       function valueNoPurchaseReason(details, stakeUnit, kellyFraction) {
         if (!details.length) {
-          return "オッズまたは予測確率を算出できる馬がありません。";
+          return `オッズまたは${uiLabels.win_probability}を算出できる馬がありません。`;
         }
         const aboveThreshold = details.filter((item) => item.meets_threshold);
         if (!aboveThreshold.length) {
-          return "最低EVを満たす馬がありません。";
+          return `${uiLabels.minimum_expected_value}を満たす馬がありません。`;
         }
         if (aboveThreshold.some((item) => item.eligible && item.stake < stakeUnit)) {
           return `現在の予算では全候補の購入額が${stakeUnit}円未満です。`;
@@ -1304,7 +1305,7 @@
         const rejectionReasonText = (reasons) => reasons.length
           ? reasons.map((reason) => {
               const label = data.display.rejection_reason_labels[reason] || data.display.unknown_rejection_reason_label;
-              return activeTicket === "quinella" ? label.replaceAll("頭数", "組数") : label;
+              return activeTicket === "quinella" ? label.replaceAll(uiLabels.max_selection_count, uiLabels.max_pair_count).replaceAll(uiLabels.purchase_selection_count, uiLabels.purchase_pair_count) : label;
             }).join("、")
           : "-";
         const form = document.getElementById("custom-simulator-form");
@@ -1341,16 +1342,16 @@
           const enteredBudget = Number(form.elements.budget.value);
           const stakeUnit = Number(data.stake_unit);
           if (!Number.isInteger(enteredBudget) || enteredBudget <= 0) {
-            return "予算は正の整数で入力してください。";
+            return `${uiLabels.budget}は正の整数で入力してください。`;
           }
           if (Math.floor(enteredBudget / stakeUnit) * stakeUnit < stakeUnit) {
-            return `予算は購入単位の${stakeUnit}円以上にしてください。`;
+            return `${uiLabels.budget}は購入単位の${stakeUnit}円以上にしてください。`;
           }
           if (form.elements.method.value === "value") {
             const evThreshold = parseMinimumEv(form.elements.ev_threshold.value);
             const kellyFraction = Number(form.elements.kelly_fraction.value);
             if (evThreshold === null) {
-              return "最低EVは0以上で入力してください。";
+              return `${uiLabels.minimum_expected_value}は0以上で入力してください。`;
             }
             if (!Number.isFinite(kellyFraction) || kellyFraction < 0 || kellyFraction > 1) {
               return "Kelly係数は0以上1以下で入力してください。";
@@ -1363,16 +1364,16 @@
             const profitRate = Number(profitRateText);
             const fixedCount = Number(form.elements.fixed_selection_count.value);
             if (!Number.isInteger(maxCount) || maxCount < 1 || (activeTicket === "win" && maxCount > activeHorses().length)) {
-              return activeTicket === "quinella" ? "最大対象組数は正の整数で入力してください。" : "最大対象頭数を出走頭数以内の正の整数で入力してください。";
+              return activeTicket === "quinella" ? `${uiLabels.max_pair_count}は正の整数で入力してください。` : `${uiLabels.max_selection_count}を出走頭数以内の正の整数で入力してください。`;
             }
             if (!Number.isFinite(coverage) || coverage < 0 || coverage > 1) {
-              return "最低カバー確率は0以上1以下で入力してください。";
+              return `${uiLabels.minimum_coverage_probability}は0以上1以下で入力してください。`;
             }
             if (!Number.isFinite(groupEv) || groupEv < 0) {
-              return "最低グループ期待値は0以上で入力してください。";
+              return `${uiLabels.minimum_group_expected_value}は0以上で入力してください。`;
             }
             if (!profitRateText || !Number.isFinite(profitRate) || profitRate < 0) {
-              return "最低利益率は0以上で入力してください。";
+              return `${uiLabels.minimum_profit_rate}は0以上で入力してください。`;
             }
             if (!Number.isInteger(fixedCount) || fixedCount < 0 || fixedCount > maxCount || fixedCount > activeHorses().length) {
               return "手動指定数は対象数以内の整数で入力してください。";
@@ -1460,7 +1461,7 @@
             const details = activeTicket === "quinella" ? [] : calculateValueDetails(activeHorses(), budget, stakeUnit, settings);
             result = activeTicket === "quinella" ? calculateQuinellaSimulation(activeHorses(), budget, stakeUnit, settings, "value") : valueSimulationResult(details, budget, stakeUnit, settings);
             noPurchaseReason = valueNoPurchaseReason(details, stakeUnit, settings.kelly_fraction);
-            if (activeTicket === "quinella") noPurchaseReason = "最低EVとKelly基準を満たす購入単位以上の候補がありません。";
+            if (activeTicket === "quinella") noPurchaseReason = `${uiLabels.minimum_expected_value}とKelly基準を満たす購入単位以上の候補がありません。`;
             renderValue(result);
           } else {
             const settings = {
@@ -1474,7 +1475,7 @@
             renderDutching(result);
           }
 
-          document.getElementById("custom-simulator-method").textContent = method === "value" ? "期待値重視方式" : (activeTicket === "quinella" ? "馬連分配方式" : "単勝分配方式");
+          document.getElementById("custom-simulator-method").textContent = method === "value" ? uiLabels.simulation_method_value : uiLabels.simulation_method_dutching;
           document.getElementById("custom-simulator-budget").textContent = `${yen.format(result.budget)}円`;
           document.getElementById("custom-simulator-total").textContent = `${yen.format(result.total_stake)}円`;
           document.getElementById("custom-simulator-unused").textContent = `${yen.format(result.unused_budget)}円`;
@@ -1508,15 +1509,15 @@
           form.elements.max_selection_count.max = String(Math.max(count, Number(form.elements.max_selection_count.value)));
           form.elements.fixed_selection_count.replaceChildren(new Option("自動選択", "0"));
           for (let i = 1; i <= count; i += 1) form.elements.fixed_selection_count.add(new Option(`${i}${pairMode ? "組" : "頭"}`, String(i)));
-          form.elements.method.querySelector('option[value="dutching"]').textContent = pairMode ? "馬連分配方式" : "単勝分配方式";
+          form.elements.method.querySelector('option[value="dutching"]').textContent = uiLabels.simulation_method_dutching;
           root.querySelectorAll("th, label, h3, strong").forEach((element) => {
             if (element.children.length) return;
             element.dataset.winLabel ??= element.textContent;
             const original = element.dataset.winLabel;
-            element.textContent = pairMode ? original.replaceAll("頭数", "組数").replaceAll("馬番", "馬番ペア").replaceAll("予測勝率", "馬連的中確率").replaceAll("単勝オッズ", "馬連オッズ") : original;
+            element.textContent = pairMode ? original.replaceAll(uiLabels.max_selection_count, uiLabels.max_pair_count).replaceAll(uiLabels.purchase_selection_count, uiLabels.purchase_pair_count).replaceAll("馬番", "馬番ペア").replaceAll(uiLabels.win_probability, uiLabels.quinella_probability).replaceAll("単勝オッズ", "馬連オッズ") : original;
           });
           root.querySelectorAll('[data-count-label]').forEach((element) => {
-            element.textContent = pairMode ? element.dataset.countLabel.replaceAll('頭数', '組数') : element.dataset.countLabel;
+            element.textContent = pairMode ? element.dataset.countLabel.replaceAll(uiLabels.max_selection_count, uiLabels.max_pair_count).replaceAll(uiLabels.purchase_selection_count, uiLabels.purchase_pair_count) : element.dataset.countLabel;
           });
           root.querySelectorAll('[data-term-key]').forEach((element) => {
             const trigger = element.querySelector('.tooltip-trigger');
@@ -1580,7 +1581,7 @@
           <p class="table-scroll-hint">表は横にスクロールできます</p>
           <div class="table-scroll">
             <table class="result-table" data-sortable>
-              <thead><tr>{{ sortable_header("馬番", 0, "number", "ascending") }}{{ sortable_header("馬名", 1, "text", "ascending", "horse-name") }}{{ sortable_header("人気", 2, "number", "ascending") }}{{ sortable_header("1着確率", 3, "number", "descending") }}{{ sortable_header("予測順位", 4, "number", "ascending") }}{{ sortable_header("実着順", 5, "number", "ascending") }}{{ sortable_header("予想との差", 6, "number", "ascending") }}{{ sortable_header("確定オッズ", 7, "number", "ascending") }}{{ sortable_header("単勝払戻", 8, "number", "descending") }}</tr></thead>
+              <thead><tr>{{ sortable_header("馬番", 0, "number", "ascending") }}{{ sortable_header("馬名", 1, "text", "ascending", "horse-name") }}{{ sortable_header("人気", 2, "number", "ascending") }}{{ sortable_header(ui_labels.win_probability, 3, "number", "descending") }}{{ sortable_header(ui_labels.predicted_rank, 4, "number", "ascending") }}{{ sortable_header("実着順", 5, "number", "ascending") }}{{ sortable_header("予想との差", 6, "number", "ascending") }}{{ sortable_header("確定オッズ", 7, "number", "ascending") }}{{ sortable_header(ui_labels.payout_amount, 8, "number", "descending") }}</tr></thead>
               <tbody>
                 {% for item in result_rows %}
                 <tr>
@@ -1605,18 +1606,18 @@
         <div class="panel result-panel">
           <h3>{{ view.label }}の予測評価</h3>
           <div class="metric-grid">
-            <div><strong>勝ち馬の予測順位</strong><br>{{ evaluation.winner.predicted_rank }}位</div>
-            <div><strong>勝ち馬の予測確率</strong><br>{{ "%.2f"|format(evaluation.winner.predicted_probability * 100) }}%</div>
-            <div><strong>Top1</strong><br>{{ "的中" if evaluation.metrics.top1_hit else "不的中" }}</div>
-            <div><strong>Top3</strong><br>{{ "的中" if evaluation.metrics.top3_hit else "不的中" }}</div>
-            <div><strong>Top5</strong><br>{{ "的中" if evaluation.metrics.top5_hit else "不的中" }}</div>
+            <div><strong>勝ち馬の{{ ui_labels.predicted_rank }}</strong><br>{{ evaluation.winner.predicted_rank }}位</div>
+            <div><strong>勝ち馬の{{ ui_labels.win_probability }}</strong><br>{{ "%.2f"|format(evaluation.winner.predicted_probability * 100) }}%</div>
+            <div><strong>{{ ui_labels.rank_top1 }}</strong><br>{{ "的中" if evaluation.metrics.top1_hit else "不的中" }}</div>
+            <div><strong>{{ ui_labels.rank_top3 }}</strong><br>{{ "的中" if evaluation.metrics.top3_hit else "不的中" }}</div>
+            <div><strong>{{ ui_labels.rank_top5 }}</strong><br>{{ "的中" if evaluation.metrics.top5_hit else "不的中" }}</div>
             <div><strong>Log Loss</strong><br>{{ "%.6f"|format(evaluation.metrics.log_loss) }}</div>
             <div><strong>Brier Score</strong><br>{{ "%.6f"|format(evaluation.metrics.brier_score) }}</div>
           </div>
           {% if view.prediction_method == "statistical" %}<p class="small">市場情報は予想には使用せず、結果評価の比較基準としてのみ使用しています。</p>{% endif %}
           {% if evaluation.market_baseline.available %}
           <h4>市場ベースライン比較</h4>
-          <p>市場の勝ち馬確率 {{ "%.2f"|format(evaluation.market_baseline.winner_probability * 100) }}% / 順位 {{ evaluation.market_baseline.winner_rank }}位</p>
+          <p>市場の{{ ui_labels.win_probability }} {{ "%.2f"|format(evaluation.market_baseline.winner_probability * 100) }}% / {{ ui_labels.predicted_rank }} {{ evaluation.market_baseline.winner_rank }}位</p>
           <p>Log Loss差 {{ "%+.6f"|format(evaluation.market_baseline.model_log_loss_difference) }} / Brier Score差 {{ "%+.6f"|format(evaluation.market_baseline.model_brier_difference) }}</p>
           {% if evaluation.market_baseline.odds_recorded_after_start %}<p class="notice">市場比較には発走後に記録されたオッズを使用しているため、正式な発走前性能比較ではありません。</p>{% endif %}
           {% else %}
@@ -1625,41 +1626,41 @@
         </div>
         {% endif %}
 
-        {{ quinella_ui.ticket_tabs('settlement-' ~ view.method) }}
+        {{ quinella_ui.ticket_tabs('settlement-' ~ view.method, ui_labels) }}
         <div id="settlement-{{ view.method }}-win" data-ticket-panel="win" role="tabpanel">
         {% if view.prediction_method == "statistical" and view.prediction and not simulation_value_post and not simulation_dutching_post %}
         <div class="panel result-panel">
-          <h3>統計重視予想のシミュレーション結果</h3>
+          <h3>{{ ui_labels.prediction_method_statistical }}のシミュレーション結果</h3>
           <p>このレースでは統計重視予想の購入シミュレーションは記録されていません。</p>
         </div>
         {% endif %}
 
         {% if simulation_dutching_post %}
         <div class="panel result-panel">
-          <h3 class="result-comparison-title"><span>単勝分配方式のシミュレーション結果</span>{% if simulation_dutching_post.selections | selectattr('hit', 'sameas', true) | list %}<span class="hit-badge">的中!</span>{% endif %}</h3>
+          <h3 class="result-comparison-title"><span>{{ ui_labels.simulation_method_dutching }}のシミュレーション結果</span>{% if simulation_dutching_post.selections | selectattr('hit', 'sameas', true) | list %}<span class="hit-badge">的中!</span>{% endif %}</h3>
           {% if simulation_dutching_post.total_stake == 0 %}
-          <p><strong>購入なし</strong></p><p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
+          <p><strong>購入なし</strong></p><p><strong>{{ ui_labels.purchase_amount }}:</strong> 0円 / <strong>{{ ui_labels.return_amount }}:</strong> 0円 / <strong>{{ ui_labels.profit }}:</strong> 0円</p>
           {% else %}
-          <p><strong>投資:</strong> {{ simulation_dutching_post.total_stake }}円 / <strong>回収:</strong> {{ simulation_dutching_post.total_return }}円 / <strong>損益:</strong> {{ simulation_dutching_post.profit }}円 / <strong>ROI:</strong> {{ "%.2f"|format(simulation_dutching_post.roi * 100) }}%</p>
-          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody>{% for item in simulation_dutching_post.selections %}{% set final_odds = final_win_odds_by_horse.get(item.horse_number) %}<tr><td class="nowrap">{{ item.horse_number }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ final_odds if final_odds is not none else "-" }}</td><td class="nowrap">{{ "的中" if item.hit else "不的中" }}</td><td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
+          <p><strong>{{ ui_labels.purchase_amount }}:</strong> {{ simulation_dutching_post.total_stake }}円 / <strong>{{ ui_labels.return_amount }}:</strong> {{ simulation_dutching_post.total_return }}円 / <strong>{{ ui_labels.profit }}:</strong> {{ simulation_dutching_post.profit }}円 / <strong>{{ ui_labels.profit_rate }}:</strong> {{ "%.2f"|format(simulation_dutching_post.roi * 100) }}%</p>
+          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">{{ ui_labels.purchase_amount }}</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">{{ ui_labels.return_amount }}</th></tr></thead><tbody>{% for item in simulation_dutching_post.selections %}{% set final_odds = final_win_odds_by_horse.get(item.horse_number) %}<tr><td class="nowrap">{{ item.horse_number }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ final_odds if final_odds is not none else "-" }}</td><td class="nowrap">{{ "的中" if item.hit else "不的中" }}</td><td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
           {% endif %}
         </div>
         {% endif %}
 
         {% if simulation_value_post %}
         <div class="panel result-panel">
-          <h3 class="result-comparison-title"><span>期待値重視方式のシミュレーション結果</span>{% if simulation_value_post.selections | selectattr('hit', 'sameas', true) | list %}<span class="hit-badge">的中!</span>{% endif %}</h3>
+          <h3 class="result-comparison-title"><span>{{ ui_labels.simulation_method_value }}のシミュレーション結果</span>{% if simulation_value_post.selections | selectattr('hit', 'sameas', true) | list %}<span class="hit-badge">的中!</span>{% endif %}</h3>
           {% if simulation_value_post.total_stake == 0 %}
-          <p><strong>購入なし</strong></p><p><strong>投資:</strong> 0円 / <strong>回収:</strong> 0円 / <strong>損益:</strong> 0円</p>
+          <p><strong>購入なし</strong></p><p><strong>{{ ui_labels.purchase_amount }}:</strong> 0円 / <strong>{{ ui_labels.return_amount }}:</strong> 0円 / <strong>{{ ui_labels.profit }}:</strong> 0円</p>
           {% else %}
-          <p><strong>投資:</strong> {{ simulation_value_post.total_stake }}円 / <strong>回収:</strong> {{ simulation_value_post.total_return }}円 / <strong>損益:</strong> {{ simulation_value_post.profit }}円 / <strong>ROI:</strong> {{ "%.2f"|format(simulation_value_post.roi * 100) }}%</p>
-          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody>{% for item in simulation_value_post.selections %}{% set final_odds = final_win_odds_by_horse.get(item.horse_number) %}<tr><td class="nowrap">{{ item.horse_number }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ final_odds if final_odds is not none else "-" }}</td><td class="nowrap">{{ "的中" if item.hit else "不的中" }}</td><td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
+          <p><strong>{{ ui_labels.purchase_amount }}:</strong> {{ simulation_value_post.total_stake }}円 / <strong>{{ ui_labels.return_amount }}:</strong> {{ simulation_value_post.total_return }}円 / <strong>{{ ui_labels.profit }}:</strong> {{ simulation_value_post.profit }}円 / <strong>{{ ui_labels.profit_rate }}:</strong> {{ "%.2f"|format(simulation_value_post.roi * 100) }}%</p>
+          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">{{ ui_labels.purchase_amount }}</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">{{ ui_labels.return_amount }}</th></tr></thead><tbody>{% for item in simulation_value_post.selections %}{% set final_odds = final_win_odds_by_horse.get(item.horse_number) %}<tr><td class="nowrap">{{ item.horse_number }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ final_odds if final_odds is not none else "-" }}</td><td class="nowrap">{{ "的中" if item.hit else "不的中" }}</td><td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
           {% endif %}
         </div>
         {% endif %}
         </div>
         <div id="settlement-{{ view.method }}-quinella" data-ticket-panel="quinella" role="tabpanel" hidden>
-          {{ quinella_ui.panels(view, 'result', rejection_reason_text, explained_term, quinella_tooltips) }}
+          {{ quinella_ui.panels(view, 'result', rejection_reason_text, explained_term, quinella_tooltips, ui_labels) }}
         </div>
       </div>
       {% endfor %}

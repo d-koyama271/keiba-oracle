@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="中央競馬の各レースについて、AIが出走馬の過去成績・条件適性・市場オッズなどから1着確率を推定し、購入シミュレーションを掲載します。">
+  <meta name="description" content="中央競馬の各レースについて、AIが出走馬の過去成績・条件適性・市場オッズなどから{{ ui_labels.win_probability }}を推定し、購入シミュレーションを掲載します。">
   <title>中央競馬 AI予想レース一覧 | keiba-oracle</title>
   <style>
     :root {
@@ -295,7 +295,7 @@
               <span>{{ label }}</span>
               <strong class="profit-amount {% if profit is none or profit == 0 %}profit-neutral{% elif profit > 0 %}profit-positive{% else %}profit-negative{% endif %}">{% if profit is not none %}{% if profit > 0 %}+{% endif %}{{ "{:,}".format(profit) }}円{% else %}-{% endif %}</strong>
               </div>
-              <div class="small profit-meta">回収率 {% if overall_roi is not none %}{{ "%.1f"|format(overall_roi * 100) }}%{% else %}-{% endif %} ・ 購入 {{ purchase_races }} / {{ simulation_races }}レース</div>
+              <div class="small profit-meta">{{ ui_labels.return_rate }} {% if overall_roi is not none %}{{ "%.1f"|format(overall_roi * 100) }}%{% else %}-{% endif %} ・ {{ ui_labels.purchase_count }} {{ purchase_races }} / {{ simulation_races }}レース</div>
             </div>
 {%- endmacro %}
 {% macro performance_panel(title, description, overall, simulation) -%}
@@ -307,34 +307,34 @@
       <p class="small performance-description">{{ description }}</p>
       <div class="performance-grid">
         <div class="performance-item">
-          <strong>1位的中率</strong>
+          <strong>{{ ui_labels.rank_top1 }}的中率</strong>
           <div class="performance-value">{% if evaluated_races and overall.get("top1_hit_rate") is not none %}{{ "%.1f"|format(overall.top1_hit_rate * 100) }}%{% else %}-{% endif %}</div>
           <div class="small">{% if evaluated_races %}{{ overall.get("top1_hits", 0) }} / {{ evaluated_races }}レース{% else %}評価済みレースなし{% endif %}</div>
         </div>
         <div class="performance-item">
-          <strong>勝ち馬の予想3位内率</strong>
+          <strong>{{ ui_labels.rank_top3 }}率</strong>
           <div class="performance-value">{% if evaluated_races and overall.get("top3_hit_rate") is not none %}{{ "%.1f"|format(overall.top3_hit_rate * 100) }}%{% else %}-{% endif %}</div>
           <div class="small">{% if evaluated_races %}{{ overall.get("top3_hits", 0) }} / {{ evaluated_races }}レース{% else %}評価済みレースなし{% endif %}</div>
         </div>
         <div class="performance-item">
-          <strong>勝ち馬の平均予想順位</strong>
+          <strong>勝ち馬の平均{{ ui_labels.predicted_rank }}</strong>
           <div class="performance-value">{% if evaluated_races and overall.get("average_winner_predicted_rank") is not none %}{{ "%.1f"|format(overall.average_winner_predicted_rank) }}位{% else %}-{% endif %}</div>
         </div>
       </div>
       <div class="performance-grid profit-grid">
         <div class="performance-item">
-          <strong>累計収支（単勝）</strong>
+          <strong>{{ ui_labels.cumulative_profit }}（単勝）</strong>
           <div class="performance-breakdown">
-{{ profit_line("単勝分配方式", dutching_simulation) }}
-{{ profit_line("期待値重視方式", value_simulation) }}
+{{ profit_line(ui_labels.simulation_method_dutching, dutching_simulation) }}
+{{ profit_line(ui_labels.simulation_method_value, value_simulation) }}
           </div>
         </div>
         <div class="performance-item">
-          <strong>累計収支（馬連）</strong>
+          <strong>{{ ui_labels.cumulative_profit }}（馬連）</strong>
           <div class="performance-breakdown">
 {% set quinella = simulation.get("quinella", {}) if simulation else {} %}
-{{ profit_line("馬連分配方式", quinella.get("dutching")) }}
-{{ profit_line("期待値重視方式", quinella.get("value")) }}
+{{ profit_line(ui_labels.simulation_method_dutching, quinella.get("dutching")) }}
+{{ profit_line(ui_labels.simulation_method_value, quinella.get("value")) }}
           </div>
         </div>
       </div>
@@ -343,7 +343,7 @@
   <main>
     <div class="panel">
       <h1>中央競馬 AI予想</h1>
-      <p class="small">ChatGPTが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の1着確率を推定しています。</p>
+      <p class="small">ChatGPTが出走馬の過去成績・条件適性・市場オッズなどを分析し、各馬の{{ ui_labels.win_probability }}を推定しています。</p>
 {% if update_description %}
       <p class="small">{{ update_description }}</p>
 {% endif %}
@@ -355,8 +355,8 @@
 {% set general_simulation = general_summary.get("simulation") if general_summary else (evaluation_summary.get("simulation") if evaluation_summary else none) %}
 {% set statistical_overall = statistical_summary.get("overall") if statistical_summary else none %}
 {% set statistical_simulation = statistical_summary.get("simulation") if statistical_summary else none %}
-{{ performance_panel("総合AI予想の予測成績", prediction_method_descriptions.get("general", ""), general_overall, general_simulation) }}
-{{ performance_panel("統計重視予想の予測成績", prediction_method_descriptions.get("statistical", ""), statistical_overall, statistical_simulation) }}
+{{ performance_panel(ui_labels.prediction_method_general ~ "の予測成績", prediction_method_descriptions.get("general", ""), general_overall, general_simulation) }}
+{{ performance_panel(ui_labels.prediction_method_statistical ~ "の予測成績", prediction_method_descriptions.get("statistical", ""), statistical_overall, statistical_simulation) }}
     <div class="panel index-panel">
       <h2>レース一覧</h2>
       <div class="table-scroll">

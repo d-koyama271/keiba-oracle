@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from simulate import calculate_dutching_pre, calculate_post, calculate_value_pre
+from ui_labels import UI_LABELS
 from utils import (
     STATISTICAL_PREDICTION_METHOD,
     GENERAL_PREDICTION_METHOD,
@@ -17,12 +18,12 @@ from utils import (
 )
 
 METHOD_LABELS = {
-    GENERAL_PREDICTION_METHOD: "総合AI予想",
-    STATISTICAL_PREDICTION_METHOD: "統計重視予想",
+    GENERAL_PREDICTION_METHOD: UI_LABELS["prediction_method_general"],
+    STATISTICAL_PREDICTION_METHOD: UI_LABELS["prediction_method_statistical"],
 }
 SIMULATION_LABELS = {
-    "dutching": "単勝分配方式",
-    "value": "期待値重視方式",
+    "dutching": UI_LABELS["simulation_method_dutching"],
+    "value": UI_LABELS["simulation_method_value"],
 }
 EXCLUSION_LABELS = {
     "invalid_json": "race JSONを読み込めない",
@@ -212,10 +213,10 @@ def format_backtest_report(report: dict[str, Any]) -> str:
                     f"対象レース: {metrics['target_races']}",
                     f"購入レース: {metrics['purchased_races']}",
                     f"的中レース: {metrics['hit_races']}",
-                    f"総投資額: {format_money(metrics['total_stake'])}",
-                    f"総払戻額: {format_money(metrics['total_return'])}",
-                    f"収支: {format_money(metrics['profit'], signed=True)}",
-                    "回収率: "
+                    f"{UI_LABELS['total_purchase_amount']}: {format_money(metrics['total_stake'])}",
+                    f"{UI_LABELS['return_amount']}: {format_money(metrics['total_return'])}",
+                    f"{UI_LABELS['profit']}: {format_money(metrics['profit'], signed=True)}",
+                    f"{UI_LABELS['return_rate']}: "
                     + (f"{return_rate * 100:.1f}%" if return_rate is not None else "-"),
                 ]
             )
