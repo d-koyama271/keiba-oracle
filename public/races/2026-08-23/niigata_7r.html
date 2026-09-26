@@ -274,6 +274,11 @@
     .value-detail-table { min-width: 1200px; }
     .simulation-table { min-width: 680px; }
     .evaluation-table { min-width: 860px; }
+    .evaluation-table .rejection-reason-cell {
+      min-width: 280px;
+      white-space: normal;
+      line-height: 1.6;
+    }
     .result-table { min-width: 820px; }
     .term-with-tooltip {
       display: inline-flex;
@@ -1118,7 +1123,7 @@
 </span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
   <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択馬のうち最も払戻額が低い馬が的中した場合の最低利益です。最低払戻額から合計購入額を引いて計算します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択馬のうち最も払戻額が低い馬が的中した場合の最低利益です。最低払戻額から合計購入額を引いて計算します。</span>
-</span></span></th><th class="nowrap">判定</th><th>除外理由</th></tr></thead>
+</span></span></th><th class="nowrap">判定</th><th class="rejection-reason-cell">除外理由</th></tr></thead>
     <tbody>
       <tr>
         <td class="nowrap">1</td>
@@ -1128,7 +1133,7 @@
         <td class="nowrap">10500円</td>
         <td class="nowrap">7500円</td>
         <td class="nowrap">除外</td>
-        <td>カバー確率が最低基準未満</td>
+        <td class="rejection-reason-cell">カバー確率が最低基準未満</td>
       </tr>
     
       <tr class="selected-row">
@@ -1139,7 +1144,7 @@
         <td class="nowrap">5320円</td>
         <td class="nowrap">2320円</td>
         <td class="nowrap">採用</td>
-        <td>-</td>
+        <td class="rejection-reason-cell">-</td>
       </tr>
     
       <tr>
@@ -1150,7 +1155,7 @@
         <td class="nowrap">3800円</td>
         <td class="nowrap">800円</td>
         <td class="nowrap">適格</td>
-        <td>-</td>
+        <td class="rejection-reason-cell">-</td>
       </tr>
     
       <tr>
@@ -1161,7 +1166,7 @@
         <td class="nowrap">2820円</td>
         <td class="nowrap">-180円</td>
         <td class="nowrap">除外</td>
-        <td>最低利益率が最低基準未満、条件を満たしていません</td>
+        <td class="rejection-reason-cell">最低利益率が最低基準未満、条件を満たしていません</td>
       </tr>
     
       <tr>
@@ -1172,7 +1177,7 @@
         <td class="nowrap">2660円</td>
         <td class="nowrap">-340円</td>
         <td class="nowrap">除外</td>
-        <td>最低利益率が最低基準未満、条件を満たしていません</td>
+        <td class="rejection-reason-cell">最低利益率が最低基準未満、条件を満たしていません</td>
       </tr>
     </tbody>
   </table>
@@ -1509,7 +1514,7 @@
 </span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
   <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択馬のうち最も払戻額が低い馬が的中した場合の最低利益です。最低払戻額から合計購入額を引いて計算します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択馬のうち最も払戻額が低い馬が的中した場合の最低利益です。最低払戻額から合計購入額を引いて計算します。</span>
-</span></span></th><th class="nowrap">判定</th><th>除外理由</th></tr></thead>
+</span></span></th><th class="nowrap">判定</th><th class="rejection-reason-cell">除外理由</th></tr></thead>
     <tbody>
       <tr>
         <td class="nowrap">1</td>
@@ -1519,7 +1524,7 @@
         <td class="nowrap">43800円</td>
         <td class="nowrap">40800円</td>
         <td class="nowrap">除外</td>
-        <td>カバー確率が最低基準未満</td>
+        <td class="rejection-reason-cell">カバー確率が最低基準未満</td>
       </tr>
     
       <tr>
@@ -1530,7 +1535,7 @@
         <td class="nowrap">30660円</td>
         <td class="nowrap">27660円</td>
         <td class="nowrap">除外</td>
-        <td>カバー確率が最低基準未満</td>
+        <td class="rejection-reason-cell">カバー確率が最低基準未満</td>
       </tr>
     
       <tr class="selected-row">
@@ -1541,7 +1546,7 @@
         <td class="nowrap">7980円</td>
         <td class="nowrap">4980円</td>
         <td class="nowrap">採用</td>
-        <td>-</td>
+        <td class="rejection-reason-cell">-</td>
       </tr>
     
       <tr>
@@ -1552,7 +1557,7 @@
         <td class="nowrap">4380円</td>
         <td class="nowrap">1380円</td>
         <td class="nowrap">適格</td>
-        <td>-</td>
+        <td class="rejection-reason-cell">-</td>
       </tr>
     
       <tr>
@@ -1563,7 +1568,7 @@
         <td class="nowrap">3500円</td>
         <td class="nowrap">500円</td>
         <td class="nowrap">除外</td>
-        <td>最低利益率が最低基準未満</td>
+        <td class="rejection-reason-cell">最低利益率が最低基準未満</td>
       </tr>
     </tbody>
   </table>
@@ -1722,7 +1727,7 @@
 </span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
   <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択馬のうち最も払戻額が低い馬が的中した場合の最低利益です。最低払戻額から合計購入額を引いて計算します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択馬のうち最も払戻額が低い馬が的中した場合の最低利益です。最低払戻額から合計購入額を引いて計算します。</span>
-</span></span></th><th class="nowrap">判定</th><th>除外理由</th></tr></thead><tbody id="custom-dutching-evaluation-rows"></tbody></table></div>
+</span></span></th><th class="nowrap">判定</th><th class="rejection-reason-cell">除外理由</th></tr></thead><tbody id="custom-dutching-evaluation-rows"></tbody></table></div>
         </div>
       </div>
     </div>
@@ -2167,7 +2172,7 @@
             addCell(row, `${yen.format(item.minimum_payout)}円`);
             addCell(row, `${yen.format(item.minimum_profit)}円`);
             addCell(row, item.eligible ? "適格" : "除外");
-            addCell(row, rejectionReasonText(item.rejection_reasons), "");
+            addCell(row, rejectionReasonText(item.rejection_reasons), "rejection-reason-cell");
             evaluationRows.appendChild(row);
           }
         };
