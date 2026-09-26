@@ -681,6 +681,46 @@ process.stdout.write(JSON.stringify({
             )
             self.assertIsNone(race_soup.select_one(".result-section"))
 
+    def test_date_render_keeps_other_published_race_pages_and_index_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(ROOT / "templates", root / "templates")
+            config = {"data_dir": "data", "public_dir": "public"}
+            races = (
+                ("2026-01-01", "中山", "nakayama_11r", "更新対象"),
+                ("2026-01-02", "東京", "tokyo_11r", "他日の公開済み"),
+            )
+            for date, track, stem, name in races:
+                path = root / "data" / "races" / date / f"{stem}.json"
+                path.parent.mkdir(parents=True)
+                path.write_text(
+                    json.dumps(make_payload(predicted=True, track=track, date=date, name=name), ensure_ascii=False),
+                    encoding="utf-8",
+                )
+            target = root / "public" / "races" / "2026-01-01" / "nakayama_11r.html"
+            preserved = root / "public" / "races" / "2026-01-02" / "tokyo_11r.html"
+            for path in (target, preserved):
+                path.parent.mkdir(parents=True)
+                path.write_text("previously published", encoding="utf-8")
+
+            output = render_site(config, "test-date-render", race_date="2026-01-01", root=root)
+
+            rendered_target = BeautifulSoup(
+                (output / target.relative_to(root / "public")).read_text(encoding="utf-8"), "html.parser"
+            )
+            self.assertIsNotNone(rendered_target.select_one(".prediction-section"))
+            self.assertIn("更新対象", rendered_target.h1.get_text())
+            self.assertEqual(
+                (output / preserved.relative_to(root / "public")).read_text(encoding="utf-8"),
+                "previously published",
+            )
+            index = BeautifulSoup((output / "index.html").read_text(encoding="utf-8"), "html.parser")
+            self.assertEqual(len(index.select("table.index-table tbody tr")), 2)
+            self.assertEqual(
+                {link["href"] for link in index.select("table.index-table tbody tr a[href]")},
+                {"races/2026-01-01/nakayama_11r.html", "races/2026-01-02/tokyo_11r.html"},
+            )
+
     def test_result_race_generates_separate_prediction_and_result_pages_and_index_links(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

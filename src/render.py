@@ -679,14 +679,14 @@ def render_site(
         ensure_dir(output_dir)
 
     managed_races_dir = output_dir / "races"
-    if race_id is None and managed_races_dir.exists():
+    if race_date is None and race_id is None and managed_races_dir.exists():
         for managed_html in managed_races_dir.rglob("*.html"):
             managed_html.unlink()
     ensure_dir(managed_races_dir)
 
-    race_files = list_race_files(config, race_date, root)
+    all_race_files = list_race_files(config, None, root)
     index_rows = []
-    for path in race_files:
+    for path in all_race_files:
         persisted_payload = json.loads(path.read_text(encoding="utf-8"))
         persisted_created_at = (persisted_payload.get("meta") or {}).get("created_at")
         payload = load_race_json(path)
@@ -696,7 +696,9 @@ def render_site(
         race = payload["race"]
         prediction_path = race_html_path(race["date"], race["track"], race["race_number"])
         result_path = race_result_html_path(race["date"], race["track"], race["race_number"])
-        selected = race_id is None or payload["meta"].get("race_id") == race_id
+        selected = (race_date is None or race["date"] == race_date) and (
+            race_id is None or payload["meta"].get("race_id") == race_id
+        )
         if not selected:
             if not (output_dir / prediction_path).exists():
                 continue
@@ -704,7 +706,7 @@ def render_site(
             context["status"] = "result_published" if context["has_result_page"] else context["prediction_status"]
             context["status_label"] = status_label(context["status"])
             context["status_class"] = status_class(context["status"])
-        elif race_id is not None and not context["has_result_page"]:
+        elif not context["has_result_page"]:
             (output_dir / result_path).unlink(missing_ok=True)
         page_links = {
             "prediction_page_name": prediction_path.name,
@@ -789,7 +791,7 @@ def main() -> None:
     args = parser.parse_args()
 
     config = load_config()
-    target_date = parse_target_date(args.date)
+    target_date = parse_target_date(args.date) if args.date else None
     render_site(config, "render", target_date)
 
 

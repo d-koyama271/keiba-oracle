@@ -256,7 +256,7 @@ indexには公開済み予想と中止レースを掲載し、前日予想公開
 python -c "import sys; sys.path.insert(0, 'src'); from utils import load_config; from render import render_site; from publish import publish_site; from deploy import deploy_site; c=load_config(); render_site(c, 'manual-render'); publish_site(c); deploy_site(c)"
 ```
 
-`render.py`のCLIは日付指定のrender用で、日付省略時は当日です。全体再生成は上記のように`render_site()`の日付を省略します。
+`python src/render.py`は全raceを再renderします。`python src/render.py --date YYYY-MM-DD`は指定日だけを再renderし、他の日の公開済みrace HTMLを維持します。indexはどちらも公開済みrace全体から作成します。
 
 mainはソース管理、deploy-pagesは公開物の管理に使います。`deploy_site()`は現在`github_pages`のみ対応し、`deployment.github_pages.remote`からURLを取得して専用cloneを使用します。公開branchは初回のみ手動作成が必要です。
 
