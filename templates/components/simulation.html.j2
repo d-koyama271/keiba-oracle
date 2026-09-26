@@ -67,17 +67,17 @@
   {% if ticket == 'win' %}<h4>頭数別比較</h4>{% endif %}
   {% call tables.scroll_table(show_hint=ticket == 'win') %}
   <table class="evaluation-table">
-    <thead><tr><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '頭数' if ticket == 'win' else '組数' }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '対象馬番' if ticket == 'win' else '対象ペア' }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui.explained_term(ui_labels.coverage_probability, 'coverage_probability', tooltips) }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui.explained_term(ui_labels.group_expected_value, 'group_expected_value', tooltips) }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui.explained_term(ui_labels.minimum_payout, 'minimum_payout', tooltips) }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui.explained_term(ui_labels.minimum_profit, 'minimum_profit', tooltips) }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>判定</th><th{% if ticket == 'win' %} class="rejection-reason-cell"{% endif %}>除外理由</th></tr></thead>
+    <thead><tr><th class="nowrap">{{ '頭数' if ticket == 'win' else '組数' }}</th><th class="comparison-target-cell{% if ticket == 'win' %} nowrap{% endif %}">{{ '対象馬番' if ticket == 'win' else '対象ペア' }}</th><th class="nowrap">{{ ui.explained_term(ui_labels.coverage_probability, 'coverage_probability', tooltips) }}</th><th class="nowrap">{{ ui.explained_term(ui_labels.group_expected_value, 'group_expected_value', tooltips) }}</th><th class="nowrap">{{ ui.explained_term(ui_labels.minimum_payout, 'minimum_payout', tooltips) }}</th><th class="nowrap">{{ ui.explained_term(ui_labels.minimum_profit, 'minimum_profit', tooltips) }}</th><th class="nowrap">判定</th><th class="rejection-reason-cell">除外理由</th></tr></thead>
     <tbody>{% for item in pre.evaluated_counts %}
       <tr{% if pre.selections and item.selection_count == pre.selected_count %} class="selected-row"{% endif %}>
-        <td{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ item.selection_count }}</td>
-        <td{% if ticket == 'win' %} class="nowrap"{% endif %}>{% if ticket == 'win' %}{{ item.horse_numbers|join(', ') }}{% else %}{% for pair in item.horse_pairs %}{{ pair|join('-') }}{{ ', ' if not loop.last else '' }}{% endfor %}{% endif %}</td>
-        <td{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '%.2f'|format(item.coverage_probability * 100) }}%</td>
-        <td{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '%.3f'|format(item.group_expected_value) }}</td>
-        <td{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '%.0f'|format(item.minimum_payout) }}円</td>
-        <td{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '%.0f'|format(item.minimum_profit) }}円</td>
-        <td{% if ticket == 'win' %} class="nowrap"{% endif %}>{% if pre.selections and item.selection_count == pre.selected_count %}採用{% elif item.eligible %}適格{% else %}除外{% endif %}</td>
-        <td{% if ticket == 'win' %} class="rejection-reason-cell"{% endif %}>{{ rejection_reason_text(item.rejection_reasons) if ticket == 'win' else rejection_reason_text(item.rejection_reasons)|replace('頭数', '組数') }}</td>
+        <td class="nowrap">{{ item.selection_count }}</td>
+        <td class="comparison-target-cell{% if ticket == 'win' %} nowrap{% endif %}">{% if ticket == 'win' %}{{ item.horse_numbers|join(', ') }}{% else %}{% for pair in item.horse_pairs %}{{ pair|join('-') }}{{ ', ' if not loop.last else '' }}{% endfor %}{% endif %}</td>
+        <td class="nowrap">{{ '%.2f'|format(item.coverage_probability * 100) }}%</td>
+        <td class="nowrap">{{ '%.3f'|format(item.group_expected_value) }}</td>
+        <td class="nowrap">{{ '%.0f'|format(item.minimum_payout) }}円</td>
+        <td class="nowrap">{{ '%.0f'|format(item.minimum_profit) }}円</td>
+        <td class="nowrap">{% if pre.selections and item.selection_count == pre.selected_count %}採用{% elif item.eligible %}適格{% else %}除外{% endif %}</td>
+        <td class="rejection-reason-cell">{{ rejection_reason_text(item.rejection_reasons) if ticket == 'win' else rejection_reason_text(item.rejection_reasons)|replace('頭数', '組数') }}</td>
       </tr>
     {% endfor %}</tbody>
   </table>
@@ -97,4 +97,62 @@
 {% macro purchase_result(ui_labels, extra_class='') -%}
 <h4 class="simulation-block-title simulation-result-title">{{ ui_labels.purchase_result }}</h4>
 <div class="metric-grid{% if extra_class %} {{ extra_class }}{% endif %}">{{ caller() }}</div>
+{%- endmacro %}
+
+{% macro value_purchase_result(pre, ui_labels) -%}
+{% call purchase_result(ui_labels, 'value-purchase-result') %}
+  <div><strong>判定</strong><br>{{ '購入あり' if pre.selections else '購入なし' }}</div>
+  <div><strong>{{ ui_labels.total_purchase_amount }}</strong><br>{{ pre.total_stake }}円</div>
+  <div><strong>{{ ui_labels.unused_budget }}</strong><br>{{ pre.unused_budget }}円</div>
+{% endcall %}
+{%- endmacro %}
+
+{% macro dutching_purchase_result(pre, ui_labels) -%}
+{% call purchase_result(ui_labels) %}
+  <div class="dutching-no-purchase"><strong>判定</strong><br>購入なし</div>
+  <div><strong>{{ ui_labels.total_purchase_amount }}</strong><br>{{ pre.total_stake }}円</div>
+  <div><strong>{{ ui_labels.unused_budget }}</strong><br>{{ pre.unused_budget }}円</div>
+{% endcall %}
+{%- endmacro %}
+
+{% macro settlement_table(post, ui_labels, ticket, final_win_odds_by_horse=none) -%}
+{% if post.selections %}
+{% set has_refund = (post.total_refund|default(0)) > 0 %}
+{% set table_markup %}
+<table{% if ticket == 'quinella' %} class="simulation-table"{% endif %}>
+  <thead><tr>
+    <th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '馬番' if ticket == 'win' else '馬番ペア' }}</th>
+    <th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui_labels.purchase_amount }}</th>
+    {% if ticket == 'win' %}<th class="nowrap">確定オッズ</th>{% endif %}
+    <th{% if ticket == 'win' %} class="nowrap"{% endif %}>判定</th>
+    {% if ticket == 'quinella' %}<th>{{ ui_labels.payout_amount }}</th>{% endif %}
+    {% if has_refund %}<th class="{% if ticket == 'win' %}nowrap {% endif %}refund-column">{{ ui_labels.refund_amount }}</th>{% endif %}
+    <th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui_labels.return_amount }}</th>
+  </tr></thead>
+  <tbody>{% for item in post.selections %}
+    {% set refund = item.refund|default(0) %}
+    <tr>
+      <td class="nowrap">{{ item.horse_number if ticket == 'win' else item.horse_numbers|join('-') }}</td>
+      <td class="nowrap">{{ item.stake }}円</td>
+      {% if ticket == 'win' %}{% set final_odds = final_win_odds_by_horse.get(item.horse_number) %}<td class="nowrap">{{ final_odds if final_odds is not none else '-' }}</td>{% endif %}
+      <td class="nowrap settlement-outcome" data-outcome="{{ 'refund' if refund else ('hit' if item.hit else 'miss') }}">{{ '返還' if refund else ('的中' if item.hit else '不的中') }}</td>
+      {% if ticket == 'quinella' %}<td class="nowrap">{{ item.payout }}円</td>{% endif %}
+      {% if has_refund %}<td class="nowrap refund-column">{{ refund }}円</td>{% endif %}
+      <td class="nowrap">{{ item.return }}円</td>
+    </tr>
+  {% endfor %}</tbody>
+</table>
+{% endset %}
+{% if ticket == 'quinella' %}{% call tables.scroll_table() %}{{ table_markup }}{% endcall %}{% else %}{{ table_markup }}{% endif %}
+{% endif %}
+{%- endmacro %}
+
+{% macro win_settlement_panel(post, label, ui_labels, final_win_odds_by_horse) -%}
+{% if post %}
+<div class="panel result-panel">
+  {{ result_heading(label, post) }}
+  {{ ui.settlement_summary(post, ui_labels) }}
+  {% if post.total_stake != 0 %}{{ settlement_table(post, ui_labels, 'win', final_win_odds_by_horse) }}{% endif %}
+</div>
+{% endif %}
 {%- endmacro %}

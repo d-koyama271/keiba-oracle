@@ -648,11 +648,7 @@
       {{ simulation_ui.dutching_breakdown(simulation_dutching_pre, ui_labels, tooltips, "win", "馬番", ui_labels.win_probability, "単勝オッズ") }}
       {% else %}
       {{ simulation_ui.dutching_settings(simulation_dutching_pre, ui_labels, tooltips, "頭", ui_labels.max_selection_count) }}
-      {% call simulation_ui.purchase_result(ui_labels) %}
-        <div class="dutching-no-purchase"><strong>判定</strong><br>購入なし</div>
-        <div><strong>{{ ui_labels.total_purchase_amount }}</strong><br>{{ simulation_dutching_pre.total_stake }}円</div>
-        <div><strong>{{ ui_labels.unused_budget }}</strong><br>{{ simulation_dutching_pre.unused_budget }}円</div>
-      {% endcall %}
+      {{ simulation_ui.dutching_purchase_result(simulation_dutching_pre, ui_labels) }}
       {% endif %}
       {{ simulation_ui.dutching_comparison(simulation_dutching_pre, ui_labels, tooltips, rejection_reason_text, "win") }}
       {% else %}
@@ -664,9 +660,7 @@
       <h3>{{ explained_term(ui_labels.simulation_method_value, "value_method") }}</h3>
       {% if simulation_value_pre %}
       {{ simulation_ui.value_settings(simulation_value_pre, ui_labels, tooltips) }}
-      {% call simulation_ui.purchase_result(ui_labels, "value-purchase-result") %}
-        <div><strong>{{ ui_labels.purchase_amount }}</strong><br>{{ simulation_value_pre.total_stake }}円 / {{ simulation_value_pre.budget }}円</div>
-      {% endcall %}
+      {{ simulation_ui.value_purchase_result(simulation_value_pre, ui_labels) }}
       <details class="simulation-details">
         <summary>全馬期待値の詳細を見る</summary>
         <h4>全馬期待値一覧</h4>
@@ -891,25 +885,11 @@
         {% endif %}
 
         {% if simulation_dutching_post %}
-        {% set dutching_has_refund = (simulation_dutching_post.total_refund|default(0)) > 0 %}
-        <div class="panel result-panel">
-          {{ simulation_ui.result_heading(ui_labels.simulation_method_dutching, simulation_dutching_post) }}
-          {{ ui.settlement_summary(simulation_dutching_post, ui_labels) }}
-          {% if simulation_dutching_post.total_stake != 0 %}
-          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">{{ ui_labels.purchase_amount }}</th><th class="nowrap">確定オッズ</th><th class="nowrap">判定</th>{% if dutching_has_refund %}<th class="nowrap refund-column">{{ ui_labels.refund_amount }}</th>{% endif %}<th class="nowrap">{{ ui_labels.return_amount }}</th></tr></thead><tbody>{% for item in simulation_dutching_post.selections %}{% set final_odds = final_win_odds_by_horse.get(item.horse_number) %}<tr><td class="nowrap">{{ item.horse_number }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ final_odds if final_odds is not none else "-" }}</td><td class="nowrap settlement-outcome" data-outcome="{{ 'refund' if item.refund|default(0) else ('hit' if item.hit else 'miss') }}">{{ '返還' if item.refund|default(0) else ('的中' if item.hit else '不的中') }}</td>{% if dutching_has_refund %}<td class="nowrap refund-column">{{ item.refund|default(0) }}円</td>{% endif %}<td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
-          {% endif %}
-        </div>
+        {{ simulation_ui.win_settlement_panel(simulation_dutching_post, ui_labels.simulation_method_dutching, ui_labels, final_win_odds_by_horse) }}
         {% endif %}
 
         {% if simulation_value_post %}
-        {% set value_has_refund = (simulation_value_post.total_refund|default(0)) > 0 %}
-        <div class="panel result-panel">
-          {{ simulation_ui.result_heading(ui_labels.simulation_method_value, simulation_value_post) }}
-          {{ ui.settlement_summary(simulation_value_post, ui_labels) }}
-          {% if simulation_value_post.total_stake != 0 %}
-          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">{{ ui_labels.purchase_amount }}</th><th class="nowrap">確定オッズ</th><th class="nowrap">判定</th>{% if value_has_refund %}<th class="nowrap refund-column">{{ ui_labels.refund_amount }}</th>{% endif %}<th class="nowrap">{{ ui_labels.return_amount }}</th></tr></thead><tbody>{% for item in simulation_value_post.selections %}{% set final_odds = final_win_odds_by_horse.get(item.horse_number) %}<tr><td class="nowrap">{{ item.horse_number }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ final_odds if final_odds is not none else "-" }}</td><td class="nowrap settlement-outcome" data-outcome="{{ 'refund' if item.refund|default(0) else ('hit' if item.hit else 'miss') }}">{{ '返還' if item.refund|default(0) else ('的中' if item.hit else '不的中') }}</td>{% if value_has_refund %}<td class="nowrap refund-column">{{ item.refund|default(0) }}円</td>{% endif %}<td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}</tbody></table>
-          {% endif %}
-        </div>
+        {{ simulation_ui.win_settlement_panel(simulation_value_post, ui_labels.simulation_method_value, ui_labels, final_win_odds_by_horse) }}
         {% endif %}
         </div>
         <div id="settlement-{{ view.method }}-quinella" data-ticket-panel="quinella" role="tabpanel" hidden>

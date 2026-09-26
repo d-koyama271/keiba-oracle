@@ -15,13 +15,8 @@
   {% if page_kind == 'result' %}{{ simulation.result_heading(label, post) }}{% else %}<h3 class="result-comparison-title"><span>{% if method == 'dutching' %}{{ ui.explained_term(label, 'dutching_method', quinella_tooltips) }}{% else %}{{ label }}{% endif %}</span></h3>{% endif %}
   {% if page_kind == 'result' %}
     {% if post %}
-    {% set has_refund = (post.total_refund|default(0)) > 0 %}
     {{ ui.settlement_summary(post, ui_labels) }}
-    {% if post.selections %}
-    {% call tables.scroll_table() %}<table class="simulation-table"><thead><tr><th>馬番ペア</th><th>{{ ui_labels.purchase_amount }}</th><th>判定</th><th>{{ ui_labels.payout_amount }}</th>{% if has_refund %}<th class="refund-column">{{ ui_labels.refund_amount }}</th>{% endif %}<th>{{ ui_labels.return_amount }}</th></tr></thead><tbody>
-      {% for item in post.selections %}<tr><td class="nowrap">{{ item.horse_numbers|join('-') }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap settlement-outcome" data-outcome="{{ 'refund' if item.refund else ('hit' if item.hit else 'miss') }}">{{ '返還' if item.refund else ('的中' if item.hit else '不的中') }}</td><td class="nowrap">{{ item.payout }}円</td>{% if has_refund %}<td class="nowrap refund-column">{{ item.refund }}円</td>{% endif %}<td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}
-    </tbody></table>{% endcall %}
-    {% endif %}
+    {{ simulation.settlement_table(post, ui_labels, 'quinella') }}
     {% else %}<p class="quinella-pending">結果・馬連払戻または返還情報の確定待ちです。</p>{% endif %}
   {% elif pre %}
     {% if method == 'dutching' and pre.selections %}
@@ -30,14 +25,11 @@
     {% else %}
     {% if method == 'value' %}
     {{ simulation.value_settings(pre, ui_labels, quinella_tooltips) }}
+    {{ simulation.value_purchase_result(pre, ui_labels) }}
     {% else %}
     {{ simulation.dutching_settings(pre, ui_labels, quinella_tooltips, '組', ui.explained_term(ui_labels.max_pair_count, 'max_selection_count', quinella_tooltips)) }}
+    {{ simulation.dutching_purchase_result(pre, ui_labels) }}
     {% endif %}
-    {% call simulation.purchase_result(ui_labels) %}
-      <div><strong>判定</strong><br>{{ '購入あり' if pre.selections else '購入なし' }}</div>
-      <div><strong>{{ ui_labels.total_purchase_amount }}</strong><br>{{ pre.total_stake }}円</div>
-      <div><strong>{{ ui_labels.unused_budget }}</strong><br>{{ pre.unused_budget }}円</div>
-    {% endcall %}
     {% endif %}
     {% if method == 'dutching' %}
       {{ simulation.dutching_comparison(pre, ui_labels, quinella_tooltips, rejection_reason_text, 'quinella') }}
