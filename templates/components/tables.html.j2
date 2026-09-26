@@ -1,0 +1,4 @@
+{% macro scroll_table(show_hint=false) -%}
+{% if show_hint %}<p class="table-scroll-hint">表は横にスクロールできます</p>{% endif %}
+<div class="table-scroll">{{ caller() }}</div>
+{%- endmacro %}

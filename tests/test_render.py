@@ -490,6 +490,13 @@ class RenderTests(unittest.TestCase):
                 soup = BeautifulSoup(template.render(**build_race_context(current), page_kind="prediction"), "html.parser")
                 embedded = json.loads(soup.select_one("#custom-simulator-data").string)
                 self.assertEqual(set(embedded["methods"]), set(methods))
+                for prefix in ("prediction", "simulation"):
+                    tabs = soup.select(f".{prefix}-method-tabs [data-ai-tab]")
+                    self.assertEqual([tab["data-ai-method"] for tab in tabs], list(methods) if len(methods) > 1 else [])
+                    for index, tab in enumerate(tabs):
+                        self.assertEqual(tab["aria-controls"], f"{prefix}-{methods[index]}")
+                        self.assertEqual(tab["aria-selected"], "true" if index == 0 else "false")
+                        self.assertEqual(tab["tabindex"], "0" if index == 0 else "-1")
                 for method in methods:
                     expected = [h["win_probability"] for h in entry[method]["horses"]]
                     panel = soup.select_one(f"#prediction-{method}")
@@ -516,6 +523,8 @@ class RenderTests(unittest.TestCase):
                 current["result"] = make_result(3, 500, [1, 2, 3, 4, 5])
                 current["evaluation"] = build_evaluation(current)
                 result = BeautifulSoup(template.render(**build_race_context(current), page_kind="result"), "html.parser")
+                result_tabs = result.select(".result-method-tabs [data-ai-tab]")
+                self.assertEqual([tab["data-ai-method"] for tab in result_tabs], list(methods) if len(methods) > 1 else [])
                 for method in methods:
                     rows = result.select(f"#result-{method} table.result-table tbody tr")
                     self.assertEqual([float(r.select("td")[3]["data-sort-value"]) for r in rows],

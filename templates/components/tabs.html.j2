@@ -1,0 +1,14 @@
+{% macro ai_method_tabs(ai_views, prefix, aria_label) -%}
+<div class="ai-method-tabs {{ prefix }}-method-tabs" role="tablist" aria-label="{{ aria_label }}">
+  {% for view in ai_views %}
+  <button type="button" class="ai-method-tab" role="tab" data-ai-tab data-ai-method="{{ view.method }}" aria-controls="{{ prefix }}-{{ view.method }}" aria-selected="{{ 'true' if loop.first else 'false' }}" tabindex="{{ '0' if loop.first else '-1' }}">{{ view.label }}</button>
+  {% endfor %}
+</div>
+{%- endmacro %}
+
+{% macro ticket_tabs(prefix, shared_panel=none) -%}
+<div class="ai-method-tabs ticket-tabs" role="tablist" aria-label="シミュレーションの券種">
+  <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="win" aria-controls="{{ shared_panel or prefix ~ '-win' }}" aria-selected="true" tabindex="0">単勝</button>
+  <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="quinella" aria-controls="{{ shared_panel or prefix ~ '-quinella' }}" aria-selected="false" tabindex="-1">馬連</button>
+</div>
+{%- endmacro %}

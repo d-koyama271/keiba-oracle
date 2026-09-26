@@ -1,0 +1,100 @@
+{% import 'components/ui.html.j2' as ui %}
+{% import 'components/tables.html.j2' as tables %}
+
+{% macro result_heading(label, post) -%}
+<h3 class="result-comparison-title"><span>{{ label }}のシミュレーション結果</span>{% if post and post.selections | selectattr('hit', 'sameas', true) | list %}{{ ui.hit_badge() }}{% endif %}</h3>
+{%- endmacro %}
+
+{% macro dutching_pairs(pre, ui_labels, tooltips, count_unit, max_count_label, selected_count_label) -%}
+{% set min_profit_rate = pre.settings.min_profit_rate|default(none) %}
+<div class="dutching-pairs" aria-label="{{ ui_labels.settings_conditions }}と{{ ui_labels.purchase_result }}">
+  <div class="dutching-pair">
+    <div class="dutching-setting"><strong>{{ ui_labels.budget }}</strong><span class="dutching-setting-value">{{ pre.budget }}円</span></div>
+    <div class="dutching-result"><strong>{{ ui_labels.total_purchase_amount }}</strong><span class="dutching-result-value">{{ pre.total_stake }}円</span></div>
+  </div>
+  <div class="dutching-pair">
+    <div class="dutching-setting"><strong>{{ max_count_label }}</strong><span class="dutching-setting-value">{{ pre.settings.max_selection_count }}{{ count_unit }}</span></div>
+    <div class="dutching-result"><strong>{{ selected_count_label }}</strong><span class="dutching-result-value">{{ pre.selected_count }}{{ count_unit }}</span></div>
+  </div>
+  <div class="dutching-pair">
+    <div class="dutching-setting"><strong>{{ ui.explained_term(ui_labels.minimum_coverage_probability, 'min_coverage_probability', tooltips) }}</strong><span class="dutching-setting-value">{{ '%.2f'|format(pre.settings.min_coverage_probability * 100) }}%</span></div>
+    <div class="dutching-result"><strong>{{ ui.explained_term(ui_labels.coverage_probability, 'coverage_probability', tooltips) }}</strong><span class="dutching-result-value">{{ '%.2f'|format(pre.coverage_probability * 100) }}%</span></div>
+  </div>
+  <div class="dutching-pair">
+    <div class="dutching-setting"><strong>{{ ui.explained_term(ui_labels.minimum_group_expected_value, 'min_group_expected_value', tooltips) }}</strong><span class="dutching-setting-value">{{ '%.3f'|format(pre.settings.min_group_expected_value) }}</span></div>
+    <div class="dutching-result"><strong>{{ ui.explained_term(ui_labels.group_expected_value, 'group_expected_value', tooltips) }}</strong><span class="dutching-result-value">{{ '%.3f'|format(pre.group_expected_value) }}</span></div>
+  </div>
+  <div class="dutching-pair">
+    <div class="dutching-setting"><strong>{{ ui.explained_term(ui_labels.minimum_profit_rate, 'min_profit_rate', tooltips) }}</strong><span class="dutching-setting-value">{% if min_profit_rate is not none %}{{ '%.0f'|format(min_profit_rate * 100) }}%{% else %}-{% endif %}</span></div>
+    <div class="dutching-result"><strong>{{ ui.explained_term(ui_labels.minimum_profit, 'minimum_profit', tooltips) }}</strong><span class="dutching-result-value">{{ '%.0f'|format(pre.minimum_profit) }}円</span></div>
+  </div>
+</div>
+{%- endmacro %}
+
+{% macro dutching_settings(pre, ui_labels, tooltips, count_unit, max_count_label) -%}
+{% set min_profit_rate = pre.settings.min_profit_rate|default(none) %}
+<h4 class="simulation-block-title">{{ ui_labels.settings_conditions }}</h4>
+<div class="metric-grid simulation-primary-metrics">
+  <div><strong>{{ ui_labels.budget }}</strong><br>{{ pre.budget }}円</div>
+  <div><strong>{{ max_count_label }}</strong><br>{{ pre.settings.max_selection_count }}{{ count_unit }}</div>
+  <div><strong>{{ ui.explained_term(ui_labels.minimum_coverage_probability, 'min_coverage_probability', tooltips) }}</strong><br>{{ '%.2f'|format(pre.settings.min_coverage_probability * 100) }}%</div>
+  <div><strong>{{ ui.explained_term(ui_labels.minimum_group_expected_value, 'min_group_expected_value', tooltips) }}</strong><br>{{ '%.3f'|format(pre.settings.min_group_expected_value) }}</div>
+  <div><strong>{{ ui.explained_term(ui_labels.minimum_profit_rate, 'min_profit_rate', tooltips) }}</strong><br>{% if min_profit_rate is not none %}{{ '%.0f'|format(min_profit_rate * 100) }}%{% else %}-{% endif %}</div>
+</div>
+{%- endmacro %}
+
+{% macro dutching_breakdown(pre, ui_labels, tooltips, ticket, identity_label, probability_label, odds_label) -%}
+<h4 class="purchase-breakdown-title">{{ ui_labels.purchase_breakdown }}</h4>
+{% call tables.scroll_table() %}
+<table class="simulation-table purchase-breakdown-table">
+  <thead><tr><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ identity_label }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ probability_label }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ odds_label }}</th>{% if ticket == 'quinella' %}<th>{{ ui.explained_term(ui_labels.expected_value, 'ev', tooltips) }}</th>{% endif %}<th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui_labels.purchase_amount }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui_labels.estimated_payout_amount }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>的中時利益</th></tr></thead>
+  <tbody>{% for item in pre.selections %}<tr>
+    <td class="nowrap">{{ item.horse_number if ticket == 'win' else item.horse_numbers|join('-') }}</td>
+    <td class="nowrap">{{ '%.2f'|format(item.predicted_probability * 100) }}%</td>
+    <td class="nowrap">{{ item.win_odds if ticket == 'win' else item.odds }}</td>
+    {% if ticket == 'quinella' %}<td class="nowrap">{{ '%.3f'|format(item.expected_value) }}</td>{% endif %}
+    <td class="nowrap">{{ item.stake }}円</td>
+    <td class="nowrap">{{ '%.0f'|format(item.estimated_payout) }}円</td>
+    <td class="nowrap">{{ '%.0f'|format(item.estimated_profit) }}円</td>
+  </tr>{% endfor %}</tbody>
+</table>
+{% endcall %}
+{%- endmacro %}
+
+{% macro dutching_comparison(pre, ui_labels, tooltips, rejection_reason_text, ticket) -%}
+<details class="simulation-details">
+  <summary>{{ '頭数別比較' if ticket == 'win' else '組数別比較' }}の詳細を見る</summary>
+  {% if ticket == 'win' %}<h4>頭数別比較</h4>{% endif %}
+  {% call tables.scroll_table(show_hint=ticket == 'win') %}
+  <table class="evaluation-table">
+    <thead><tr><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '頭数' if ticket == 'win' else '組数' }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '対象馬番' if ticket == 'win' else '対象ペア' }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui.explained_term(ui_labels.coverage_probability, 'coverage_probability', tooltips) }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui.explained_term(ui_labels.group_expected_value, 'group_expected_value', tooltips) }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui.explained_term(ui_labels.minimum_payout, 'minimum_payout', tooltips) }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui.explained_term(ui_labels.minimum_profit, 'minimum_profit', tooltips) }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>判定</th><th>除外理由</th></tr></thead>
+    <tbody>{% for item in pre.evaluated_counts %}
+      <tr{% if pre.selections and item.selection_count == pre.selected_count %} class="selected-row"{% endif %}>
+        <td{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ item.selection_count }}</td>
+        <td{% if ticket == 'win' %} class="nowrap"{% endif %}>{% if ticket == 'win' %}{{ item.horse_numbers|join(', ') }}{% else %}{% for pair in item.horse_pairs %}{{ pair|join('-') }}{{ ', ' if not loop.last else '' }}{% endfor %}{% endif %}</td>
+        <td{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '%.2f'|format(item.coverage_probability * 100) }}%</td>
+        <td{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '%.3f'|format(item.group_expected_value) }}</td>
+        <td{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '%.0f'|format(item.minimum_payout) }}円</td>
+        <td{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '%.0f'|format(item.minimum_profit) }}円</td>
+        <td{% if ticket == 'win' %} class="nowrap"{% endif %}>{% if pre.selections and item.selection_count == pre.selected_count %}採用{% elif item.eligible %}適格{% else %}除外{% endif %}</td>
+        <td>{{ rejection_reason_text(item.rejection_reasons) if ticket == 'win' else rejection_reason_text(item.rejection_reasons)|replace('頭数', '組数') }}</td>
+      </tr>
+    {% endfor %}</tbody>
+  </table>
+  {% endcall %}
+</details>
+{%- endmacro %}
+
+{% macro value_settings(pre, ui_labels, tooltips) -%}
+<h4 class="simulation-block-title">{{ ui_labels.settings_conditions }}</h4>
+<div class="metric-grid">
+  <div><strong>{{ ui_labels.budget }}</strong><br>{{ pre.budget }}円</div>
+  <div><strong>{{ ui.explained_term(ui_labels.minimum_expected_value, 'minimum_ev', tooltips) }}</strong><br>{{ pre.settings.ev_threshold }}</div>
+  <div><strong>{{ ui.explained_term('Kelly係数', 'kelly_fraction', tooltips) }}</strong><br>{{ pre.settings.kelly_fraction }}</div>
+</div>
+{%- endmacro %}
+
+{% macro purchase_result(ui_labels, extra_class='') -%}
+<h4 class="simulation-block-title simulation-result-title">{{ ui_labels.purchase_result }}</h4>
+<div class="metric-grid{% if extra_class %} {{ extra_class }}{% endif %}">{{ caller() }}</div>
+{%- endmacro %}

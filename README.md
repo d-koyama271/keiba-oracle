@@ -47,7 +47,11 @@ templates/
   base.html.j2                 # ページ共通のHTML・基本CSS
   index.html.j2 / race.html.j2 # 一覧・レースページ
   quinella.html.j2             # 馬連固有の表示
-  components/ui.html.j2       # 共通UI macro
+  components/
+    ui.html.j2                # バッジ・tooltip・結果サマリー
+    tabs.html.j2              # AI方式・券種のタブ
+    tables.html.j2            # 表のスクロール枠
+    simulation.html.j2        # 共通の購入シミュレーション表示
   scripts/                    # inlineで展開するレースページのJS
 public/
   index.html
@@ -252,7 +256,7 @@ scheduler → run_pre / run_post → render → data/_site_stage
 
 `render_site()`は保存済みデータからstageへHTMLを生成し、`publish_site()`がローカルpublicを差し替えます。途中終了でpublicがなくbackupだけ残った場合は復旧します。publish自体はホスティング先を知りません。
 
-テンプレートでは同じ意味・構造のUIをJinja macroへ集約し、券種ごとに同じ表示ロジックを複製しません。文脈や構造が異なる表示は無理に万能component化せず、各ページに残します。
+テンプレートでは同じ意味・構造のUIをJinja macroへ集約し、券種ごとに同じ表示ロジックを複製しません。表のスクロール枠など共通部分のみをまとめ、券種固有のデータや列は各テンプレートで扱います。文脈や構造が異なる表示は無理に万能component化せず、各ページに残します。
 
 indexには公開済み予想と中止レースを掲載し、前日予想公開・直前予想公開・結果公開・開催中止を表示します。未結果の公開済み予想には次回更新予定を併記します。結果ページは正常な結果・評価がある場合に生成します。
 
