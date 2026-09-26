@@ -674,10 +674,10 @@
         {% endif %}
         <p class="small prediction-description">{{ view.description }}</p>
         {% if view.prediction_method == "statistical" %}
-        <p class="small">単勝オッズ・人気は比較用表示で、統計重視予想には使用していません。</p>
+        <p class="small statistical-market-note">単勝オッズ・人気は比較用表示で、統計重視予想には使用していません。</p>
         {% endif %}
         {% if view.prediction_method == "general" and used_odds_label %}
-        <p class="small used-odds">使用オッズ: {{ used_odds_label }}（単勝オッズ・人気は{% if used_odds_is_official %}この時点{% else %}取得時点{% endif %}の値です{% if odds_recorded_after_start %}。発走後に取得されたオッズスナップショットのため、厳密な発走前オッズではありません{% endif %}）</p>
+        <p class="small used-odds">使用オッズ: {{ used_odds_label }}（単勝オッズ・人気は{% if used_odds_is_official %}この時点{% else %}取得時点{% endif %}の値です{% if odds_recorded_after_start %}。<span class="odds-after-start-note">発走後に取得されたオッズスナップショットのため、厳密な発走前オッズではありません</span>{% endif %}）</p>
         {% endif %}
         {% if view.prediction %}
         <p class="table-scroll-hint">表は横にスクロールできます</p>
@@ -796,7 +796,7 @@
       </div>
       <h4 class="simulation-block-title simulation-result-title">{{ ui_labels.purchase_result }}</h4>
       <div class="metric-grid">
-        <div><strong>判定</strong><br>購入なし</div>
+        <div class="dutching-no-purchase"><strong>判定</strong><br>購入なし</div>
         <div><strong>{{ ui_labels.total_purchase_amount }}</strong><br>{{ simulation_dutching_pre.total_stake }}円</div>
         <div><strong>{{ ui_labels.unused_budget }}</strong><br>{{ simulation_dutching_pre.unused_budget }}円</div>
       </div>
@@ -895,7 +895,7 @@
         </table>
       </div>
       {% else %}
-      <p><strong>購入なし</strong>{% if value_no_purchase_reason %}<br><span class="small">{{ value_no_purchase_reason }}</span>{% endif %}</p>
+      <p class="value-no-purchase"><strong>購入なし</strong>{% if value_no_purchase_reason %}<br><span class="small">{{ value_no_purchase_reason }}</span>{% endif %}</p>
       {% endif %}
       {% else %}
       <p>{{ missing_simulation_message }}</p>

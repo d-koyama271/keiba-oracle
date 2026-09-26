@@ -286,4 +286,4 @@ python -m unittest discover -s tests -v
 
 固定fixtureとモックでparser・prediction・保存互換・simulation・評価・scheduler復旧・公開処理を検証します。netkeibaや実際のLLMには接続しません。Git deployは一時ローカルrepo、Python/JavaScript parityはNode.jsを使用します。Node.jsがない場合、そのテストはskipされます。
 
-UI文言・装飾値を固定するテストは増やさず、identity、境界条件、snapshot再利用、成果物、状態遷移を優先します。
+renderテストはUI文言そのものより、状態判定、DOM構造、表示有無、保存データから表示値への伝播、リンク先、data属性、計算結果を優先します。UIラベルや説明文を固定文字列としてテスト側に複製せず、`ui_labels.py` の第二の文言辞書を作りません。文言変更でテストが失敗した場合は期待文字列を置換する前に、その文言自体を保証する必要があるか見直します。文言が明示的な仕様である場合を除き、意味的なclass・data属性やfixtureの入力値で確認します。日時・金額・確率などの表示値は必要に応じて検証し、色・余白・font-sizeなどの装飾値は明示的な仕様がない限り固定しません。その他のテストではidentity、境界条件、snapshot再利用、成果物、状態遷移を優先します。

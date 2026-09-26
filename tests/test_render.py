@@ -95,12 +95,12 @@ class RenderTests(unittest.TestCase):
         }}
         entry = payload["prediction"][0]
         entry["statistical"] = entry.pop("general")
-        self.assertEqual(build_race_context(payload)["status_label"], "前日予想公開")
+        self.assertEqual(build_race_context(payload)["status"], "statistical_published")
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             shutil.copytree(ROOT / "templates", root / "templates")
             path = root / "data/races/2026-09-20/nakayama_11r.json"
-            for state, label in (("statistical", "前日予想公開"), ("general", "直前予想公開"), ("result", "結果公開"), ("cancelled", "開催中止")):
+            for state, expected_status in (("statistical", "statistical_published"), ("general", "general_published"), ("result", "result_published"), ("cancelled", "cancelled")):
                 if state == "general":
                     entry["general"] = entry["statistical"]
                 if state == "result":
@@ -113,33 +113,34 @@ class RenderTests(unittest.TestCase):
                     payload["result"] = {"horses": []}
                     payload["evaluation"] = [{"prediction_id": entry["id"], "general": {"metrics": {}}}]
                 atomic_write_json(path, payload)
+                context = build_race_context(payload)
+                self.assertEqual(context["status"], expected_status)
                 output = render_site(config, "test-status", root=root)
                 index = BeautifulSoup((output / "index.html").read_text(encoding="utf-8"), "html.parser")
                 page = BeautifulSoup((output / "races/2026-09-20/nakayama_11r.html").read_text(encoding="utf-8"), "html.parser")
-                self.assertEqual(index.select_one(".status").get_text(), label)
-                self.assertEqual(page.select_one(".status").get_text(), label)
+                for badge in (index.select_one(".status"), page.select_one(".status")):
+                    self.assertIn(context["status_class"], badge["class"])
+                    self.assertEqual(badge.get_text(), context["status_label"])
                 basic = page.select_one(".panel")
                 self.assertIn("G2", basic.h1.get_text())
-                values = {
-                    node.strong.get_text(): node.get_text(" ", strip=True).split(" ", 1)[1]
-                    for node in basic.select(".meta > div")
-                    if node.strong
-                }
-                self.assertEqual({key: values[key] for key in ("馬場", "天候", "頭数", "条件", "負担重量")},
-                                 {"馬場": "良", "天候": "晴", "頭数": "3頭", "条件": "3歳・牡牝", "負担重量": "馬齢"})
+                grid = basic.select_one(".race-meta-grid")
+                cells = grid.find_all("div", recursive=False)
+                self.assertEqual(len(cells), 10)
+                for index_position, expected in ((3, "良"), (4, "晴"), (7, "3頭"), (8, "3歳・牡牝"), (9, "馬齢")):
+                    self.assertIn(expected, cells[index_position].get_text())
                 self.assertIn("2026-09-19 23:00", basic.get_text())
                 statistical = page.select_one('.prediction-method-content[data-ai-method$="statistical"]')
-                self.assertNotIn("使用オッズ", statistical.get_text())
+                self.assertIsNone(statistical.select_one(".used-odds"))
                 general = page.select_one('.prediction-method-content[data-ai-method$="general"]')
                 if state == "statistical":
                     self.assertIsNone(general)
-                    self.assertNotIn("使用オッズ", page.get_text())
+                    self.assertIsNone(page.select_one(".used-odds"))
                 else:
-                    self.assertIn("23:01取得" if state == "general" else "23:00時点", general.get_text())
+                    self.assertIn("23:01" if state == "general" else "23:00", general.select_one(".used-odds").get_text())
                 self.assertEqual((output / "races/2026-09-20/nakayama_11r_result.html").exists(), state == "result")
                 if state == "result":
                     result_page = BeautifulSoup((output / "races/2026-09-20/nakayama_11r_result.html").read_text(encoding="utf-8"), "html.parser")
-                    self.assertEqual(result_page.select_one(".status").get_text(), "結果公開")
+                    self.assertIn(context["status_class"], result_page.select_one(".status")["class"])
                     self.assertIn("雨", result_page.select_one(".meta").get_text())
                 next_update = index.select_one(".status").parent.find("time")
                 if state in ("statistical", "general"):
@@ -305,30 +306,25 @@ class RenderTests(unittest.TestCase):
         cells = grid.find_all("div", recursive=False)
         self.assertEqual(len(cells), 10)
         self.assertEqual(len(grid.select(".race-meta-spacer")), 2)
-        self.assertEqual(
-            [cell.strong.get_text(strip=True) for cell in cells if cell.strong],
-            ["日付", "発走", "コース", "馬場", "天候", "頭数", "条件", "負担重量"],
-        )
+        self.assertEqual(sum(cell.strong is not None for cell in cells), 8)
+        for position, value in ((0, "2026-01-01"), (1, "15:30"), (3, "良"), (4, "晴"), (7, "3頭"), (8, "3歳・牡牝"), (9, "馬齢")):
+            self.assertIn(value, cells[position].get_text())
         self.assertIn("2026-01-01 14:30", soup.select_one(".race-info-time").get_text())
 
         general = soup.select_one('.prediction-method-content[data-ai-method$="general"]')
         statistical = soup.select_one('.prediction-method-content[data-ai-method$="statistical"]')
-        self.assertEqual(
-            general.select_one(".used-odds").get_text(" ", strip=True),
-            "使用オッズ: 14:59時点（単勝オッズ・人気はこの時点の値です）",
-        )
-        self.assertNotIn("使用オッズ", statistical.get_text())
-        self.assertNotIn("現在のオッズとは異なる場合があります。", soup.get_text())
+        self.assertIn("14:59", general.select_one(".used-odds").get_text())
+        self.assertIsNone(general.select_one(".odds-after-start-note"))
+        self.assertIsNone(statistical.select_one(".used-odds"))
+        self.assertIsNotNone(statistical.select_one(".statistical-market-note"))
 
         payload["race"]["quinella_odds"] = {}
         soup = BeautifulSoup(
             template.render(**build_race_context(payload), page_kind="prediction"),
             "html.parser",
         )
-        self.assertEqual(
-            soup.select_one(".used-odds").get_text(" ", strip=True),
-            "使用オッズ: 15:00取得（単勝オッズ・人気は取得時点の値です）",
-        )
+        self.assertIn("15:00", soup.select_one(".used-odds").get_text())
+        self.assertFalse(build_race_context(payload)["used_odds_is_official"])
 
         payload["race"]["odds_captured_at"] = "2026-01-01T15:31:00+09:00"
         soup = BeautifulSoup(
@@ -336,10 +332,7 @@ class RenderTests(unittest.TestCase):
             "html.parser",
         )
         self.assertEqual(len(soup.select(".used-odds")), 1)
-        self.assertIn(
-            "発走後に取得されたオッズスナップショット",
-            soup.select_one(".used-odds").get_text(" ", strip=True),
-        )
+        self.assertIsNotNone(soup.select_one(".used-odds .odds-after-start-note"))
 
     def test_race_title_escapes_race_name(self) -> None:
         payload = make_payload(
@@ -392,17 +385,17 @@ class RenderTests(unittest.TestCase):
         payload["prediction"]["model_name"] = "saved-model"
         template = build_environment(ROOT).get_template("race.html.j2")
 
-        for page_kind, status in (("prediction", "予想公開"), ("result", "結果公開")):
+        for page_kind in ("prediction", "result"):
             with self.subTest(page_kind=page_kind):
                 context = {
                     **build_race_context(payload),
                     "page_kind": page_kind,
-                    "status_label": status,
                 }
                 rendered = template.render(**context)
                 badges = BeautifulSoup(rendered, "html.parser").select_one(".page-badges")
                 self.assertEqual(badges.select_one(".ai-badge").get_text(strip=True), "saved-model")
-                self.assertEqual(badges.select_one(".status").get_text(strip=True), status)
+                self.assertEqual(badges.select_one(".status").get_text(strip=True), context["status_label"])
+                self.assertIn(context["status_class"], badges.select_one(".status")["class"])
 
     def test_expected_value_rows_use_raw_values_sort_and_handle_missing_odds(self) -> None:
         horse_rows = [
@@ -501,10 +494,7 @@ class RenderTests(unittest.TestCase):
                     expected = [h["win_probability"] for h in entry[method]["horses"]]
                     panel = soup.select_one(f"#prediction-{method}")
                     table = panel.select_one("table.prediction-table")
-                    self.assertEqual(
-                        [header.get_text(" ", strip=True).removesuffix(" ↕") for header in table.select("thead th")],
-                        ["馬番", "馬名", "騎手", "1着確率", "予想順位", "単勝オッズ", "人気", "理由"],
-                    )
+                    self.assertEqual(len(table.select("thead th")), 8)
                     self.assertEqual(
                         [int(button["data-sort-column"]) for button in table.select("thead .sort-button")],
                         list(range(7)),
@@ -521,10 +511,8 @@ class RenderTests(unittest.TestCase):
                     )
                     self.assertEqual([h["win_probability"] for h in embedded["methods"][method]["horses"]], expected)
                     if method == "statistical":
-                        self.assertIn(
-                            "単勝オッズ・人気は比較用表示で、統計重視予想には使用していません。",
-                            panel.get_text(" ", strip=True),
-                        )
+                        self.assertIsNotNone(panel.select_one(".statistical-market-note"))
+                        self.assertIsNone(panel.select_one(".used-odds"))
                 current["result"] = make_result(3, 500, [1, 2, 3, 4, 5])
                 current["evaluation"] = build_evaluation(current)
                 result = BeautifulSoup(template.render(**build_race_context(current), page_kind="result"), "html.parser")
@@ -674,8 +662,7 @@ process.stdout.write(JSON.stringify({
             table = index_soup.select_one("table.index-table")
             rows = table.select("tbody tr")
             self.assertEqual(len(rows), 1)
-            self.assertIn("予想済み", rows[0].get_text(" ", strip=True))
-            self.assertNotIn("未予想", table.get_text(" ", strip=True))
+            self.assertIn("予想済み", rows[0].select_one(".race-name-column").get_text(" ", strip=True))
             self.assertEqual(
                 [link["href"] for link in rows[0].select("a[href]")],
                 ["races/2026-01-01/nakayama_11r.html"],
@@ -763,7 +750,7 @@ process.stdout.write(JSON.stringify({
             self.assertIsNotNone(prediction_soup.select_one(".simulation-section"))
             self.assertIsNone(prediction_soup.select_one(".result-section"))
             self.assertIsNotNone(result_soup.select_one(".result-section"))
-            self.assertEqual(result_soup.select_one(".status").get_text(strip=True), "結果公開")
+            self.assertIn(build_race_context(payload)["status_class"], result_soup.select_one(".status")["class"])
             self.assertIsNotNone(
                 result_soup.select_one('table.result-table td[data-sort-value="5.0"]')
             )
@@ -920,15 +907,11 @@ process.stdout.write(JSON.stringify({
                 )
             )
             self.assertIn("profit-neutral", general_profit_amounts[3].get("class", []))
-            self.assertEqual(
-                [line.select_one(".profit-meta").get_text(" ", strip=True) for line in general_profit_lines],
-                [
-                    "回収率 67.9% ・ 購入 4 / 5レース",
-                    "回収率 123.4% ・ 購入 2 / 5レース",
-                    "回収率 107.4% ・ 購入 12 / 14レース",
-                    "回収率 - ・ 購入 0 / 14レース",
-                ],
-            )
+            for line, rate, count in zip(general_profit_lines, ("67.9%", "123.4%", "107.4%", None), ("4 / 5", "2 / 5", "12 / 14", "0 / 14")):
+                meta = line.select_one(".profit-meta").get_text(" ", strip=True)
+                self.assertIn(count, meta)
+                if rate is not None:
+                    self.assertIn(rate, meta)
             self.assertTrue(
                 all(
                     value.get_text(strip=True) != "-"
@@ -938,10 +921,7 @@ process.stdout.write(JSON.stringify({
             )
             index_table = soup.select_one("table.index-table")
             self.assertIsNotNone(index_table)
-            self.assertEqual(
-                [header.get_text(strip=True) for header in index_table.select("thead th")],
-                ["日付", "発走", "開催場", "レース名", "コース", "状態", "予想", "結果"],
-            )
+            self.assertEqual(len(index_table.select("thead th")), 8)
             row_cells = index_table.select_one("tbody tr").find_all("td", recursive=False)
             self.assertEqual(len(row_cells), 8)
             self.assertIn("race-name-column", row_cells[3].get("class", []))
@@ -956,8 +936,9 @@ process.stdout.write(JSON.stringify({
             self.assertIsNone(row_cells[4].select_one(".race-grade"))
             self.assertIn("status-column", index_table.select("thead th")[5].get("class", []))
             self.assertIn("status-column", row_cells[5].get("class", []))
-            self.assertEqual(row_cells[6].select_one(".mobile-link-label").get_text(strip=True), "予想")
-            self.assertEqual(row_cells[7].select_one(".mobile-link-label").get_text(strip=True), "結果")
+            self.assertEqual(row_cells[6].select_one("a[href]")["href"], "races/2026-01-01/nakayama_11r.html")
+            self.assertIsNotNone(row_cells[6].select_one(".mobile-link-label"))
+            self.assertIsNotNone(row_cells[7].select_one(".mobile-link-label"))
 
 
 class SimulationRenderTests(unittest.TestCase):
@@ -973,14 +954,11 @@ class SimulationRenderTests(unittest.TestCase):
 
     def render_page(self, payload: dict, page_kind: str = "prediction") -> str:
         context = build_race_context(payload)
-        status = "prediction" if page_kind == "prediction" else "result"
         context.update(
             {
                 "page_kind": page_kind,
                 "prediction_page_name": "test_11r.html",
                 "result_page_name": "test_11r_result.html",
-                "status_label": "予想公開" if status == "prediction" else "結果公開",
-                "status_class": f"status-{status}",
             }
         )
         return build_environment(ROOT).get_template("race.html.j2").render(**context)
@@ -1041,6 +1019,11 @@ class SimulationRenderTests(unittest.TestCase):
     def test_value_purchase_result_shows_stake_over_budget_without_decision(self) -> None:
         payload = self.full_payload()
         pre = payload["simulation"][0]["general"]["win"]["value"]["pre"]
+        pre.update(
+            selections=[{**pre["details"][0], "stake": 100}],
+            total_stake=100,
+            unused_budget=pre["budget"] - 100,
+        )
 
         def value_panel(current_payload):
             soup = BeautifulSoup(self.render_page(current_payload), "html.parser")
@@ -1048,42 +1031,32 @@ class SimulationRenderTests(unittest.TestCase):
 
         panel = value_panel(payload)
         result = panel.select_one(".value-purchase-result")
-        self.assertEqual(
-            result.get_text(" ", strip=True),
-            f"購入額 {pre['total_stake']}円 / {pre['budget']}円",
-        )
-        self.assertEqual(panel.select_one(".simulation-result-title").get_text(strip=True), "購入結果")
-        self.assertNotIn("判定", result.get_text())
-        self.assertNotIn("未使用予算", result.get_text())
+        self.assertIsNotNone(panel.select_one(".simulation-result-title"))
+        self.assertEqual(len(result.find_all("div", recursive=False)), 1)
+        self.assertIn(f"{pre['total_stake']}円", result.get_text())
+        self.assertIn(f"{pre['budget']}円", result.get_text())
+        self.assertIsNotNone(panel.select_one(".simulation-table"))
 
         pre.update(selections=[], total_stake=0, unused_budget=pre["budget"])
         empty_panel = value_panel(payload)
-        self.assertEqual(
-            empty_panel.select_one(".value-purchase-result").get_text(" ", strip=True),
-            f"購入額 0円 / {pre['budget']}円",
-        )
-        purchase_target = empty_panel.find("h4", string="購入対象")
-        self.assertIn("購入なし", purchase_target.find_next_sibling("p").get_text(" ", strip=True))
+        empty_result = empty_panel.select_one(".value-purchase-result").get_text()
+        self.assertIn(f"{pre['total_stake']}円", empty_result)
+        self.assertIn(f"{pre['budget']}円", empty_result)
+        self.assertIsNotNone(empty_panel.select_one(".value-no-purchase"))
+        self.assertIsNone(empty_panel.select_one(".simulation-table"))
 
     def test_win_dutching_result_metrics_and_threshold_tooltips(self) -> None:
-        soup = BeautifulSoup(self.render_page(self.full_payload()), "html.parser")
+        payload = self.full_payload()
+        soup = BeautifulSoup(self.render_page(payload), "html.parser")
         panel = soup.select_one('[data-ticket-panel="win"] .simulation-panel')
         pairs = panel.select(".dutching-pair")
 
-        def metric_label(pair, kind):
-            item = pair.select_one(f".dutching-{kind} strong")
-            return (item.select_one(".term-with-tooltip > span") or item).get_text(strip=True)
-
-        self.assertEqual(
-            [(metric_label(pair, "setting"), metric_label(pair, "result")) for pair in pairs],
-            [
-                ("予算", "合計購入額"),
-                ("最大対象頭数", "購入対象頭数"),
-                ("最低カバー確率", "カバー確率"),
-                ("最低グループ期待値", "グループ期待値"),
-                ("最低利益率", "最低利益"),
-            ],
-        )
+        pre = payload["simulation"][0]["general"]["win"]["dutching"]["pre"]
+        self.assertEqual(len(pairs), 5)
+        self.assertEqual(len(panel.select(".dutching-setting-value")), len(pairs))
+        self.assertEqual(len(panel.select(".dutching-result-value")), len(pairs))
+        self.assertIn(f"{pre['budget']}円", pairs[0].select_one(".dutching-setting-value").get_text())
+        self.assertIn(f"{pre['total_stake']}円", pairs[0].select_one(".dutching-result-value").get_text())
         self.assertEqual(
             [item["data-term-key"] for item in panel.select(".dutching-setting .term-tooltip")],
             ["min_coverage_probability", "min_group_expected_value", "min_profit_rate"],
@@ -1092,11 +1065,9 @@ class SimulationRenderTests(unittest.TestCase):
             [item["data-term-key"] for item in panel.select(".dutching-result .term-tooltip")],
             ["coverage_probability", "group_expected_value", "minimum_profit"],
         )
-        self.assertEqual(panel.select_one(".purchase-breakdown-title").get_text(strip=True), "購入内訳")
+        self.assertIsNotNone(panel.select_one(".purchase-breakdown-title"))
         self.assertIsNotNone(panel.select_one(".purchase-breakdown-table thead"))
 
-        payload = self.full_payload()
-        pre = payload["simulation"][0]["general"]["win"]["dutching"]["pre"]
         pre.update(selections=[], selected_count=0, total_stake=0, unused_budget=pre["budget"])
         empty_soup = BeautifulSoup(self.render_page(payload), "html.parser")
         empty_panel = empty_soup.select_one('[data-ticket-panel="win"] .simulation-panel')
@@ -1105,11 +1076,10 @@ class SimulationRenderTests(unittest.TestCase):
         empty_result = empty_panel.select(".simulation-block-title")[1].find_next_sibling(
             "div", class_="metric-grid"
         )
-        self.assertEqual(
-            [item.find("strong").get_text(strip=True) for item in empty_result.find_all("div", recursive=False)],
-            ["判定", "合計購入額", "未使用予算"],
-        )
-        self.assertIn("購入なし", empty_result.get_text(" ", strip=True))
+        self.assertEqual(len(empty_result.find_all("div", recursive=False)), 3)
+        self.assertIsNotNone(empty_result.select_one(".dutching-no-purchase"))
+        self.assertIn(f"{pre['total_stake']}円", empty_result.get_text())
+        self.assertIn(f"{pre['unused_budget']}円", empty_result.get_text())
 
     def test_only_prediction_and_result_tables_are_sortable_with_raw_values(self) -> None:
         payload = self.full_payload()
@@ -1367,20 +1337,12 @@ class QuinellaRenderTests(unittest.TestCase):
         panel = soup.select_one('[data-ticket-panel="quinella"] [data-quinella-method="dutching"]')
         pairs = panel.select(".dutching-pair")
 
-        def metric_label(pair, kind):
-            item = pair.select_one(f".dutching-{kind} strong")
-            return (item.select_one(".term-with-tooltip > span") or item).get_text(strip=True)
-
-        self.assertEqual(
-            [(metric_label(pair, "setting"), metric_label(pair, "result")) for pair in pairs],
-            [
-                ("予算", "合計購入額"),
-                ("最大対象組数", "購入対象組数"),
-                ("最低カバー確率", "カバー確率"),
-                ("最低グループ期待値", "グループ期待値"),
-                ("最低利益率", "最低利益"),
-            ],
-        )
+        pre = payload["simulation"][0]["general"]["quinella"]["dutching"]["pre"]
+        self.assertEqual(len(pairs), 5)
+        self.assertEqual(len(panel.select(".dutching-setting-value")), len(pairs))
+        self.assertEqual(len(panel.select(".dutching-result-value")), len(pairs))
+        self.assertIn(f"{pre['budget']}円", pairs[0].select_one(".dutching-setting-value").get_text())
+        self.assertIn(f"{pre['total_stake']}円", pairs[0].select_one(".dutching-result-value").get_text())
         self.assertEqual(
             [item["data-term-key"] for item in panel.select(".dutching-setting .term-tooltip")],
             [
@@ -1395,7 +1357,7 @@ class QuinellaRenderTests(unittest.TestCase):
             ["selection_count", "coverage_probability", "group_expected_value", "minimum_profit"],
         )
         self.assertEqual(panel.select_one("h3 .term-tooltip")["data-term-key"], "dutching_method")
-        self.assertEqual(panel.select_one(".purchase-breakdown-title").get_text(strip=True), "購入内訳")
+        self.assertIsNotNone(panel.select_one(".purchase-breakdown-title"))
         self.assertIsNotNone(panel.select_one(".purchase-breakdown-table thead"))
 
     def test_legacy_purchase_settings_render_without_mutation(self):
@@ -1455,20 +1417,13 @@ class QuinellaRenderTests(unittest.TestCase):
             soup = BeautifulSoup(template.render(**build_race_context(payload), page_kind=kind), "html.parser")
             grid = soup.select_one(".race-meta-grid")
             self.assertIn(weather, grid.get_text(" ", strip=True))
-            self.assertEqual(
-                [node.strong.get_text(strip=True) for node in grid.select(":scope > div") if node.strong],
-                ["日付", "発走", "コース", "馬場", "天候", "頭数", "条件", "負担重量"],
-            )
+            self.assertEqual(sum(node.strong is not None for node in grid.select(":scope > div")), 8)
             self.assertEqual(len(grid.select(".race-meta-spacer")), 2)
             if kind == "result":
                 basic_info = grid.get_text(" ", strip=True)
                 self.assertIn("post-going", basic_info)
                 self.assertNotIn("pre-going", basic_info)
-                self.assertNotIn("結果取得日時", basic_info)
-                self.assertEqual(
-                    soup.select_one(".race-info-time").get_text(" ", strip=True),
-                    "結果取得日時 2026-08-30 16:10:11",
-                )
+                self.assertIn("2026-08-30 16:10:11", soup.select_one(".race-info-time").get_text())
                 for table in soup.select(".result-table"):
                     self.assertEqual([row.select("td")[2].get("data-sort-value") for row in table.select("tbody tr")], ["10", "2", ""])
                     header = table.select("thead .sort-button")[2]
