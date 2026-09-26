@@ -192,6 +192,11 @@
     .value-detail-table { min-width: 1200px; }
     .simulation-table { min-width: 680px; }
     .evaluation-table { min-width: 860px; }
+    .evaluation-table .rejection-reason-cell {
+      min-width: 280px;
+      white-space: normal;
+      line-height: 1.6;
+    }
     .result-table { min-width: 820px; }
     .term-with-tooltip {
       display: inline-flex;
@@ -799,7 +804,7 @@
         <div id="custom-dutching-evaluations" hidden>
           <h3>頭数別比較</h3>
           {% call tables.scroll_table(true) %}
-          <table class="evaluation-table"><thead><tr><th class="nowrap">頭数</th><th class="nowrap">対象馬番</th><th class="nowrap">{{ explained_term(ui_labels.coverage_probability, "coverage_probability") }}</th><th class="nowrap">{{ explained_term(ui_labels.group_expected_value, "group_expected_value") }}</th><th class="nowrap">{{ explained_term(ui_labels.minimum_payout, "minimum_payout") }}</th><th class="nowrap">{{ explained_term(ui_labels.minimum_profit, "minimum_profit") }}</th><th class="nowrap">判定</th><th>除外理由</th></tr></thead><tbody id="custom-dutching-evaluation-rows"></tbody></table>{% endcall %}
+          <table class="evaluation-table"><thead><tr><th class="nowrap">頭数</th><th class="nowrap">対象馬番</th><th class="nowrap">{{ explained_term(ui_labels.coverage_probability, "coverage_probability") }}</th><th class="nowrap">{{ explained_term(ui_labels.group_expected_value, "group_expected_value") }}</th><th class="nowrap">{{ explained_term(ui_labels.minimum_payout, "minimum_payout") }}</th><th class="nowrap">{{ explained_term(ui_labels.minimum_profit, "minimum_profit") }}</th><th class="nowrap">判定</th><th class="rejection-reason-cell">除外理由</th></tr></thead><tbody id="custom-dutching-evaluation-rows"></tbody></table>{% endcall %}
         </div>
       </div>
     </div>

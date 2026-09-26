@@ -1099,6 +1099,22 @@ class SimulationRenderTests(unittest.TestCase):
         soup = BeautifulSoup(self.render_page(payload), "html.parser")
         panel = soup.select_one('[data-ticket-panel="win"] .simulation-panel')
         pairs = panel.select(".dutching-pair")
+        saved_evaluations = panel.select_one("table.evaluation-table")
+        self.assertIsNotNone(saved_evaluations.find_parent("div", class_="table-scroll"))
+        self.assertEqual(len(saved_evaluations.select("thead th.rejection-reason-cell")), 1)
+        self.assertEqual(
+            len(saved_evaluations.select("tbody td.rejection-reason-cell")),
+            len(payload["simulation"][0]["general"]["win"]["dutching"]["pre"]["evaluated_counts"]),
+        )
+
+        custom_evaluations = soup.select_one("#custom-dutching-evaluations table.evaluation-table")
+        self.assertIsNotNone(custom_evaluations.find_parent("div", class_="table-scroll"))
+        self.assertEqual(len(custom_evaluations.select("thead th.rejection-reason-cell")), 1)
+        custom_script = "\n".join(script.get_text() for script in soup.select("script:not([type='application/json'])"))
+        self.assertIn(
+            'addCell(row, rejectionReasonText(item.rejection_reasons), "rejection-reason-cell")',
+            custom_script,
+        )
 
         pre = payload["simulation"][0]["general"]["win"]["dutching"]["pre"]
         self.assertEqual(len(pairs), 5)

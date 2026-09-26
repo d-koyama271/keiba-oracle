@@ -67,7 +67,7 @@
   {% if ticket == 'win' %}<h4>頭数別比較</h4>{% endif %}
   {% call tables.scroll_table(show_hint=ticket == 'win') %}
   <table class="evaluation-table">
-    <thead><tr><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '頭数' if ticket == 'win' else '組数' }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '対象馬番' if ticket == 'win' else '対象ペア' }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui.explained_term(ui_labels.coverage_probability, 'coverage_probability', tooltips) }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui.explained_term(ui_labels.group_expected_value, 'group_expected_value', tooltips) }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui.explained_term(ui_labels.minimum_payout, 'minimum_payout', tooltips) }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui.explained_term(ui_labels.minimum_profit, 'minimum_profit', tooltips) }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>判定</th><th>除外理由</th></tr></thead>
+    <thead><tr><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '頭数' if ticket == 'win' else '組数' }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '対象馬番' if ticket == 'win' else '対象ペア' }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui.explained_term(ui_labels.coverage_probability, 'coverage_probability', tooltips) }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui.explained_term(ui_labels.group_expected_value, 'group_expected_value', tooltips) }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui.explained_term(ui_labels.minimum_payout, 'minimum_payout', tooltips) }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ ui.explained_term(ui_labels.minimum_profit, 'minimum_profit', tooltips) }}</th><th{% if ticket == 'win' %} class="nowrap"{% endif %}>判定</th><th{% if ticket == 'win' %} class="rejection-reason-cell"{% endif %}>除外理由</th></tr></thead>
     <tbody>{% for item in pre.evaluated_counts %}
       <tr{% if pre.selections and item.selection_count == pre.selected_count %} class="selected-row"{% endif %}>
         <td{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ item.selection_count }}</td>
@@ -77,7 +77,7 @@
         <td{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '%.0f'|format(item.minimum_payout) }}円</td>
         <td{% if ticket == 'win' %} class="nowrap"{% endif %}>{{ '%.0f'|format(item.minimum_profit) }}円</td>
         <td{% if ticket == 'win' %} class="nowrap"{% endif %}>{% if pre.selections and item.selection_count == pre.selected_count %}採用{% elif item.eligible %}適格{% else %}除外{% endif %}</td>
-        <td>{{ rejection_reason_text(item.rejection_reasons) if ticket == 'win' else rejection_reason_text(item.rejection_reasons)|replace('頭数', '組数') }}</td>
+        <td{% if ticket == 'win' %} class="rejection-reason-cell"{% endif %}>{{ rejection_reason_text(item.rejection_reasons) if ticket == 'win' else rejection_reason_text(item.rejection_reasons)|replace('頭数', '組数') }}</td>
       </tr>
     {% endfor %}</tbody>
   </table>

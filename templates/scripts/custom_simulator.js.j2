@@ -436,7 +436,7 @@
             addCell(row, `${yen.format(item.minimum_payout)}円`);
             addCell(row, `${yen.format(item.minimum_profit)}円`);
             addCell(row, item.eligible ? "適格" : "除外");
-            addCell(row, rejectionReasonText(item.rejection_reasons), "");
+            addCell(row, rejectionReasonText(item.rejection_reasons), "rejection-reason-cell");
             evaluationRows.appendChild(row);
           }
         };
