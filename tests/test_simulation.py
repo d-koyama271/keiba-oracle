@@ -26,6 +26,8 @@ from simulate import (  # noqa: E402
     select_best_dutching,
 )
 from evaluation import simulation_summary  # noqa: E402
+from render import build_environment  # noqa: E402
+from ui_labels import UI_LABELS  # noqa: E402
 from utils import ensure_race_payload, load_race_json, save_race_json  # noqa: E402
 
 
@@ -567,12 +569,13 @@ class JavaScriptParityTests(unittest.TestCase):
             }
             for number, probability, odds in DUTCHING_ROWS
         ]
-        template = (ROOT / "templates" / "race.html.j2").read_text(encoding="utf-8")
+        template = build_environment(ROOT).get_template("scripts/custom_simulator.js.j2").render(
+            ui_labels=UI_LABELS
+        )
         start = template.index("      const SIMULATION_EPSILON")
         end = template.index("      (() => {", start)
-        script_end = template.index("    </script>", start)
         functions = template[start:end]
-        full_script = template[start:script_end]
+        full_script = template[start:]
         node_script = f"""
 new Function({json.dumps(full_script)});
 {functions}

@@ -23,12 +23,14 @@ from collect import collect_races, fetch_validated_result, fetch_validated_win_o
 from evaluation import build_evaluation
 from evaluation_summary import build_evaluation_summary
 from predict import build_prediction_chat_input, build_statistical_prediction_input
+from render import build_environment
 from quinella import (
     calculate_quinella_post, calculate_quinella_pre, calculate_quinella_purchase,
     harville_probabilities, pair_numbers, validate_pair_odds,
 )
 from run_pre_collect import export_prediction_chat_input
 from simulate import calculate_dutching_pre, calculate_pre_simulation, simulate_file
+from ui_labels import UI_LABELS
 from utils import ensure_race_payload, load_config, load_race_json, parse_jst_datetime, save_race_json
 from test_simulation import make_config, make_payload
 
@@ -504,7 +506,9 @@ class FlowAndSummaryTests(unittest.TestCase):
 class JavaScriptParityTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("node"), "Node.js required for browser calculation parity")
     def test_javascript_purchase_matches_python(self):
-        template = (ROOT / "templates/race.html.j2").read_text(encoding="utf-8")
+        template = build_environment(ROOT).get_template("scripts/custom_simulator.js.j2").render(
+            ui_labels=UI_LABELS
+        )
         start = template.index("const SIMULATION_EPSILON")
         code = template[start:template.index("(() => {", start)]
         settings = load_config()["simulation"]["quinella"]

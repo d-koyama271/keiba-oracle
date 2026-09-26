@@ -545,7 +545,7 @@ class RenderTests(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which("node"), "Node.js required for tab scope test")
     def test_ai_and_ticket_panel_switching_is_scoped(self) -> None:
-        template = (ROOT / "templates" / "race.html.j2").read_text(encoding="utf-8")
+        template = (ROOT / "templates" / "scripts" / "race_ui.js.j2").read_text(encoding="utf-8")
         start = template.index("function directScopedPanels")
         controller = template[start:template.index("(() => {", start)]
         script = controller + r'''
@@ -1244,7 +1244,7 @@ class SimulationRenderTests(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which("node"), "Node.js is required for table sorting")
     def test_sortable_table_javascript_cycles_stably_and_keeps_missing_last(self) -> None:
-        template = (ROOT / "templates" / "race.html.j2").read_text(encoding="utf-8")
+        template = (ROOT / "templates" / "scripts" / "race_ui.js.j2").read_text(encoding="utf-8")
         start = template.index("    const initializeSortableTable")
         end = template.index("    (() => {", start)
         functions = template[start:end]
@@ -1464,7 +1464,7 @@ class QuinellaRenderTests(unittest.TestCase):
                                 [item["data-settlement-metric"] for item in summary.select("[data-settlement-metric]")],
                                 expected_metrics,
                             )
-                            self.assertEqual(panel.select_one(".settlement-no-purchase") is not None, not stake)
+                            self.assertEqual(len(panel.select(".settlement-no-purchase")), 0 if stake else 1)
                             self.assertIsNone(panel.select_one(".metric-grid"))
                             if stake:
                                 self.assertEqual(panel.select_one(".settlement-outcome")["data-outcome"],

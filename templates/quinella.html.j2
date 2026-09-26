@@ -1,3 +1,4 @@
+{% import 'components/ui.html.j2' as ui %}
 {% macro ticket_tabs(prefix, ui_labels, shared_panel=none) -%}
 <div class="ai-method-tabs ticket-tabs" role="tablist" aria-label="シミュレーションの券種">
   <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="win" aria-controls="{{ shared_panel or prefix ~ '-win' }}" aria-selected="true" tabindex="0">単勝</button>
@@ -5,7 +6,7 @@
 </div>
 {%- endmacro %}
 
-{% macro panels(view, page_kind, rejection_reason_text, explained_term, quinella_tooltips, ui_labels) -%}
+{% macro panels(view, page_kind, rejection_reason_text, quinella_tooltips, ui_labels) -%}
 {% set q = view.quinella %}
 <p class="small">馬連的中確率は各馬の1着確率から算出した、同着を考慮しない近似値です。{% if q.get('harville_lambda') is not none %}λ={{ q.harville_lambda }}{% endif %}</p>
 {% if q.get('status') != 'ready' %}
@@ -15,18 +16,16 @@
 {% set pre = q[method].pre %}
 {% set post = q[method].post %}
 <div class="panel {{ 'result-panel' if page_kind == 'result' else 'simulation-panel' }}" data-quinella-method="{{ method }}">
-  <h3 class="result-comparison-title"><span>{% if page_kind != 'result' and method == 'dutching' %}{{ explained_term(label, 'dutching_method', quinella_tooltips) }}{% else %}{{ label }}{% if page_kind == 'result' %}のシミュレーション結果{% endif %}{% endif %}</span>{% if page_kind == 'result' and post and post.selections | selectattr('hit', 'sameas', true) | list %}<span class="hit-badge">的中!</span>{% endif %}</h3>
+  <h3 class="result-comparison-title"><span>{% if page_kind != 'result' and method == 'dutching' %}{{ ui.explained_term(label, 'dutching_method', quinella_tooltips) }}{% else %}{{ label }}{% if page_kind == 'result' %}のシミュレーション結果{% endif %}{% endif %}</span>{% if page_kind == 'result' and post and post.selections | selectattr('hit', 'sameas', true) | list %}{{ ui.hit_badge() }}{% endif %}</h3>
   {% if page_kind == 'result' %}
     {% if post %}
-    {% set has_purchase = post.total_stake > 0 %}
     {% set has_refund = (post.total_refund|default(0)) > 0 %}
-    {% if not has_purchase %}<p class="settlement-no-purchase"><strong>購入なし</strong></p>{% endif %}
-    <p class="settlement-summary" data-settlement-state="{{ 'purchased' if has_purchase else 'no-purchase' }}"><span data-settlement-metric="stake"><strong>{{ ui_labels.purchase_amount }}:</strong> {{ post.total_stake }}円</span> / {% if has_purchase and has_refund %}<span class="refund-summary" data-settlement-metric="refund"><strong>{{ ui_labels.refund_amount }}:</strong> {{ post.total_refund }}円</span> / {% endif %}<span data-settlement-metric="return"><strong>{{ ui_labels.return_amount }}:</strong> {{ post.total_return }}円</span> / <span data-settlement-metric="profit"><strong>{{ ui_labels.profit }}:</strong> {{ post.profit }}円</span>{% if has_purchase %} / <span data-settlement-metric="roi"><strong>{{ ui_labels.profit_rate }}:</strong> {{ '%.2f'|format(post.roi * 100) }}%</span>{% endif %}</p>
+    {{ ui.settlement_summary(post, ui_labels) }}
     {% if post.selections %}
     <div class="table-scroll"><table class="simulation-table"><thead><tr><th>馬番ペア</th><th>{{ ui_labels.purchase_amount }}</th><th>判定</th><th>{{ ui_labels.payout_amount }}</th>{% if has_refund %}<th class="refund-column">{{ ui_labels.refund_amount }}</th>{% endif %}<th>{{ ui_labels.return_amount }}</th></tr></thead><tbody>
       {% for item in post.selections %}<tr><td class="nowrap">{{ item.horse_numbers|join('-') }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap settlement-outcome" data-outcome="{{ 'refund' if item.refund else ('hit' if item.hit else 'miss') }}">{{ '返還' if item.refund else ('的中' if item.hit else '不的中') }}</td><td class="nowrap">{{ item.payout }}円</td>{% if has_refund %}<td class="nowrap refund-column">{{ item.refund }}円</td>{% endif %}<td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}
     </tbody></table></div>
-    {% else %}<p>購入なし</p>{% endif %}
+    {% endif %}
     {% else %}<p class="quinella-pending">結果・馬連払戻または返還情報の確定待ちです。</p>{% endif %}
   {% elif pre %}
     {% if method == 'dutching' and pre.selections %}
@@ -36,24 +35,24 @@
         <div class="dutching-result"><strong>{{ ui_labels.total_purchase_amount }}</strong><span class="dutching-result-value">{{ pre.total_stake }}円</span></div>
       </div>
       <div class="dutching-pair">
-        <div class="dutching-setting"><strong>{{ explained_term(ui_labels.max_pair_count, 'max_selection_count', quinella_tooltips) }}</strong><span class="dutching-setting-value">{{ pre.settings.max_selection_count }}組</span></div>
-        <div class="dutching-result"><strong>{{ explained_term(ui_labels.purchase_pair_count, 'selection_count', quinella_tooltips) }}</strong><span class="dutching-result-value">{{ pre.selected_count }}組</span></div>
+        <div class="dutching-setting"><strong>{{ ui.explained_term(ui_labels.max_pair_count, 'max_selection_count', quinella_tooltips) }}</strong><span class="dutching-setting-value">{{ pre.settings.max_selection_count }}組</span></div>
+        <div class="dutching-result"><strong>{{ ui.explained_term(ui_labels.purchase_pair_count, 'selection_count', quinella_tooltips) }}</strong><span class="dutching-result-value">{{ pre.selected_count }}組</span></div>
       </div>
       <div class="dutching-pair">
-        <div class="dutching-setting"><strong>{{ explained_term(ui_labels.minimum_coverage_probability, 'min_coverage_probability', quinella_tooltips) }}</strong><span class="dutching-setting-value">{{ '%.2f'|format(pre.settings.min_coverage_probability * 100) }}%</span></div>
-        <div class="dutching-result"><strong>{{ explained_term(ui_labels.coverage_probability, 'coverage_probability', quinella_tooltips) }}</strong><span class="dutching-result-value">{{ '%.2f'|format(pre.coverage_probability * 100) }}%</span></div>
+        <div class="dutching-setting"><strong>{{ ui.explained_term(ui_labels.minimum_coverage_probability, 'min_coverage_probability', quinella_tooltips) }}</strong><span class="dutching-setting-value">{{ '%.2f'|format(pre.settings.min_coverage_probability * 100) }}%</span></div>
+        <div class="dutching-result"><strong>{{ ui.explained_term(ui_labels.coverage_probability, 'coverage_probability', quinella_tooltips) }}</strong><span class="dutching-result-value">{{ '%.2f'|format(pre.coverage_probability * 100) }}%</span></div>
       </div>
       <div class="dutching-pair">
-        <div class="dutching-setting"><strong>{{ explained_term(ui_labels.minimum_group_expected_value, 'min_group_expected_value', quinella_tooltips) }}</strong><span class="dutching-setting-value">{{ '%.3f'|format(pre.settings.min_group_expected_value) }}</span></div>
-        <div class="dutching-result"><strong>{{ explained_term(ui_labels.group_expected_value, 'group_expected_value', quinella_tooltips) }}</strong><span class="dutching-result-value">{{ '%.3f'|format(pre.group_expected_value) }}</span></div>
+        <div class="dutching-setting"><strong>{{ ui.explained_term(ui_labels.minimum_group_expected_value, 'min_group_expected_value', quinella_tooltips) }}</strong><span class="dutching-setting-value">{{ '%.3f'|format(pre.settings.min_group_expected_value) }}</span></div>
+        <div class="dutching-result"><strong>{{ ui.explained_term(ui_labels.group_expected_value, 'group_expected_value', quinella_tooltips) }}</strong><span class="dutching-result-value">{{ '%.3f'|format(pre.group_expected_value) }}</span></div>
       </div>
       <div class="dutching-pair">
-        <div class="dutching-setting"><strong>{{ explained_term(ui_labels.minimum_profit_rate, 'min_profit_rate', quinella_tooltips) }}</strong><span class="dutching-setting-value">{{ '%.0f'|format(pre.settings.min_profit_rate * 100) }}%</span></div>
-        <div class="dutching-result"><strong>{{ explained_term(ui_labels.minimum_profit, 'minimum_profit', quinella_tooltips) }}</strong><span class="dutching-result-value">{{ '%.0f'|format(pre.minimum_profit) }}円</span></div>
+        <div class="dutching-setting"><strong>{{ ui.explained_term(ui_labels.minimum_profit_rate, 'min_profit_rate', quinella_tooltips) }}</strong><span class="dutching-setting-value">{{ '%.0f'|format(pre.settings.min_profit_rate * 100) }}%</span></div>
+        <div class="dutching-result"><strong>{{ ui.explained_term(ui_labels.minimum_profit, 'minimum_profit', quinella_tooltips) }}</strong><span class="dutching-result-value">{{ '%.0f'|format(pre.minimum_profit) }}円</span></div>
       </div>
     </div>
     <h4 class="purchase-breakdown-title">{{ ui_labels.purchase_breakdown }}</h4>
-    <div class="table-scroll"><table class="simulation-table purchase-breakdown-table"><thead><tr><th>馬番ペア</th><th>{{ ui_labels.quinella_probability }}</th><th>馬連オッズ</th><th>{{ explained_term(ui_labels.expected_value, 'ev', quinella_tooltips) }}</th><th>{{ ui_labels.purchase_amount }}</th><th>{{ ui_labels.estimated_payout_amount }}</th><th>的中時利益</th></tr></thead><tbody>
+    <div class="table-scroll"><table class="simulation-table purchase-breakdown-table"><thead><tr><th>馬番ペア</th><th>{{ ui_labels.quinella_probability }}</th><th>馬連オッズ</th><th>{{ ui.explained_term(ui_labels.expected_value, 'ev', quinella_tooltips) }}</th><th>{{ ui_labels.purchase_amount }}</th><th>{{ ui_labels.estimated_payout_amount }}</th><th>的中時利益</th></tr></thead><tbody>
       {% for item in pre.selections %}<tr><td class="nowrap">{{ item.horse_numbers|join('-') }}</td><td class="nowrap">{{ '%.2f'|format(item.predicted_probability * 100) }}%</td><td class="nowrap">{{ item.odds }}</td><td class="nowrap">{{ '%.3f'|format(item.expected_value) }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ '%.0f'|format(item.estimated_payout) }}円</td><td class="nowrap">{{ '%.0f'|format(item.estimated_profit) }}円</td></tr>{% endfor %}
     </tbody></table></div>
     {% else %}
@@ -61,13 +60,13 @@
     <div class="metric-grid{% if method == 'dutching' %} simulation-primary-metrics{% endif %}">
       <div><strong>{{ ui_labels.budget }}</strong><br>{{ pre.budget }}円</div>
       {% if method == 'value' %}
-      <div><strong>{{ explained_term(ui_labels.minimum_expected_value, 'minimum_ev', quinella_tooltips) }}</strong><br>{{ pre.settings.ev_threshold }}</div>
-      <div><strong>{{ explained_term('Kelly係数', 'kelly_fraction', quinella_tooltips) }}</strong><br>{{ pre.settings.kelly_fraction }}</div>
+      <div><strong>{{ ui.explained_term(ui_labels.minimum_expected_value, 'minimum_ev', quinella_tooltips) }}</strong><br>{{ pre.settings.ev_threshold }}</div>
+      <div><strong>{{ ui.explained_term('Kelly係数', 'kelly_fraction', quinella_tooltips) }}</strong><br>{{ pre.settings.kelly_fraction }}</div>
       {% else %}
-      <div><strong>{{ explained_term(ui_labels.max_pair_count, 'max_selection_count', quinella_tooltips) }}</strong><br>{{ pre.settings.max_selection_count }}組</div>
-      <div><strong>{{ explained_term(ui_labels.minimum_coverage_probability, 'min_coverage_probability', quinella_tooltips) }}</strong><br>{{ '%.2f'|format(pre.settings.min_coverage_probability * 100) }}%</div>
-      <div><strong>{{ explained_term(ui_labels.minimum_group_expected_value, 'min_group_expected_value', quinella_tooltips) }}</strong><br>{{ '%.3f'|format(pre.settings.min_group_expected_value) }}</div>
-      <div><strong>{{ explained_term(ui_labels.minimum_profit_rate, 'min_profit_rate', quinella_tooltips) }}</strong><br>{{ '%.0f'|format(pre.settings.min_profit_rate * 100) }}%</div>
+      <div><strong>{{ ui.explained_term(ui_labels.max_pair_count, 'max_selection_count', quinella_tooltips) }}</strong><br>{{ pre.settings.max_selection_count }}組</div>
+      <div><strong>{{ ui.explained_term(ui_labels.minimum_coverage_probability, 'min_coverage_probability', quinella_tooltips) }}</strong><br>{{ '%.2f'|format(pre.settings.min_coverage_probability * 100) }}%</div>
+      <div><strong>{{ ui.explained_term(ui_labels.minimum_group_expected_value, 'min_group_expected_value', quinella_tooltips) }}</strong><br>{{ '%.3f'|format(pre.settings.min_group_expected_value) }}</div>
+      <div><strong>{{ ui.explained_term(ui_labels.minimum_profit_rate, 'min_profit_rate', quinella_tooltips) }}</strong><br>{{ '%.0f'|format(pre.settings.min_profit_rate * 100) }}%</div>
       {% endif %}
     </div>
     <h4 class="simulation-block-title simulation-result-title">{{ ui_labels.purchase_result }}</h4>
@@ -80,18 +79,18 @@
     {% if method == 'dutching' %}
       <details class="simulation-details"><summary>組数別比較の詳細を見る</summary>
       <div class="table-scroll"><table class="evaluation-table">
-        <thead><tr><th>組数</th><th>対象ペア</th><th>{{ explained_term(ui_labels.coverage_probability, 'coverage_probability', quinella_tooltips) }}</th><th>{{ explained_term(ui_labels.group_expected_value, 'group_expected_value', quinella_tooltips) }}</th><th>{{ explained_term(ui_labels.minimum_payout, 'minimum_payout', quinella_tooltips) }}</th><th>{{ explained_term(ui_labels.minimum_profit, 'minimum_profit', quinella_tooltips) }}</th><th>判定</th><th>除外理由</th></tr></thead><tbody>
+        <thead><tr><th>組数</th><th>対象ペア</th><th>{{ ui.explained_term(ui_labels.coverage_probability, 'coverage_probability', quinella_tooltips) }}</th><th>{{ ui.explained_term(ui_labels.group_expected_value, 'group_expected_value', quinella_tooltips) }}</th><th>{{ ui.explained_term(ui_labels.minimum_payout, 'minimum_payout', quinella_tooltips) }}</th><th>{{ ui.explained_term(ui_labels.minimum_profit, 'minimum_profit', quinella_tooltips) }}</th><th>判定</th><th>除外理由</th></tr></thead><tbody>
         {% for item in pre.evaluated_counts %}<tr{% if pre.selections and item.selection_count == pre.selected_count %} class="selected-row"{% endif %}><td>{{ item.selection_count }}</td><td>{% for pair in item.horse_pairs %}{{ pair|join('-') }}{{ ', ' if not loop.last else '' }}{% endfor %}</td><td>{{ '%.2f'|format(item.coverage_probability * 100) }}%</td><td>{{ '%.3f'|format(item.group_expected_value) }}</td><td>{{ '%.0f'|format(item.minimum_payout) }}円</td><td>{{ '%.0f'|format(item.minimum_profit) }}円</td><td>{{ '採用' if pre.selections and item.selection_count == pre.selected_count else ('適格' if item.eligible else '除外') }}</td><td>{{ rejection_reason_text(item.rejection_reasons)|replace('頭数', '組数') }}</td></tr>{% endfor %}
       </tbody></table></div></details>
     {% else %}
       <details class="simulation-details"><summary>全ペア{{ ui_labels.expected_value }}の詳細を見る</summary>
       <div class="table-scroll"><table class="evaluation-table">
-        <thead><tr><th>馬番ペア</th><th>{{ ui_labels.quinella_probability }}</th><th>馬連オッズ</th><th>{{ explained_term(ui_labels.expected_value, 'ev', quinella_tooltips) }}</th><th>{{ explained_term('Full Kelly', 'full_kelly', quinella_tooltips) }}</th><th>{{ explained_term('適用Kelly', 'applied_kelly', quinella_tooltips) }}</th><th>{{ explained_term('理論購入額', 'theoretical_stake', quinella_tooltips) }}</th><th>{{ ui_labels.purchase_amount }}</th></tr></thead><tbody>
+        <thead><tr><th>馬番ペア</th><th>{{ ui_labels.quinella_probability }}</th><th>馬連オッズ</th><th>{{ ui.explained_term(ui_labels.expected_value, 'ev', quinella_tooltips) }}</th><th>{{ ui.explained_term('Full Kelly', 'full_kelly', quinella_tooltips) }}</th><th>{{ ui.explained_term('適用Kelly', 'applied_kelly', quinella_tooltips) }}</th><th>{{ ui.explained_term('理論購入額', 'theoretical_stake', quinella_tooltips) }}</th><th>{{ ui_labels.purchase_amount }}</th></tr></thead><tbody>
         {% for item in pre.details %}<tr><td>{{ item.horse_numbers|join('-') }}</td><td>{{ '%.2f'|format(item.predicted_probability * 100) }}%</td><td>{{ item.odds }}</td><td>{{ '%.3f'|format(item.expected_value) }}</td><td>{{ '%.4f'|format(item.full_kelly * 100) }}%</td><td>{{ '%.4f'|format(item.fractional_kelly * 100) }}%</td><td>{{ '%.2f'|format(item.theoretical_stake) if item.theoretical_stake is not none else '-' }}円</td><td>{{ item.stake }}円</td></tr>{% endfor %}
       </tbody></table></div></details>
       <h4>購入対象</h4>
       {% if pre.selections %}
-      <div class="table-scroll"><table class="simulation-table"><thead><tr><th>馬番ペア</th><th>{{ ui_labels.quinella_probability }}</th><th>馬連オッズ</th><th>{{ explained_term(ui_labels.expected_value, 'ev', quinella_tooltips) }}</th><th>{{ ui_labels.purchase_amount }}</th></tr></thead><tbody>
+      <div class="table-scroll"><table class="simulation-table"><thead><tr><th>馬番ペア</th><th>{{ ui_labels.quinella_probability }}</th><th>馬連オッズ</th><th>{{ ui.explained_term(ui_labels.expected_value, 'ev', quinella_tooltips) }}</th><th>{{ ui_labels.purchase_amount }}</th></tr></thead><tbody>
         {% for item in pre.selections %}<tr><td class="nowrap">{{ item.horse_numbers|join('-') }}</td><td class="nowrap">{{ '%.2f'|format(item.predicted_probability * 100) }}%</td><td class="nowrap">{{ item.odds }}</td><td class="nowrap">{{ '%.3f'|format(item.expected_value) }}</td><td class="nowrap">{{ item.stake }}円</td></tr>{% endfor %}
       </tbody></table></div>
       {% else %}<p><strong>購入なし</strong>：最低期待値とKelly基準を満たす購入単位以上の候補がありません。</p>{% endif %}

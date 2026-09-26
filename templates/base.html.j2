@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{% block description %}{% endblock %}">
+  <title>{% block title %}{% endblock %}</title>
+  <style>
+    :root {
+      --status-prediction-bg: {{ status_colors.prediction.background }};
+      --status-prediction-color: {{ status_colors.prediction.color }};
+      --status-prediction-border: {{ status_colors.prediction.border }};
+      --status-result-bg: {{ status_colors.result.background }};
+      --status-result-color: {{ status_colors.result.color }};
+      --status-result-border: {{ status_colors.result.border }};
+      --status-pending-bg: {{ status_colors.pending.background }};
+      --status-pending-color: {{ status_colors.pending.color }};
+      --status-pending-border: {{ status_colors.pending.border }};
+    }
+    body {
+      margin: 0;
+      font-family: "Yu Gothic", "Hiragino Sans", sans-serif;
+      background: {{ site_background }};
+      color: #1f2520;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .status-cancelled { background: #f8e3e3; color: #942f2f; border-color: #dbaaaa; }
+    .status-prediction {
+      background: var(--status-prediction-bg);
+      color: var(--status-prediction-color);
+      border-color: var(--status-prediction-border);
+    }
+    .status-result {
+      background: var(--status-result-bg);
+      color: var(--status-result-color);
+      border-color: var(--status-result-border);
+    }
+    .status-pending {
+      background: var(--status-pending-bg);
+      color: var(--status-pending-color);
+      border-color: var(--status-pending-border);
+    }
+    .race-grade {
+      display: inline-block;
+      padding: 1px 5px;
+      border: 1px solid #c8c1b7;
+      border-radius: 999px;
+      background: #f3f0ea;
+      color: #615c55;
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.2;
+      vertical-align: middle;
+    }
+    .race-grade-g3 {
+      border-color: #c8c1b7;
+      background: #f3f0ea;
+      color: #615c55;
+      font-weight: 500;
+    }
+    .race-grade-g2 {
+      border-color: #9fb8ae;
+      background: #edf4f1;
+      color: #3f675b;
+      font-weight: 600;
+    }
+    .race-grade-g1 {
+      border-color: #b99543;
+      background: #f7edcf;
+      color: #705514;
+      font-weight: 700;
+    }
+    .table-scroll {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+    .nowrap {
+      white-space: nowrap;
+      word-break: keep-all;
+    }
+  </style>
+  <style>
+{% block styles %}{% endblock %}
+  </style>
+</head>
+<body>
+{% block content %}{% endblock %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

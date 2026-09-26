@@ -1,0 +1,165 @@
+    const initializeSortableTable = (table) => {
+      const body = table.tBodies[0];
+      if (!body) return;
+
+      const buttons = Array.from(table.querySelectorAll("thead .sort-button"));
+      Array.from(body.rows).forEach((row, index) => {
+        row.dataset.originalIndex = String(index);
+      });
+
+      const originalIndex = (row) => Number(row.dataset.originalIndex);
+      const resetHeader = (button) => {
+        button.closest("th").setAttribute("aria-sort", "none");
+        button.querySelector(".sort-indicator").textContent = "↕";
+      };
+      const readValue = (row, columnIndex, valueType) => {
+        const cell = row.cells[columnIndex];
+        const rawValue = valueType === "number"
+          ? (cell?.dataset.sortValue ?? "")
+          : (cell?.textContent?.trim() ?? "");
+        if (["", "-", "null", "undefined", "NaN"].includes(rawValue)) return null;
+        if (valueType === "text") return rawValue;
+        const number = Number(rawValue);
+        return Number.isFinite(number) ? number : null;
+      };
+
+      for (const button of buttons) {
+        button.addEventListener("click", () => {
+          const header = button.closest("th");
+          const currentDirection = header.getAttribute("aria-sort") || "none";
+          const firstDirection = button.dataset.sortFirst === "descending" ? "descending" : "ascending";
+          const oppositeDirection = firstDirection === "ascending" ? "descending" : "ascending";
+          const nextDirection = currentDirection === "none"
+            ? firstDirection
+            : currentDirection === firstDirection
+              ? oppositeDirection
+              : "none";
+
+          buttons.forEach(resetHeader);
+          const rows = Array.from(body.rows);
+          if (nextDirection === "none") {
+            rows.sort((rowA, rowB) => originalIndex(rowA) - originalIndex(rowB));
+          } else {
+            header.setAttribute("aria-sort", nextDirection);
+            button.querySelector(".sort-indicator").textContent = nextDirection === "ascending" ? "▲" : "▼";
+            const columnIndex = Number(button.dataset.sortColumn);
+            const valueType = button.dataset.sortType;
+            rows.sort((rowA, rowB) => {
+              const valueA = readValue(rowA, columnIndex, valueType);
+              const valueB = readValue(rowB, columnIndex, valueType);
+              if (valueA === null && valueB === null) return originalIndex(rowA) - originalIndex(rowB);
+              if (valueA === null) return 1;
+              if (valueB === null) return -1;
+              const comparison = valueType === "text"
+                ? valueA.localeCompare(valueB, "ja")
+                : valueA - valueB;
+              if (comparison === 0) return originalIndex(rowA) - originalIndex(rowB);
+              return nextDirection === "ascending" ? comparison : -comparison;
+            });
+          }
+          rows.forEach((row) => body.appendChild(row));
+        });
+      }
+    };
+
+    function directScopedPanels(tabList, selector) {
+      return Array.from(tabList.parentElement.children).filter((element) => element.matches(selector));
+    }
+
+    function activateTicketTabList(tabList, ticket) {
+      Array.from(tabList.querySelectorAll("[data-ticket-tab]")).forEach((tab) => {
+        const selected = tab.dataset.ticketTab === ticket;
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+      });
+      directScopedPanels(tabList, "[data-ticket-panel]").forEach((panel) => {
+        panel.hidden = panel.dataset.ticketPanel !== ticket;
+      });
+    }
+
+    function activateAiMethodTabList(tabList, method) {
+      Array.from(tabList.querySelectorAll("[data-ai-tab]")).forEach((tab) => {
+        const selected = tab.dataset.aiMethod === method;
+        tab.setAttribute("aria-selected", selected ? "true" : "false");
+        tab.tabIndex = selected ? 0 : -1;
+      });
+      directScopedPanels(tabList, "[data-ai-panel]").forEach((panel) => {
+        panel.hidden = panel.dataset.aiMethod !== method;
+      });
+    }
+
+    (() => {
+      const ticketTabLists = Array.from(document.querySelectorAll(".ticket-tabs"));
+      ticketTabLists.forEach((tabList) => {
+        const tabs = Array.from(tabList.querySelectorAll("[data-ticket-tab]"));
+        const activateTicket = (ticket) => {
+          activateTicketTabList(tabList, ticket);
+          tabList.dispatchEvent(new CustomEvent("ticket-change", { bubbles: true, detail: { ticket } }));
+        };
+        tabs.forEach((tab) => {
+          tab.addEventListener("click", () => activateTicket(tab.dataset.ticketTab));
+          tab.addEventListener("keydown", (event) => {
+            if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+            event.preventDefault();
+            const index = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (tabs.indexOf(tab) + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+            activateTicket(tabs[index].dataset.ticketTab);
+            tabs[index].focus();
+          });
+        });
+      });
+      const aiMethodTabLists = Array.from(document.querySelectorAll(".prediction-method-tabs, .simulation-method-tabs, .result-method-tabs"));
+      aiMethodTabLists.forEach((tabList) => {
+        const tabs = Array.from(tabList.querySelectorAll("[data-ai-tab]"));
+        const activateAiMethod = (method) => {
+          activateAiMethodTabList(tabList, method);
+          tabList.dispatchEvent(new CustomEvent("ai-method-change", { bubbles: true, detail: { method } }));
+        };
+        tabs.forEach((tab) => {
+          tab.addEventListener("click", () => activateAiMethod(tab.dataset.aiMethod));
+          tab.addEventListener("keydown", (event) => {
+            if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+            const offset = event.key === "ArrowRight" ? 1 : -1;
+            const target = tabs[(tabs.indexOf(tab) + offset + tabs.length) % tabs.length];
+            activateAiMethod(target.dataset.aiMethod);
+            target.focus();
+            event.preventDefault();
+          });
+        });
+        if (tabs.length) {
+          activateAiMethod(tabs[0].dataset.aiMethod);
+        }
+      });
+
+      const tooltipTriggers = Array.from(document.querySelectorAll(".tooltip-trigger"));
+      const closeTooltips = () => {
+        for (const trigger of tooltipTriggers) {
+          trigger.closest(".term-tooltip").removeAttribute("data-open");
+          trigger.setAttribute("aria-expanded", "false");
+        }
+      };
+
+      for (const trigger of tooltipTriggers) {
+        trigger.addEventListener("click", (event) => {
+          event.stopPropagation();
+          const tooltip = trigger.closest(".term-tooltip");
+          const shouldOpen = tooltip.getAttribute("data-open") !== "true";
+          closeTooltips();
+          if (shouldOpen) {
+            tooltip.setAttribute("data-open", "true");
+            trigger.setAttribute("aria-expanded", "true");
+          }
+        });
+      }
+      document.addEventListener("click", closeTooltips);
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeTooltips();
+          if (document.activeElement?.classList.contains("tooltip-trigger")) {
+            document.activeElement.blur();
+          }
+        }
+      });
+      document.querySelectorAll(
+        ".prediction-table[data-sortable], .result-table[data-sortable]"
+      ).forEach(initializeSortableTable);
+    })();

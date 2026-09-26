@@ -1,28 +1,8 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="中央競馬の各レースについて、AIが出走馬の過去成績・条件適性・市場オッズなどから{{ ui_labels.win_probability }}を推定し、購入シミュレーションを掲載します。">
-  <title>中央競馬 AI予想レース一覧 | keiba-oracle</title>
-  <style>
-    :root {
-      --status-prediction-bg: {{ status_colors.prediction.background }};
-      --status-prediction-color: {{ status_colors.prediction.color }};
-      --status-prediction-border: {{ status_colors.prediction.border }};
-      --status-result-bg: {{ status_colors.result.background }};
-      --status-result-color: {{ status_colors.result.color }};
-      --status-result-border: {{ status_colors.result.border }};
-      --status-pending-bg: {{ status_colors.pending.background }};
-      --status-pending-color: {{ status_colors.pending.color }};
-      --status-pending-border: {{ status_colors.pending.border }};
-    }
-    body {
-      margin: 0;
-      font-family: "Yu Gothic", "Hiragino Sans", sans-serif;
-      background: {{ site_background }};
-      color: #1f2520;
-    }
+{% extends 'base.html.j2' %}
+{% import 'components/ui.html.j2' as ui %}
+{% block title %}中央競馬 AI予想レース一覧 | keiba-oracle{% endblock %}
+{% block description %}中央競馬の各レースについて、AIが出走馬の過去成績・条件適性・市場オッズなどから{{ ui_labels.win_probability }}を推定し、購入シミュレーションを掲載します。{% endblock %}
+{% block styles %}
     main {
       max-width: 980px;
       margin: 0 auto;
@@ -83,13 +63,6 @@
       width: 100%;
       border-collapse: collapse;
     }
-    .table-scroll {
-      width: 100%;
-      max-width: 100%;
-      overflow-x: auto;
-      overscroll-behavior-inline: contain;
-      -webkit-overflow-scrolling: touch;
-    }
     .index-table {
       min-width: 860px;
       table-layout: auto;
@@ -111,43 +84,9 @@
       white-space: nowrap;
     }
     .race-name-column { white-space: nowrap; }
-    .race-grade {
-      display: inline-block;
-      padding: 1px 5px;
-      border: 1px solid #c8c1b7;
-      border-radius: 999px;
-      background: #f3f0ea;
-      color: #615c55;
-      font-size: 11px;
-      font-weight: 500;
-      line-height: 1.2;
-      vertical-align: middle;
-    }
-    .race-grade-g3 {
-      border-color: #c8c1b7;
-      background: #f3f0ea;
-      color: #615c55;
-      font-weight: 500;
-    }
-    .race-grade-g2 {
-      border-color: #9fb8ae;
-      background: #edf4f1;
-      color: #3f675b;
-      font-weight: 600;
-    }
-    .race-grade-g1 {
-      border-color: #b99543;
-      background: #f7edcf;
-      color: #705514;
-      font-weight: 700;
-    }
     .race-course { margin-left: 0.35em; }
     .mobile-race-condition { display: none; }
     .status-column { text-align: center; }
-    .nowrap {
-      white-space: nowrap;
-      word-break: keep-all;
-    }
     th, td {
       text-align: left;
       padding: 12px 8px;
@@ -181,31 +120,7 @@
       vertical-align: middle;
       white-space: nowrap;
     }
-    .status {
-      display: inline-block;
-      padding: 4px 10px;
-      border: 1px solid transparent;
-      border-radius: 999px;
-      font-size: 13px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-    .status-cancelled { background: #f8e3e3; color: #942f2f; border-color: #dbaaaa; }
-    .status-prediction {
-      background: var(--status-prediction-bg);
-      color: var(--status-prediction-color);
-      border-color: var(--status-prediction-border);
-    }
-    .status-result {
-      background: var(--status-result-bg);
-      color: var(--status-result-color);
-      border-color: var(--status-result-border);
-    }
-    .status-pending {
-      background: var(--status-pending-bg);
-      color: var(--status-pending-color);
-      border-color: var(--status-pending-border);
-    }
+    .status { white-space: nowrap; }
     .small {
       color: #6f766c;
       font-size: 14px;
@@ -281,9 +196,8 @@
         grid-area: auto;
       }
     }
-  </style>
-</head>
-<body>
+{% endblock %}
+{% block content %}
 {% macro profit_line(label, simulation) -%}
 {% set simulation_races = simulation.get("simulation_races", 0)|int if simulation else 0 %}
 {% set purchase_races = simulation.get("purchase_races", 0)|int if simulation else 0 %}
@@ -379,9 +293,9 @@
             <td class="nowrap">{{ race.date }}</td>
             <td class="nowrap">{{ race.start_time or "-" }}</td>
             <td class="nowrap">{{ race.track }}</td>
-            <td class="race-name-column">{{ race.race_name|e }}{% if race.race_grade %} <span class="race-grade{% if race.race_grade in ('G1', 'G2', 'G3') %} race-grade-{{ race.race_grade|lower }}{% endif %}">{{ race.race_grade|e }}</span>{% endif %}{% if race.is_new %}<span class="new-badge">NEW!</span>{% endif %}{% if race.race_course %}<span class="race-condition mobile-race-condition"><span class="race-course">{{ race.race_course|e }}</span></span>{% endif %}</td>
+            <td class="race-name-column">{{ race.race_name|e }}{% if race.race_grade %} {{ ui.grade_badge(race.race_grade) }}{% endif %}{% if race.is_new %}<span class="new-badge">NEW!</span>{% endif %}{% if race.race_course %}<span class="race-condition mobile-race-condition"><span class="race-course">{{ race.race_course|e }}</span></span>{% endif %}</td>
             <td class="nowrap condition-column">{{ race.race_course|e }}</td>
-            <td class="nowrap status-column"><span class="status {{ race.status_class }}">{{ race.status_label }}</span>{% if race.next_update %}<div class="small next-update"><time datetime="{{ race.next_update.at }}">{{ race.next_update.label }}</time></div>{% endif %}</td>
+            <td class="nowrap status-column">{{ ui.status_badge(race.status_label, race.status_class) }}{% if race.next_update %}<div class="small next-update"><time datetime="{{ race.next_update.at }}">{{ race.next_update.label }}</time></div>{% endif %}</td>
             <td class="nowrap"><a class="page-link" href="{{ race.prediction_href }}"><span class="desktop-link-label">開く</span><span class="mobile-link-label">予想</span></a></td>
             <td class="nowrap result-link-column">{% if race.result_href %}<a class="page-link" href="{{ race.result_href }}"><span class="desktop-link-label">開く</span><span class="mobile-link-label">結果</span></a>{% else %}<span class="mobile-link-label">結果 </span>-{% endif %}</td>
           </tr>
@@ -396,5 +310,4 @@
     </div>
     <p class="small">AI予想およびシミュレーション結果は、的中や利益を保証するものではありません。</p>
   </main>
-</body>
-</html>
+{% endblock %}

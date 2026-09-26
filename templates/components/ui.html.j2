@@ -1,0 +1,37 @@
+{% macro status_badge(label, class_name) -%}
+<span class="status {{ class_name }}">{{ label }}</span>
+{%- endmacro %}
+
+{% macro grade_badge(grade) -%}
+{% if grade %}<span class="race-grade{% if grade in ('G1', 'G2', 'G3') %} race-grade-{{ grade|lower }}{% endif %}">{{ grade|e }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro hit_badge() -%}
+<span class="hit-badge">的中!</span>
+{%- endmacro %}
+
+{% macro info_tooltip(term, key, descriptions=tooltips) -%}
+<span class="term-tooltip" data-term-key="{{ key }}">
+  <button type="button" class="tooltip-trigger" aria-label="{{ term }}: {{ descriptions[key] }}" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">{{ descriptions[key] }}</span>
+</span>
+{%- endmacro %}
+
+{% macro explained_term(term, key, descriptions=tooltips) -%}
+<span class="term-with-tooltip"><span>{{ term }}</span>{{ info_tooltip(term, key, descriptions) }}</span>
+{%- endmacro %}
+
+{% macro sortable_header(label, column, value_type, first_direction, class_name="nowrap") -%}
+<th class="{{ class_name }}" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="{{ column }}" data-sort-type="{{ value_type }}" data-sort-first="{{ first_direction }}">
+    {{ label }} <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+{%- endmacro %}
+
+{% macro settlement_summary(post, ui_labels) -%}
+{% set has_purchase = post.total_stake > 0 %}
+{% set has_refund = (post.total_refund|default(0)) > 0 %}
+{% if not has_purchase %}<p class="settlement-no-purchase"><strong>購入なし</strong></p>{% endif %}
+<p class="settlement-summary" data-settlement-state="{{ 'purchased' if has_purchase else 'no-purchase' }}"><span data-settlement-metric="stake"><strong>{{ ui_labels.purchase_amount }}:</strong> {{ post.total_stake }}円</span> / {% if has_purchase and has_refund %}<span class="refund-summary" data-settlement-metric="refund"><strong>{{ ui_labels.refund_amount }}:</strong> {{ post.total_refund }}円</span> / {% endif %}<span data-settlement-metric="return"><strong>{{ ui_labels.return_amount }}:</strong> {{ post.total_return }}円</span> / <span data-settlement-metric="profit"><strong>{{ ui_labels.profit }}:</strong> {{ post.profit }}円</span>{% if has_purchase %} / <span data-settlement-metric="roi"><strong>{{ ui_labels.profit_rate }}:</strong> {{ '%.2f'|format(post.roi * 100) }}%</span>{% endif %}</p>
+{%- endmacro %}
