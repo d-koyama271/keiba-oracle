@@ -95,12 +95,12 @@ class RenderTests(unittest.TestCase):
         }}
         entry = payload["prediction"][0]
         entry["statistical"] = entry.pop("general")
-        self.assertEqual(build_race_context(payload)["status_label"], "統計重視予想公開")
+        self.assertEqual(build_race_context(payload)["status_label"], "前日予想公開")
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             shutil.copytree(ROOT / "templates", root / "templates")
             path = root / "data/races/2026-09-20/nakayama_11r.json"
-            for state, label in (("statistical", "統計重視予想公開"), ("general", "総合AI予想公開"), ("result", "結果公開"), ("cancelled", "開催中止")):
+            for state, label in (("statistical", "前日予想公開"), ("general", "直前予想公開"), ("result", "結果公開"), ("cancelled", "開催中止")):
                 if state == "general":
                     entry["general"] = entry["statistical"]
                 if state == "result":

@@ -307,12 +307,12 @@
       <p class="small performance-description">{{ description }}</p>
       <div class="performance-grid">
         <div class="performance-item">
-          <strong>{{ ui_labels.rank_top1 }}的中率</strong>
+          <strong>1位的中率</strong>
           <div class="performance-value">{% if evaluated_races and overall.get("top1_hit_rate") is not none %}{{ "%.1f"|format(overall.top1_hit_rate * 100) }}%{% else %}-{% endif %}</div>
           <div class="small">{% if evaluated_races %}{{ overall.get("top1_hits", 0) }} / {{ evaluated_races }}レース{% else %}評価済みレースなし{% endif %}</div>
         </div>
         <div class="performance-item">
-          <strong>{{ ui_labels.rank_top3 }}率</strong>
+          <strong>勝ち馬の予想3位内率</strong>
           <div class="performance-value">{% if evaluated_races and overall.get("top3_hit_rate") is not none %}{{ "%.1f"|format(overall.top3_hit_rate * 100) }}%{% else %}-{% endif %}</div>
           <div class="small">{% if evaluated_races %}{{ overall.get("top3_hits", 0) }} / {{ evaluated_races }}レース{% else %}評価済みレースなし{% endif %}</div>
         </div>

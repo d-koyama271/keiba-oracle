@@ -1608,9 +1608,9 @@
           <div class="metric-grid">
             <div><strong>勝ち馬の{{ ui_labels.predicted_rank }}</strong><br>{{ evaluation.winner.predicted_rank }}位</div>
             <div><strong>勝ち馬の{{ ui_labels.win_probability }}</strong><br>{{ "%.2f"|format(evaluation.winner.predicted_probability * 100) }}%</div>
-            <div><strong>{{ ui_labels.rank_top1 }}</strong><br>{{ "的中" if evaluation.metrics.top1_hit else "不的中" }}</div>
-            <div><strong>{{ ui_labels.rank_top3 }}</strong><br>{{ "的中" if evaluation.metrics.top3_hit else "不的中" }}</div>
-            <div><strong>{{ ui_labels.rank_top5 }}</strong><br>{{ "的中" if evaluation.metrics.top5_hit else "不的中" }}</div>
+            <div><strong>Top1</strong><br>{{ "的中" if evaluation.metrics.top1_hit else "不的中" }}</div>
+            <div><strong>Top3</strong><br>{{ "的中" if evaluation.metrics.top3_hit else "不的中" }}</div>
+            <div><strong>Top5</strong><br>{{ "的中" if evaluation.metrics.top5_hit else "不的中" }}</div>
             <div><strong>Log Loss</strong><br>{{ "%.6f"|format(evaluation.metrics.log_loss) }}</div>
             <div><strong>Brier Score</strong><br>{{ "%.6f"|format(evaluation.metrics.brier_score) }}</div>
           </div>
