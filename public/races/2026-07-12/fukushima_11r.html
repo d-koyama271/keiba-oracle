@@ -1009,7 +1009,7 @@
   <p class="table-scroll-hint">表は横にスクロールできます</p>
 <div class="table-scroll">
   <table class="evaluation-table">
-    <thead><tr><th class="nowrap">頭数</th><th class="nowrap">対象馬番</th><th class="nowrap"><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
+    <thead><tr><th class="nowrap">頭数</th><th class="comparison-target-cell nowrap">対象馬番</th><th class="nowrap"><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
   <button type="button" class="tooltip-trigger" aria-label="カバー確率: 実際に採用された選択馬の1着確率を合計した値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">実際に採用された選択馬の1着確率を合計した値です。</span>
 </span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
@@ -1025,7 +1025,7 @@
     <tbody>
       <tr>
         <td class="nowrap">1</td>
-        <td class="nowrap">4</td>
+        <td class="comparison-target-cell nowrap">4</td>
         <td class="nowrap">15.41%</td>
         <td class="nowrap">0.724</td>
         <td class="nowrap">14100円</td>
@@ -1036,7 +1036,7 @@
     
       <tr>
         <td class="nowrap">2</td>
-        <td class="nowrap">4, 16</td>
+        <td class="comparison-target-cell nowrap">4, 16</td>
         <td class="nowrap">30.30%</td>
         <td class="nowrap">0.823</td>
         <td class="nowrap">7990円</td>
@@ -1047,7 +1047,7 @@
     
       <tr>
         <td class="nowrap">3</td>
-        <td class="nowrap">4, 16, 11</td>
+        <td class="comparison-target-cell nowrap">4, 16, 11</td>
         <td class="nowrap">43.26%</td>
         <td class="nowrap">0.757</td>
         <td class="nowrap">5120円</td>
@@ -1058,7 +1058,7 @@
     
       <tr class="selected-row">
         <td class="nowrap">4</td>
-        <td class="nowrap">4, 16, 11, 13</td>
+        <td class="comparison-target-cell nowrap">4, 16, 11, 13</td>
         <td class="nowrap">55.41%</td>
         <td class="nowrap">0.780</td>
         <td class="nowrap">4000円</td>
@@ -1069,7 +1069,7 @@
     
       <tr>
         <td class="nowrap">5</td>
-        <td class="nowrap">4, 16, 11, 13, 15</td>
+        <td class="comparison-target-cell nowrap">4, 16, 11, 13, 15</td>
         <td class="nowrap">64.17%</td>
         <td class="nowrap">0.776</td>
         <td class="nowrap">3450円</td>
@@ -1104,8 +1104,10 @@
 </div>
       <h4 class="simulation-block-title simulation-result-title">購入結果</h4>
 <div class="metric-grid value-purchase-result">
-        <div><strong>購入額</strong><br>0円 / 3000円</div>
-      </div>
+  <div><strong>判定</strong><br>購入なし</div>
+  <div><strong>合計購入額</strong><br>0円</div>
+  <div><strong>未使用予算</strong><br>3000円</div>
+</div>
       <details class="simulation-details">
         <summary>全馬期待値の詳細を見る</summary>
         <h4>全馬期待値一覧</h4>

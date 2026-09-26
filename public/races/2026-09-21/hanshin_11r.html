@@ -1133,7 +1133,7 @@
   <p class="table-scroll-hint">表は横にスクロールできます</p>
 <div class="table-scroll">
   <table class="evaluation-table">
-    <thead><tr><th class="nowrap">頭数</th><th class="nowrap">対象馬番</th><th class="nowrap"><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
+    <thead><tr><th class="nowrap">頭数</th><th class="comparison-target-cell nowrap">対象馬番</th><th class="nowrap"><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
   <button type="button" class="tooltip-trigger" aria-label="カバー確率: 実際に採用された選択馬の1着確率を合計した値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">実際に採用された選択馬の1着確率を合計した値です。</span>
 </span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
@@ -1149,7 +1149,7 @@
     <tbody>
       <tr>
         <td class="nowrap">1</td>
-        <td class="nowrap">1</td>
+        <td class="comparison-target-cell nowrap">1</td>
         <td class="nowrap">58.00%</td>
         <td class="nowrap">0.812</td>
         <td class="nowrap">4200円</td>
@@ -1160,7 +1160,7 @@
     
       <tr class="selected-row">
         <td class="nowrap">2</td>
-        <td class="nowrap">1, 4</td>
+        <td class="comparison-target-cell nowrap">1, 4</td>
         <td class="nowrap">67.00%</td>
         <td class="nowrap">0.843</td>
         <td class="nowrap">3750円</td>
@@ -1171,7 +1171,7 @@
     
       <tr>
         <td class="nowrap">3</td>
-        <td class="nowrap">1, 4, 7</td>
+        <td class="comparison-target-cell nowrap">1, 4, 7</td>
         <td class="nowrap">74.50%</td>
         <td class="nowrap">0.862</td>
         <td class="nowrap">3360円</td>
@@ -1182,7 +1182,7 @@
     
       <tr>
         <td class="nowrap">4</td>
-        <td class="nowrap">1, 4, 7, 3</td>
+        <td class="comparison-target-cell nowrap">1, 4, 7, 3</td>
         <td class="nowrap">80.50%</td>
         <td class="nowrap">0.852</td>
         <td class="nowrap">2940円</td>
@@ -1193,7 +1193,7 @@
     
       <tr>
         <td class="nowrap">5</td>
-        <td class="nowrap">1, 4, 7, 3, 9</td>
+        <td class="comparison-target-cell nowrap">1, 4, 7, 3, 9</td>
         <td class="nowrap">86.00%</td>
         <td class="nowrap">0.796</td>
         <td class="nowrap">2520円</td>
@@ -1228,8 +1228,10 @@
 </div>
       <h4 class="simulation-block-title simulation-result-title">購入結果</h4>
 <div class="metric-grid value-purchase-result">
-        <div><strong>購入額</strong><br>0円 / 3000円</div>
-      </div>
+  <div><strong>判定</strong><br>購入なし</div>
+  <div><strong>合計購入額</strong><br>0円</div>
+  <div><strong>未使用予算</strong><br>3000円</div>
+</div>
       <details class="simulation-details">
         <summary>全馬期待値の詳細を見る</summary>
         <h4>全馬期待値一覧</h4>
@@ -1534,128 +1536,128 @@
   
 <div class="table-scroll">
   <table class="evaluation-table">
-    <thead><tr><th>組数</th><th>対象ペア</th><th><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
+    <thead><tr><th class="nowrap">組数</th><th class="comparison-target-cell">対象ペア</th><th class="nowrap"><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
   <button type="button" class="tooltip-trigger" aria-label="カバー確率: 実際に採用された選択組の馬連的中確率を合計した値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">実際に採用された選択組の馬連的中確率を合計した値です。</span>
-</span></span></th><th><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
+</span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
   <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択組それぞれの馬連的中確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択組それぞれの馬連的中確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。</span>
-</span></span></th><th><span class="term-with-tooltip"><span>最低払戻額</span><span class="term-tooltip" data-term-key="minimum_payout">
+</span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>最低払戻額</span><span class="term-tooltip" data-term-key="minimum_payout">
   <button type="button" class="tooltip-trigger" aria-label="最低払戻額: 選択した組のうち最も払戻額が低い組が的中した場合の払戻額です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択した組のうち最も払戻額が低い組が的中した場合の払戻額です。</span>
-</span></span></th><th><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
+</span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
   <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択組のうち最も払戻額が低い組が的中した場合の最低利益です。最低払戻額から合計購入額を引いて計算します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択組のうち最も払戻額が低い組が的中した場合の最低利益です。最低払戻額から合計購入額を引いて計算します。</span>
-</span></span></th><th>判定</th><th>除外理由</th></tr></thead>
+</span></span></th><th class="nowrap">判定</th><th class="rejection-reason-cell">除外理由</th></tr></thead>
     <tbody>
       <tr>
-        <td>1</td>
-        <td>1-4</td>
-        <td>15.72%</td>
-        <td>0.959</td>
-        <td>18300円</td>
-        <td>15300円</td>
-        <td>除外</td>
-        <td>カバー確率が最低基準未満</td>
+        <td class="nowrap">1</td>
+        <td class="comparison-target-cell">1-4</td>
+        <td class="nowrap">15.72%</td>
+        <td class="nowrap">0.959</td>
+        <td class="nowrap">18300円</td>
+        <td class="nowrap">15300円</td>
+        <td class="nowrap">除外</td>
+        <td class="rejection-reason-cell">カバー確率が最低基準未満</td>
       </tr>
     
       <tr>
-        <td>2</td>
-        <td>1-4, 1-7</td>
-        <td>29.09%</td>
-        <td>0.901</td>
-        <td>9150円</td>
-        <td>6150円</td>
-        <td>除外</td>
-        <td>カバー確率が最低基準未満</td>
+        <td class="nowrap">2</td>
+        <td class="comparison-target-cell">1-4, 1-7</td>
+        <td class="nowrap">29.09%</td>
+        <td class="nowrap">0.901</td>
+        <td class="nowrap">9150円</td>
+        <td class="nowrap">6150円</td>
+        <td class="nowrap">除外</td>
+        <td class="rejection-reason-cell">カバー確率が最低基準未満</td>
       </tr>
     
       <tr class="selected-row">
-        <td>3</td>
-        <td>1-4, 1-7, 1-3</td>
-        <td>40.07%</td>
-        <td>0.860</td>
-        <td>6210円</td>
-        <td>3210円</td>
-        <td>採用</td>
-        <td>-</td>
+        <td class="nowrap">3</td>
+        <td class="comparison-target-cell">1-4, 1-7, 1-3</td>
+        <td class="nowrap">40.07%</td>
+        <td class="nowrap">0.860</td>
+        <td class="nowrap">6210円</td>
+        <td class="nowrap">3210円</td>
+        <td class="nowrap">採用</td>
+        <td class="rejection-reason-cell">-</td>
       </tr>
     
       <tr>
-        <td>4</td>
-        <td>1-4, 1-7, 1-3, 1-9</td>
-        <td>50.24%</td>
-        <td>0.759</td>
-        <td>4270円</td>
-        <td>1270円</td>
-        <td>適格</td>
-        <td>-</td>
+        <td class="nowrap">4</td>
+        <td class="comparison-target-cell">1-4, 1-7, 1-3, 1-9</td>
+        <td class="nowrap">50.24%</td>
+        <td class="nowrap">0.759</td>
+        <td class="nowrap">4270円</td>
+        <td class="nowrap">1270円</td>
+        <td class="nowrap">適格</td>
+        <td class="rejection-reason-cell">-</td>
       </tr>
     
       <tr>
-        <td>5</td>
-        <td>1-4, 1-7, 1-3, 1-9, 1-10</td>
-        <td>57.94%</td>
-        <td>0.826</td>
-        <td>3780円</td>
-        <td>780円</td>
-        <td>適格</td>
-        <td>-</td>
+        <td class="nowrap">5</td>
+        <td class="comparison-target-cell">1-4, 1-7, 1-3, 1-9, 1-10</td>
+        <td class="nowrap">57.94%</td>
+        <td class="nowrap">0.826</td>
+        <td class="nowrap">3780円</td>
+        <td class="nowrap">780円</td>
+        <td class="nowrap">適格</td>
+        <td class="rejection-reason-cell">-</td>
       </tr>
     
       <tr>
-        <td>6</td>
-        <td>1-4, 1-7, 1-3, 1-9, 1-10, 1-11</td>
-        <td>63.95%</td>
-        <td>0.853</td>
-        <td>3660円</td>
-        <td>660円</td>
-        <td>適格</td>
-        <td>-</td>
+        <td class="nowrap">6</td>
+        <td class="comparison-target-cell">1-4, 1-7, 1-3, 1-9, 1-10, 1-11</td>
+        <td class="nowrap">63.95%</td>
+        <td class="nowrap">0.853</td>
+        <td class="nowrap">3660円</td>
+        <td class="nowrap">660円</td>
+        <td class="nowrap">適格</td>
+        <td class="rejection-reason-cell">-</td>
       </tr>
     
       <tr>
-        <td>7</td>
-        <td>1-4, 1-7, 1-3, 1-9, 1-10, 1-11, 1-2</td>
-        <td>69.07%</td>
-        <td>0.800</td>
-        <td>3150円</td>
-        <td>150円</td>
-        <td>除外</td>
-        <td>最低利益率が最低基準未満</td>
+        <td class="nowrap">7</td>
+        <td class="comparison-target-cell">1-4, 1-7, 1-3, 1-9, 1-10, 1-11, 1-2</td>
+        <td class="nowrap">69.07%</td>
+        <td class="nowrap">0.800</td>
+        <td class="nowrap">3150円</td>
+        <td class="nowrap">150円</td>
+        <td class="nowrap">除外</td>
+        <td class="rejection-reason-cell">最低利益率が最低基準未満</td>
       </tr>
     
       <tr>
-        <td>8</td>
-        <td>1-4, 1-7, 1-3, 1-9, 1-10, 1-11, 1-2, 1-6</td>
-        <td>73.30%</td>
-        <td>0.811</td>
-        <td>2850円</td>
-        <td>-150円</td>
-        <td>除外</td>
-        <td>最低利益率が最低基準未満</td>
+        <td class="nowrap">8</td>
+        <td class="comparison-target-cell">1-4, 1-7, 1-3, 1-9, 1-10, 1-11, 1-2, 1-6</td>
+        <td class="nowrap">73.30%</td>
+        <td class="nowrap">0.811</td>
+        <td class="nowrap">2850円</td>
+        <td class="nowrap">-150円</td>
+        <td class="nowrap">除外</td>
+        <td class="rejection-reason-cell">最低利益率が最低基準未満</td>
       </tr>
     
       <tr>
-        <td>9</td>
-        <td>1-4, 1-7, 1-3, 1-9, 1-10, 1-11, 1-2, 1-6, 1-5</td>
-        <td>76.61%</td>
-        <td>0.837</td>
-        <td>2760円</td>
-        <td>-240円</td>
-        <td>除外</td>
-        <td>最低利益率が最低基準未満</td>
+        <td class="nowrap">9</td>
+        <td class="comparison-target-cell">1-4, 1-7, 1-3, 1-9, 1-10, 1-11, 1-2, 1-6, 1-5</td>
+        <td class="nowrap">76.61%</td>
+        <td class="nowrap">0.837</td>
+        <td class="nowrap">2760円</td>
+        <td class="nowrap">-240円</td>
+        <td class="nowrap">除外</td>
+        <td class="rejection-reason-cell">最低利益率が最低基準未満</td>
       </tr>
     
       <tr>
-        <td>10</td>
-        <td>1-4, 1-7, 1-3, 1-9, 1-10, 1-11, 1-2, 1-6, 1-5, 1-8</td>
-        <td>78.95%</td>
-        <td>0.854</td>
-        <td>2650円</td>
-        <td>-350円</td>
-        <td>除外</td>
-        <td>最低利益率が最低基準未満</td>
+        <td class="nowrap">10</td>
+        <td class="comparison-target-cell">1-4, 1-7, 1-3, 1-9, 1-10, 1-11, 1-2, 1-6, 1-5, 1-8</td>
+        <td class="nowrap">78.95%</td>
+        <td class="nowrap">0.854</td>
+        <td class="nowrap">2650円</td>
+        <td class="nowrap">-350円</td>
+        <td class="nowrap">除外</td>
+        <td class="rejection-reason-cell">最低利益率が最低基準未満</td>
       </tr>
     </tbody>
   </table>
@@ -1684,13 +1686,13 @@
   <span class="tooltip-content" role="tooltip">Kelly基準で算出した購入割合を実際に何割使うかを示す係数です。0.5なら算出額の半分を使用します。</span>
 </span></span></strong><br>0.8</div>
 </div>
-    
     <h4 class="simulation-block-title simulation-result-title">購入結果</h4>
-<div class="metric-grid">
-      <div><strong>判定</strong><br>購入なし</div>
-      <div><strong>合計購入額</strong><br>0円</div>
-      <div><strong>未使用予算</strong><br>3000円</div>
-    </div>
+<div class="metric-grid value-purchase-result">
+  <div><strong>判定</strong><br>購入なし</div>
+  <div><strong>合計購入額</strong><br>0円</div>
+  <div><strong>未使用予算</strong><br>3000円</div>
+</div>
+    
     
     
       <details class="simulation-details"><summary>全ペア期待値の詳細を見る</summary>
@@ -1813,7 +1815,7 @@
   <p class="table-scroll-hint">表は横にスクロールできます</p>
 <div class="table-scroll">
   <table class="evaluation-table">
-    <thead><tr><th class="nowrap">頭数</th><th class="nowrap">対象馬番</th><th class="nowrap"><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
+    <thead><tr><th class="nowrap">頭数</th><th class="comparison-target-cell nowrap">対象馬番</th><th class="nowrap"><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
   <button type="button" class="tooltip-trigger" aria-label="カバー確率: 実際に採用された選択馬の1着確率を合計した値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">実際に採用された選択馬の1着確率を合計した値です。</span>
 </span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
@@ -1829,7 +1831,7 @@
     <tbody>
       <tr>
         <td class="nowrap">1</td>
-        <td class="nowrap">1</td>
+        <td class="comparison-target-cell nowrap">1</td>
         <td class="nowrap">55.00%</td>
         <td class="nowrap">0.770</td>
         <td class="nowrap">4200円</td>
@@ -1840,7 +1842,7 @@
     
       <tr class="selected-row">
         <td class="nowrap">2</td>
-        <td class="nowrap">1, 4</td>
+        <td class="comparison-target-cell nowrap">1, 4</td>
         <td class="nowrap">65.00%</td>
         <td class="nowrap">0.818</td>
         <td class="nowrap">3750円</td>
@@ -1851,7 +1853,7 @@
     
       <tr>
         <td class="nowrap">3</td>
-        <td class="nowrap">1, 4, 7</td>
+        <td class="comparison-target-cell nowrap">1, 4, 7</td>
         <td class="nowrap">75.00%</td>
         <td class="nowrap">0.874</td>
         <td class="nowrap">3360円</td>
@@ -1862,7 +1864,7 @@
     
       <tr>
         <td class="nowrap">4</td>
-        <td class="nowrap">1, 4, 7, 10</td>
+        <td class="comparison-target-cell nowrap">1, 4, 7, 10</td>
         <td class="nowrap">80.50%</td>
         <td class="nowrap">0.909</td>
         <td class="nowrap">3220円</td>
@@ -1873,7 +1875,7 @@
     
       <tr>
         <td class="nowrap">5</td>
-        <td class="nowrap">1, 4, 7, 10, 3</td>
+        <td class="comparison-target-cell nowrap">1, 4, 7, 10, 3</td>
         <td class="nowrap">85.00%</td>
         <td class="nowrap">0.886</td>
         <td class="nowrap">2800円</td>
@@ -1908,8 +1910,10 @@
 </div>
       <h4 class="simulation-block-title simulation-result-title">購入結果</h4>
 <div class="metric-grid value-purchase-result">
-        <div><strong>購入額</strong><br>0円 / 3000円</div>
-      </div>
+  <div><strong>判定</strong><br>購入なし</div>
+  <div><strong>合計購入額</strong><br>0円</div>
+  <div><strong>未使用予算</strong><br>3000円</div>
+</div>
       <details class="simulation-details">
         <summary>全馬期待値の詳細を見る</summary>
         <h4>全馬期待値一覧</h4>
@@ -2214,128 +2218,128 @@
   
 <div class="table-scroll">
   <table class="evaluation-table">
-    <thead><tr><th>組数</th><th>対象ペア</th><th><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
+    <thead><tr><th class="nowrap">組数</th><th class="comparison-target-cell">対象ペア</th><th class="nowrap"><span class="term-with-tooltip"><span>カバー確率</span><span class="term-tooltip" data-term-key="coverage_probability">
   <button type="button" class="tooltip-trigger" aria-label="カバー確率: 実際に採用された選択組の馬連的中確率を合計した値です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">実際に採用された選択組の馬連的中確率を合計した値です。</span>
-</span></span></th><th><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
+</span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>グループ期待値</span><span class="term-tooltip" data-term-key="group_expected_value">
   <button type="button" class="tooltip-trigger" aria-label="グループ期待値: 選択組それぞれの馬連的中確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択組それぞれの馬連的中確率と的中時払戻額から求めた期待払戻額を、合計購入額で割った値です。1.0が損益分岐の目安です。</span>
-</span></span></th><th><span class="term-with-tooltip"><span>最低払戻額</span><span class="term-tooltip" data-term-key="minimum_payout">
+</span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>最低払戻額</span><span class="term-tooltip" data-term-key="minimum_payout">
   <button type="button" class="tooltip-trigger" aria-label="最低払戻額: 選択した組のうち最も払戻額が低い組が的中した場合の払戻額です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択した組のうち最も払戻額が低い組が的中した場合の払戻額です。</span>
-</span></span></th><th><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
+</span></span></th><th class="nowrap"><span class="term-with-tooltip"><span>最低利益</span><span class="term-tooltip" data-term-key="minimum_profit">
   <button type="button" class="tooltip-trigger" aria-label="最低利益: 選択組のうち最も払戻額が低い組が的中した場合の最低利益です。最低払戻額から合計購入額を引いて計算します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">選択組のうち最も払戻額が低い組が的中した場合の最低利益です。最低払戻額から合計購入額を引いて計算します。</span>
-</span></span></th><th>判定</th><th>除外理由</th></tr></thead>
+</span></span></th><th class="nowrap">判定</th><th class="rejection-reason-cell">除外理由</th></tr></thead>
     <tbody>
       <tr>
-        <td>1</td>
-        <td>1-4</td>
-        <td>15.79%</td>
-        <td>0.963</td>
-        <td>18300円</td>
-        <td>15300円</td>
-        <td>除外</td>
-        <td>カバー確率が最低基準未満</td>
+        <td class="nowrap">1</td>
+        <td class="comparison-target-cell">1-4</td>
+        <td class="nowrap">15.79%</td>
+        <td class="nowrap">0.963</td>
+        <td class="nowrap">18300円</td>
+        <td class="nowrap">15300円</td>
+        <td class="nowrap">除外</td>
+        <td class="rejection-reason-cell">カバー確率が最低基準未満</td>
       </tr>
     
       <tr>
-        <td>2</td>
-        <td>1-4, 1-7</td>
-        <td>31.58%</td>
-        <td>0.979</td>
-        <td>9150円</td>
-        <td>6150円</td>
-        <td>除外</td>
-        <td>カバー確率が最低基準未満</td>
+        <td class="nowrap">2</td>
+        <td class="comparison-target-cell">1-4, 1-7</td>
+        <td class="nowrap">31.58%</td>
+        <td class="nowrap">0.979</td>
+        <td class="nowrap">9150円</td>
+        <td class="nowrap">6150円</td>
+        <td class="nowrap">除外</td>
+        <td class="rejection-reason-cell">カバー確率が最低基準未満</td>
       </tr>
     
       <tr class="selected-row">
-        <td>3</td>
-        <td>1-4, 1-7, 1-10</td>
-        <td>40.85%</td>
-        <td>1.094</td>
-        <td>7560円</td>
-        <td>4560円</td>
-        <td>採用</td>
-        <td>-</td>
+        <td class="nowrap">3</td>
+        <td class="comparison-target-cell">1-4, 1-7, 1-10</td>
+        <td class="nowrap">40.85%</td>
+        <td class="nowrap">1.094</td>
+        <td class="nowrap">7560円</td>
+        <td class="nowrap">4560円</td>
+        <td class="nowrap">採用</td>
+        <td class="rejection-reason-cell">-</td>
       </tr>
     
       <tr>
-        <td>4</td>
-        <td>1-4, 1-7, 1-10, 1-3</td>
-        <td>48.63%</td>
-        <td>0.953</td>
-        <td>5490円</td>
-        <td>2490円</td>
-        <td>適格</td>
-        <td>-</td>
+        <td class="nowrap">4</td>
+        <td class="comparison-target-cell">1-4, 1-7, 1-10, 1-3</td>
+        <td class="nowrap">48.63%</td>
+        <td class="nowrap">0.953</td>
+        <td class="nowrap">5490円</td>
+        <td class="nowrap">2490円</td>
+        <td class="nowrap">適格</td>
+        <td class="rejection-reason-cell">-</td>
       </tr>
     
       <tr>
-        <td>5</td>
-        <td>1-4, 1-7, 1-10, 1-3, 1-11</td>
-        <td>55.65%</td>
-        <td>0.966</td>
-        <td>4880円</td>
-        <td>1880円</td>
-        <td>適格</td>
-        <td>-</td>
+        <td class="nowrap">5</td>
+        <td class="comparison-target-cell">1-4, 1-7, 1-10, 1-3, 1-11</td>
+        <td class="nowrap">55.65%</td>
+        <td class="nowrap">0.966</td>
+        <td class="nowrap">4880円</td>
+        <td class="nowrap">1880円</td>
+        <td class="nowrap">適格</td>
+        <td class="rejection-reason-cell">-</td>
       </tr>
     
       <tr>
-        <td>6</td>
-        <td>1-4, 1-7, 1-10, 1-3, 1-11, 1-9</td>
-        <td>61.90%</td>
-        <td>0.833</td>
-        <td>3660円</td>
-        <td>660円</td>
-        <td>適格</td>
-        <td>-</td>
+        <td class="nowrap">6</td>
+        <td class="comparison-target-cell">1-4, 1-7, 1-10, 1-3, 1-11, 1-9</td>
+        <td class="nowrap">61.90%</td>
+        <td class="nowrap">0.833</td>
+        <td class="nowrap">3660円</td>
+        <td class="nowrap">660円</td>
+        <td class="nowrap">適格</td>
+        <td class="rejection-reason-cell">-</td>
       </tr>
     
       <tr>
-        <td>7</td>
-        <td>1-4, 1-7, 1-10, 1-3, 1-11, 1-9, 1-6</td>
-        <td>66.57%</td>
-        <td>0.824</td>
-        <td>3450円</td>
-        <td>450円</td>
-        <td>除外</td>
-        <td>最低利益率が最低基準未満</td>
+        <td class="nowrap">7</td>
+        <td class="comparison-target-cell">1-4, 1-7, 1-10, 1-3, 1-11, 1-9, 1-6</td>
+        <td class="nowrap">66.57%</td>
+        <td class="nowrap">0.824</td>
+        <td class="nowrap">3450円</td>
+        <td class="nowrap">450円</td>
+        <td class="nowrap">除外</td>
+        <td class="rejection-reason-cell">最低利益率が最低基準未満</td>
       </tr>
     
       <tr>
-        <td>8</td>
-        <td>1-4, 1-7, 1-10, 1-3, 1-11, 1-9, 1-6, 1-5</td>
-        <td>70.09%</td>
-        <td>0.868</td>
-        <td>3180円</td>
-        <td>180円</td>
-        <td>除外</td>
-        <td>最低利益率が最低基準未満</td>
+        <td class="nowrap">8</td>
+        <td class="comparison-target-cell">1-4, 1-7, 1-10, 1-3, 1-11, 1-9, 1-6, 1-5</td>
+        <td class="nowrap">70.09%</td>
+        <td class="nowrap">0.868</td>
+        <td class="nowrap">3180円</td>
+        <td class="nowrap">180円</td>
+        <td class="nowrap">除外</td>
+        <td class="rejection-reason-cell">最低利益率が最低基準未満</td>
       </tr>
     
       <tr>
-        <td>9</td>
-        <td>1-4, 1-7, 1-10, 1-3, 1-11, 1-9, 1-6, 1-5, 1-2</td>
-        <td>73.44%</td>
-        <td>0.816</td>
-        <td>2760円</td>
-        <td>-240円</td>
-        <td>除外</td>
-        <td>最低利益率が最低基準未満</td>
+        <td class="nowrap">9</td>
+        <td class="comparison-target-cell">1-4, 1-7, 1-10, 1-3, 1-11, 1-9, 1-6, 1-5, 1-2</td>
+        <td class="nowrap">73.44%</td>
+        <td class="nowrap">0.816</td>
+        <td class="nowrap">2760円</td>
+        <td class="nowrap">-240円</td>
+        <td class="nowrap">除外</td>
+        <td class="rejection-reason-cell">最低利益率が最低基準未満</td>
       </tr>
     
       <tr>
-        <td>10</td>
-        <td>1-4, 1-7, 1-10, 1-3, 1-11, 1-9, 1-6, 1-5, 1-2, 1-8</td>
-        <td>76.45%</td>
-        <td>0.851</td>
-        <td>2650円</td>
-        <td>-350円</td>
-        <td>除外</td>
-        <td>最低利益率が最低基準未満</td>
+        <td class="nowrap">10</td>
+        <td class="comparison-target-cell">1-4, 1-7, 1-10, 1-3, 1-11, 1-9, 1-6, 1-5, 1-2, 1-8</td>
+        <td class="nowrap">76.45%</td>
+        <td class="nowrap">0.851</td>
+        <td class="nowrap">2650円</td>
+        <td class="nowrap">-350円</td>
+        <td class="nowrap">除外</td>
+        <td class="rejection-reason-cell">最低利益率が最低基準未満</td>
       </tr>
     </tbody>
   </table>
@@ -2364,13 +2368,13 @@
   <span class="tooltip-content" role="tooltip">Kelly基準で算出した購入割合を実際に何割使うかを示す係数です。0.5なら算出額の半分を使用します。</span>
 </span></span></strong><br>0.8</div>
 </div>
-    
     <h4 class="simulation-block-title simulation-result-title">購入結果</h4>
-<div class="metric-grid">
-      <div><strong>判定</strong><br>購入なし</div>
-      <div><strong>合計購入額</strong><br>0円</div>
-      <div><strong>未使用予算</strong><br>3000円</div>
-    </div>
+<div class="metric-grid value-purchase-result">
+  <div><strong>判定</strong><br>購入なし</div>
+  <div><strong>合計購入額</strong><br>0円</div>
+  <div><strong>未使用予算</strong><br>3000円</div>
+</div>
+    
     
     
       <details class="simulation-details"><summary>全ペア期待値の詳細を見る</summary>
