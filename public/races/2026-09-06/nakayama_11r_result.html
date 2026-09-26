@@ -880,21 +880,23 @@
         
 
         
+        
         <div class="panel result-panel">
           <h3 class="result-comparison-title"><span>予算配分方式のシミュレーション結果</span></h3>
           
           <p><strong>購入額:</strong> 3000円 / <strong>回収額:</strong> 0円 / <strong>損益:</strong> -3000円 / <strong>損益率:</strong> -100.00%</p>
-          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">9</td><td class="nowrap">1600円</td><td class="nowrap">2.5</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">3</td><td class="nowrap">1100円</td><td class="nowrap">5.2</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">6</td><td class="nowrap">300円</td><td class="nowrap">8.9</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
+          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">判定</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">9</td><td class="nowrap">1600円</td><td class="nowrap">2.5</td><td class="nowrap settlement-outcome" data-outcome="miss">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">3</td><td class="nowrap">1100円</td><td class="nowrap">5.2</td><td class="nowrap settlement-outcome" data-outcome="miss">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">6</td><td class="nowrap">300円</td><td class="nowrap">8.9</td><td class="nowrap settlement-outcome" data-outcome="miss">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
           
         </div>
         
 
         
+        
         <div class="panel result-panel">
           <h3 class="result-comparison-title"><span>期待値重視方式のシミュレーション結果</span></h3>
           
           <p><strong>購入額:</strong> 200円 / <strong>回収額:</strong> 0円 / <strong>損益:</strong> -200円 / <strong>損益率:</strong> -100.00%</p>
-          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">6</td><td class="nowrap">200円</td><td class="nowrap">8.9</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
+          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">判定</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">6</td><td class="nowrap">200円</td><td class="nowrap">8.9</td><td class="nowrap settlement-outcome" data-outcome="miss">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
           
         </div>
         
@@ -910,16 +912,17 @@
   <h3 class="result-comparison-title"><span>予算配分方式のシミュレーション結果</span></h3>
   
     
+    
     <div class="metric-grid">
       <div><strong>合計購入額</strong><br>3000円</div>
-      <div><strong>返還額</strong><br>0円</div>
-      <div><strong>回収額（返還含む）</strong><br>0円</div>
+      
+      <div><strong>回収額</strong><br>0円</div>
       <div><strong>損益</strong><br>-3000円</div>
       <div><strong>損益率</strong><br>-100.00%</div>
     </div>
     
-    <div class="table-scroll"><table class="simulation-table"><thead><tr><th>馬番ペア</th><th>購入額</th><th>判定</th><th>払戻額</th><th>返還額</th><th>回収額</th></tr></thead><tbody>
-      <tr><td class="nowrap">3-9</td><td class="nowrap">700円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">6-9</td><td class="nowrap">300円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">3-6</td><td class="nowrap">200円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">2-9</td><td class="nowrap">400円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">9-10</td><td class="nowrap">600円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">2-3</td><td class="nowrap">300円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">2-6</td><td class="nowrap">200円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">3-10</td><td class="nowrap">300円</td><td class="nowrap">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr>
+    <div class="table-scroll"><table class="simulation-table"><thead><tr><th>馬番ペア</th><th>購入額</th><th>判定</th><th>払戻額</th><th>回収額</th></tr></thead><tbody>
+      <tr><td class="nowrap">3-9</td><td class="nowrap">700円</td><td class="nowrap settlement-outcome" data-outcome="miss">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">6-9</td><td class="nowrap">300円</td><td class="nowrap settlement-outcome" data-outcome="miss">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">3-6</td><td class="nowrap">200円</td><td class="nowrap settlement-outcome" data-outcome="miss">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">2-9</td><td class="nowrap">400円</td><td class="nowrap settlement-outcome" data-outcome="miss">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">9-10</td><td class="nowrap">600円</td><td class="nowrap settlement-outcome" data-outcome="miss">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">2-3</td><td class="nowrap">300円</td><td class="nowrap settlement-outcome" data-outcome="miss">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">2-6</td><td class="nowrap">200円</td><td class="nowrap settlement-outcome" data-outcome="miss">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">3-10</td><td class="nowrap">300円</td><td class="nowrap settlement-outcome" data-outcome="miss">不的中</td><td class="nowrap">0円</td><td class="nowrap">0円</td></tr>
     </tbody></table></div>
     
     
@@ -932,10 +935,11 @@
   <h3 class="result-comparison-title"><span>期待値重視方式のシミュレーション結果</span></h3>
   
     
+    
     <div class="metric-grid">
       <div><strong>合計購入額</strong><br>0円</div>
-      <div><strong>返還額</strong><br>0円</div>
-      <div><strong>回収額（返還含む）</strong><br>0円</div>
+      
+      <div><strong>回収額</strong><br>0円</div>
       <div><strong>損益</strong><br>0円</div>
       <div><strong>損益率</strong><br>0.00%</div>
     </div>
@@ -1169,6 +1173,7 @@
         
 
         
+        
         <div class="panel result-panel">
           <h3 class="result-comparison-title"><span>予算配分方式のシミュレーション結果</span></h3>
           
@@ -1178,11 +1183,12 @@
         
 
         
+        
         <div class="panel result-panel">
           <h3 class="result-comparison-title"><span>期待値重視方式のシミュレーション結果</span></h3>
           
           <p><strong>購入額:</strong> 200円 / <strong>回収額:</strong> 0円 / <strong>損益:</strong> -200円 / <strong>損益率:</strong> -100.00%</p>
-          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">的中</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">6</td><td class="nowrap">200円</td><td class="nowrap">8.9</td><td class="nowrap">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
+          <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">判定</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">6</td><td class="nowrap">200円</td><td class="nowrap">8.9</td><td class="nowrap settlement-outcome" data-outcome="miss">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
           
         </div>
         
@@ -1198,10 +1204,11 @@
   <h3 class="result-comparison-title"><span>予算配分方式のシミュレーション結果</span></h3>
   
     
+    
     <div class="metric-grid">
       <div><strong>合計購入額</strong><br>0円</div>
-      <div><strong>返還額</strong><br>0円</div>
-      <div><strong>回収額（返還含む）</strong><br>0円</div>
+      
+      <div><strong>回収額</strong><br>0円</div>
       <div><strong>損益</strong><br>0円</div>
       <div><strong>損益率</strong><br>0.00%</div>
     </div>
@@ -1216,10 +1223,11 @@
   <h3 class="result-comparison-title"><span>期待値重視方式のシミュレーション結果</span></h3>
   
     
+    
     <div class="metric-grid">
       <div><strong>合計購入額</strong><br>0円</div>
-      <div><strong>返還額</strong><br>0円</div>
-      <div><strong>回収額（返還含む）</strong><br>0円</div>
+      
+      <div><strong>回収額</strong><br>0円</div>
       <div><strong>損益</strong><br>0円</div>
       <div><strong>損益率</strong><br>0.00%</div>
     </div>
