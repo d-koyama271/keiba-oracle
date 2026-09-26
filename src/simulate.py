@@ -390,22 +390,31 @@ def calculate_post(pre: dict[str, Any] | None, result: dict[str, Any] | None) ->
         for item in result.get("horses", [])
         if item.get("finish_position") == 1
     }
+    refund_numbers = {
+        int(item["horse_number"])
+        for item in result.get("horses", [])
+        if item.get("finish_position") in ("取消", "除外")
+    }
     selections = []
     total_stake = 0
+    total_refund = 0
     total_return = 0
     for item in pre.get("selections", []):
         horse_number = int(item["horse_number"])
         stake = int(item["stake"])
         hit = horse_number in winner_numbers
         payout = payout_lookup.get(horse_number, 0)
-        return_amount = (stake * payout // 100) if hit else 0
+        refund = stake if horse_number in refund_numbers else 0
+        return_amount = ((stake * payout // 100) if hit else 0) + refund
         total_stake += stake
+        total_refund += refund
         total_return += return_amount
         selections.append(
             {
                 "horse_number": horse_number,
                 "stake": stake,
                 "hit": hit,
+                "refund": refund,
                 "return": return_amount,
             }
         )
@@ -413,6 +422,7 @@ def calculate_post(pre: dict[str, Any] | None, result: dict[str, Any] | None) ->
     profit = total_return - total_stake
     return {
         "total_stake": total_stake,
+        "total_refund": total_refund,
         "total_return": total_return,
         "profit": profit,
         "roi": round_ratio(profit / total_stake) if total_stake else 0.0,

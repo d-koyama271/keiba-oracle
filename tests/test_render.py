@@ -1378,20 +1378,25 @@ class QuinellaRenderTests(unittest.TestCase):
 
     def test_result_badges_use_hits_for_each_ai_ticket_and_method(self):
         template = build_environment(ROOT).get_template("race.html.j2")
-        for case, hit, stake, refund in (("hit_with_loss", True, 1000, 0), ("miss", False, 1000, 0), ("refund", False, 1000, 1000), ("empty", False, 0, 0)):
+        for case, hit, stake, refund in (("hit_with_loss", True, 1000, 0), ("miss", False, 1000, 0), ("refund", False, 1000, 1000), ("empty", False, 0, 0), ("legacy", False, 1000, 0)):
             with self.subTest(case=case):
                 payload = payload_with_odds()
                 with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
                     payload["simulation"] = calculate_pre_simulation(payload, load_config())
                 payload["result"] = parse_result(result_html())
                 for simulation in [payload["simulation"][0]["general"], payload["simulation"][0]["statistical"]]:
-                    for ticket in (simulation["win"], simulation["quinella"]):
+                    for ticket_name in ("win", "quinella"):
+                        ticket = simulation[ticket_name]
                         for method in ("value", "dutching"):
-                            ticket[method]["post"] = {
+                            post = {
                                 "total_stake": stake, "total_refund": refund, "total_return": refund,
                                 "profit": refund - stake, "roi": -1 if stake and not refund else 0,
                                 "selections": [{"horse_number": 1, "horse_numbers": [1, 2], "stake": stake, "hit": hit, "refund": refund, "payout": 0, "return": refund}] if stake else [],
                             }
+                            if case == "legacy" and ticket_name == "win":
+                                post.pop("total_refund")
+                                post["selections"][0].pop("refund")
+                            ticket[method]["post"] = post
                 soup = BeautifulSoup(template.render(**build_race_context(payload), page_kind="result"), "html.parser")
                 for ai in ("general", "statistical"):
                     for ticket in ("win", "quinella"):
@@ -1399,6 +1404,11 @@ class QuinellaRenderTests(unittest.TestCase):
                         self.assertEqual(len(panels), 2)
                         for panel in panels:
                             self.assertEqual(panel.select_one("h3 .hit-badge") is not None, hit)
+                            self.assertEqual(panel.select_one(".refund-summary") is not None, refund > 0)
+                            self.assertEqual(bool(panel.select(".refund-column")), refund > 0)
+                            if stake:
+                                self.assertEqual(panel.select_one(".settlement-outcome")["data-outcome"],
+                                                 "refund" if refund else ("hit" if hit else "miss"))
                             if not stake:
                                 self.assertIsNone(panel.find("table"))
 

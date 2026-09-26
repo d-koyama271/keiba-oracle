@@ -25,6 +25,7 @@ from simulate import (  # noqa: E402
     minimum_budget_for_value_stake,
     select_best_dutching,
 )
+from evaluation import simulation_summary  # noqa: E402
 from utils import ensure_race_payload, load_race_json, save_race_json  # noqa: E402
 
 
@@ -487,13 +488,35 @@ class PostAndStructureTests(unittest.TestCase):
         empty = calculate_post({"selections": []}, make_result(1, 400, [1, 2, 3]))
 
         self.assertEqual(hit["total_return"], 2400)
+        self.assertEqual(hit["total_refund"], 0)
         self.assertEqual(hit["profit"], 1400)
         self.assertEqual(hit["roi"], 1.4)
+        self.assertTrue(hit["selections"][0]["hit"])
+        self.assertEqual(hit["selections"][0]["refund"], 0)
         self.assertEqual(hit["selections"][0]["return"], 2400)
         self.assertEqual(hit["selections"][1]["return"], 0)
         self.assertEqual(miss["total_return"], 0)
+        self.assertEqual(miss["total_refund"], 0)
         self.assertEqual(miss["profit"], -1000)
-        self.assertEqual(empty, {"total_stake": 0, "total_return": 0, "profit": 0, "roi": 0.0, "selections": []})
+        self.assertEqual(empty, {"total_stake": 0, "total_refund": 0, "total_return": 0, "profit": 0, "roi": 0.0, "selections": []})
+
+        mixed_pre = {"selections": [{"horse_number": number, "stake": number * 100} for number in range(1, 7)]}
+        mixed_result = make_result(1, 400, list(range(1, 7)))
+        for horse in mixed_result["horses"]:
+            horse["finish_position"] = {3: "取消", 4: "除外", 5: "中止", 6: "失格"}.get(horse["horse_number"], horse["finish_position"])
+        mixed = calculate_post(mixed_pre, mixed_result)
+        self.assertEqual(
+            [(item["horse_number"], item["hit"], item["refund"], item["return"]) for item in mixed["selections"]],
+            [(1, True, 0, 400), (2, False, 0, 0), (3, False, 300, 300),
+             (4, False, 400, 400), (5, False, 0, 0), (6, False, 0, 0)],
+        )
+        self.assertEqual((mixed["total_stake"], mixed["total_refund"], mixed["total_return"], mixed["profit"], mixed["roi"]),
+                         (2100, 700, 1100, -1000, round(-1000 / 2100, 6)))
+        refund_only = calculate_post({"selections": mixed_pre["selections"][2:4]}, mixed_result)
+        self.assertEqual((refund_only["total_refund"], refund_only["total_return"], refund_only["profit"], refund_only["roi"]),
+                         (700, 700, 0, 0.0))
+        self.assertFalse(any(item["hit"] for item in refund_only["selections"]))
+        self.assertFalse(simulation_summary(refund_only)["hit"])
         self.assertEqual(pre, pre_before)
 
     def test_new_json_structure_post_and_reload(self) -> None:

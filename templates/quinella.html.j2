@@ -18,16 +18,17 @@
   <h3 class="result-comparison-title"><span>{% if page_kind != 'result' and method == 'dutching' %}{{ explained_term(label, 'dutching_method', quinella_tooltips) }}{% else %}{{ label }}{% if page_kind == 'result' %}のシミュレーション結果{% endif %}{% endif %}</span>{% if page_kind == 'result' and post and post.selections | selectattr('hit', 'sameas', true) | list %}<span class="hit-badge">的中!</span>{% endif %}</h3>
   {% if page_kind == 'result' %}
     {% if post %}
+    {% set has_refund = post.total_refund > 0 %}
     <div class="metric-grid">
       <div><strong>{{ ui_labels.total_purchase_amount }}</strong><br>{{ post.total_stake }}円</div>
-      <div><strong>{{ ui_labels.refund_amount }}</strong><br>{{ post.total_refund }}円</div>
-      <div><strong>{{ ui_labels.return_amount }}（返還含む）</strong><br>{{ post.total_return }}円</div>
+      {% if has_refund %}<div class="refund-summary"><strong>{{ ui_labels.refund_amount }}</strong><br>{{ post.total_refund }}円</div>{% endif %}
+      <div><strong>{{ ui_labels.return_amount }}</strong><br>{{ post.total_return }}円</div>
       <div><strong>{{ ui_labels.profit }}</strong><br>{{ post.profit }}円</div>
       <div><strong>{{ ui_labels.profit_rate }}</strong><br>{{ '%.2f'|format(post.roi * 100) }}%</div>
     </div>
     {% if post.selections %}
-    <div class="table-scroll"><table class="simulation-table"><thead><tr><th>馬番ペア</th><th>{{ ui_labels.purchase_amount }}</th><th>判定</th><th>{{ ui_labels.payout_amount }}</th><th>{{ ui_labels.refund_amount }}</th><th>{{ ui_labels.return_amount }}</th></tr></thead><tbody>
-      {% for item in post.selections %}<tr><td class="nowrap">{{ item.horse_numbers|join('-') }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap">{{ '返還' if item.refund else ('的中' if item.hit else '不的中') }}</td><td class="nowrap">{{ item.payout }}円</td><td class="nowrap">{{ item.refund }}円</td><td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}
+    <div class="table-scroll"><table class="simulation-table"><thead><tr><th>馬番ペア</th><th>{{ ui_labels.purchase_amount }}</th><th>判定</th><th>{{ ui_labels.payout_amount }}</th>{% if has_refund %}<th class="refund-column">{{ ui_labels.refund_amount }}</th>{% endif %}<th>{{ ui_labels.return_amount }}</th></tr></thead><tbody>
+      {% for item in post.selections %}<tr><td class="nowrap">{{ item.horse_numbers|join('-') }}</td><td class="nowrap">{{ item.stake }}円</td><td class="nowrap settlement-outcome" data-outcome="{{ 'refund' if item.refund else ('hit' if item.hit else 'miss') }}">{{ '返還' if item.refund else ('的中' if item.hit else '不的中') }}</td><td class="nowrap">{{ item.payout }}円</td>{% if has_refund %}<td class="nowrap refund-column">{{ item.refund }}円</td>{% endif %}<td class="nowrap">{{ item.return }}円</td></tr>{% endfor %}
     </tbody></table></div>
     {% else %}<p>購入なし</p>{% endif %}
     {% else %}<p class="quinella-pending">結果・馬連払戻または返還情報の確定待ちです。</p>{% endif %}
