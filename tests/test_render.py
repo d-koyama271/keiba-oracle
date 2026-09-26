@@ -1406,6 +1406,26 @@ class QuinellaRenderTests(unittest.TestCase):
                             self.assertEqual(panel.select_one("h3 .hit-badge") is not None, hit)
                             self.assertEqual(panel.select_one(".refund-summary") is not None, refund > 0)
                             self.assertEqual(bool(panel.select(".refund-column")), refund > 0)
+                            self.assertEqual(len(panel.select(".settlement-summary")), 1)
+                            summary = panel.select_one(".settlement-summary")
+                            self.assertIsNotNone(summary)
+                            self.assertEqual(summary.name, "p")
+                            self.assertEqual(
+                                summary["data-settlement-state"],
+                                "purchased" if stake else "no-purchase",
+                            )
+                            expected_metrics = ["stake"]
+                            if stake and refund:
+                                expected_metrics.append("refund")
+                            expected_metrics.extend(["return", "profit"])
+                            if stake:
+                                expected_metrics.append("roi")
+                            self.assertEqual(
+                                [item["data-settlement-metric"] for item in summary.select("[data-settlement-metric]")],
+                                expected_metrics,
+                            )
+                            self.assertEqual(panel.select_one(".settlement-no-purchase") is not None, not stake)
+                            self.assertIsNone(panel.select_one(".metric-grid"))
                             if stake:
                                 self.assertEqual(panel.select_one(".settlement-outcome")["data-outcome"],
                                                  "refund" if refund else ("hit" if hit else "miss"))
