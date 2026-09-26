@@ -23,6 +23,74 @@
       background: #f2f2f0;
       color: #1f2520;
     }
+    .status {
+      display: inline-block;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .status-cancelled { background: #f8e3e3; color: #942f2f; border-color: #dbaaaa; }
+    .status-prediction {
+      background: var(--status-prediction-bg);
+      color: var(--status-prediction-color);
+      border-color: var(--status-prediction-border);
+    }
+    .status-result {
+      background: var(--status-result-bg);
+      color: var(--status-result-color);
+      border-color: var(--status-result-border);
+    }
+    .status-pending {
+      background: var(--status-pending-bg);
+      color: var(--status-pending-color);
+      border-color: var(--status-pending-border);
+    }
+    .race-grade {
+      display: inline-block;
+      padding: 1px 5px;
+      border: 1px solid #c8c1b7;
+      border-radius: 999px;
+      background: #f3f0ea;
+      color: #615c55;
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.2;
+      vertical-align: middle;
+    }
+    .race-grade-g3 {
+      border-color: #c8c1b7;
+      background: #f3f0ea;
+      color: #615c55;
+      font-weight: 500;
+    }
+    .race-grade-g2 {
+      border-color: #9fb8ae;
+      background: #edf4f1;
+      color: #3f675b;
+      font-weight: 600;
+    }
+    .race-grade-g1 {
+      border-color: #b99543;
+      background: #f7edcf;
+      color: #705514;
+      font-weight: 700;
+    }
+    .table-scroll {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+    .nowrap {
+      white-space: nowrap;
+      word-break: keep-all;
+    }
+  </style>
+  <style>
+
     main {
       max-width: 980px;
       margin: 0 auto;
@@ -83,13 +151,6 @@
       width: 100%;
       border-collapse: collapse;
     }
-    .table-scroll {
-      width: 100%;
-      max-width: 100%;
-      overflow-x: auto;
-      overscroll-behavior-inline: contain;
-      -webkit-overflow-scrolling: touch;
-    }
     .index-table {
       min-width: 860px;
       table-layout: auto;
@@ -111,43 +172,9 @@
       white-space: nowrap;
     }
     .race-name-column { white-space: nowrap; }
-    .race-grade {
-      display: inline-block;
-      padding: 1px 5px;
-      border: 1px solid #c8c1b7;
-      border-radius: 999px;
-      background: #f3f0ea;
-      color: #615c55;
-      font-size: 11px;
-      font-weight: 500;
-      line-height: 1.2;
-      vertical-align: middle;
-    }
-    .race-grade-g3 {
-      border-color: #c8c1b7;
-      background: #f3f0ea;
-      color: #615c55;
-      font-weight: 500;
-    }
-    .race-grade-g2 {
-      border-color: #9fb8ae;
-      background: #edf4f1;
-      color: #3f675b;
-      font-weight: 600;
-    }
-    .race-grade-g1 {
-      border-color: #b99543;
-      background: #f7edcf;
-      color: #705514;
-      font-weight: 700;
-    }
     .race-course { margin-left: 0.35em; }
     .mobile-race-condition { display: none; }
     .status-column { text-align: center; }
-    .nowrap {
-      white-space: nowrap;
-      word-break: keep-all;
-    }
     th, td {
       text-align: left;
       padding: 12px 8px;
@@ -181,31 +208,7 @@
       vertical-align: middle;
       white-space: nowrap;
     }
-    .status {
-      display: inline-block;
-      padding: 4px 10px;
-      border: 1px solid transparent;
-      border-radius: 999px;
-      font-size: 13px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-    .status-cancelled { background: #f8e3e3; color: #942f2f; border-color: #dbaaaa; }
-    .status-prediction {
-      background: var(--status-prediction-bg);
-      color: var(--status-prediction-color);
-      border-color: var(--status-prediction-border);
-    }
-    .status-result {
-      background: var(--status-result-bg);
-      color: var(--status-result-color);
-      border-color: var(--status-result-border);
-    }
-    .status-pending {
-      background: var(--status-pending-bg);
-      color: var(--status-pending-color);
-      border-color: var(--status-pending-border);
-    }
+    .status { white-space: nowrap; }
     .small {
       color: #6f766c;
       font-size: 14px;
@@ -281,9 +284,11 @@
         grid-area: auto;
       }
     }
+
   </style>
 </head>
 <body>
+
 
 
   <main>
@@ -779,5 +784,7 @@
     </div>
     <p class="small">AI予想およびシミュレーション結果は、的中や利益を保証するものではありません。</p>
   </main>
+
+
 </body>
 </html>

@@ -1,24 +1,12 @@
-
-
-
-
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>新潟2歳S 結果 | keiba-oracle</title>
   <meta name="description" content="新潟2歳Sのレース結果、AI予想との比較、予測評価、購入シミュレーション結果を掲載します。">
+  <title>新潟2歳S 結果 | keiba-oracle</title>
   <style>
     :root {
-      color-scheme: light;
-      --bg: #f4f1ea;
-      --panel: #fffdf8;
-      --ink: #1f2520;
-      --line: #d5ccbe;
-      --accent: #32594d;
-      --muted: #6f766c;
       --status-prediction-bg: #dde9e4;
       --status-prediction-color: #32594d;
       --status-prediction-border: #b8cec5;
@@ -33,7 +21,84 @@
       margin: 0;
       font-family: "Yu Gothic", "Hiragino Sans", sans-serif;
       background: #f2f2f0;
-      color: var(--ink);
+      color: #1f2520;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .status-cancelled { background: #f8e3e3; color: #942f2f; border-color: #dbaaaa; }
+    .status-prediction {
+      background: var(--status-prediction-bg);
+      color: var(--status-prediction-color);
+      border-color: var(--status-prediction-border);
+    }
+    .status-result {
+      background: var(--status-result-bg);
+      color: var(--status-result-color);
+      border-color: var(--status-result-border);
+    }
+    .status-pending {
+      background: var(--status-pending-bg);
+      color: var(--status-pending-color);
+      border-color: var(--status-pending-border);
+    }
+    .race-grade {
+      display: inline-block;
+      padding: 1px 5px;
+      border: 1px solid #c8c1b7;
+      border-radius: 999px;
+      background: #f3f0ea;
+      color: #615c55;
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.2;
+      vertical-align: middle;
+    }
+    .race-grade-g3 {
+      border-color: #c8c1b7;
+      background: #f3f0ea;
+      color: #615c55;
+      font-weight: 500;
+    }
+    .race-grade-g2 {
+      border-color: #9fb8ae;
+      background: #edf4f1;
+      color: #3f675b;
+      font-weight: 600;
+    }
+    .race-grade-g1 {
+      border-color: #b99543;
+      background: #f7edcf;
+      color: #705514;
+      font-weight: 700;
+    }
+    .table-scroll {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+    .nowrap {
+      white-space: nowrap;
+      word-break: keep-all;
+    }
+  </style>
+  <style>
+
+    :root {
+      color-scheme: light;
+      --bg: #f4f1ea;
+      --panel: #fffdf8;
+      --ink: #1f2520;
+      --line: #d5ccbe;
+      --accent: #32594d;
+      --muted: #6f766c;
     }
     main {
       max-width: 1080px;
@@ -58,14 +123,6 @@
       gap: 10px;
       font-size: 14px;
     }
-    .status {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid transparent;
-      font-weight: 700;
-      font-size: 13px;
-    }
     .page-badges {
       display: flex;
       flex-wrap: wrap;
@@ -81,22 +138,6 @@
       color: #604879;
       font-size: 13px;
       font-weight: 700;
-    }
-    .status-cancelled { background: #f8e3e3; color: #942f2f; border-color: #dbaaaa; }
-    .status-prediction {
-      background: var(--status-prediction-bg);
-      color: var(--status-prediction-color);
-      border-color: var(--status-prediction-border);
-    }
-    .status-result {
-      background: var(--status-result-bg);
-      color: var(--status-result-color);
-      border-color: var(--status-result-border);
-    }
-    .status-pending {
-      background: var(--status-pending-bg);
-      color: var(--status-pending-color);
-      border-color: var(--status-pending-border);
     }
     table {
       width: 100%;
@@ -146,36 +187,6 @@
       opacity: 0.75;
     }
     table tbody tr.selected-row { background: #fff6dc; }
-    .race-grade {
-      display: inline-block;
-      padding: 1px 5px;
-      border: 1px solid #c8c1b7;
-      border-radius: 999px;
-      background: #f3f0ea;
-      color: #615c55;
-      font-size: 11px;
-      font-weight: 500;
-      line-height: 1.2;
-      vertical-align: middle;
-    }
-    .race-grade-g3 {
-      border-color: #c8c1b7;
-      background: #f3f0ea;
-      color: #615c55;
-      font-weight: 500;
-    }
-    .race-grade-g2 {
-      border-color: #9fb8ae;
-      background: #edf4f1;
-      color: #3f675b;
-      font-weight: 600;
-    }
-    .race-grade-g1 {
-      border-color: #b99543;
-      background: #f7edcf;
-      color: #705514;
-      font-weight: 700;
-    }
     .race-meta-spacer { display: none; }
     .small {
       color: var(--muted);
@@ -247,23 +258,12 @@
       color: #9b352b;
       font-weight: 700;
     }
-    .table-scroll {
-      width: 100%;
-      max-width: 100%;
-      overflow-x: auto;
-      overscroll-behavior-inline: contain;
-      -webkit-overflow-scrolling: touch;
-    }
     .table-scroll-hint { display: none; }
     .horse-name {
       min-width: 8em;
       white-space: nowrap;
       word-break: keep-all;
       overflow-wrap: normal;
-    }
-    .nowrap {
-      white-space: nowrap;
-      word-break: keep-all;
     }
     .prediction-table { min-width: 980px; }
     .prediction-table .reason-cell {
@@ -612,9 +612,11 @@
         width: calc(100vw - 24px);
       }
     }
+
   </style>
 </head>
 <body>
+
   <main>
     <div class="panel">
       <div class="page-badges">
@@ -872,7 +874,10 @@
         <div class="panel result-panel">
           <h3 class="result-comparison-title"><span>予算配分方式のシミュレーション結果</span><span class="hit-badge">的中!</span></h3>
           
-          <p class="settlement-summary" data-settlement-state="purchased"><span data-settlement-metric="stake"><strong>購入額:</strong> 3000円</span> / <span data-settlement-metric="return"><strong>回収額:</strong> 4480円</span> / <span data-settlement-metric="profit"><strong>損益:</strong> 1480円</span> / <span data-settlement-metric="roi"><strong>損益率:</strong> 49.33%</span></p>
+
+
+<p class="settlement-summary" data-settlement-state="purchased"><span data-settlement-metric="stake"><strong>購入額:</strong> 3000円</span> / <span data-settlement-metric="return"><strong>回収額:</strong> 4480円</span> / <span data-settlement-metric="profit"><strong>損益:</strong> 1480円</span> / <span data-settlement-metric="roi"><strong>損益率:</strong> 49.33%</span></p>
+          
           <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">判定</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">2</td><td class="nowrap">1600円</td><td class="nowrap">2.8</td><td class="nowrap settlement-outcome" data-outcome="hit">的中</td><td class="nowrap">4480円</td></tr><tr><td class="nowrap">1</td><td class="nowrap">1400円</td><td class="nowrap">4.3</td><td class="nowrap settlement-outcome" data-outcome="miss">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
           
         </div>
@@ -883,8 +888,9 @@
         <div class="panel result-panel">
           <h3 class="result-comparison-title"><span>期待値重視方式のシミュレーション結果</span></h3>
           
-          <p class="settlement-no-purchase"><strong>購入なし</strong></p>
-          <p class="settlement-summary" data-settlement-state="no-purchase"><span data-settlement-metric="stake"><strong>購入額:</strong> 0円</span> / <span data-settlement-metric="return"><strong>回収額:</strong> 0円</span> / <span data-settlement-metric="profit"><strong>損益:</strong> 0円</span></p>
+
+<p class="settlement-no-purchase"><strong>購入なし</strong></p>
+<p class="settlement-summary" data-settlement-state="no-purchase"><span data-settlement-metric="stake"><strong>購入額:</strong> 0円</span> / <span data-settlement-metric="return"><strong>回収額:</strong> 0円</span> / <span data-settlement-metric="profit"><strong>損益:</strong> 0円</span></p>
           
         </div>
         
@@ -1111,7 +1117,10 @@
         <div class="panel result-panel">
           <h3 class="result-comparison-title"><span>予算配分方式のシミュレーション結果</span></h3>
           
-          <p class="settlement-summary" data-settlement-state="purchased"><span data-settlement-metric="stake"><strong>購入額:</strong> 3000円</span> / <span data-settlement-metric="return"><strong>回収額:</strong> 0円</span> / <span data-settlement-metric="profit"><strong>損益:</strong> -3000円</span> / <span data-settlement-metric="roi"><strong>損益率:</strong> -100.00%</span></p>
+
+
+<p class="settlement-summary" data-settlement-state="purchased"><span data-settlement-metric="stake"><strong>購入額:</strong> 3000円</span> / <span data-settlement-metric="return"><strong>回収額:</strong> 0円</span> / <span data-settlement-metric="profit"><strong>損益:</strong> -3000円</span> / <span data-settlement-metric="roi"><strong>損益率:</strong> -100.00%</span></p>
+          
           <table><thead><tr><th class="nowrap">馬番</th><th class="nowrap">購入額</th><th class="nowrap">確定オッズ</th><th class="nowrap">判定</th><th class="nowrap">回収額</th></tr></thead><tbody><tr><td class="nowrap">9</td><td class="nowrap">600円</td><td class="nowrap">19.8</td><td class="nowrap settlement-outcome" data-outcome="miss">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">6</td><td class="nowrap">300円</td><td class="nowrap">40.3</td><td class="nowrap settlement-outcome" data-outcome="miss">不的中</td><td class="nowrap">0円</td></tr><tr><td class="nowrap">1</td><td class="nowrap">2100円</td><td class="nowrap">4.3</td><td class="nowrap settlement-outcome" data-outcome="miss">不的中</td><td class="nowrap">0円</td></tr></tbody></table>
           
         </div>
@@ -1133,7 +1142,9 @@
 
     <p class="small">本ページはAIによる確率推定と購入シミュレーションを掲載するもので、的中や利益を保証するものではありません。投票はご自身の判断で行ってください。</p>
   </main>
-  <script>
+
+
+<script>
     const initializeSortableTable = (table) => {
       const body = table.tBodies[0];
       if (!body) return;
@@ -1299,6 +1310,7 @@
         ".prediction-table[data-sortable], .result-table[data-sortable]"
       ).forEach(initializeSortableTable);
     })();
-  </script>
+</script>
+
 </body>
 </html>
