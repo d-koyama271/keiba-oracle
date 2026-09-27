@@ -372,9 +372,6 @@
     .value-simulation-panel .simulation-details {
       margin-top: 18px;
     }
-    .value-simulation-panel .simulation-details + h4 {
-      margin-top: 24px;
-    }
     .dutching-pairs {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
@@ -634,7 +631,6 @@
       {% set simulation_dutching_pre = view.dutching_pre %}
       {% set expected_value_rows = view.expected_value_rows %}
       {% set value_selection_rows = view.value_selection_rows %}
-      {% set value_no_purchase_reason = view.value_no_purchase_reason %}
       {% set missing_simulation_message = "このレースでは統計重視予想の購入シミュレーションは記録されていません。" if view.prediction_method == "statistical" and view.prediction else "予想取込後に生成されます。" %}
       <div class="ai-method-panel simulation-method-content{% if ai_views | length == 1 %} panel{% endif %}" id="simulation-{{ view.method }}" role="tabpanel" data-ai-panel data-ai-method="{{ view.method }}"{% if not loop.first %} hidden{% endif %}>
       {{ tabs.ticket_tabs('purchase-' ~ view.method) }}
@@ -645,11 +641,11 @@
       {% if simulation_dutching_pre %}
       {% if simulation_dutching_pre.selections %}
       {{ simulation_ui.dutching_pairs(simulation_dutching_pre, ui_labels, tooltips, "頭", ui_labels.max_selection_count, ui_labels.purchase_selection_count) }}
-      {{ simulation_ui.dutching_breakdown(simulation_dutching_pre, ui_labels, tooltips, "win", "馬番", ui_labels.win_probability, "単勝オッズ") }}
-      {% else %}
-      {{ simulation_ui.dutching_settings(simulation_dutching_pre, ui_labels, tooltips, "頭", ui_labels.max_selection_count) }}
-      {{ simulation_ui.dutching_purchase_result(simulation_dutching_pre, ui_labels) }}
-      {% endif %}
+       {{ simulation_ui.dutching_breakdown(simulation_dutching_pre, ui_labels, tooltips, "win", "馬番", ui_labels.win_probability, "単勝オッズ") }}
+       {% else %}
+       {{ simulation_ui.dutching_purchase_result(simulation_dutching_pre, ui_labels) }}
+       {{ simulation_ui.dutching_settings(simulation_dutching_pre, ui_labels, tooltips, "頭", ui_labels.max_selection_count) }}
+       {% endif %}
       {{ simulation_ui.dutching_comparison(simulation_dutching_pre, ui_labels, tooltips, rejection_reason_text, "win") }}
       {% else %}
       <p>{{ missing_simulation_message }}</p>
@@ -658,60 +654,56 @@
 
     <div class="panel simulation-panel value-simulation-panel">
       <h3>{{ explained_term(ui_labels.simulation_method_value, "value_method") }}</h3>
-      {% if simulation_value_pre %}
-      {{ simulation_ui.value_settings(simulation_value_pre, ui_labels, tooltips) }}
-      {{ simulation_ui.value_purchase_result(simulation_value_pre, ui_labels) }}
-      <details class="simulation-details">
-        <summary>全馬期待値の詳細を見る</summary>
-        <h4>全馬期待値一覧</h4>
-        {% call tables.scroll_table(true) %}
-          <table class="value-detail-table">
-          <thead><tr><th class="nowrap">{{ ui_labels.expected_value_rank }}</th><th class="nowrap">馬番</th><th class="horse-name">馬名</th><th class="nowrap">{{ ui_labels.win_probability }}</th><th class="nowrap">単勝オッズ</th><th class="nowrap">{{ explained_term(ui_labels.expected_value, "ev") }}</th><th class="nowrap">{{ ui_labels.expected_value_threshold }}</th><th class="nowrap">{{ explained_term("Full Kelly", "full_kelly") }}</th><th class="nowrap">{{ explained_term("適用Kelly", "applied_kelly") }}</th><th class="nowrap">{{ explained_term("理論購入額", "theoretical_stake") }}</th><th class="nowrap">{{ explained_term((simulation_value_pre.stake_unit|string) ~ "円購入に必要な最低予算", "minimum_budget") }}</th><th class="nowrap">購入判定</th></tr></thead>
-          <tbody>
-            {% for item in expected_value_rows %}
-            <tr{% if item.purchase_status == "purchase" %} class="simulation-selected"{% elif item.meets_threshold %} class="ev-above-threshold"{% endif %}>
-              <td class="nowrap">{{ (item.ev_rank|string) ~ "位" if item.ev_rank is not none else "-" }}</td>
-              <td class="nowrap">{{ item.horse_number }}</td>
-              <td class="horse-name">{{ item.horse_name }}</td>
-              <td class="nowrap">{{ "%.2f%%"|format(item.win_probability * 100) if item.win_probability is not none else "-" }}</td>
-              <td class="nowrap">{{ item.win_odds if item.win_odds is not none else "-" }}</td>
-              <td class="nowrap">{{ "%.3f"|format(item.expected_value) if item.expected_value is not none else "-" }}</td>
-              <td class="nowrap">{% if item.meets_threshold is none %}算出不可{% elif item.meets_threshold %}基準以上{% else %}基準未満{% endif %}</td>
-              <td class="nowrap">{{ "%.4f%%"|format(item.full_kelly * 100) if item.full_kelly is not none else "-" }}</td>
-              <td class="nowrap">{{ "%.4f%%"|format(item.fractional_kelly * 100) if item.fractional_kelly is not none else "-" }}</td>
-              <td class="nowrap">{{ "%.2f円"|format(item.theoretical_stake) if item.theoretical_stake is not none else "-" }}</td>
-              <td class="nowrap">{{ "約{:,}円".format(item.minimum_budget) if item.minimum_budget is not none else "-" }}</td>
-              <td class="nowrap">{{ item.purchase_decision }}</td>
-            </tr>
+       {% if simulation_value_pre %}
+       {{ simulation_ui.value_settings(simulation_value_pre, ui_labels, tooltips) }}
+       {{ simulation_ui.value_purchase_result(simulation_value_pre, ui_labels) }}
+       {% if simulation_value_pre.selections %}
+       <h4>購入対象</h4>
+       {% call tables.scroll_table() %}
+         <table class="simulation-table">
+           <thead><tr><th class="nowrap">馬番</th><th class="nowrap">{{ ui_labels.win_probability }}</th><th class="nowrap">単勝オッズ</th><th class="nowrap">{{ explained_term(ui_labels.expected_value, "ev") }}</th><th class="nowrap">{{ ui_labels.purchase_amount }}</th><th class="nowrap">{{ explained_term(ui_labels.estimated_payout_amount, "expected_return") }}</th></tr></thead>
+           <tbody>
+             {% for item in value_selection_rows %}
+             <tr>
+               <td class="nowrap">{{ item.horse_number }}</td>
+               <td class="nowrap">{{ "%.2f"|format(item.predicted_probability * 100) }}%</td>
+               <td class="nowrap">{{ item.win_odds }}</td>
+               <td class="nowrap">{{ "%.3f"|format(item.expected_value) }}</td>
+               <td class="nowrap">{{ item.stake }}円</td>
+               <td class="nowrap">{{ "%.0f"|format(item.expected_return) ~ "円" if item.expected_return is not none else "-" }}</td>
+             </tr>
             {% endfor %}
           </tbody>
-          </table>
-        {% endcall %}
-      </details>
-      <h4>購入対象</h4>
-      {% if simulation_value_pre.selections %}
-      {% call tables.scroll_table() %}
-        <table class="simulation-table">
-          <thead><tr><th class="nowrap">馬番</th><th class="nowrap">{{ ui_labels.win_probability }}</th><th class="nowrap">単勝オッズ</th><th class="nowrap">{{ explained_term(ui_labels.expected_value, "ev") }}</th><th class="nowrap">{{ explained_term("Full Kelly", "full_kelly") }}</th><th class="nowrap">{{ explained_term("Fractional Kelly", "fractional_kelly") }}</th><th class="nowrap">{{ ui_labels.purchase_amount }}</th><th class="nowrap">{{ explained_term(ui_labels.estimated_payout_amount, "expected_return") }}</th></tr></thead>
-          <tbody>
-            {% for item in value_selection_rows %}
-            <tr>
-              <td class="nowrap">{{ item.horse_number }}</td>
-              <td class="nowrap">{{ "%.2f"|format(item.predicted_probability * 100) }}%</td>
-              <td class="nowrap">{{ item.win_odds }}</td>
-              <td class="nowrap">{{ "%.3f"|format(item.expected_value) }}</td>
-              <td class="nowrap">{{ "%.4f"|format(item.full_kelly) }}</td>
-              <td class="nowrap">{{ "%.4f"|format(item.fractional_kelly) }}</td>
-              <td class="nowrap">{{ item.stake }}円</td>
-              <td class="nowrap">{{ "%.0f"|format(item.expected_return) ~ "円" if item.expected_return is not none else "-" }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      {% endcall %}
-      {% else %}
-      <p class="value-no-purchase"><strong>購入なし</strong>{% if value_no_purchase_reason %}<br><span class="small">{{ value_no_purchase_reason }}</span>{% endif %}</p>
-      {% endif %}
+         </table>
+       {% endcall %}
+       {% endif %}
+       <details class="simulation-details">
+         <summary>全馬期待値の詳細を見る</summary>
+         <h4>全馬期待値一覧</h4>
+         {% call tables.scroll_table(true) %}
+           <table class="value-detail-table">
+           <thead><tr><th class="nowrap">{{ ui_labels.expected_value_rank }}</th><th class="nowrap">馬番</th><th class="horse-name">馬名</th><th class="nowrap">{{ ui_labels.win_probability }}</th><th class="nowrap">単勝オッズ</th><th class="nowrap">{{ explained_term(ui_labels.expected_value, "ev") }}</th><th class="nowrap">{{ ui_labels.expected_value_threshold }}</th><th class="nowrap">{{ explained_term("Full Kelly", "full_kelly") }}</th><th class="nowrap">{{ explained_term("適用Kelly", "applied_kelly") }}</th><th class="nowrap">{{ explained_term("理論購入額", "theoretical_stake") }}</th><th class="nowrap">{{ explained_term((simulation_value_pre.stake_unit|string) ~ "円購入に必要な最低予算", "minimum_budget") }}</th><th class="nowrap">購入判定</th></tr></thead>
+           <tbody>
+             {% for item in expected_value_rows %}
+             <tr{% if item.purchase_status == "purchase" %} class="simulation-selected"{% elif item.meets_threshold %} class="ev-above-threshold"{% endif %}>
+               <td class="nowrap">{{ (item.ev_rank|string) ~ "位" if item.ev_rank is not none else "-" }}</td>
+               <td class="nowrap">{{ item.horse_number }}</td>
+               <td class="horse-name">{{ item.horse_name }}</td>
+               <td class="nowrap">{{ "%.2f%%"|format(item.win_probability * 100) if item.win_probability is not none else "-" }}</td>
+               <td class="nowrap">{{ item.win_odds if item.win_odds is not none else "-" }}</td>
+               <td class="nowrap">{{ "%.3f"|format(item.expected_value) if item.expected_value is not none else "-" }}</td>
+               <td class="nowrap">{% if item.meets_threshold is none %}算出不可{% elif item.meets_threshold %}基準以上{% else %}基準未満{% endif %}</td>
+               <td class="nowrap">{{ "%.4f%%"|format(item.full_kelly * 100) if item.full_kelly is not none else "-" }}</td>
+               <td class="nowrap">{{ "%.4f%%"|format(item.fractional_kelly * 100) if item.fractional_kelly is not none else "-" }}</td>
+               <td class="nowrap">{{ "%.2f円"|format(item.theoretical_stake) if item.theoretical_stake is not none else "-" }}</td>
+               <td class="nowrap">{{ "約{:,}円".format(item.minimum_budget) if item.minimum_budget is not none else "-" }}</td>
+               <td class="nowrap">{{ item.purchase_decision }}</td>
+             </tr>
+             {% endfor %}
+           </tbody>
+           </table>
+         {% endcall %}
+       </details>
       {% else %}
       <p>{{ missing_simulation_message }}</p>
       {% endif %}

@@ -100,11 +100,11 @@
 {%- endmacro %}
 
 {% macro value_purchase_result(pre, ui_labels) -%}
-{% call purchase_result(ui_labels, 'value-purchase-result') %}
-  <div><strong>判定</strong><br>{{ '購入あり' if pre.selections else '購入なし' }}</div>
-  <div><strong>{{ ui_labels.total_purchase_amount }}</strong><br>{{ pre.total_stake }}円</div>
-  <div><strong>{{ ui_labels.unused_budget }}</strong><br>{{ pre.unused_budget }}円</div>
-{% endcall %}
+<div class="simulator-summary value-purchase-result" data-purchase-state="{{ 'purchased' if pre.selections else 'no-purchase' }}">
+  <span><strong>判定:</strong> {{ '購入あり' if pre.selections else '購入なし' }}</span>
+  <span><strong>{{ ui_labels.total_purchase_amount }}:</strong> {{ pre.total_stake }}円</span>
+  <span><strong>{{ ui_labels.unused_budget }}:</strong> {{ pre.unused_budget }}円</span>
+</div>
 {%- endmacro %}
 
 {% macro dutching_purchase_result(pre, ui_labels) -%}

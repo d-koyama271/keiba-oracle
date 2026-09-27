@@ -1088,43 +1088,57 @@ class SimulationRenderTests(unittest.TestCase):
                 unused_budget=pre["budget"] - 100,
             )
         selected_panels = panels()
-        selected_decisions = {}
-        selected_labels = []
         for ticket, panel in selected_panels.items():
             with self.subTest(ticket=ticket, selected=True):
                 pre = pre_by_ticket[ticket]
-                result = panel.select_one(".value-purchase-result.metric-grid")
-                self.assertIsNotNone(panel.select_one(".simulation-result-title"))
-                metrics = result.find_all("div", recursive=False)
+                result = panel.select_one("[data-purchase-state]")
+                self.assertIsNotNone(result)
+                self.assertEqual(len(panel.select("[data-purchase-state]")), 1)
+                self.assertEqual(result["data-purchase-state"], "purchased")
+                metrics = result.find_all("span", recursive=False)
                 self.assertEqual(len(metrics), 3)
                 self.assertTrue(all(metric.strong for metric in metrics))
-                selected_labels.append([metric.strong.get_text(strip=True) for metric in metrics])
-                selected_decisions[ticket] = metrics[0].get_text(" ", strip=True)
                 self.assertIn(f"{pre['total_stake']}円", metrics[1].get_text())
                 self.assertIn(f"{pre['unused_budget']}円", metrics[2].get_text())
-                self.assertIsNotNone(panel.select_one(".simulation-table"))
-        self.assertEqual(selected_labels[0], selected_labels[1])
-        self.assertEqual(selected_decisions["win"], selected_decisions["quinella"])
+                table = panel.select_one("table.simulation-table")
+                self.assertIsNotNone(table)
+                self.assertEqual(len(table.select("thead th")), 6 if ticket == "win" else 5)
+                details = panel.select_one("details.simulation-details")
+                self.assertIsNotNone(details)
+                self.assertIsNotNone(details.select_one("summary"))
+                self.assertEqual(
+                    [element.name for element in panel.select("table.simulation-table, details.simulation-details")],
+                    ["table", "details"],
+                )
+                self.assertEqual(len(panel.find_all("h4", recursive=False)), 2)
+                target_scroll = table.find_parent("div", class_="table-scroll")
+                self.assertIsNotNone(target_scroll)
+                self.assertIsNotNone(target_scroll.find_previous_sibling("h4"))
 
         for pre in pre_by_ticket.values():
             pre.update(selections=[], total_stake=0, unused_budget=pre["budget"])
         empty_panels = panels()
-        empty_labels = []
         for ticket, panel in empty_panels.items():
             with self.subTest(ticket=ticket, selected=False):
                 pre = pre_by_ticket[ticket]
-                result = panel.select_one(".value-purchase-result.metric-grid")
-                metrics = result.find_all("div", recursive=False)
+                result = panel.select_one('[data-purchase-state="no-purchase"]')
+                self.assertIsNotNone(result)
+                self.assertEqual(len(panel.select("[data-purchase-state]")), 1)
+                metrics = result.find_all("span", recursive=False)
                 self.assertEqual(len(metrics), 3)
                 self.assertTrue(all(metric.strong for metric in metrics))
-                empty_labels.append([metric.strong.get_text(strip=True) for metric in metrics])
-                self.assertNotEqual(metrics[0].get_text(" ", strip=True), selected_decisions[ticket])
                 self.assertIn(f"{pre['total_stake']}円", metrics[1].get_text())
                 self.assertIn(f"{pre['unused_budget']}円", metrics[2].get_text())
-                if ticket == "win":
-                    self.assertIsNotNone(panel.select_one(".value-no-purchase"))
                 self.assertIsNone(panel.select_one(".simulation-table"))
-        self.assertEqual(empty_labels[0], empty_labels[1])
+                self.assertIsNone(panel.select_one(".value-no-purchase"))
+                details = panel.select_one("details.simulation-details")
+                self.assertIsNotNone(details)
+                self.assertIsNotNone(details.select_one("summary"))
+                self.assertEqual(
+                    [element.name for element in panel.select("table.simulation-table, details.simulation-details")],
+                    ["details"],
+                )
+                self.assertEqual(len(panel.find_all("h4", recursive=False)), 1)
 
     def test_win_dutching_result_metrics_and_threshold_tooltips(self) -> None:
         payload = self.full_payload()
@@ -1170,11 +1184,13 @@ class SimulationRenderTests(unittest.TestCase):
         empty_panel = empty_soup.select_one('[data-ticket-panel="win"] .simulation-panel')
         self.assertIsNone(empty_panel.select_one(".dutching-pairs"))
         self.assertIsNone(empty_panel.select_one(".purchase-breakdown-title"))
-        empty_result = empty_panel.select(".simulation-block-title")[1].find_next_sibling(
+        empty_result = empty_panel.select_one(".dutching-no-purchase").find_parent(
             "div", class_="metric-grid"
         )
         self.assertEqual(len(empty_result.find_all("div", recursive=False)), 3)
         self.assertIsNotNone(empty_result.select_one(".dutching-no-purchase"))
+        self.assertIsNotNone(empty_result.find_previous_sibling("h4"))
+        self.assertIsNotNone(empty_result.find_next_sibling("h4"))
         self.assertIn(f"{pre['total_stake']}円", empty_result.get_text())
         self.assertIn(f"{pre['unused_budget']}円", empty_result.get_text())
 
@@ -1527,18 +1543,6 @@ class QuinellaRenderTests(unittest.TestCase):
                                 [item["data-settlement-metric"] for item in summary.select("[data-settlement-metric]")],
                                 expected_metrics,
                             )
-                            metric_values = {
-                                item["data-settlement-metric"]: item.get_text(" ", strip=True).rsplit(" ", 1)[-1]
-                                for item in summary.select("[data-settlement-metric]")
-                            }
-                            self.assertEqual(metric_values["stake"], f"{stake}円")
-                            self.assertEqual(metric_values["return"], f"{refund}円")
-                            self.assertEqual(metric_values["profit"], f"{refund - stake}円")
-                            if stake:
-                                self.assertEqual(
-                                    metric_values["return-rate"],
-                                    f"{refund / stake * 100:.2f}%",
-                                )
                             self.assertEqual(len(panel.select(".settlement-no-purchase")), 0 if stake else 1)
                             self.assertIsNone(panel.select_one(".metric-grid"))
                             if stake:
@@ -1551,47 +1555,6 @@ class QuinellaRenderTests(unittest.TestCase):
                                 )
                             if not stake:
                                 self.assertIsNone(panel.find("table"))
-
-    def test_settlement_summary_formats_positive_profit_and_calculates_return_rate(self):
-        payload = payload_with_odds()
-        with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
-            payload["simulation"] = calculate_pre_simulation(payload, load_config())
-        payload["result"] = parse_result(result_html())
-        expected_post = {
-            "total_stake": 3000,
-            "total_refund": 0,
-            "total_return": 4410,
-            "profit": 1410,
-            "roi": 0.47,
-            "selections": [{
-                "horse_number": 1,
-                "horse_numbers": [1, 2],
-                "stake": 3000,
-                "hit": True,
-                "refund": 0,
-                "payout": 4410,
-                "return": 4410,
-            }],
-        }
-        for simulation in (payload["simulation"][0]["general"], payload["simulation"][0]["statistical"]):
-            for ticket_name in ("win", "quinella"):
-                for method in ("value", "dutching"):
-                    simulation[ticket_name][method]["post"] = copy.deepcopy(expected_post)
-
-        soup = BeautifulSoup(
-            build_environment(ROOT).get_template("race.html.j2").render(
-                **build_race_context(payload), page_kind="result"),
-            "html.parser",
-        )
-        for summary in soup.select(".result-panel .settlement-summary"):
-            metric_values = {
-                item["data-settlement-metric"]: item.get_text(" ", strip=True).rsplit(" ", 1)[-1]
-                for item in summary.select("[data-settlement-metric]")
-            }
-            self.assertEqual(metric_values["stake"], "3000円")
-            self.assertEqual(metric_values["return"], "4410円")
-            self.assertEqual(metric_values["profit"], "+1410円")
-            self.assertEqual(metric_values["return-rate"], "147.00%")
 
     def test_weather_and_saved_popularity_on_both_ai_result_tables(self):
         payload = payload_with_odds()

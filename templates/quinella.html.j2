@@ -27,24 +27,24 @@
     {{ simulation.value_settings(pre, ui_labels, quinella_tooltips) }}
     {{ simulation.value_purchase_result(pre, ui_labels) }}
     {% else %}
-    {{ simulation.dutching_settings(pre, ui_labels, quinella_tooltips, '組', ui.explained_term(ui_labels.max_pair_count, 'max_selection_count', quinella_tooltips)) }}
     {{ simulation.dutching_purchase_result(pre, ui_labels) }}
+    {{ simulation.dutching_settings(pre, ui_labels, quinella_tooltips, '組', ui.explained_term(ui_labels.max_pair_count, 'max_selection_count', quinella_tooltips)) }}
     {% endif %}
     {% endif %}
     {% if method == 'dutching' %}
       {{ simulation.dutching_comparison(pre, ui_labels, quinella_tooltips, rejection_reason_text, 'quinella') }}
     {% else %}
+      {% if pre.selections %}
+      <h4>購入対象</h4>
+      {% call tables.scroll_table() %}<table class="simulation-table"><thead><tr><th>馬番ペア</th><th>{{ ui_labels.quinella_probability }}</th><th>馬連オッズ</th><th>{{ ui.explained_term(ui_labels.expected_value, 'ev', quinella_tooltips) }}</th><th>{{ ui_labels.purchase_amount }}</th></tr></thead><tbody>
+        {% for item in pre.selections %}<tr><td class="nowrap">{{ item.horse_numbers|join('-') }}</td><td class="nowrap">{{ '%.2f'|format(item.predicted_probability * 100) }}%</td><td class="nowrap">{{ item.odds }}</td><td class="nowrap">{{ '%.3f'|format(item.expected_value) }}</td><td class="nowrap">{{ item.stake }}円</td></tr>{% endfor %}
+      </tbody></table>{% endcall %}
+      {% endif %}
       <details class="simulation-details"><summary>全ペア{{ ui_labels.expected_value }}の詳細を見る</summary>
       {% call tables.scroll_table() %}<table class="evaluation-table">
         <thead><tr><th>馬番ペア</th><th>{{ ui_labels.quinella_probability }}</th><th>馬連オッズ</th><th>{{ ui.explained_term(ui_labels.expected_value, 'ev', quinella_tooltips) }}</th><th>{{ ui.explained_term('Full Kelly', 'full_kelly', quinella_tooltips) }}</th><th>{{ ui.explained_term('適用Kelly', 'applied_kelly', quinella_tooltips) }}</th><th>{{ ui.explained_term('理論購入額', 'theoretical_stake', quinella_tooltips) }}</th><th>{{ ui_labels.purchase_amount }}</th></tr></thead><tbody>
         {% for item in pre.details %}<tr><td>{{ item.horse_numbers|join('-') }}</td><td>{{ '%.2f'|format(item.predicted_probability * 100) }}%</td><td>{{ item.odds }}</td><td>{{ '%.3f'|format(item.expected_value) }}</td><td>{{ '%.4f'|format(item.full_kelly * 100) }}%</td><td>{{ '%.4f'|format(item.fractional_kelly * 100) }}%</td><td>{{ '%.2f'|format(item.theoretical_stake) if item.theoretical_stake is not none else '-' }}円</td><td>{{ item.stake }}円</td></tr>{% endfor %}
       </tbody></table>{% endcall %}</details>
-      <h4>購入対象</h4>
-      {% if pre.selections %}
-      {% call tables.scroll_table() %}<table class="simulation-table"><thead><tr><th>馬番ペア</th><th>{{ ui_labels.quinella_probability }}</th><th>馬連オッズ</th><th>{{ ui.explained_term(ui_labels.expected_value, 'ev', quinella_tooltips) }}</th><th>{{ ui_labels.purchase_amount }}</th></tr></thead><tbody>
-        {% for item in pre.selections %}<tr><td class="nowrap">{{ item.horse_numbers|join('-') }}</td><td class="nowrap">{{ '%.2f'|format(item.predicted_probability * 100) }}%</td><td class="nowrap">{{ item.odds }}</td><td class="nowrap">{{ '%.3f'|format(item.expected_value) }}</td><td class="nowrap">{{ item.stake }}円</td></tr>{% endfor %}
-      </tbody></table>{% endcall %}
-      {% else %}<p><strong>購入なし</strong>：最低期待値とKelly基準を満たす購入単位以上の候補がありません。</p>{% endif %}
     {% endif %}
   {% endif %}
 </div>
