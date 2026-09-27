@@ -454,9 +454,6 @@
     .value-simulation-panel .simulation-details {
       margin-top: 18px;
     }
-    .value-simulation-panel .simulation-details + h4 {
-      margin-top: 24px;
-    }
     .dutching-pairs {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
@@ -1046,7 +1043,6 @@
       
       
       
-      
       <div class="ai-method-panel simulation-method-content" id="simulation-general" role="tabpanel" data-ai-panel data-ai-method="general">
       <div class="ai-method-tabs ticket-tabs" role="tablist" aria-label="シミュレーションの券種">
   <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="win" aria-controls="purchase-general-win" aria-selected="true" tabindex="0">単勝</button>
@@ -1213,8 +1209,8 @@
   <button type="button" class="tooltip-trigger" aria-label="期待値重視方式: AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低期待値を満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低期待値を満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。</span>
 </span></span></h3>
-      
-      <h4 class="simulation-block-title">設定条件</h4>
+       
+       <h4 class="simulation-block-title">設定条件</h4>
 <div class="metric-grid">
   <div><strong>予算</strong><br>3000円</div>
   <div><strong><span class="term-with-tooltip"><span>最低期待値</span><span class="term-tooltip" data-term-key="minimum_ev">
@@ -1226,19 +1222,19 @@
   <span class="tooltip-content" role="tooltip">Kelly基準は、1着確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。</span>
 </span></span></strong><br>0.75</div>
 </div>
-      <h4 class="simulation-block-title simulation-result-title">購入結果</h4>
-<div class="metric-grid value-purchase-result">
-  <div><strong>判定</strong><br>購入なし</div>
-  <div><strong>合計購入額</strong><br>0円</div>
-  <div><strong>未使用予算</strong><br>3000円</div>
+       <div class="simulator-summary value-purchase-result" data-purchase-state="no-purchase">
+  <span><strong>判定:</strong> 購入なし</span>
+  <span><strong>合計購入額:</strong> 0円</span>
+  <span><strong>未使用予算:</strong> 3000円</span>
 </div>
-      <details class="simulation-details">
-        <summary>全馬期待値の詳細を見る</summary>
-        <h4>全馬期待値一覧</h4>
-        <p class="table-scroll-hint">表は横にスクロールできます</p>
+       
+       <details class="simulation-details">
+         <summary>全馬期待値の詳細を見る</summary>
+         <h4>全馬期待値一覧</h4>
+         <p class="table-scroll-hint">表は横にスクロールできます</p>
 <div class="table-scroll">
-          <table class="value-detail-table">
-          <thead><tr><th class="nowrap">期待値順位</th><th class="nowrap">馬番</th><th class="horse-name">馬名</th><th class="nowrap">1着確率</th><th class="nowrap">単勝オッズ</th><th class="nowrap"><span class="term-with-tooltip"><span>期待値</span><span class="term-tooltip" data-term-key="ev">
+           <table class="value-detail-table">
+           <thead><tr><th class="nowrap">期待値順位</th><th class="nowrap">馬番</th><th class="horse-name">馬名</th><th class="nowrap">1着確率</th><th class="nowrap">単勝オッズ</th><th class="nowrap"><span class="term-with-tooltip"><span>期待値</span><span class="term-tooltip" data-term-key="ev">
   <button type="button" class="tooltip-trigger" aria-label="期待値: 1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。</span>
 </span></span></th><th class="nowrap">期待値基準</th><th class="nowrap"><span class="term-with-tooltip"><span>Full Kelly</span><span class="term-tooltip" data-term-key="full_kelly">
@@ -1254,181 +1250,177 @@
   <button type="button" class="tooltip-trigger" aria-label="100円購入に必要な最低予算: 現在の設定条件で、購入額が初めて1購入単位以上になる予算です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">現在の設定条件で、購入額が初めて1購入単位以上になる予算です。</span>
 </span></span></th><th class="nowrap">購入判定</th></tr></thead>
-          <tbody>
-            
-            <tr class="ev-above-threshold">
-              <td class="nowrap">1位</td>
-              <td class="nowrap">10</td>
-              <td class="horse-name">カフジエメンタール</td>
-              <td class="nowrap">4.00%</td>
-              <td class="nowrap">33.2</td>
-              <td class="nowrap">1.328</td>
-              <td class="nowrap">基準以上</td>
-              <td class="nowrap">1.0186%</td>
-              <td class="nowrap">0.7640%</td>
-              <td class="nowrap">22.92円</td>
-              <td class="nowrap">約13,090円</td>
-              <td class="nowrap">購入単位未満</td>
-            </tr>
-            
-            <tr class="ev-above-threshold">
-              <td class="nowrap">2位</td>
-              <td class="nowrap">4</td>
-              <td class="horse-name">アルトラムス</td>
-              <td class="nowrap">9.00%</td>
-              <td class="nowrap">12.5</td>
-              <td class="nowrap">1.125</td>
-              <td class="nowrap">基準以上</td>
-              <td class="nowrap">1.0870%</td>
-              <td class="nowrap">0.8152%</td>
-              <td class="nowrap">24.46円</td>
-              <td class="nowrap">約12,267円</td>
-              <td class="nowrap">購入単位未満</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap">3位</td>
-              <td class="nowrap">7</td>
-              <td class="horse-name">コンジェスタス</td>
-              <td class="nowrap">7.50%</td>
-              <td class="nowrap">13.3</td>
-              <td class="nowrap">0.998</td>
-              <td class="nowrap">基準未満</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">期待値基準未満</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap">4位</td>
-              <td class="nowrap">11</td>
-              <td class="horse-name">ショウナンハヤナミ</td>
-              <td class="nowrap">3.00%</td>
-              <td class="nowrap">27.3</td>
-              <td class="nowrap">0.819</td>
-              <td class="nowrap">基準未満</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">期待値基準未満</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap">5位</td>
-              <td class="nowrap">1</td>
-              <td class="horse-name">ロブチェン</td>
-              <td class="nowrap">58.00%</td>
-              <td class="nowrap">1.4</td>
-              <td class="nowrap">0.812</td>
-              <td class="nowrap">基準未満</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">期待値基準未満</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap">6位</td>
-              <td class="nowrap">5</td>
-              <td class="horse-name">カムアップローゼス</td>
-              <td class="nowrap">1.50%</td>
-              <td class="nowrap">52.9</td>
-              <td class="nowrap">0.793</td>
-              <td class="nowrap">基準未満</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">期待値基準未満</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap">7位</td>
-              <td class="nowrap">3</td>
-              <td class="horse-name">ゴーラッキー</td>
-              <td class="nowrap">6.00%</td>
-              <td class="nowrap">11.9</td>
-              <td class="nowrap">0.714</td>
-              <td class="nowrap">基準未満</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">期待値基準未満</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap">8位</td>
-              <td class="nowrap">8</td>
-              <td class="horse-name">シートゥサミット</td>
-              <td class="nowrap">1.00%</td>
-              <td class="nowrap">68.9</td>
-              <td class="nowrap">0.689</td>
-              <td class="nowrap">基準未満</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">期待値基準未満</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap">9位</td>
-              <td class="nowrap">6</td>
-              <td class="horse-name">エムズビギン</td>
-              <td class="nowrap">2.00%</td>
-              <td class="nowrap">29.7</td>
-              <td class="nowrap">0.594</td>
-              <td class="nowrap">基準未満</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">期待値基準未満</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap">10位</td>
-              <td class="nowrap">9</td>
-              <td class="horse-name">グリーンエナジー</td>
-              <td class="nowrap">5.50%</td>
-              <td class="nowrap">7.9</td>
-              <td class="nowrap">0.434</td>
-              <td class="nowrap">基準未満</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">期待値基準未満</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap">11位</td>
-              <td class="nowrap">2</td>
-              <td class="horse-name">エイシンインアウト</td>
-              <td class="nowrap">2.50%</td>
-              <td class="nowrap">15.8</td>
-              <td class="nowrap">0.395</td>
-              <td class="nowrap">基準未満</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">期待値基準未満</td>
-            </tr>
-            
-          </tbody>
-          </table>
-        </div>
-      </details>
-      <h4>購入対象</h4>
-      
-      <p class="value-no-purchase"><strong>購入なし</strong><br><span class="small">期待値基準以上の馬はありますが、現在の予算ではKelly基準の購入額が100円未満となるため、購入対象はありません。</span></p>
-      
+           <tbody>
+             
+             <tr class="ev-above-threshold">
+               <td class="nowrap">1位</td>
+               <td class="nowrap">10</td>
+               <td class="horse-name">カフジエメンタール</td>
+               <td class="nowrap">4.00%</td>
+               <td class="nowrap">33.2</td>
+               <td class="nowrap">1.328</td>
+               <td class="nowrap">基準以上</td>
+               <td class="nowrap">1.0186%</td>
+               <td class="nowrap">0.7640%</td>
+               <td class="nowrap">22.92円</td>
+               <td class="nowrap">約13,090円</td>
+               <td class="nowrap">購入単位未満</td>
+             </tr>
+             
+             <tr class="ev-above-threshold">
+               <td class="nowrap">2位</td>
+               <td class="nowrap">4</td>
+               <td class="horse-name">アルトラムス</td>
+               <td class="nowrap">9.00%</td>
+               <td class="nowrap">12.5</td>
+               <td class="nowrap">1.125</td>
+               <td class="nowrap">基準以上</td>
+               <td class="nowrap">1.0870%</td>
+               <td class="nowrap">0.8152%</td>
+               <td class="nowrap">24.46円</td>
+               <td class="nowrap">約12,267円</td>
+               <td class="nowrap">購入単位未満</td>
+             </tr>
+             
+             <tr>
+               <td class="nowrap">3位</td>
+               <td class="nowrap">7</td>
+               <td class="horse-name">コンジェスタス</td>
+               <td class="nowrap">7.50%</td>
+               <td class="nowrap">13.3</td>
+               <td class="nowrap">0.998</td>
+               <td class="nowrap">基準未満</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">期待値基準未満</td>
+             </tr>
+             
+             <tr>
+               <td class="nowrap">4位</td>
+               <td class="nowrap">11</td>
+               <td class="horse-name">ショウナンハヤナミ</td>
+               <td class="nowrap">3.00%</td>
+               <td class="nowrap">27.3</td>
+               <td class="nowrap">0.819</td>
+               <td class="nowrap">基準未満</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">期待値基準未満</td>
+             </tr>
+             
+             <tr>
+               <td class="nowrap">5位</td>
+               <td class="nowrap">1</td>
+               <td class="horse-name">ロブチェン</td>
+               <td class="nowrap">58.00%</td>
+               <td class="nowrap">1.4</td>
+               <td class="nowrap">0.812</td>
+               <td class="nowrap">基準未満</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">期待値基準未満</td>
+             </tr>
+             
+             <tr>
+               <td class="nowrap">6位</td>
+               <td class="nowrap">5</td>
+               <td class="horse-name">カムアップローゼス</td>
+               <td class="nowrap">1.50%</td>
+               <td class="nowrap">52.9</td>
+               <td class="nowrap">0.793</td>
+               <td class="nowrap">基準未満</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">期待値基準未満</td>
+             </tr>
+             
+             <tr>
+               <td class="nowrap">7位</td>
+               <td class="nowrap">3</td>
+               <td class="horse-name">ゴーラッキー</td>
+               <td class="nowrap">6.00%</td>
+               <td class="nowrap">11.9</td>
+               <td class="nowrap">0.714</td>
+               <td class="nowrap">基準未満</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">期待値基準未満</td>
+             </tr>
+             
+             <tr>
+               <td class="nowrap">8位</td>
+               <td class="nowrap">8</td>
+               <td class="horse-name">シートゥサミット</td>
+               <td class="nowrap">1.00%</td>
+               <td class="nowrap">68.9</td>
+               <td class="nowrap">0.689</td>
+               <td class="nowrap">基準未満</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">期待値基準未満</td>
+             </tr>
+             
+             <tr>
+               <td class="nowrap">9位</td>
+               <td class="nowrap">6</td>
+               <td class="horse-name">エムズビギン</td>
+               <td class="nowrap">2.00%</td>
+               <td class="nowrap">29.7</td>
+               <td class="nowrap">0.594</td>
+               <td class="nowrap">基準未満</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">期待値基準未満</td>
+             </tr>
+             
+             <tr>
+               <td class="nowrap">10位</td>
+               <td class="nowrap">9</td>
+               <td class="horse-name">グリーンエナジー</td>
+               <td class="nowrap">5.50%</td>
+               <td class="nowrap">7.9</td>
+               <td class="nowrap">0.434</td>
+               <td class="nowrap">基準未満</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">期待値基準未満</td>
+             </tr>
+             
+             <tr>
+               <td class="nowrap">11位</td>
+               <td class="nowrap">2</td>
+               <td class="horse-name">エイシンインアウト</td>
+               <td class="nowrap">2.50%</td>
+               <td class="nowrap">15.8</td>
+               <td class="nowrap">0.395</td>
+               <td class="nowrap">基準未満</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">期待値基準未満</td>
+             </tr>
+             
+           </tbody>
+           </table>
+         </div>
+       </details>
       
     </div>
       </div>
@@ -1686,15 +1678,15 @@
   <span class="tooltip-content" role="tooltip">Kelly基準で算出した購入割合を実際に何割使うかを示す係数です。0.5なら算出額の半分を使用します。</span>
 </span></span></strong><br>0.8</div>
 </div>
-    <h4 class="simulation-block-title simulation-result-title">購入結果</h4>
-<div class="metric-grid value-purchase-result">
-  <div><strong>判定</strong><br>購入なし</div>
-  <div><strong>合計購入額</strong><br>0円</div>
-  <div><strong>未使用予算</strong><br>3000円</div>
+    <div class="simulator-summary value-purchase-result" data-purchase-state="no-purchase">
+  <span><strong>判定:</strong> 購入なし</span>
+  <span><strong>合計購入額:</strong> 0円</span>
+  <span><strong>未使用予算:</strong> 3000円</span>
 </div>
     
     
     
+      
       <details class="simulation-details"><summary>全ペア期待値の詳細を見る</summary>
       
 <div class="table-scroll"><table class="evaluation-table">
@@ -1713,8 +1705,6 @@
 </span></span></th><th>購入額</th></tr></thead><tbody>
         <tr><td>1-5</td><td>3.31%</td><td>46.2</td><td>1.528</td><td>1.1680%</td><td>0.9344%</td><td>28.03円</td><td>0円</td></tr><tr><td>4-5</td><td>0.40%</td><td>362.9</td><td>1.445</td><td>0.1230%</td><td>0.0984%</td><td>2.95円</td><td>0円</td></tr><tr><td>1-10</td><td>7.70%</td><td>18.0</td><td>1.386</td><td>2.2719%</td><td>1.8175%</td><td>54.53円</td><td>0円</td></tr><tr><td>5-7</td><td>0.33%</td><td>402.8</td><td>1.343</td><td>0.0853%</td><td>0.0682%</td><td>2.05円</td><td>0円</td></tr><tr><td>4-11</td><td>0.74%</td><td>180.6</td><td>1.342</td><td>0.1903%</td><td>0.1522%</td><td>4.57円</td><td>0円</td></tr><tr><td>4-10</td><td>0.97%</td><td>137.1</td><td>1.324</td><td>0.2379%</td><td>0.1904%</td><td>5.71円</td><td>0円</td></tr><tr><td>7-10</td><td>0.81%</td><td>144.7</td><td>1.173</td><td>0.1203%</td><td>0.0962%</td><td>2.89円</td><td>0円</td></tr><tr><td>1-11</td><td>6.00%</td><td>19.1</td><td>1.146</td><td>0.8077%</td><td>0.6461%</td><td>19.38円</td><td>0円</td></tr><tr><td>4-8</td><td>0.28%</td><td>387.8</td><td>1.076</td><td>0.0198%</td><td>0.0158%</td><td>-円</td><td>0円</td></tr><tr><td>1-8</td><td>2.34%</td><td>45.4</td><td>1.062</td><td>0.1406%</td><td>0.1125%</td><td>-円</td><td>0円</td></tr><tr><td>5-9</td><td>0.25%</td><td>427.4</td><td>1.058</td><td>0.0135%</td><td>0.0108%</td><td>-円</td><td>0円</td></tr><tr><td>7-11</td><td>0.62%</td><td>168.5</td><td>1.050</td><td>0.0298%</td><td>0.0238%</td><td>-円</td><td>0円</td></tr><tr><td>4-7</td><td>1.73%</td><td>57.3</td><td>0.991</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>1-4</td><td>15.72%</td><td>6.1</td><td>0.959</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>3-4</td><td>1.40%</td><td>68.0</td><td>0.954</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>5-10</td><td>0.18%</td><td>519.7</td><td>0.951</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>9-10</td><td>0.60%</td><td>150.4</td><td>0.909</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>5-11</td><td>0.14%</td><td>636.7</td><td>0.890</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>1-6</td><td>4.23%</td><td>21.0</td><td>0.889</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>7-8</td><td>0.23%</td><td>369.0</td><td>0.857</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>1-7</td><td>13.37%</td><td>6.3</td><td>0.842</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>10-11</td><td>0.34%</td><td>234.7</td><td>0.808</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>3-5</td><td>0.27%</td><td>292.6</td><td>0.787</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>4-6</td><td>0.52%</td><td>152.7</td><td>0.787</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>3-7</td><td>1.18%</td><td>66.6</td><td>0.786</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>3-10</td><td>0.66%</td><td>118.6</td><td>0.778</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>3-11</td><td>0.50%</td><td>152.3</td><td>0.767</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>9-11</td><td>0.46%</td><td>164.4</td><td>0.763</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>1-3</td><td>10.98%</td><td>6.9</td><td>0.758</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>4-9</td><td>1.29%</td><td>56.1</td><td>0.726</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>7-9</td><td>1.09%</td><td>65.2</td><td>0.709</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>8-9</td><td>0.17%</td><td>402.1</td><td>0.692</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>6-10</td><td>0.24%</td><td>285.6</td><td>0.679</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>6-7</td><td>0.43%</td><td>153.8</td><td>0.664</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>6-11</td><td>0.18%</td><td>347.0</td><td>0.631</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>3-8</td><td>0.19%</td><td>335.4</td><td>0.627</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>8-11</td><td>0.10%</td><td>640.9</td><td>0.621</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>8-10</td><td>0.13%</td><td>470.4</td><td>0.598</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>2-10</td><td>0.29%</td><td>196.6</td><td>0.572</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>1-9</td><td>10.17%</td><td>5.3</td><td>0.539</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>2-7</td><td>0.53%</td><td>94.3</td><td>0.498</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>5-6</td><td>0.10%</td><td>517.0</td><td>0.497</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>6-9</td><td>0.32%</td><td>154.3</td><td>0.495</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>3-9</td><td>0.88%</td><td>55.5</td><td>0.489</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>1-2</td><td>5.13%</td><td>9.5</td><td>0.487</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>2-4</td><td>0.63%</td><td>75.5</td><td>0.476</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>5-8</td><td>0.05%</td><td>904.1</td><td>0.461</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>6-8</td><td>0.07%</td><td>689.3</td><td>0.458</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>3-6</td><td>0.35%</td><td>120.4</td><td>0.420</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>2-11</td><td>0.22%</td><td>185.2</td><td>0.413</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>2-5</td><td>0.12%</td><td>319.6</td><td>0.377</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>2-3</td><td>0.43%</td><td>87.1</td><td>0.372</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>2-6</td><td>0.15%</td><td>220.7</td><td>0.339</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>2-8</td><td>0.08%</td><td>411.0</td><td>0.336</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>2-9</td><td>0.39%</td><td>66.9</td><td>0.263</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr>
       </tbody></table></div></details>
-      <h4>購入対象</h4>
-      <p><strong>購入なし</strong>：最低期待値とKelly基準を満たす購入単位以上の候補がありません。</p>
     
   
 </div>
@@ -1722,7 +1712,6 @@
 
       </div>
       </div>
-      
       
       
       
@@ -1895,8 +1884,8 @@
   <button type="button" class="tooltip-trigger" aria-label="期待値重視方式: AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低期待値を満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低期待値を満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。</span>
 </span></span></h3>
-      
-      <h4 class="simulation-block-title">設定条件</h4>
+       
+       <h4 class="simulation-block-title">設定条件</h4>
 <div class="metric-grid">
   <div><strong>予算</strong><br>3000円</div>
   <div><strong><span class="term-with-tooltip"><span>最低期待値</span><span class="term-tooltip" data-term-key="minimum_ev">
@@ -1908,19 +1897,19 @@
   <span class="tooltip-content" role="tooltip">Kelly基準は、1着確率とオッズから、資金を長期的に効率よく増やすための購入割合を算出する方法です。Kelly係数は、その算出額を実際に何割使うかを示します。0.5なら算出額の半分を使用する「ハーフケリー」、0.25なら4分の1を使用する「クォーターケリー」です。</span>
 </span></span></strong><br>0.75</div>
 </div>
-      <h4 class="simulation-block-title simulation-result-title">購入結果</h4>
-<div class="metric-grid value-purchase-result">
-  <div><strong>判定</strong><br>購入なし</div>
-  <div><strong>合計購入額</strong><br>0円</div>
-  <div><strong>未使用予算</strong><br>3000円</div>
+       <div class="simulator-summary value-purchase-result" data-purchase-state="no-purchase">
+  <span><strong>判定:</strong> 購入なし</span>
+  <span><strong>合計購入額:</strong> 0円</span>
+  <span><strong>未使用予算:</strong> 3000円</span>
 </div>
-      <details class="simulation-details">
-        <summary>全馬期待値の詳細を見る</summary>
-        <h4>全馬期待値一覧</h4>
-        <p class="table-scroll-hint">表は横にスクロールできます</p>
+       
+       <details class="simulation-details">
+         <summary>全馬期待値の詳細を見る</summary>
+         <h4>全馬期待値一覧</h4>
+         <p class="table-scroll-hint">表は横にスクロールできます</p>
 <div class="table-scroll">
-          <table class="value-detail-table">
-          <thead><tr><th class="nowrap">期待値順位</th><th class="nowrap">馬番</th><th class="horse-name">馬名</th><th class="nowrap">1着確率</th><th class="nowrap">単勝オッズ</th><th class="nowrap"><span class="term-with-tooltip"><span>期待値</span><span class="term-tooltip" data-term-key="ev">
+           <table class="value-detail-table">
+           <thead><tr><th class="nowrap">期待値順位</th><th class="nowrap">馬番</th><th class="horse-name">馬名</th><th class="nowrap">1着確率</th><th class="nowrap">単勝オッズ</th><th class="nowrap"><span class="term-with-tooltip"><span>期待値</span><span class="term-tooltip" data-term-key="ev">
   <button type="button" class="tooltip-trigger" aria-label="期待値: 1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">1着確率×単勝オッズで計算する期待値です。1.0が損益分岐の目安です。</span>
 </span></span></th><th class="nowrap">期待値基準</th><th class="nowrap"><span class="term-with-tooltip"><span>Full Kelly</span><span class="term-tooltip" data-term-key="full_kelly">
@@ -1936,181 +1925,177 @@
   <button type="button" class="tooltip-trigger" aria-label="100円購入に必要な最低予算: 現在の設定条件で、購入額が初めて1購入単位以上になる予算です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
   <span class="tooltip-content" role="tooltip">現在の設定条件で、購入額が初めて1購入単位以上になる予算です。</span>
 </span></span></th><th class="nowrap">購入判定</th></tr></thead>
-          <tbody>
-            
-            <tr class="ev-above-threshold">
-              <td class="nowrap">1位</td>
-              <td class="nowrap">10</td>
-              <td class="horse-name">カフジエメンタール</td>
-              <td class="nowrap">5.50%</td>
-              <td class="nowrap">33.2</td>
-              <td class="nowrap">1.826</td>
-              <td class="nowrap">基準以上</td>
-              <td class="nowrap">2.5652%</td>
-              <td class="nowrap">1.9239%</td>
-              <td class="nowrap">57.72円</td>
-              <td class="nowrap">約5,198円</td>
-              <td class="nowrap">購入単位未満</td>
-            </tr>
-            
-            <tr class="ev-above-threshold">
-              <td class="nowrap">2位</td>
-              <td class="nowrap">7</td>
-              <td class="horse-name">コンジェスタス</td>
-              <td class="nowrap">10.00%</td>
-              <td class="nowrap">13.3</td>
-              <td class="nowrap">1.330</td>
-              <td class="nowrap">基準以上</td>
-              <td class="nowrap">2.6829%</td>
-              <td class="nowrap">2.0122%</td>
-              <td class="nowrap">60.37円</td>
-              <td class="nowrap">約4,970円</td>
-              <td class="nowrap">購入単位未満</td>
-            </tr>
-            
-            <tr class="ev-above-threshold">
-              <td class="nowrap">3位</td>
-              <td class="nowrap">4</td>
-              <td class="horse-name">アルトラムス</td>
-              <td class="nowrap">10.00%</td>
-              <td class="nowrap">12.5</td>
-              <td class="nowrap">1.250</td>
-              <td class="nowrap">基準以上</td>
-              <td class="nowrap">2.1739%</td>
-              <td class="nowrap">1.6304%</td>
-              <td class="nowrap">48.91円</td>
-              <td class="nowrap">約6,134円</td>
-              <td class="nowrap">購入単位未満</td>
-            </tr>
-            
-            <tr class="ev-above-threshold">
-              <td class="nowrap">4位</td>
-              <td class="nowrap">11</td>
-              <td class="horse-name">ショウナンハヤナミ</td>
-              <td class="nowrap">4.00%</td>
-              <td class="nowrap">27.3</td>
-              <td class="nowrap">1.092</td>
-              <td class="nowrap">基準以上</td>
-              <td class="nowrap">0.3498%</td>
-              <td class="nowrap">0.2624%</td>
-              <td class="nowrap">7.87円</td>
-              <td class="nowrap">約38,116円</td>
-              <td class="nowrap">購入単位未満</td>
-            </tr>
-            
-            <tr class="ev-above-threshold">
-              <td class="nowrap">5位</td>
-              <td class="nowrap">8</td>
-              <td class="horse-name">シートゥサミット</td>
-              <td class="nowrap">1.50%</td>
-              <td class="nowrap">68.9</td>
-              <td class="nowrap">1.034</td>
-              <td class="nowrap">基準以上</td>
-              <td class="nowrap">0.0493%</td>
-              <td class="nowrap">0.0370%</td>
-              <td class="nowrap">1.11円</td>
-              <td class="nowrap">約270,249円</td>
-              <td class="nowrap">購入単位未満</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap">6位</td>
-              <td class="nowrap">5</td>
-              <td class="horse-name">カムアップローゼス</td>
-              <td class="nowrap">1.80%</td>
-              <td class="nowrap">52.9</td>
-              <td class="nowrap">0.952</td>
-              <td class="nowrap">基準未満</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">期待値基準未満</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap">7位</td>
-              <td class="nowrap">1</td>
-              <td class="horse-name">ロブチェン</td>
-              <td class="nowrap">55.00%</td>
-              <td class="nowrap">1.4</td>
-              <td class="nowrap">0.770</td>
-              <td class="nowrap">基準未満</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">期待値基準未満</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap">8位</td>
-              <td class="nowrap">6</td>
-              <td class="horse-name">エムズビギン</td>
-              <td class="nowrap">2.50%</td>
-              <td class="nowrap">29.7</td>
-              <td class="nowrap">0.743</td>
-              <td class="nowrap">基準未満</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">期待値基準未満</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap">9位</td>
-              <td class="nowrap">3</td>
-              <td class="horse-name">ゴーラッキー</td>
-              <td class="nowrap">4.50%</td>
-              <td class="nowrap">11.9</td>
-              <td class="nowrap">0.535</td>
-              <td class="nowrap">基準未満</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">期待値基準未満</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap">10位</td>
-              <td class="nowrap">9</td>
-              <td class="horse-name">グリーンエナジー</td>
-              <td class="nowrap">3.50%</td>
-              <td class="nowrap">7.9</td>
-              <td class="nowrap">0.277</td>
-              <td class="nowrap">基準未満</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">期待値基準未満</td>
-            </tr>
-            
-            <tr>
-              <td class="nowrap">11位</td>
-              <td class="nowrap">2</td>
-              <td class="horse-name">エイシンインアウト</td>
-              <td class="nowrap">1.70%</td>
-              <td class="nowrap">15.8</td>
-              <td class="nowrap">0.269</td>
-              <td class="nowrap">基準未満</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">0.0000%</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">-</td>
-              <td class="nowrap">期待値基準未満</td>
-            </tr>
-            
-          </tbody>
-          </table>
-        </div>
-      </details>
-      <h4>購入対象</h4>
-      
-      <p class="value-no-purchase"><strong>購入なし</strong><br><span class="small">期待値基準以上の馬はありますが、現在の予算ではKelly基準の購入額が100円未満となるため、購入対象はありません。</span></p>
-      
+           <tbody>
+             
+             <tr class="ev-above-threshold">
+               <td class="nowrap">1位</td>
+               <td class="nowrap">10</td>
+               <td class="horse-name">カフジエメンタール</td>
+               <td class="nowrap">5.50%</td>
+               <td class="nowrap">33.2</td>
+               <td class="nowrap">1.826</td>
+               <td class="nowrap">基準以上</td>
+               <td class="nowrap">2.5652%</td>
+               <td class="nowrap">1.9239%</td>
+               <td class="nowrap">57.72円</td>
+               <td class="nowrap">約5,198円</td>
+               <td class="nowrap">購入単位未満</td>
+             </tr>
+             
+             <tr class="ev-above-threshold">
+               <td class="nowrap">2位</td>
+               <td class="nowrap">7</td>
+               <td class="horse-name">コンジェスタス</td>
+               <td class="nowrap">10.00%</td>
+               <td class="nowrap">13.3</td>
+               <td class="nowrap">1.330</td>
+               <td class="nowrap">基準以上</td>
+               <td class="nowrap">2.6829%</td>
+               <td class="nowrap">2.0122%</td>
+               <td class="nowrap">60.37円</td>
+               <td class="nowrap">約4,970円</td>
+               <td class="nowrap">購入単位未満</td>
+             </tr>
+             
+             <tr class="ev-above-threshold">
+               <td class="nowrap">3位</td>
+               <td class="nowrap">4</td>
+               <td class="horse-name">アルトラムス</td>
+               <td class="nowrap">10.00%</td>
+               <td class="nowrap">12.5</td>
+               <td class="nowrap">1.250</td>
+               <td class="nowrap">基準以上</td>
+               <td class="nowrap">2.1739%</td>
+               <td class="nowrap">1.6304%</td>
+               <td class="nowrap">48.91円</td>
+               <td class="nowrap">約6,134円</td>
+               <td class="nowrap">購入単位未満</td>
+             </tr>
+             
+             <tr class="ev-above-threshold">
+               <td class="nowrap">4位</td>
+               <td class="nowrap">11</td>
+               <td class="horse-name">ショウナンハヤナミ</td>
+               <td class="nowrap">4.00%</td>
+               <td class="nowrap">27.3</td>
+               <td class="nowrap">1.092</td>
+               <td class="nowrap">基準以上</td>
+               <td class="nowrap">0.3498%</td>
+               <td class="nowrap">0.2624%</td>
+               <td class="nowrap">7.87円</td>
+               <td class="nowrap">約38,116円</td>
+               <td class="nowrap">購入単位未満</td>
+             </tr>
+             
+             <tr class="ev-above-threshold">
+               <td class="nowrap">5位</td>
+               <td class="nowrap">8</td>
+               <td class="horse-name">シートゥサミット</td>
+               <td class="nowrap">1.50%</td>
+               <td class="nowrap">68.9</td>
+               <td class="nowrap">1.034</td>
+               <td class="nowrap">基準以上</td>
+               <td class="nowrap">0.0493%</td>
+               <td class="nowrap">0.0370%</td>
+               <td class="nowrap">1.11円</td>
+               <td class="nowrap">約270,249円</td>
+               <td class="nowrap">購入単位未満</td>
+             </tr>
+             
+             <tr>
+               <td class="nowrap">6位</td>
+               <td class="nowrap">5</td>
+               <td class="horse-name">カムアップローゼス</td>
+               <td class="nowrap">1.80%</td>
+               <td class="nowrap">52.9</td>
+               <td class="nowrap">0.952</td>
+               <td class="nowrap">基準未満</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">期待値基準未満</td>
+             </tr>
+             
+             <tr>
+               <td class="nowrap">7位</td>
+               <td class="nowrap">1</td>
+               <td class="horse-name">ロブチェン</td>
+               <td class="nowrap">55.00%</td>
+               <td class="nowrap">1.4</td>
+               <td class="nowrap">0.770</td>
+               <td class="nowrap">基準未満</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">期待値基準未満</td>
+             </tr>
+             
+             <tr>
+               <td class="nowrap">8位</td>
+               <td class="nowrap">6</td>
+               <td class="horse-name">エムズビギン</td>
+               <td class="nowrap">2.50%</td>
+               <td class="nowrap">29.7</td>
+               <td class="nowrap">0.743</td>
+               <td class="nowrap">基準未満</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">期待値基準未満</td>
+             </tr>
+             
+             <tr>
+               <td class="nowrap">9位</td>
+               <td class="nowrap">3</td>
+               <td class="horse-name">ゴーラッキー</td>
+               <td class="nowrap">4.50%</td>
+               <td class="nowrap">11.9</td>
+               <td class="nowrap">0.535</td>
+               <td class="nowrap">基準未満</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">期待値基準未満</td>
+             </tr>
+             
+             <tr>
+               <td class="nowrap">10位</td>
+               <td class="nowrap">9</td>
+               <td class="horse-name">グリーンエナジー</td>
+               <td class="nowrap">3.50%</td>
+               <td class="nowrap">7.9</td>
+               <td class="nowrap">0.277</td>
+               <td class="nowrap">基準未満</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">期待値基準未満</td>
+             </tr>
+             
+             <tr>
+               <td class="nowrap">11位</td>
+               <td class="nowrap">2</td>
+               <td class="horse-name">エイシンインアウト</td>
+               <td class="nowrap">1.70%</td>
+               <td class="nowrap">15.8</td>
+               <td class="nowrap">0.269</td>
+               <td class="nowrap">基準未満</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">0.0000%</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">-</td>
+               <td class="nowrap">期待値基準未満</td>
+             </tr>
+             
+           </tbody>
+           </table>
+         </div>
+       </details>
       
     </div>
       </div>
@@ -2368,15 +2353,15 @@
   <span class="tooltip-content" role="tooltip">Kelly基準で算出した購入割合を実際に何割使うかを示す係数です。0.5なら算出額の半分を使用します。</span>
 </span></span></strong><br>0.8</div>
 </div>
-    <h4 class="simulation-block-title simulation-result-title">購入結果</h4>
-<div class="metric-grid value-purchase-result">
-  <div><strong>判定</strong><br>購入なし</div>
-  <div><strong>合計購入額</strong><br>0円</div>
-  <div><strong>未使用予算</strong><br>3000円</div>
+    <div class="simulator-summary value-purchase-result" data-purchase-state="no-purchase">
+  <span><strong>判定:</strong> 購入なし</span>
+  <span><strong>合計購入額:</strong> 0円</span>
+  <span><strong>未使用予算:</strong> 3000円</span>
 </div>
     
     
     
+      
       <details class="simulation-details"><summary>全ペア期待値の詳細を見る</summary>
       
 <div class="table-scroll"><table class="evaluation-table">
@@ -2395,8 +2380,6 @@
 </span></span></th><th>購入額</th></tr></thead><tbody>
         <tr><td>5-7</td><td>0.51%</td><td>402.8</td><td>2.072</td><td>0.2667%</td><td>0.2134%</td><td>6.40円</td><td>0円</td></tr><tr><td>7-10</td><td>1.42%</td><td>144.7</td><td>2.051</td><td>0.7316%</td><td>0.5853%</td><td>17.56円</td><td>0円</td></tr><tr><td>4-10</td><td>1.42%</td><td>137.1</td><td>1.944</td><td>0.6933%</td><td>0.5547%</td><td>16.64円</td><td>0円</td></tr><tr><td>4-11</td><td>1.06%</td><td>180.6</td><td>1.911</td><td>0.5071%</td><td>0.4057%</td><td>12.17円</td><td>0円</td></tr><tr><td>4-5</td><td>0.51%</td><td>362.9</td><td>1.866</td><td>0.2394%</td><td>0.1915%</td><td>5.75円</td><td>0円</td></tr><tr><td>7-11</td><td>1.06%</td><td>168.5</td><td>1.783</td><td>0.4673%</td><td>0.3738%</td><td>11.22円</td><td>0円</td></tr><tr><td>4-8</td><td>0.44%</td><td>387.8</td><td>1.695</td><td>0.1796%</td><td>0.1437%</td><td>4.31円</td><td>0円</td></tr><tr><td>1-10</td><td>9.28%</td><td>18.0</td><td>1.670</td><td>3.9408%</td><td>3.1526%</td><td>94.58円</td><td>0円</td></tr><tr><td>1-5</td><td>3.52%</td><td>46.2</td><td>1.625</td><td>1.3834%</td><td>1.1067%</td><td>33.20円</td><td>0円</td></tr><tr><td>7-8</td><td>0.44%</td><td>369.0</td><td>1.613</td><td>0.1665%</td><td>0.1332%</td><td>4.00円</td><td>0円</td></tr><tr><td>5-10</td><td>0.29%</td><td>519.7</td><td>1.500</td><td>0.0964%</td><td>0.0771%</td><td>2.31円</td><td>0円</td></tr><tr><td>4-7</td><td>2.48%</td><td>57.3</td><td>1.424</td><td>0.7526%</td><td>0.6021%</td><td>18.06円</td><td>0円</td></tr><tr><td>10-11</td><td>0.60%</td><td>234.7</td><td>1.403</td><td>0.1726%</td><td>0.1381%</td><td>4.14円</td><td>0円</td></tr><tr><td>1-8</td><td>3.01%</td><td>45.4</td><td>1.366</td><td>0.8239%</td><td>0.6591%</td><td>19.77円</td><td>0円</td></tr><tr><td>5-11</td><td>0.21%</td><td>636.7</td><td>1.361</td><td>0.0567%</td><td>0.0454%</td><td>1.36円</td><td>0円</td></tr><tr><td>1-11</td><td>7.02%</td><td>19.1</td><td>1.341</td><td>1.8825%</td><td>1.5060%</td><td>45.18円</td><td>0円</td></tr><tr><td>8-11</td><td>0.18%</td><td>640.9</td><td>1.161</td><td>0.0252%</td><td>0.0202%</td><td>0.60円</td><td>0円</td></tr><tr><td>8-10</td><td>0.24%</td><td>470.4</td><td>1.152</td><td>0.0324%</td><td>0.0259%</td><td>0.78円</td><td>0円</td></tr><tr><td>6-10</td><td>0.39%</td><td>285.6</td><td>1.110</td><td>0.0387%</td><td>0.0310%</td><td>0.93円</td><td>0円</td></tr><tr><td>6-7</td><td>0.69%</td><td>153.8</td><td>1.062</td><td>0.0408%</td><td>0.0327%</td><td>-円</td><td>0円</td></tr><tr><td>4-6</td><td>0.69%</td><td>152.7</td><td>1.055</td><td>0.0361%</td><td>0.0289%</td><td>-円</td><td>0円</td></tr><tr><td>6-11</td><td>0.29%</td><td>347.0</td><td>1.000</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>1-7</td><td>15.79%</td><td>6.3</td><td>0.995</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>1-6</td><td>4.67%</td><td>21.0</td><td>0.980</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>1-4</td><td>15.79%</td><td>6.1</td><td>0.963</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>5-9</td><td>0.19%</td><td>427.4</td><td>0.806</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>6-8</td><td>0.12%</td><td>689.3</td><td>0.806</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>3-4</td><td>1.18%</td><td>68.0</td><td>0.801</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>9-10</td><td>0.53%</td><td>150.4</td><td>0.795</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>3-10</td><td>0.67%</td><td>118.6</td><td>0.791</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>3-7</td><td>1.18%</td><td>66.6</td><td>0.785</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>5-8</td><td>0.09%</td><td>904.1</td><td>0.781</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>3-11</td><td>0.50%</td><td>152.3</td><td>0.755</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>5-6</td><td>0.14%</td><td>517.0</td><td>0.713</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>3-5</td><td>0.24%</td><td>292.6</td><td>0.699</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>3-8</td><td>0.20%</td><td>335.4</td><td>0.679</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>9-11</td><td>0.39%</td><td>164.4</td><td>0.645</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>8-9</td><td>0.16%</td><td>402.1</td><td>0.643</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>7-9</td><td>0.94%</td><td>65.2</td><td>0.611</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>2-10</td><td>0.27%</td><td>196.6</td><td>0.539</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>1-3</td><td>7.78%</td><td>6.9</td><td>0.537</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>4-9</td><td>0.94%</td><td>56.1</td><td>0.526</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>2-7</td><td>0.49%</td><td>94.3</td><td>0.461</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>6-9</td><td>0.25%</td><td>154.3</td><td>0.393</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>3-6</td><td>0.32%</td><td>120.4</td><td>0.387</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>2-11</td><td>0.20%</td><td>185.2</td><td>0.376</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>2-4</td><td>0.49%</td><td>75.5</td><td>0.369</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>2-8</td><td>0.08%</td><td>411.0</td><td>0.337</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>1-9</td><td>6.25%</td><td>5.3</td><td>0.331</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>1-2</td><td>3.35%</td><td>9.5</td><td>0.318</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>2-5</td><td>0.10%</td><td>319.6</td><td>0.309</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>2-6</td><td>0.13%</td><td>220.7</td><td>0.289</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>3-9</td><td>0.44%</td><td>55.5</td><td>0.243</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>2-3</td><td>0.23%</td><td>87.1</td><td>0.197</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr><tr><td>2-9</td><td>0.18%</td><td>66.9</td><td>0.120</td><td>0.0000%</td><td>0.0000%</td><td>-円</td><td>0円</td></tr>
       </tbody></table></div></details>
-      <h4>購入対象</h4>
-      <p><strong>購入なし</strong>：最低期待値とKelly基準を満たす購入単位以上の候補がありません。</p>
     
   
 </div>
