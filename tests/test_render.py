@@ -1522,11 +1522,23 @@ class QuinellaRenderTests(unittest.TestCase):
                                 expected_metrics.append("refund")
                             expected_metrics.extend(["return", "profit"])
                             if stake:
-                                expected_metrics.append("roi")
+                                expected_metrics.append("return-rate")
                             self.assertEqual(
                                 [item["data-settlement-metric"] for item in summary.select("[data-settlement-metric]")],
                                 expected_metrics,
                             )
+                            metric_values = {
+                                item["data-settlement-metric"]: item.get_text(" ", strip=True).rsplit(" ", 1)[-1]
+                                for item in summary.select("[data-settlement-metric]")
+                            }
+                            self.assertEqual(metric_values["stake"], f"{stake}円")
+                            self.assertEqual(metric_values["return"], f"{refund}円")
+                            self.assertEqual(metric_values["profit"], f"{refund - stake}円")
+                            if stake:
+                                self.assertEqual(
+                                    metric_values["return-rate"],
+                                    f"{refund / stake * 100:.2f}%",
+                                )
                             self.assertEqual(len(panel.select(".settlement-no-purchase")), 0 if stake else 1)
                             self.assertIsNone(panel.select_one(".metric-grid"))
                             if stake:
@@ -1539,6 +1551,47 @@ class QuinellaRenderTests(unittest.TestCase):
                                 )
                             if not stake:
                                 self.assertIsNone(panel.find("table"))
+
+    def test_settlement_summary_formats_positive_profit_and_calculates_return_rate(self):
+        payload = payload_with_odds()
+        with patch("quinella.now_jst", return_value=parse_jst_datetime(CAPTURED)):
+            payload["simulation"] = calculate_pre_simulation(payload, load_config())
+        payload["result"] = parse_result(result_html())
+        expected_post = {
+            "total_stake": 3000,
+            "total_refund": 0,
+            "total_return": 4410,
+            "profit": 1410,
+            "roi": 0.47,
+            "selections": [{
+                "horse_number": 1,
+                "horse_numbers": [1, 2],
+                "stake": 3000,
+                "hit": True,
+                "refund": 0,
+                "payout": 4410,
+                "return": 4410,
+            }],
+        }
+        for simulation in (payload["simulation"][0]["general"], payload["simulation"][0]["statistical"]):
+            for ticket_name in ("win", "quinella"):
+                for method in ("value", "dutching"):
+                    simulation[ticket_name][method]["post"] = copy.deepcopy(expected_post)
+
+        soup = BeautifulSoup(
+            build_environment(ROOT).get_template("race.html.j2").render(
+                **build_race_context(payload), page_kind="result"),
+            "html.parser",
+        )
+        for summary in soup.select(".result-panel .settlement-summary"):
+            metric_values = {
+                item["data-settlement-metric"]: item.get_text(" ", strip=True).rsplit(" ", 1)[-1]
+                for item in summary.select("[data-settlement-metric]")
+            }
+            self.assertEqual(metric_values["stake"], "3000円")
+            self.assertEqual(metric_values["return"], "4410円")
+            self.assertEqual(metric_values["profit"], "+1410円")
+            self.assertEqual(metric_values["return-rate"], "147.00%")
 
     def test_weather_and_saved_popularity_on_both_ai_result_tables(self):
         payload = payload_with_odds()
