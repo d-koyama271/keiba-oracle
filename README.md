@@ -246,6 +246,19 @@ python src/backtest.py
 
 backtestは保存済みprediction・単勝オッズ・resultを使い、現在の設定で単勝value/dutchingを再計算して方式別の収支を表示します。馬連backtestではなく、race JSONや保存済みsimulationも変更しません。通常の評価集計は再計算値ではなく保存済みpostを使用します。
 
+## 勝利スコア実験
+
+`score_experiment.py`は保存済みgeneral prediction inputをそのまま使い、`config/prompt_prediction_score.txt`でスコアを生成する手動実験ツールです。本番予想・race JSON・公開フローには接続しません。
+
+```bash
+python src/score_experiment.py
+python src/score_experiment.py --date 2026-09-27
+python src/score_experiment.py --race-id 202606040911
+python src/score_experiment.py --date 2026-09-27 --race-id 202606040911
+```
+
+出力先は`data_dir/experiments/score/YYYY-MM-DD/<stem>.json`です。既存出力はskipし、`--force`指定時だけ再生成します。レース単位の失敗後も残りを処理し、最後に成功・skip・失敗件数を表示します。
+
 ## render・publish・deploy
 
 ```text

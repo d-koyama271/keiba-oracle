@@ -20,6 +20,7 @@ import response_importer  # noqa: E402
 import run_pre  # noqa: E402
 import run_pre_collect  # noqa: E402
 import simulate  # noqa: E402
+import score_experiment  # noqa: E402
 from llm_client import LLMClient  # noqa: E402
 from utils import ensure_race_payload, JST, load_config, load_race_json, save_race_json, parse_jst_datetime  # noqa: E402
 
@@ -491,13 +492,17 @@ class CodexClientTests(unittest.TestCase):
                 self.assertEqual(client.model, config["llm_model"])
                 self.assertEqual(client.reasoning_effort, effort)
 
-    def _invoke_codex_with_environment(self, environment: dict[str, str]) -> tuple[list[str], dict, dict]:
+    def _invoke_codex_with_environment(
+        self, environment: dict[str, str], output_schema: dict | None = None
+    ) -> tuple[list[str], dict, dict]:
         commands: list[list[str]] = []
         run_kwargs: dict = {}
 
         def run(command: list[str], **kwargs):
             commands.append(command)
             run_kwargs.update(kwargs)
+            schema_path = Path(command[command.index("--output-schema") + 1])
+            run_kwargs["output_schema"] = json.loads(schema_path.read_text(encoding="utf-8"))
             output_path = Path(command[command.index("--output-last-message") + 1])
             output_path.write_text(
                 json.dumps(
@@ -507,6 +512,7 @@ class CodexClientTests(unittest.TestCase):
                         ],
                         "optional_summary": "test summary",
                     }
+                    if output_schema is None else {"score": 72.5}
                 ),
                 encoding="utf-8",
             )
@@ -520,9 +526,9 @@ class CodexClientTests(unittest.TestCase):
             "llm_client.subprocess.run",
             side_effect=run,
         ):
-            response = LLMClient.from_config(self.CONFIG).invoke_json(
-                "ONLY_INPUT",
-            )
+            client = LLMClient.from_config(self.CONFIG)
+            response = (client.invoke_json("ONLY_INPUT") if output_schema is None
+                        else client.invoke_json("ONLY_INPUT", output_schema=output_schema))
 
         return commands[0], run_kwargs, response
 
@@ -544,6 +550,15 @@ class CodexClientTests(unittest.TestCase):
         self.assertEqual(run_kwargs["env"]["HOME"], r"C:\Users\runner")
         self.assertNotIn("CODEX_HOME", run_kwargs["env"])
         self.assertEqual(response["horses"][0]["horse_number"], 1)
+        properties = run_kwargs["output_schema"]["properties"]["horses"]["items"]["properties"]
+        self.assertEqual(set(properties), {"horse_number", "win_probability", "reason"})
+        self.assertEqual(properties["win_probability"], {"type": "number", "minimum": 0, "maximum": 1})
+        with self.subTest(output_schema="custom"):
+            schema = {"type": "object", "properties": {"score": {"type": "number"}},
+                      "required": ["score"], "additionalProperties": False}
+            _, kwargs, response = self._invoke_codex_with_environment({"USERPROFILE": r"C:\Users\runner"}, schema)
+            self.assertEqual(kwargs["output_schema"], schema)
+            self.assertEqual(response, {"score": 72.5})
 
     def test_codex_failure_or_invalid_json_is_not_retried(self):
         for invalid_json in (False, True):
@@ -1026,6 +1041,72 @@ class FlowAndCompatibilityTests(unittest.TestCase):
             saved = load_race_json(imported)
             self.assertEqual(saved["prediction"][-1]["runtime_provider"], "manual")
             self.assertEqual(saved["prediction"][-1]["model"], "manual-import")
+
+
+class ScoreExperimentTests(unittest.TestCase):
+    def test_score_response_requires_exact_horse_set_and_valid_scores_and_text(self):
+        horses = [{"horse_number": 1}, {"horse_number": 2}]
+        items = [{"horse_number": 2, "score": 100, "reason": "second"},
+                 {"horse_number": 1, "score": 0, "reason": "first"}]
+        response = {"horses": items, "optional_summary": "summary"}
+        normalized = score_experiment.normalize_score_response(response, horses)
+        self.assertEqual(normalized["horses"], list(reversed(items)))
+        invalid_items = [items[:1], [items[0], items[0]],
+                         [items[0], {**items[1], "horse_number": 3}],
+                         [items[0], {**items[1], "reason": " "}]]
+        invalid_items += [[items[0], {**items[1], "score": score}]
+                          for score in (-1, 101, float("nan"), float("inf"), True, "50")]
+        for invalid in invalid_items:
+            with self.subTest(items=invalid), self.assertRaises(ValueError):
+                score_experiment.normalize_score_response({**response, "horses": invalid}, horses)
+        for summary in (" ", None):
+            with self.subTest(summary=summary), self.assertRaises(ValueError):
+                score_experiment.normalize_score_response({**response, "optional_summary": summary}, horses)
+
+    def test_score_batch_uses_saved_inputs_continues_after_failure_and_skips_unless_forced(self):
+        config = {"data_dir": "data", "llm_provider": "codex", "llm_model": "gpt-test", "llm_reasoning_effort": "high"}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "config").mkdir()
+            (root / "config" / "prompt_prediction_score.txt").write_text("{{RACE_CONTEXT}}", encoding="utf-8")
+            saved = []
+            for index, date in enumerate(("2026-09-20", "2026-09-27")):
+                snapshot = predict.build_prediction_chat_input(config, race_payload())
+                snapshot["meta"]["race_id"] = f"race-{index}"
+                snapshot["race"]["date"] = date
+                path = root / "data" / "prediction_inputs" / date / "race.json"
+                path.parent.mkdir(parents=True)
+                path.write_text(json.dumps(snapshot), encoding="utf-8")
+                saved.append((path, snapshot))
+            statistical_path = saved[1][0].with_suffix(".statistical.json")
+            statistical_path.write_text(json.dumps(saved[1][1]), encoding="utf-8")
+            before = {path: path.read_bytes() for path in [item[0] for item in saved] + [statistical_path]}
+            response = {"horses": [{"horse_number": 2, "score": 30, "reason": "second"},
+                                   {"horse_number": 1, "score": 70, "reason": "first"}], "optional_summary": "summary"}
+            client = LLMClient.from_config(config)
+            with patch.object(score_experiment.LLMClient, "from_config", return_value=client), \
+                 patch.object(client, "invoke_json", side_effect=[RuntimeError("runtime failure"), response]) as invoke, \
+                 patch("builtins.print"):
+                counts = score_experiment.run_score_experiment(config, root=root)
+                self.assertEqual(counts, {"success": 1, "skip": 0, "failure": 1})
+                output = root / "data" / "experiments" / "score" / "2026-09-27" / "race.json"
+                result = json.loads(output.read_text(encoding="utf-8"))
+                self.assertEqual(result["prediction_input_sha256"], predict.prediction_input_sha256(saved[1][1]))
+                self.assertEqual(json.loads(invoke.call_args.args[0]), saved[1][1])
+                self.assertEqual([item["horse_number"] for item in result["horses"]], [1, 2])
+                self.assertEqual(len(list((root / "data" / "experiments").rglob("*.json"))), 1)
+                invoke.reset_mock()
+                saved[1][0].write_text("invalid input", encoding="utf-8")
+                self.assertEqual(score_experiment.run_score_experiment(config, "2026-09-27", root=root),
+                                 {"success": 0, "skip": 1, "failure": 0})
+                invoke.assert_not_called()
+                saved[1][0].write_bytes(before[saved[1][0]])
+                invoke.side_effect = None
+                invoke.return_value = {**response, "optional_summary": "regenerated"}
+                self.assertEqual(score_experiment.run_score_experiment(config, "2026-09-27", "race-1", True, root),
+                                 {"success": 1, "skip": 0, "failure": 0})
+                self.assertEqual(json.loads(output.read_text(encoding="utf-8"))["optional_summary"], "regenerated")
+            self.assertEqual({path: path.read_bytes() for path in before}, before)
 
 
 if __name__ == "__main__":

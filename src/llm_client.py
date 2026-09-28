@@ -21,18 +21,20 @@ class LLMClient:
     def from_config(cls, config: dict[str, Any]) -> "LLMClient":
         return cls(config["llm_provider"], config["llm_model"], config.get("llm_reasoning_effort"))
 
-    def invoke_json(self, prompt: str) -> dict[str, Any]:
-        raw = self._invoke_text(prompt)
+    def invoke_json(
+        self, prompt: str, output_schema: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        raw = self._invoke_text(prompt, output_schema)
         return json.loads(self._extract_json(raw))
 
-    def _invoke_text(self, prompt: str) -> str:
+    def _invoke_text(self, prompt: str, output_schema: dict[str, Any] | None = None) -> str:
         if self.provider == "codex":
-            return self._invoke_codex(prompt)
+            return self._invoke_codex(prompt, output_schema)
         if self.provider == "openai":
             return self._invoke_openai(prompt)
         raise ValueError(f"Unsupported llm_provider: {self.provider}")
 
-    def _invoke_codex(self, prompt: str) -> str:
+    def _invoke_codex(self, prompt: str, output_schema: dict[str, Any] | None = None) -> str:
         executable = shutil.which("codex")
         if not executable:
             raise RuntimeError("Codex CLI is not available on PATH")
@@ -71,6 +73,8 @@ class LLMClient:
                 "optional_summary": {"type": "string", "minLength": 1},
             },
         }
+        if output_schema is not None:
+            schema = output_schema
 
         with tempfile.TemporaryDirectory(prefix="keiba-oracle-codex-") as directory:
             working_dir = Path(directory)

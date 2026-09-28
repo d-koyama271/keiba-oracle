@@ -30,6 +30,7 @@ Thumbs.db
 public/
 data/races/
 data/prediction_inputs/
+data/experiments/
 data/automation/
 data/deploy/
 data/_site_stage/
