@@ -272,6 +272,14 @@ def mobile_entry_rows(table: Any) -> list[dict[str, Any]]:
         )
         jockey_name = jockey_node.select_one("em") if jockey_node else None
         horse_db_link = row.select_one('a[href*="db.sp.netkeiba.com/horse/"]')
+        sex_age_node = row.select_one("dd.Age, .SexAge, .Sex_Age, .Barei")
+        age, sex = parse_horse_age_sex(
+            sex_age_node.get_text(" ", strip=True) if sex_age_node else None
+        )
+        weight_node = row.select_one("td.HorseWeight, td.BodyWeight, td.Weight, dd.HorseWeight, dd.BodyWeight")
+        body_weight, body_weight_change = parse_body_weight(
+            weight_node.get_text(" ", strip=True) if weight_node else None
+        )
         entries.append(
             {
                 "horse_number": parse_int(number_cell.get_text(" ", strip=True)),
@@ -288,6 +296,11 @@ def mobile_entry_rows(table: Any) -> list[dict[str, Any]]:
                     else None
                 ),
                 "horse_url": horse_db_link.get("href") if horse_db_link else None,
+                "jockey_id": jockey_id_from_node(jockey_node) if jockey_node else None,
+                "age": age,
+                "sex": sex,
+                "body_weight": body_weight,
+                "body_weight_change": body_weight_change,
             }
         )
     return entries
@@ -669,6 +682,27 @@ def history_race_id(row_node: Any) -> str | None:
     return None
 
 
+def jockey_id_from_node(node: Any) -> str | None:
+    for link in node.select('a[href*="/jockey/"]'):
+        match = re.search(r"/jockey/(?:[^/]+/)*(\d+)/?$", urlparse(link.get("href", "")).path)
+        if match:
+            return match.group(1)
+    return None
+
+
+def same_jockey(
+    current_name: str | None,
+    current_id: str | None,
+    past_name: str | None,
+    past_id: str | None,
+) -> bool:
+    if current_id and past_id:
+        return current_id == past_id
+    current = normalize_space(current_name).replace(" ", "")
+    past = normalize_space(past_name).replace(" ", "")
+    return bool(current and current == past)
+
+
 def normalize_weather(value: Any) -> str | None:
     text = normalize_space(value)
     if not text:
@@ -758,12 +792,17 @@ def parse_race_time(value: Any) -> tuple[str | None, float | None]:
 
 def parse_body_weight(value: Any) -> tuple[int | None, int | None]:
     text = normalize_space(value)
-    match = re.fullmatch(r"(\d+)(?:\(([+-]?\d+)\))?", text)
+    match = re.fullmatch(r"(\d+)\s*(?:\(\s*([+-]?\d+|前計不)\s*\))?", text)
     if not match:
         return None, None
     body_weight = int(match.group(1))
-    change = int(match.group(2)) if match.group(2) is not None else None
+    change = int(match.group(2)) if match.group(2) not in (None, "前計不") else None
     return body_weight, change
+
+
+def parse_horse_age_sex(value: Any) -> tuple[int | None, str | None]:
+    match = re.search(r"(?:^|\s)([牡牝セ])\s*(\d{1,2})(?=\s|$)", normalize_space(value))
+    return (int(match.group(2)), match.group(1)) if match else (None, None)
 
 
 def parse_history_run(row: dict[str, Any]) -> dict[str, Any]:
@@ -787,6 +826,7 @@ def parse_history_run(row: dict[str, Any]) -> dict[str, Any]:
         "popularity": parse_int(row.get("人気")),
         "finish_position": parse_finish_position(row.get("着順")),
         "jockey": normalize_space(row.get("騎手")) or None,
+        "_jockey_id": jockey_id_from_node(row["_row"]),
         "weight_carried": parse_float(row.get("斤量")),
         "race_time": race_time,
         "race_time_seconds": race_time_seconds,
@@ -824,6 +864,7 @@ def build_career_summaries(
     all_runs: list[dict[str, Any]],
     current_race: dict[str, Any],
     current_jockey: str | None,
+    current_jockey_id: str | None = None,
 ) -> dict[str, Any]:
     jra_runs = [run for run in all_runs if is_jra_history(run)]
     current_track = current_race.get("track")
@@ -867,7 +908,7 @@ def build_career_summaries(
     jockey_runs = [
         run
         for run in jra_runs
-        if current_jockey and normalize_space(run.get("jockey")) == normalize_space(current_jockey)
+        if same_jockey(current_jockey, current_jockey_id, run.get("jockey"), run.get("_jockey_id"))
     ]
 
     distance_record = {
@@ -917,10 +958,14 @@ def build_horse_summaries(
     past_runs: list[dict[str, Any]],
     career_summaries: dict[str, Any],
     last_run_jockey: str | None,
+    current_jockey_id: str | None = None,
 ) -> None:
-    horse["past_runs"] = past_runs
-    horse["career_summaries"] = career_summaries
     last_run = past_runs[0] if past_runs else None
+    horse["past_runs"] = [
+        {key: value for key, value in run.items() if key != "_jockey_id"}
+        for run in past_runs
+    ]
+    horse["career_summaries"] = career_summaries
     current_distance = parse_int(current_race.get("distance"))
     current_surface = current_race.get("surface")
 
@@ -943,8 +988,12 @@ def build_horse_summaries(
         else:
             horse["weight_change_from_last_run"] = None
 
-        if last_run_jockey:
-            horse["jockey_change"] = "同じ" if last_run_jockey == horse.get("jockey") else f"{last_run_jockey}から替わり"
+        if last_run_jockey or last_run.get("_jockey_id"):
+            horse["jockey_change"] = (
+                "同じ"
+                if same_jockey(horse.get("jockey"), current_jockey_id, last_run_jockey, last_run.get("_jockey_id"))
+                else f"{last_run_jockey}から替わり" if last_run_jockey else "乗り替わり"
+            )
         else:
             horse["jockey_change"] = "不明"
     else:
@@ -1015,6 +1064,13 @@ def parse_race_overview(
     detail_text = race_detail_text(soup)
     start_time_match = re.search(r"(\d{1,2}:\d{2})", detail_text)
     distance_match = re.search(r"(芝|ダ|障)\s*([0-9]{3,4})m", detail_text)
+    course_match = re.search(
+        r"(?:芝|ダ|障)\s*[0-9]{3,4}m\s*(?:[(（]([^()（）]*)[)）]|((?:右|左|直線)(?:\s*(?:内|外))?))",
+        detail_text,
+    )
+    course_text = (course_match.group(1) or course_match.group(2)) if course_match else ""
+    direction_match = re.search(r"右|左|直線", course_text)
+    inner_outer_match = re.search(r"内|外", course_text)
 
     surface = None
     distance = None
@@ -1035,6 +1091,8 @@ def parse_race_overview(
         "start_time": start_time_match.group(1) if start_time_match else None,
         "distance": distance,
         "surface": surface,
+        "course_direction": direction_match.group() if direction_match else None,
+        "course_inner_outer": inner_outer_match.group() if inner_outer_match else None,
         "going": conditions["going"],
         "weather": conditions["weather"],
         "age_condition": age_match.group(1) if age_match else None,
@@ -1077,11 +1135,12 @@ def parse_horse_history(
     current_race_id: str,
     current_race: dict[str, Any],
     current_jockey: str | None,
+    current_jockey_id: str | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any], str | None]:
-    empty_summaries = build_career_summaries([], current_race, current_jockey)
+    empty_summaries = build_career_summaries([], current_race, current_jockey, current_jockey_id)
     horse_id_match = re.search(r"/horse/(?:result/)?(\d+)", horse_url)
     if not horse_id_match:
-        return [], empty_summaries, None
+        raise ValueError("horse history URL has no horse ID")
 
     horse_id = horse_id_match.group(1)
     try:
@@ -1099,6 +1158,8 @@ def parse_horse_history(
         payload = response.json()
         soup = BeautifulSoup(payload.get("data", ""), "html.parser")
         table = find_history_table(soup)
+        if table is None and "競走データがありません" not in soup.get_text(" ", strip=True):
+            raise ValueError("horse history response is not a history table")
         history_rows = rows_from_table(table) if table is not None else []
     except requests.RequestException:
         response = session.get(
@@ -1108,24 +1169,37 @@ def parse_horse_history(
         )
         response.raise_for_status()
         response.encoding = response.apparent_encoding or response.encoding
-        history_rows = mobile_history_rows(BeautifulSoup(response.text, "html.parser"))
+        soup = BeautifulSoup(response.text, "html.parser")
+        if soup.select_one("table.table_slide_body") is None and "競走データがありません" not in soup.get_text(" ", strip=True):
+            raise ValueError("mobile horse history response is not a history table")
+        history_rows = mobile_history_rows(soup)
 
     if not history_rows:
         return [], empty_summaries, None
 
     all_runs: list[dict[str, Any]] = []
+    valid_rows = 0
     for row in history_rows:
         run = parse_history_run(row)
+        try:
+            date_cls.fromisoformat(run["date"])
+        except (TypeError, ValueError):
+            continue
+        if not run["race_id"]:
+            continue
+        valid_rows += 1
         if run["race_id"] == current_race_id:
             continue
         all_runs.append(run)
+    if not valid_rows:
+        raise ValueError("horse history has no usable rows")
 
     all_runs.sort(key=lambda run: run.get("date") or "", reverse=True)
     past_runs = all_runs[:5]
     previous_jockey = past_runs[0].get("jockey") if past_runs else None
     return (
         past_runs,
-        build_career_summaries(all_runs, current_race, current_jockey),
+        build_career_summaries(all_runs, current_race, current_jockey, current_jockey_id),
         previous_jockey,
     )
 
@@ -1152,12 +1226,17 @@ def parse_horses(
             if horse_number is None:
                 continue
             odds = odds_map.get(horse_number, {})
+            current_jockey_id = entry["jockey_id"]
             horse = {
                 "horse_number": horse_number,
                 "frame_number": entry["frame_number"],
                 "horse_name": entry["horse_name"],
                 "jockey": entry["jockey"],
+                "age": entry["age"],
+                "sex": entry["sex"],
                 "weight_carried": entry["weight_carried"],
+                "body_weight": entry["body_weight"],
+                "body_weight_change": entry["body_weight_change"],
                 "popularity": odds.get("popularity"),
                 "win_odds": odds.get("win_odds"),
             }
@@ -1166,6 +1245,7 @@ def parse_horses(
                 [], current_race, horse.get("jockey")
             )
             last_run_jockey = None
+            horse["history_status"] = "unavailable"
             if entry["horse_url"]:
                 try:
                     past_runs, career_summaries, last_run_jockey = parse_horse_history(
@@ -1174,7 +1254,9 @@ def parse_horses(
                         current_race_id,
                         current_race,
                         horse.get("jockey"),
+                        current_jockey_id,
                     )
+                    horse["history_status"] = "available" if past_runs else "no_runs"
                 except Exception:  # noqa: BLE001
                     past_runs, last_run_jockey = [], None
             build_horse_summaries(
@@ -1183,6 +1265,7 @@ def parse_horses(
                 past_runs,
                 career_summaries,
                 last_run_jockey,
+                current_jockey_id,
             )
             horses.append(horse)
         return sorted(horses, key=lambda item: item["horse_number"])
@@ -1198,12 +1281,21 @@ def parse_horses(
         horse_url = urljoin("https://db.netkeiba.com", horse_link["href"]) if horse_link else None
 
         odds = odds_map.get(horse_number, {})
+        current_jockey_id = jockey_id_from_node(row_node)
+        age, sex = parse_horse_age_sex(row.get("性齢"))
+        body_weight, body_weight_change = parse_body_weight(
+            row.get("馬体重(増減)") or row.get("馬体重（増減）") or row.get("馬体重")
+        )
         horse = {
             "horse_number": horse_number,
             "frame_number": parse_int(row.get("枠")),
             "horse_name": row.get("馬名"),
             "jockey": row.get("騎手"),
+            "age": age,
+            "sex": sex,
             "weight_carried": parse_float(row.get("斤量")),
+            "body_weight": body_weight,
+            "body_weight_change": body_weight_change,
             "popularity": odds.get("popularity"),
             "win_odds": odds.get("win_odds"),
         }
@@ -1211,6 +1303,7 @@ def parse_horses(
         past_runs: list[dict[str, Any]] = []
         career_summaries = build_career_summaries([], current_race, horse.get("jockey"))
         last_run_jockey = None
+        horse["history_status"] = "unavailable"
         if horse_url:
             try:
                 past_runs, career_summaries, last_run_jockey = parse_horse_history(
@@ -1219,10 +1312,12 @@ def parse_horses(
                     current_race_id,
                     current_race,
                     horse.get("jockey"),
+                    current_jockey_id,
                 )
+                horse["history_status"] = "available" if past_runs else "no_runs"
             except Exception:  # noqa: BLE001
                 past_runs, last_run_jockey = [], None
-        build_horse_summaries(horse, current_race, past_runs, career_summaries, last_run_jockey)
+        build_horse_summaries(horse, current_race, past_runs, career_summaries, last_run_jockey, current_jockey_id)
         horses.append(horse)
 
     horses.sort(key=lambda item: item["horse_number"])

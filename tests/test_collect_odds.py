@@ -226,61 +226,68 @@ class OddsFallbackTests(TestCase):
     def test_desktop_shutuba_table_is_not_parsed_as_mobile(self) -> None:
         entry_html = """
         <h1 class="RaceName">検証レース</h1>
-        <div class="RaceData01">15:20発走 / 芝1200m</div>
+        <div class="RaceData01">15:20発走 / 芝1200m (右 外 C)</div>
         <table class="Shutuba_Table RaceTable01 ShutubaTable">
           <thead><tr>
-            <th>枠</th><th>馬番</th><th>馬名</th><th>斤量</th><th>騎手</th><th>人気</th>
+            <th>枠</th><th>馬番</th><th>馬名</th><th>性齢</th><th>斤量</th><th>騎手</th><th>馬体重(増減)</th><th>人気</th>
           </tr></thead><tbody>
-            <tr class="HorseList"><td>1</td><td>1</td><td>Horse A</td><td>55</td><td>Jockey A</td><td>1</td></tr>
-            <tr class="HorseList"><td>2</td><td>2</td><td>Horse B</td><td>55</td><td>Jockey B</td><td>2</td></tr>
+            <tr class="HorseList"><td>1</td><td>1</td><td>Horse A</td><td>牡3</td><td>55</td><td>Jockey A</td><td>466(-4)</td><td>1</td></tr>
+            <tr class="HorseList"><td>2</td><td>2</td><td>Horse B</td><td>牝4</td><td>55</td><td>Jockey B</td><td>計不</td><td>2</td></tr>
           </tbody>
         </table>
         """
 
         self.assertEqual(parse_entry_horse_identities(entry_html, mobile=False), EXPECTED_HORSES)
+        horses = parse_horses(None, entry_html, race(), RACE_ID, NETKEIBA_ODDS)
         self.assertEqual(
-            [horse["horse_name"] for horse in parse_horses(None, entry_html, race(), RACE_ID, NETKEIBA_ODDS)],
+            [horse["horse_name"] for horse in horses],
             ["Horse A", "Horse B"],
         )
         self.assertEqual(
-            parse_race_overview(
-                entry_html,
-                RACE_ID,
-                "2026-07-19",
-                60,
-                source_url=f"https://race.netkeiba.com/race/shutuba.html?race_id={RACE_ID}",
-            )["source_url"],
-            f"https://race.netkeiba.com/race/shutuba.html?race_id={RACE_ID}",
+            [(horse["age"], horse["sex"], horse["body_weight"], horse["body_weight_change"]) for horse in horses],
+            [(3, "牡", 466, -4), (4, "牝", None, None)],
         )
+        overview = parse_race_overview(
+            entry_html, RACE_ID, "2026-07-19", 60,
+            source_url=f"https://race.netkeiba.com/race/shutuba.html?race_id={RACE_ID}",
+        )
+        self.assertEqual(overview["source_url"], f"https://race.netkeiba.com/race/shutuba.html?race_id={RACE_ID}")
+        self.assertEqual((overview["course_direction"], overview["course_inner_outer"]), ("右", "外"))
+        missing = parse_race_overview('<div class="RaceData01">芝1200m</div>', RACE_ID, "2026-07-19", 60)
+        self.assertEqual((missing["course_direction"], missing["course_inner_outer"]), (None, None))
+        for course, expected in (("芝1600m (左 内)", ("左", "内")), ("芝1000m (直線)", ("直線", None))):
+            with self.subTest(course=course):
+                parsed = parse_race_overview(f'<div class="RaceData01">{course}</div>', RACE_ID, "2026-07-19", 60)
+                self.assertEqual((parsed["course_direction"], parsed["course_inner_outer"]), expected)
 
     def test_mobile_shutuba_table_uses_mobile_row_structure(self) -> None:
         entry_html = """
+        <div class="RaceList_NameBox"><div class="Race_Data">15:20 芝1200m(右 外 C)</div></div>
         <table class="Shutuba_Table">
           <tr class="HorseList">
             <td class="Waku1">1</td>
             <td class="Horse_Info">
               <dt class="Horse"><a href="/horse/1">Horse A</a></dt>
+              <dd class="Age">セ5</dd>
               <dd class="Jockey"><em>Jockey A</em> 55</dd>
             </td>
+            <td class="Weight">510<br><span>(-2)</span></td>
           </tr>
         </table>
         """
 
         self.assertEqual(parse_entry_horse_identities(entry_html, mobile=True), {1: "Horse A"})
+        horses = parse_horses(None, entry_html, race(), RACE_ID, NETKEIBA_ODDS, mobile=True)
         self.assertEqual(
-            [
-                horse["horse_name"]
-                for horse in parse_horses(
-                    None,
-                    entry_html,
-                    race(),
-                    RACE_ID,
-                    NETKEIBA_ODDS,
-                    mobile=True,
-                )
-            ],
+            [horse["horse_name"] for horse in horses],
             ["Horse A"],
         )
+        self.assertEqual(
+            tuple(horses[0][key] for key in ("age", "sex", "body_weight", "body_weight_change")),
+            (5, "セ", 510, -2),
+        )
+        overview = parse_race_overview(entry_html, RACE_ID, "2026-07-19", 60)
+        self.assertEqual((overview["course_direction"], overview["course_inner_outer"]), ("右", "外"))
 
     def test_netkeiba_middle_status_with_complete_data_is_parsed(self) -> None:
         body = {

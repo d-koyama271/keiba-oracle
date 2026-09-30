@@ -239,6 +239,8 @@ class PredictionValidationTests(unittest.TestCase):
                 "age_condition": "3歳以上",
                 "sex_condition": "牝",
                 "weight_condition": "別定",
+                "course_direction": "右",
+                "course_inner_outer": "外",
                 "race_info_captured_at": "2026-08-16T14:45:00+09:00",
                 "odds_source": "netkeiba",
                 "odds_source_url": "https://example.invalid/odds",
@@ -250,6 +252,11 @@ class PredictionValidationTests(unittest.TestCase):
         payload["horses"][0].update(
             {
                 "jockey": "騎手A",
+                "sex": "牝",
+                "age": 4,
+                "body_weight": 466,
+                "body_weight_change": -4,
+                "history_status": "available",
                 "past_runs": [
                     {
                         "race_id": "202601010101",
@@ -275,9 +282,14 @@ class PredictionValidationTests(unittest.TestCase):
         self.assertEqual(first["meta"]["method"], "statistical")
         self.assertEqual(first["race"]["surface"], "芝")
         self.assertEqual(first["race"]["distance"], 2000)
-        for key in ("age_condition", "sex_condition", "weight_condition", "race_info_captured_at"):
+        for key in (
+            "age_condition", "sex_condition", "weight_condition", "course_direction",
+            "course_inner_outer", "race_info_captured_at",
+        ):
             self.assertEqual(first["race"][key], payload["race"][key])
         self.assertEqual(first["horses"][0]["jockey"], "騎手A")
+        for key in ("sex", "age", "body_weight", "body_weight_change", "history_status"):
+            self.assertEqual(first["horses"][0][key], payload["horses"][0][key])
         self.assertEqual(first["horses"][0]["past_runs"][0]["finish_position"], 2)
         self.assertEqual(first["horses"][0]["past_runs"][0]["race_time_seconds"], 120.4)
 

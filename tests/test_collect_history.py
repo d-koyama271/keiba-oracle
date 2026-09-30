@@ -21,6 +21,7 @@ from collect import (  # noqa: E402
     mobile_history_rows,
     parse_body_weight,
     parse_horse_history,
+    parse_horses,
     parse_race_overview,
     parse_race_time,
 )
@@ -61,6 +62,8 @@ def history_html(rows: list[dict]) -> str:
             value = html.escape(str(row.get(name, "")))
             if name == "レース名" and row.get("race_id"):
                 value = f'<a href="https://db.netkeiba.com/race/{row["race_id"]}/">{value}</a>'
+            if name == "騎手" and row.get("jockey_url"):
+                value = f'<a href="{row["jockey_url"]}">{value}</a>'
             cells.append(f"<td>{value}</td>")
         body.append(f"<tr>{''.join(cells)}</tr>")
     return f"<table><thead><tr>{header}</tr></thead><tbody>{''.join(body)}</tbody></table>"
@@ -123,6 +126,7 @@ class HistoryParsingTests(unittest.TestCase):
         self.assertEqual(parse_body_weight("466(-4)"), (466, -4))
         self.assertEqual(parse_body_weight("476(+12)"), (476, 12))
         self.assertEqual(parse_body_weight("466"), (466, None))
+        self.assertEqual(parse_body_weight("532 (前計不)"), (532, None))
         self.assertEqual(parse_body_weight("計不"), (None, None))
         class_cases = {
             "天皇賞(春)(GI)": "G1",
@@ -259,6 +263,60 @@ class HistoryParsingTests(unittest.TestCase):
         self.assertEqual(past_runs[0]["body_weight_change"], -4)
         self.assertEqual(past_runs[0]["class_grade"], "G3")
 
+    def test_jockey_identity_is_shared_by_change_and_combo_record(self) -> None:
+        race = {"date": "2026-07-19", "track": "小倉", "surface": "芝", "distance": 2000}
+        cases = (
+            ("松山", "01126", "松山弘平", "01126", True),
+            ("松山弘平", "01126", "松山弘平", "01234", False),
+            ("松山弘平", None, "松山弘平", None, True),
+            ("松山", None, "松山弘平", None, False),
+            ("松山弘平", "01126", "松山弘平", None, True),
+            ("松山", "01126", "", "01126", True),
+        )
+        for current_name, current_id, past_name, past_id, same in cases:
+            with self.subTest(current_name=current_name, current_id=current_id, past_name=past_name, past_id=past_id):
+                row = history_row("202610020111", "2026/07/01")
+                row["騎手"] = past_name
+                if past_id:
+                    row["jockey_url"] = f"https://db.sp.netkeiba.com/jockey/{past_id}/"
+                past_runs, summaries, previous_jockey = parse_horse_history(
+                    FakeSession(history_html([row])),
+                    "https://db.netkeiba.com/horse/2020100001",
+                    "202610020811",
+                    race,
+                    current_name,
+                    current_id,
+                )
+                horse = {"horse_number": 1, "jockey": current_name, "weight_carried": 57.0}
+                build_horse_summaries(horse, race, past_runs, summaries, previous_jockey, current_id)
+
+                self.assertEqual(horse["jockey_change"] == "同じ", same)
+                self.assertEqual(horse["career_summaries"]["current_jockey_combo_record"]["runs"], int(same))
+                self.assertNotIn("_jockey_id", json.dumps(horse, ensure_ascii=False))
+                self.assertNotIn("_jockey_id", json.dumps(build_prediction_chat_input(
+                    {"data_dir": "data"},
+                    {"meta": {"race_id": "202610020811"}, "race": race, "horses": [horse]},
+                ), ensure_ascii=False))
+
+    def test_history_status_distinguishes_runs_empty_and_unavailable(self) -> None:
+        entry_html = """
+            <table><thead><tr><th>枠</th><th>馬番</th><th>馬名</th><th>斤量</th><th>騎手</th><th>人気</th></tr></thead>
+            <tbody><tr><td>1</td><td>1</td><td><a href="/horse/2020100001/">テスト馬</a></td>
+            <td>57</td><td><a href="/jockey/01126/">松山</a></td><td>1</td></tr></tbody></table>
+        """
+        race = {"date": "2026-07-19", "track": "小倉", "surface": "芝", "distance": 2000}
+        cases = (
+            (history_html([history_row("202610020111", "2026/07/01")]), "available"),
+            (history_html([]), "no_runs"),
+            ("<div>競走データがありません</div>", "no_runs"),
+            (history_html([{"日付": "invalid", "着順": "1"}]), "unavailable"),
+            ("<div>unexpected response</div>", "unavailable"),
+        )
+        for body, expected in cases:
+            with self.subTest(expected=expected):
+                horses = parse_horses(FakeSession(body), entry_html, race, "202610020811", {})
+                self.assertEqual(horses[0]["history_status"], expected)
+
 
 class CareerSummaryTests(unittest.TestCase):
     def make_run(
@@ -338,12 +396,18 @@ class CareerSummaryTests(unittest.TestCase):
             "track": "小倉",
             "surface": "芝",
             "distance": 2000,
+            "course_direction": "右",
+            "course_inner_outer": "外",
             "going": "良",
             "weather": "晴",
             "class_grade": "G3",
         }
         summaries = build_career_summaries([], current_race, "A")
-        horse = {"horse_number": 1, "jockey": "A", "weight_carried": 57.0}
+        horse = {
+            "horse_number": 1, "jockey": "A", "weight_carried": 57.0,
+            "age": 3, "sex": "牡", "body_weight": 466, "body_weight_change": -4,
+            "history_status": "no_runs",
+        }
         build_horse_summaries(horse, current_race, [], summaries, None)
         payload = {
             "meta": {"race_id": "202610020811"},
@@ -362,6 +426,15 @@ class CareerSummaryTests(unittest.TestCase):
         self.assertEqual(set(chat_input), {"meta", "race", "horses"})
         self.assertIn("career_summaries", serialized)
         self.assertIn("class_grade", serialized)
+        self.assertEqual(
+            (chat_input["race"]["course_direction"], chat_input["race"]["course_inner_outer"]),
+            ("右", "外"),
+        )
+        self.assertEqual(
+            tuple(chat_input["horses"][0][key] for key in ("age", "sex", "body_weight", "body_weight_change", "history_status")),
+            (3, "牡", 466, -4, "no_runs"),
+        )
+        self.assertNotIn("_jockey_id", serialized)
         for forbidden in (
             "same_course_record_summary",
             "same_distance_record_summary",
