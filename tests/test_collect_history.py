@@ -219,13 +219,19 @@ class HistoryParsingTests(unittest.TestCase):
 
     def test_target_is_removed_before_full_history_summary_and_five_run_slice(self) -> None:
         target_race_id = "202610020811"
-        rows = [history_row(target_race_id, "2026/07/19", "1")]
+        excluded_ids = ("202610020911", target_race_id, "202610020711")
+        rows = [
+            history_row(excluded_ids[0], "2026/08/01", "1"),
+            history_row(target_race_id, "2026/07/19", "1"),
+            history_row(excluded_ids[2], "2026/07/19", "1"),
+        ]
         rows.extend(
-            history_row(f"20261002{number:02d}11", f"2026/0{7 - number}/01", str(number))
+            history_row(f"20261002{number:02d}11", f"2026/0{8 - number}/01", str(number))
             for number in range(1, 7)
         )
         session = FakeSession(history_html(rows))
         current_race = {
+            "date": "2026-07-19",
             "track": "小倉",
             "surface": "芝",
             "distance": 2000,
@@ -245,7 +251,14 @@ class HistoryParsingTests(unittest.TestCase):
         self.assertEqual(session.calls, 1)
         self.assertEqual(len(past_runs), 5)
         self.assertEqual(summaries["overall_record"]["runs"], 6)
-        self.assertNotIn(target_race_id, json.dumps([past_runs, summaries], ensure_ascii=False))
+        self.assertEqual(summaries["overall_record"]["wins"], 1)
+        self.assertEqual(summaries["current_jockey_combo_record"]["runs"], 6)
+        for race_id in excluded_ids:
+            self.assertNotIn(race_id, json.dumps([past_runs, summaries], ensure_ascii=False))
+        horse = {"jockey": "川田将雅", "weight_carried": 57.5}
+        build_horse_summaries(horse, current_race, past_runs, summaries, previous_jockey)
+        self.assertEqual(horse["days_since_last_run"], 18)
+        self.assertEqual(horse["recent_form_summary"], "1着 / 2着 / 3着")
         self.assertEqual(previous_jockey, "川田将雅")
         self.assertEqual(past_runs[0]["race_id"], "202610020111")
         self.assertEqual(past_runs[0]["race_number"], 11)
@@ -266,14 +279,15 @@ class HistoryParsingTests(unittest.TestCase):
     def test_jockey_identity_is_shared_by_change_and_combo_record(self) -> None:
         race = {"date": "2026-07-19", "track": "小倉", "surface": "芝", "distance": 2000}
         cases = (
-            ("松山", "01126", "松山弘平", "01126", True),
-            ("松山弘平", "01126", "松山弘平", "01234", False),
-            ("松山弘平", None, "松山弘平", None, True),
-            ("松山", None, "松山弘平", None, False),
-            ("松山弘平", "01126", "松山弘平", None, True),
-            ("松山", "01126", "", "01126", True),
+            ("松山", "01126", "松山弘平", "01126", "同じ"),
+            ("松山弘平", "01126", "松山弘平", "01234", "松山弘平から替わり"),
+            ("松山 弘平", None, "松山弘平", None, "同じ"),
+            ("松山", None, "松山弘平", None, "不明"),
+            ("松山", None, "松山弘平", "01126", "不明"),
+            ("松山弘平", "01126", "松山弘平", None, "同じ"),
+            ("松山", "01126", "", "01126", "同じ"),
         )
-        for current_name, current_id, past_name, past_id, same in cases:
+        for current_name, current_id, past_name, past_id, change in cases:
             with self.subTest(current_name=current_name, current_id=current_id, past_name=past_name, past_id=past_id):
                 row = history_row("202610020111", "2026/07/01")
                 row["騎手"] = past_name
@@ -290,8 +304,8 @@ class HistoryParsingTests(unittest.TestCase):
                 horse = {"horse_number": 1, "jockey": current_name, "weight_carried": 57.0}
                 build_horse_summaries(horse, race, past_runs, summaries, previous_jockey, current_id)
 
-                self.assertEqual(horse["jockey_change"] == "同じ", same)
-                self.assertEqual(horse["career_summaries"]["current_jockey_combo_record"]["runs"], int(same))
+                self.assertEqual(horse["jockey_change"], change)
+                self.assertEqual(horse["career_summaries"]["current_jockey_combo_record"]["runs"], int(change == "同じ"))
                 self.assertNotIn("_jockey_id", json.dumps(horse, ensure_ascii=False))
                 self.assertNotIn("_jockey_id", json.dumps(build_prediction_chat_input(
                     {"data_dir": "data"},
@@ -305,17 +319,42 @@ class HistoryParsingTests(unittest.TestCase):
             <td>57</td><td><a href="/jockey/01126/">松山</a></td><td>1</td></tr></tbody></table>
         """
         race = {"date": "2026-07-19", "track": "小倉", "surface": "芝", "distance": 2000}
+        runs = [history_row(f"202610020{index}11", race_date, str(index + 1))
+                for index, race_date in enumerate(("2026/07/15", "2026/07/10", "2026/07/05"), 1)]
+        for row in runs:
+            row.update({"騎手": "松山弘平", "jockey_url": "/jockey/01126/"})
+        invalid_date = {**runs[0], "日付": "invalid"}
+        missing_id = {key: value for key, value in runs[1].items() if key != "race_id"}
+        older_run = {**runs[2], "race_id": "202610020411", "日付": "2026/06/30"}
+        future = history_row("202610020911", "2026/08/01", "1")
         cases = (
-            (history_html([history_row("202610020111", "2026/07/01")]), "available"),
-            (history_html([]), "no_runs"),
-            ("<div>競走データがありません</div>", "no_runs"),
-            (history_html([{"日付": "invalid", "着順": "1"}]), "unavailable"),
-            ("<div>unexpected response</div>", "unavailable"),
+            (history_html(runs), "available", 3, True, "2着 / 3着 / 4着"),
+            (history_html([]), "no_runs", 0, False, "材料不足"),
+            ("<div>競走データがありません</div>", "no_runs", 0, False, "材料不足"),
+            (history_html([invalid_date]), "unavailable", 0, False, "材料不足"),
+            ("<div>unexpected response</div>", "unavailable", 0, False, "材料不足"),
+            (history_html([future, *runs]), "available", 3, True, "2着 / 3着 / 4着"),
+            (history_html([future]), "no_runs", 0, False, "材料不足"),
+            (history_html([invalid_date, *runs]), "partial", 3, False, "材料不足"),
+            (history_html([runs[0], missing_id]), "partial", 1, True, "材料不足"),
+            (history_html([runs[0], missing_id, runs[2], older_run]), "partial", 3, True, "材料不足"),
+            (history_html([*runs, invalid_date]), "partial", 3, True, "2着 / 3着 / 4着"),
         )
-        for body, expected in cases:
-            with self.subTest(expected=expected):
+        for body, expected, count, latest_known, recent in cases:
+            with self.subTest(status=expected, count=count, latest_known=latest_known, recent=recent):
                 horses = parse_horses(FakeSession(body), entry_html, race, "202610020811", {})
-                self.assertEqual(horses[0]["history_status"], expected)
+                horse = horses[0]
+                self.assertEqual(horse["history_status"], expected)
+                self.assertEqual(len(horse["past_runs"]), count)
+                self.assertEqual(horse["career_summaries"]["overall_record"]["runs"], count)
+                self.assertEqual(
+                    tuple(horse[key] for key in ("distance_change", "surface_change", "days_since_last_run", "weight_change_from_last_run", "jockey_change")),
+                    ("+0m", "同じ", 4, -0.5, "同じ") if latest_known else ("不明", "不明", None, None, "不明"),
+                )
+                self.assertEqual(horse["recent_form_summary"], recent)
+                self.assertEqual(horse["running_style_summary"], "判定材料不足" if recent == "材料不足" else "先行型")
+                self.assertFalse(any(key.startswith("_") for key in horse))
+                self.assertFalse(any(key.startswith("_") for run in horse["past_runs"] for key in run))
 
 
 class CareerSummaryTests(unittest.TestCase):
@@ -402,13 +441,14 @@ class CareerSummaryTests(unittest.TestCase):
             "weather": "晴",
             "class_grade": "G3",
         }
-        summaries = build_career_summaries([], current_race, "A")
+        past_run = {**self.make_run("202610020111"), "date": "2026-07-01"}
+        summaries = build_career_summaries([past_run], current_race, "A")
         horse = {
             "horse_number": 1, "jockey": "A", "weight_carried": 57.0,
             "age": 3, "sex": "牡", "body_weight": 466, "body_weight_change": -4,
-            "history_status": "no_runs",
+            "history_status": "partial",
         }
-        build_horse_summaries(horse, current_race, [], summaries, None)
+        build_horse_summaries(horse, current_race, [past_run], summaries, "A")
         payload = {
             "meta": {"race_id": "202610020811"},
             "race": current_race,
@@ -432,7 +472,7 @@ class CareerSummaryTests(unittest.TestCase):
         )
         self.assertEqual(
             tuple(chat_input["horses"][0][key] for key in ("age", "sex", "body_weight", "body_weight_change", "history_status")),
-            (3, "牡", 466, -4, "no_runs"),
+            (3, "牡", 466, -4, "partial"),
         )
         self.assertNotIn("_jockey_id", serialized)
         for forbidden in (

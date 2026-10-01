@@ -695,12 +695,12 @@ def same_jockey(
     current_id: str | None,
     past_name: str | None,
     past_id: str | None,
-) -> bool:
+) -> str:
     if current_id and past_id:
-        return current_id == past_id
+        return "same" if current_id == past_id else "different"
     current = normalize_space(current_name).replace(" ", "")
     past = normalize_space(past_name).replace(" ", "")
-    return bool(current and current == past)
+    return "same" if current and current == past else "unknown"
 
 
 def normalize_weather(value: Any) -> str | None:
@@ -908,7 +908,7 @@ def build_career_summaries(
     jockey_runs = [
         run
         for run in jra_runs
-        if same_jockey(current_jockey, current_jockey_id, run.get("jockey"), run.get("_jockey_id"))
+        if same_jockey(current_jockey, current_jockey_id, run.get("jockey"), run.get("_jockey_id")) == "same"
     ]
 
     distance_record = {
@@ -959,8 +959,10 @@ def build_horse_summaries(
     career_summaries: dict[str, Any],
     last_run_jockey: str | None,
     current_jockey_id: str | None = None,
+    *,
+    reliable_recent_runs: int = 5,
 ) -> None:
-    last_run = past_runs[0] if past_runs else None
+    last_run = past_runs[0] if past_runs and reliable_recent_runs >= 1 else None
     horse["past_runs"] = [
         {key: value for key, value in run.items() if key != "_jockey_id"}
         for run in past_runs
@@ -988,10 +990,13 @@ def build_horse_summaries(
         else:
             horse["weight_change_from_last_run"] = None
 
-        if last_run_jockey or last_run.get("_jockey_id"):
+        jockey_identity = same_jockey(
+            horse.get("jockey"), current_jockey_id, last_run_jockey, last_run.get("_jockey_id")
+        )
+        if jockey_identity != "unknown":
             horse["jockey_change"] = (
                 "同じ"
-                if same_jockey(horse.get("jockey"), current_jockey_id, last_run_jockey, last_run.get("_jockey_id"))
+                if jockey_identity == "same"
                 else f"{last_run_jockey}から替わり" if last_run_jockey else "乗り替わり"
             )
         else:
@@ -1003,9 +1008,11 @@ def build_horse_summaries(
         horse["weight_change_from_last_run"] = None
         horse["jockey_change"] = "不明"
 
-    horse["running_style_summary"] = running_style_summary(past_runs)
+    required_recent_runs = 3 if horse.get("history_status") == "partial" else min(3, len(past_runs))
+    recent_runs = past_runs[:3] if reliable_recent_runs >= required_recent_runs else []
+    horse["running_style_summary"] = running_style_summary(recent_runs)
 
-    recent_finishes = [f"{run['finish_position']}着" for run in past_runs[:3] if run.get("finish_position")]
+    recent_finishes = [f"{run['finish_position']}着" for run in recent_runs if run.get("finish_position")]
     horse["recent_form_summary"] = " / ".join(recent_finishes) if recent_finishes else "材料不足"
 
     change_bits = [horse["distance_change"], horse["surface_change"]]
@@ -1136,7 +1143,12 @@ def parse_horse_history(
     current_race: dict[str, Any],
     current_jockey: str | None,
     current_jockey_id: str | None = None,
+    *,
+    history_state: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any], str | None]:
+    history_state = history_state if history_state is not None else {}
+    history_state.update(status="unavailable", reliable_recent_runs=0)
+    race_date = date_cls.fromisoformat(current_race["date"])
     empty_summaries = build_career_summaries([], current_race, current_jockey, current_jockey_id)
     horse_id_match = re.search(r"/horse/(?:result/)?(\d+)", horse_url)
     if not horse_id_match:
@@ -1175,28 +1187,52 @@ def parse_horse_history(
         history_rows = mobile_history_rows(soup)
 
     if not history_rows:
+        history_state["status"] = "no_runs"
         return [], empty_summaries, None
 
-    all_runs: list[dict[str, Any]] = []
-    valid_rows = 0
-    for row in history_rows:
+    parsed_runs: list[tuple[int, dict[str, Any]]] = []
+    unusable_rows: list[tuple[int, date_cls | None]] = []
+    dated_rows: list[date_cls] = []
+    for position, row in enumerate(history_rows):
         run = parse_history_run(row)
-        try:
-            date_cls.fromisoformat(run["date"])
-        except (TypeError, ValueError):
-            continue
-        if not run["race_id"]:
-            continue
-        valid_rows += 1
         if run["race_id"] == current_race_id:
             continue
-        all_runs.append(run)
-    if not valid_rows:
+        try:
+            run_date = date_cls.fromisoformat(run["date"])
+        except (TypeError, ValueError):
+            unusable_rows.append((position, None))
+            continue
+        dated_rows.append(run_date)
+        if run_date >= race_date:
+            continue
+        if not run["race_id"]:
+            unusable_rows.append((position, run_date))
+            continue
+        parsed_runs.append((position, run))
+    if not parsed_runs and unusable_rows:
         raise ValueError("horse history has no usable rows")
 
-    all_runs.sort(key=lambda run: run.get("date") or "", reverse=True)
+    parsed_runs.sort(key=lambda item: item[1]["date"], reverse=True)
+    all_runs = [run for _, run in parsed_runs]
     past_runs = all_runs[:5]
-    previous_jockey = past_runs[0].get("jockey") if past_runs else None
+    # Undated rows can only be ordered using a consistent newest-first table.
+    newest_first = all(earlier >= later for earlier, later in zip(dated_rows, dated_rows[1:]))
+    reliable_recent_runs = 0
+    for position, run in parsed_runs[:5]:
+        run_date = date_cls.fromisoformat(run["date"])
+        if any(
+            run_date <= missing_date
+            if missing_date is not None
+            else not newest_first or position >= missing_position
+            for missing_position, missing_date in unusable_rows
+        ):
+            break
+        reliable_recent_runs += 1
+    history_state.update(
+        status="partial" if unusable_rows else "available" if past_runs else "no_runs",
+        reliable_recent_runs=reliable_recent_runs,
+    )
+    previous_jockey = past_runs[0].get("jockey") if reliable_recent_runs else None
     return (
         past_runs,
         build_career_summaries(all_runs, current_race, current_jockey, current_jockey_id),
@@ -1245,6 +1281,7 @@ def parse_horses(
                 [], current_race, horse.get("jockey")
             )
             last_run_jockey = None
+            history_state: dict[str, Any] = {}
             horse["history_status"] = "unavailable"
             if entry["horse_url"]:
                 try:
@@ -1255,8 +1292,9 @@ def parse_horses(
                         current_race,
                         horse.get("jockey"),
                         current_jockey_id,
+                        history_state=history_state,
                     )
-                    horse["history_status"] = "available" if past_runs else "no_runs"
+                    horse["history_status"] = history_state["status"]
                 except Exception:  # noqa: BLE001
                     past_runs, last_run_jockey = [], None
             build_horse_summaries(
@@ -1266,6 +1304,7 @@ def parse_horses(
                 career_summaries,
                 last_run_jockey,
                 current_jockey_id,
+                reliable_recent_runs=history_state.get("reliable_recent_runs", 0),
             )
             horses.append(horse)
         return sorted(horses, key=lambda item: item["horse_number"])
@@ -1303,6 +1342,7 @@ def parse_horses(
         past_runs: list[dict[str, Any]] = []
         career_summaries = build_career_summaries([], current_race, horse.get("jockey"))
         last_run_jockey = None
+        history_state = {}
         horse["history_status"] = "unavailable"
         if horse_url:
             try:
@@ -1313,11 +1353,15 @@ def parse_horses(
                     current_race,
                     horse.get("jockey"),
                     current_jockey_id,
+                    history_state=history_state,
                 )
-                horse["history_status"] = "available" if past_runs else "no_runs"
+                horse["history_status"] = history_state["status"]
             except Exception:  # noqa: BLE001
                 past_runs, last_run_jockey = [], None
-        build_horse_summaries(horse, current_race, past_runs, career_summaries, last_run_jockey, current_jockey_id)
+        build_horse_summaries(
+            horse, current_race, past_runs, career_summaries, last_run_jockey, current_jockey_id,
+            reliable_recent_runs=history_state.get("reliable_recent_runs", 0),
+        )
         horses.append(horse)
 
     horses.sort(key=lambda item: item["horse_number"])

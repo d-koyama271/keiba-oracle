@@ -256,7 +256,7 @@ class PredictionValidationTests(unittest.TestCase):
                 "age": 4,
                 "body_weight": 466,
                 "body_weight_change": -4,
-                "history_status": "available",
+                "history_status": "partial",
                 "past_runs": [
                     {
                         "race_id": "202601010101",
