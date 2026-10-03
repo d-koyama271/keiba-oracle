@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="京都大賞典のAI予想。各馬の1着確率、予想理由、予算配分方式と期待値重視方式による購入シミュレーションを掲載します。">
+  <title>京都大賞典 AI予想 | keiba-oracle</title>
+  <style>
+    :root {
+      --status-prediction-bg: #dde9e4;
+      --status-prediction-color: #32594d;
+      --status-prediction-border: #b8cec5;
+      --status-result-bg: #e4eef3;
+      --status-result-color: #315b78;
+      --status-result-border: #b7cbd7;
+      --status-pending-bg: #ececeb;
+      --status-pending-color: #5f625f;
+      --status-pending-border: #d0d1cf;
+    }
+    body {
+      margin: 0;
+      font-family: "Yu Gothic", "Hiragino Sans", sans-serif;
+      background: #f2f2f0;
+      color: #1f2520;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .status-cancelled { background: #f8e3e3; color: #942f2f; border-color: #dbaaaa; }
+    .status-prediction {
+      background: var(--status-prediction-bg);
+      color: var(--status-prediction-color);
+      border-color: var(--status-prediction-border);
+    }
+    .status-result {
+      background: var(--status-result-bg);
+      color: var(--status-result-color);
+      border-color: var(--status-result-border);
+    }
+    .status-pending {
+      background: var(--status-pending-bg);
+      color: var(--status-pending-color);
+      border-color: var(--status-pending-border);
+    }
+    .race-grade {
+      display: inline-block;
+      padding: 1px 5px;
+      border: 1px solid #c8c1b7;
+      border-radius: 999px;
+      background: #f3f0ea;
+      color: #615c55;
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.2;
+      vertical-align: middle;
+    }
+    .race-grade-g3 {
+      border-color: #c8c1b7;
+      background: #f3f0ea;
+      color: #615c55;
+      font-weight: 500;
+    }
+    .race-grade-g2 {
+      border-color: #9fb8ae;
+      background: #edf4f1;
+      color: #3f675b;
+      font-weight: 600;
+    }
+    .race-grade-g1 {
+      border-color: #b99543;
+      background: #f7edcf;
+      color: #705514;
+      font-weight: 700;
+    }
+    .table-scroll {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+    .nowrap {
+      white-space: nowrap;
+      word-break: keep-all;
+    }
+  </style>
+  <style>
+
+    :root {
+      color-scheme: light;
+      --bg: #f4f1ea;
+      --panel: #fffdf8;
+      --ink: #1f2520;
+      --line: #d5ccbe;
+      --accent: #32594d;
+      --muted: #6f766c;
+    }
+    main {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+      box-sizing: border-box;
+      min-width: 0;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 10px 30px rgba(50, 89, 77, 0.06);
+      min-width: 0;
+    }
+    h1, h2, h3 { margin-top: 0; }
+    .meta, .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      font-size: 14px;
+    }
+    .page-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .ai-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border: 1px solid #c8b9dc;
+      border-radius: 999px;
+      background: #eee8f6;
+      color: #604879;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .prediction-table tbody tr:nth-child(even),
+    .result-table tbody tr:nth-child(even) {
+      background: #faf6ee;
+    }
+    table tbody tr.ev-above-threshold {
+      background: #f6f3f8;
+    }
+    .sort-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-weight: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .sort-button:hover,
+    .sort-button:focus-visible {
+      color: var(--accent);
+    }
+    .sort-button:focus-visible {
+      outline: 2px solid #9bb8ae;
+      outline-offset: 2px;
+    }
+    .sort-indicator {
+      font-size: 11px;
+      opacity: 0.75;
+    }
+    table tbody tr.selected-row { background: #fff6dc; }
+    .race-meta-spacer { display: none; }
+    .small {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .prediction-description {
+      font-size: 14px;
+      line-height: 1.7;
+    }
+    a { color: var(--accent); }
+    ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+    .simulator-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+      gap: 12px;
+      align-items: end;
+      margin: 18px 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f8f4ec;
+    }
+    .simulator-field {
+      display: grid;
+      min-width: 0;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .simulator-field-label {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
+    }
+    .simulator-field input,
+    .simulator-field select {
+      width: 100%;
+      box-sizing: border-box;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+    }
+    .simulator-form button[type="submit"] {
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 18px;
+      background: var(--accent);
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .simulator-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      margin: 12px 0;
+    }
+    .simulator-error {
+      color: #9b352b;
+      font-weight: 700;
+    }
+    .table-scroll-hint { display: none; }
+    .horse-name {
+      min-width: 8em;
+      white-space: nowrap;
+      word-break: keep-all;
+      overflow-wrap: normal;
+    }
+    .prediction-table { min-width: 980px; }
+    .prediction-table .reason-cell {
+      min-width: 300px;
+      white-space: normal;
+      line-height: 1.6;
+    }
+    .value-detail-table { min-width: 1200px; }
+    .simulation-table { min-width: 680px; }
+    .evaluation-table { min-width: 860px; }
+    .evaluation-table .rejection-reason-cell {
+      min-width: 280px;
+      white-space: normal;
+      line-height: 1.6;
+    }
+    .result-table { min-width: 820px; }
+    .term-with-tooltip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    .term-tooltip {
+      display: inline-flex;
+      align-items: center;
+    }
+    .term-tooltip .tooltip-trigger {
+      display: inline-grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      min-width: 18px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 13px;
+      line-height: 1;
+      cursor: help;
+    }
+    .term-tooltip .tooltip-trigger:hover,
+    .term-tooltip .tooltip-trigger:focus-visible {
+      color: var(--accent);
+      outline: 2px solid #9bb8ae;
+      outline-offset: 2px;
+    }
+    .tooltip-content {
+      position: fixed;
+      z-index: 100;
+      left: 50%;
+      bottom: 20px;
+      width: min(440px, calc(100vw - 32px));
+      box-sizing: border-box;
+      padding: 12px 14px;
+      border-radius: 9px;
+      background: #243b36;
+      color: #fff;
+      box-shadow: 0 12px 32px rgba(31, 37, 32, 0.24);
+      font-size: 13px;
+      font-weight: 400;
+      line-height: 1.6;
+      text-align: left;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 8px);
+      transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
+    }
+    .term-tooltip:hover .tooltip-content,
+    .tooltip-trigger:focus-visible + .tooltip-content,
+    .term-tooltip[data-open="true"] .tooltip-content {
+      visibility: visible;
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    .ticket-tabs { margin: 12px 0 20px; }
+    [data-ticket-panel][hidden] { display: none; }
+    .simulation-section {
+      margin-top: 32px;
+    }
+    .simulation-section-title {
+      color: var(--accent);
+      margin-bottom: 18px;
+    }
+    .ai-method-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .ai-method-tab {
+      margin: 0 0 -1px;
+      padding: 9px 14px;
+      border: 1px solid transparent;
+      border-radius: 10px 10px 0 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .ai-method-tab[aria-selected="true"] {
+      border-color: var(--line);
+      border-bottom-color: var(--panel);
+      border-radius: 10px 10px 0 0;
+      background: var(--panel);
+      color: var(--accent);
+    }
+    .prediction-section.has-ai-tabs .prediction-method-tabs,
+    .simulation-section.has-ai-tabs .simulation-method-tabs,
+    .result-section.has-ai-tabs .result-method-tabs {
+      position: relative;
+      z-index: 2;
+      align-items: flex-end;
+      margin-bottom: -1px;
+      border-bottom: 0;
+    }
+    .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab,
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab,
+    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab {
+      position: relative;
+      margin-bottom: 0;
+      border-color: var(--line);
+      background: #f4f2ed;
+    }
+    .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab[aria-selected="true"],
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab[aria-selected="true"],
+    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab[aria-selected="true"] {
+      z-index: 3;
+      border-bottom-color: var(--panel);
+      background: var(--panel);
+    }
+    .prediction-section.has-ai-tabs .prediction-method-tabs .ai-method-tab[aria-selected="true"]::after,
+    .simulation-section.has-ai-tabs .simulation-method-tabs .ai-method-tab[aria-selected="true"]::after,
+    .result-section.has-ai-tabs .result-method-tabs .ai-method-tab[aria-selected="true"]::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: -2px;
+      left: 0;
+      height: 3px;
+      background: var(--panel);
+    }
+    .prediction-section.has-ai-tabs .prediction-method-content,
+    .simulation-section.has-ai-tabs .simulation-method-content,
+    .result-section.has-ai-tabs .result-method-content {
+      position: relative;
+      z-index: 1;
+      margin-top: 0;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 0 14px 14px 14px;
+      background: var(--panel);
+    }
+    .prediction-method-content > .prediction-description {
+      margin-top: 0;
+    }
+    .simulation-method-content > .simulation-panel {
+      margin-bottom: 0;
+    }
+    .simulation-method-content > .simulation-panel + .simulation-panel {
+      margin-top: 24px;
+    }
+    #custom-simulator {
+      margin-top: 30px;
+    }
+    .result-method-content > .result-panel { margin-bottom: 0; }
+    .result-method-content > .result-panel + .result-panel { margin-top: 18px; }
+    .result-method-content > .ticket-tabs { margin-top: 28px; }
+    .ai-method-tab:focus-visible {
+      outline: 2px solid #9bb8ae;
+      outline-offset: 2px;
+    }
+    .simulation-panel h4 {
+      margin: 30px 0 10px;
+    }
+    .simulation-panel h4.simulation-block-title {
+      margin: 16px 0 8px;
+    }
+    .simulation-panel h4.simulation-result-title {
+      margin-top: 20px;
+    }
+    .value-simulation-panel .simulation-details {
+      margin-top: 18px;
+    }
+    .dutching-pairs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+      gap: 16px 20px;
+      margin-top: 16px;
+    }
+    .dutching-pair {
+      min-width: 0;
+    }
+    .dutching-setting {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .dutching-setting-value,
+    .dutching-result-value {
+      display: block;
+      margin-top: 4px;
+    }
+    .dutching-result {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #e8e1d6;
+    }
+    .dutching-result > strong {
+      font-weight: 600;
+    }
+    .dutching-result-value {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .simulation-panel h4.purchase-breakdown-title {
+      margin: 22px 0 10px;
+      font-size: 1rem;
+    }
+    .prediction-table thead th,
+    .purchase-breakdown-table thead th,
+    .result-table thead th {
+      background: #faf8f3;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .simulation-secondary-metrics {
+      margin-top: 10px;
+    }
+    @media (min-width: 900px) {
+      .race-meta-grid {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+      }
+      .race-meta-spacer { display: block; }
+      .simulation-primary-metrics {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+      .dutching-pairs {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+    }
+    .result-panel h4 {
+      margin: 28px 0 10px;
+    }
+    #custom-dutching-evaluations h3 {
+      margin: 28px 0 10px;
+    }
+    .simulation-details {
+      margin-top: 24px;
+    }
+    .simulation-details h4 {
+      margin-top: 20px;
+    }
+    .simulation-details summary {
+      color: var(--accent);
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .result-section {
+      margin-top: 40px;
+    }
+    .result-section-title {
+      margin-bottom: 18px;
+    }
+    .result-section .result-panel:last-child { margin-bottom: 0; }
+    table tbody tr.simulation-selected { background: #fff6dc; }
+    .rank-prediction-top {
+      color: #8A5A00;
+      font-weight: 700;
+    }
+    .rank-result-winner {
+      color: #315b78;
+      font-weight: 700;
+    }
+    .rank-prediction-hit {
+      color: #2f6b63;
+      font-weight: 700;
+    }
+    .result-comparison-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .hit-badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border: 1px solid #b8d1c0;
+      border-radius: 999px;
+      background: #e3f0e7;
+      color: #2f6b63;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .comparison-up {
+      color: #2f6b63;
+    }
+    .comparison-neutral { color: #5f6870; }
+    .comparison-down {
+      color: #8a5148;
+    }
+    .result-table .comparison-cell { white-space: nowrap; }
+    [hidden] { display: none !important; }
+    @media (max-width: 640px) {
+      main { padding: 20px 12px 40px; }
+      .panel { padding: 15px; }
+      table { font-size: 13px; }
+      th, td { padding: 8px 7px; }
+      .horse-name { min-width: 7.5em; }
+      .table-scroll-hint {
+        display: block;
+        margin: 0 0 6px;
+        color: var(--muted);
+        font-size: 12px;
+        text-align: right;
+      }
+      .result-section {
+        margin-top: 28px;
+      }
+      .result-method-content > .ticket-tabs { margin-top: 24px; }
+      .simulation-panel h4,
+      .result-panel h4 {
+        margin-top: 24px;
+        margin-bottom: 8px;
+      }
+      #custom-dutching-evaluations h3 {
+        margin-top: 24px;
+        margin-bottom: 8px;
+      }
+      .prediction-section.has-ai-tabs .prediction-method-content,
+      .simulation-section.has-ai-tabs .simulation-method-content,
+      .result-section.has-ai-tabs .result-method-content {
+        padding: 12px;
+      }
+      .simulation-method-content > .simulation-panel + .simulation-panel {
+        margin-top: 20px;
+      }
+      #custom-simulator {
+        margin-top: 24px;
+      }
+      .tooltip-content {
+        bottom: 12px;
+        width: calc(100vw - 24px);
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <main>
+    <div class="panel">
+      <div class="page-badges">
+        <span class="ai-badge">gpt-6.1-sol</span>
+        <span class="status status-pending">前日予想公開</span>
+      </div>
+      <h1>京都 11R 京都大賞典 <span class="race-grade race-grade-g2">G2</span></h1>
+      <h2>レース基本情報</h2>
+      <div class="meta race-meta-grid">
+        <div><strong>日付</strong><br>2026-10-04</div>
+        <div><strong>発走</strong><br>15:30</div>
+        <div><strong>コース</strong><br>芝2400m</div>
+        <div><strong>馬場</strong><br>-</div>
+        <div><strong>天候</strong><br>-</div>
+        <div class="race-meta-spacer" aria-hidden="true"></div>
+        <div class="race-meta-spacer" aria-hidden="true"></div>
+        <div><strong>頭数</strong><br>18頭</div>
+        <div><strong>条件</strong><br>３歳以上</div>
+        <div><strong>負担重量</strong><br>別定</div>
+      </div>
+      <p class="small race-info-time">情報時点 2026-10-03 18:22</p>
+      <p class="small">
+        <a href="../../index.html">一覧へ戻る</a>
+        
+        
+         / <a href="https://race.netkeiba.com/race/shutuba.html?race_id=202608040211">netkeiba</a>
+      </p>
+    </div>
+
+    
+    <div class="panel prediction-section">
+      <h2>予想比較</h2>
+      
+      
+      <div class="ai-method-panel prediction-method-content" id="prediction-statistical" role="tabpanel" data-ai-panel data-ai-method="statistical">
+        
+        <h3>統計重視予想</h3>
+        
+        <p class="small prediction-description">市場情報を使用せず、過去成績や今回のレース条件などの客観データから1着確率を推定しています。</p>
+        
+        <p class="small statistical-market-note">単勝オッズ・人気は比較用表示で、統計重視予想には使用していません。</p>
+        
+        
+        
+        <p class="table-scroll-hint">表は横にスクロールできます</p>
+<div class="table-scroll">
+          <table class="prediction-table" data-sortable>
+            <thead>
+              <tr>
+                <th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="0" data-sort-type="number" data-sort-first="ascending">
+    馬番 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+                <th class="horse-name" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="1" data-sort-type="text" data-sort-first="ascending">
+    馬名 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+                <th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="2" data-sort-type="text" data-sort-first="ascending">
+    騎手 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+                <th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="3" data-sort-type="number" data-sort-first="descending">
+    1着確率 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+                <th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="4" data-sort-type="number" data-sort-first="ascending">
+    予想順位 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+                <th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="5" data-sort-type="number" data-sort-first="ascending">
+    単勝オッズ <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+                <th class="nowrap" aria-sort="none">
+  <button type="button" class="sort-button" data-sort-column="6" data-sort-type="number" data-sort-first="ascending">
+    人気 <span class="sort-indicator" aria-hidden="true">↕</span>
+  </button>
+</th>
+                <th class="reason-cell">理由</th>
+              </tr>
+            </thead>
+            <tbody>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="1">1</td>
+                <td class="horse-name">ウエストナウ</td>
+                <td class="nowrap">横山和</td>
+                <td class="nowrap" data-sort-value="0.051">5.1%</td>
+                <td class="nowrap" data-sort-value="8">8位</td>
+                <td class="nowrap" data-sort-value="7.5">7.5</td>
+                <td class="nowrap" data-sort-value="3">3</td>
+                <td class="reason-cell">2400mのListed勝ちは上がり33.7、2600mのOPでも着差なし2着。2000mの近走より今回の距離を評価するが、重賞での好走の厚みでは上位勢に劣る。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="2">2</td>
+                <td class="horse-name">ヴェルテンベルク</td>
+                <td class="nowrap">古川吉</td>
+                <td class="nowrap" data-sort-value="0.088">8.8%</td>
+                <td class="nowrap" data-sort-value="5">5位</td>
+                <td class="nowrap" data-sort-value="18.4">18.4</td>
+                <td class="nowrap" data-sort-value="8">8</td>
+                <td class="reason-cell">天皇賞春は後方から上がり34.3で着差なし2着と能力上位。詳細の乏しい海外9着だけでは評価を崩さず、昨年の京都2400mは0.5秒差だった点と追込の展開依存を考慮した。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="3">3</td>
+                <td class="horse-name">ディープモンスター</td>
+                <td class="nowrap">浜中</td>
+                <td class="nowrap" data-sort-value="0.142">14.2%</td>
+                <td class="nowrap" data-sort-value="2">2位</td>
+                <td class="nowrap" data-sort-value="7.7">7.7</td>
+                <td class="nowrap" data-sort-value="4">4</td>
+                <td class="reason-cell">昨年の京都2400m・G2勝ちに続き、今年も2400mの海外G2勝ちとG1の3着。今回距離の上級実績を高く評価するが、133日ぶりと58kgで、近況の安定する18番に次ぐ評価。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="4">4</td>
+                <td class="horse-name">ヘデントール</td>
+                <td class="nowrap">吉田隼</td>
+                <td class="nowrap" data-sort-value="0.094">9.4%</td>
+                <td class="nowrap" data-sort-value="4">4位</td>
+                <td class="nowrap" data-sort-value="9.8">9.8</td>
+                <td class="nowrap" data-sort-value="6">6</td>
+                <td class="reason-cell">天皇賞春勝ちと菊花賞2着で基礎能力は上位。今年の天皇賞春も0.4秒差だが、京都2200mでは0.9秒差8着で、154日ぶりの2400mでは3・6番ほど確信を持てない。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="5">5</td>
+                <td class="horse-name">ヴェルミセル</td>
+                <td class="nowrap">川又</td>
+                <td class="nowrap" data-sort-value="0.006">0.6%</td>
+                <td class="nowrap" data-sort-value="17">17位</td>
+                <td class="nowrap" data-sort-value="108.2">108.2</td>
+                <td class="nowrap" data-sort-value="17">17</td>
+                <td class="reason-cell">距離帯16走で4勝の実績はあるが、近3走は重賞で12・9・11着。目黒記念も54kgで0.9秒差と上位勢への裏付けが弱く、55kgでも低めの評価。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="6">6</td>
+                <td class="horse-name">アクアヴァーナル</td>
+                <td class="nowrap">松山</td>
+                <td class="nowrap" data-sort-value="0.127">12.7%</td>
+                <td class="nowrap" data-sort-value="3">3位</td>
+                <td class="nowrap" data-sort-value="5.2">5.2</td>
+                <td class="nowrap" data-sort-value="2">2</td>
+                <td class="reason-cell">OP勝ちからG2の2着、G1の0.2秒差4着と上級条件でも内容を維持。京都6走で5回3着内と55kgを評価するが、2400mでは18番に0.4秒差で敗れており、154日ぶりでもある。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="7">7</td>
+                <td class="horse-name">リビアングラス</td>
+                <td class="nowrap">小沢</td>
+                <td class="nowrap" data-sort-value="0.014">1.4%</td>
+                <td class="nowrap" data-sort-value="14">14位</td>
+                <td class="nowrap" data-sort-value="108.7">108.7</td>
+                <td class="nowrap" data-sort-value="18">18</td>
+                <td class="reason-cell">京都2400mのG2で0.3秒差3着があり、直近の重馬場での大敗だけでは否定しない。ただし日経賞でも1.9秒差に敗れており、近況の再現性では上位勢に劣る。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="8">8</td>
+                <td class="horse-name">ミクニインスパイア</td>
+                <td class="nowrap">Ｍデムーロ</td>
+                <td class="nowrap" data-sort-value="0.066">6.6%</td>
+                <td class="nowrap" data-sort-value="6">6位</td>
+                <td class="nowrap" data-sort-value="8.7">8.7</td>
+                <td class="nowrap" data-sort-value="5">5</td>
+                <td class="reason-cell">3連勝後の日経賞で0.2秒差2着と、4歳・9戦の現在能力を評価。重馬場のG1での大敗だけで下げすぎないが、京都未経験と112日ぶりで上位勢より不確実性がある。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="9">9</td>
+                <td class="horse-name">ミステリーウェイ</td>
+                <td class="nowrap">松本</td>
+                <td class="nowrap" data-sort-value="0.008">0.8%</td>
+                <td class="nowrap" data-sort-value="15">15位</td>
+                <td class="nowrap" data-sort-value="29.9">29.9</td>
+                <td class="nowrap" data-sort-value="11">11</td>
+                <td class="reason-cell">2500mのG2逃げ切り勝ちは残すが、その後は終盤に失速する敗戦が続き、近3走も1.1～3.1秒差。今回は58kgで先行候補も複数おり、巻き返しの確率は低く評価。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="10">10</td>
+                <td class="horse-name">マイネルエンペラー</td>
+                <td class="nowrap">吉村</td>
+                <td class="nowrap" data-sort-value="0.022">2.2%</td>
+                <td class="nowrap" data-sort-value="13">13位</td>
+                <td class="nowrap" data-sort-value="51.4">51.4</td>
+                <td class="nowrap" data-sort-value="13">13</td>
+                <td class="reason-cell">京都8走で2勝・4回3着内、G2勝ちの実績もある。ただし近3走は1.0～1.7秒差で上位争いに届かず、57kgへの軽減を考慮しても近況良好な組より下。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="11">11</td>
+                <td class="horse-name">ファミリータイム</td>
+                <td class="nowrap">鮫島駿</td>
+                <td class="nowrap" data-sort-value="0.062">6.2%</td>
+                <td class="nowrap" data-sort-value="7">7位</td>
+                <td class="nowrap" data-sort-value="11.1">11.1</td>
+                <td class="nowrap" data-sort-value="7">7</td>
+                <td class="reason-cell">京都2400mのG2で着差なし2着、距離帯11走で8回3着内と今回条件に裏付け。前走G1では8・10番に先着したが、京都での好走時から2kg増え、112日ぶりでもあり評価を抑えた。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="12">12</td>
+                <td class="horse-name">エコロディノス</td>
+                <td class="nowrap">田口</td>
+                <td class="nowrap" data-sort-value="0.03">3.0%</td>
+                <td class="nowrap" data-sort-value="11">11位</td>
+                <td class="nowrap" data-sort-value="67.0">67.0</td>
+                <td class="nowrap" data-sort-value="15">15</td>
+                <td class="reason-cell">京都記念0.3秒差3着は同走の4・7・13番を上回る内容。大阪杯の大敗後も前走は0.6秒差まで戻したが、2400mへの延長と近2走の不安定さから上位評価には届かない。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="13">13</td>
+                <td class="horse-name">サフィラ</td>
+                <td class="nowrap">北村友</td>
+                <td class="nowrap" data-sort-value="0.007">0.7%</td>
+                <td class="nowrap" data-sort-value="16">16位</td>
+                <td class="nowrap" data-sort-value="70.1">70.1</td>
+                <td class="nowrap" data-sort-value="16">16</td>
+                <td class="reason-cell">京都記念0.4秒差5着など僅差の重賞実績はあるが、近2走のG3は1.0・1.1秒差。距離帯3走で3着内がなく、少数例として断定は避けつつ2400mでの上積みを控えめに評価。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="14">14</td>
+                <td class="horse-name">サヴォーナ</td>
+                <td class="nowrap">斎藤</td>
+                <td class="nowrap" data-sort-value="0.047">4.7%</td>
+                <td class="nowrap" data-sort-value="9">9位</td>
+                <td class="nowrap" data-sort-value="23.6">23.6</td>
+                <td class="nowrap" data-sort-value="9">9</td>
+                <td class="reason-cell">前走G3は逃げて0.2秒差、距離帯9走で6回3着内と延長にも裏付けがある。35日間隔を評価する一方、同走の18番には末脚と着差で劣り、G2上位実績でも差がある。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="15">15</td>
+                <td class="horse-name">メイショウブレゲ</td>
+                <td class="nowrap">酒井</td>
+                <td class="nowrap" data-sort-value="0.004">0.4%</td>
+                <td class="nowrap" data-sort-value="18">18位</td>
+                <td class="nowrap" data-sort-value="60.0">60.0</td>
+                <td class="nowrap" data-sort-value="14">14</td>
+                <td class="reason-cell">直近の障害戦は芝平地の能力と直接比較せず、平地の近2走がG2で1.6・1.9秒差だった点を重視。G2通算11走で3着内1回と、今回の相手に勝ち切る裏付けが薄い。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="16">16</td>
+                <td class="horse-name">ショウナンラプンタ</td>
+                <td class="nowrap">池添</td>
+                <td class="nowrap" data-sort-value="0.041">4.1%</td>
+                <td class="nowrap" data-sort-value="10">10位</td>
+                <td class="nowrap" data-sort-value="31.6">31.6</td>
+                <td class="nowrap" data-sort-value="12">12</td>
+                <td class="reason-cell">G1の3・4着、昨年の同条件も0.3秒差5着で能力と適性は上位に近い。ただし364日ぶりで現在状態の不確実性が大きく、実績だけで今年の好調馬より上には置けない。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="17">17</td>
+                <td class="horse-name">キングスコール</td>
+                <td class="nowrap">吉田豊</td>
+                <td class="nowrap" data-sort-value="0.025">2.5%</td>
+                <td class="nowrap" data-sort-value="12">12位</td>
+                <td class="nowrap" data-sort-value="28.0">28.0</td>
+                <td class="nowrap" data-sort-value="10">10</td>
+                <td class="reason-cell">2400mを58kgで上がり33.3の差し切り、続くG2も0.2秒差と近況は向上。ただしそのG2では18番より2.5kg軽くても後着し、今回は同斤量。京都4走の成績と126日ぶりも考慮。</td>
+              </tr>
+              
+              <tr>
+                <td class="nowrap" data-sort-value="18">18</td>
+                <td class="horse-name rank-prediction-top">ダノンシーマ</td>
+                <td class="nowrap">川田</td>
+                <td class="nowrap" data-sort-value="0.166">16.6%</td>
+                <td class="nowrap rank-prediction-top" data-sort-value="1">1位</td>
+                <td class="nowrap" data-sort-value="4.7">4.7</td>
+                <td class="nowrap" data-sort-value="1">1</td>
+                <td class="reason-cell">京都2400mで6番に0.4秒差の勝利、目黒記念は57.5kgで着差なし3着。近3走とも重賞3着で35日間隔、騎手との8走すべて3着内という安定性から僅かに最上位とした。</td>
+              </tr>
+              
+            </tbody>
+          </table>
+        </div>
+        <p><strong>総括:</strong> 京都芝2400m・右外回りのG2。距離適性と近況の安定で18番、同条件の重賞勝ちで3番、上級条件での向上と55kgで6番を上位評価。18頭立てで休養明けが多く、先行候補も複数。馬場・天候・今回馬体重は未確定のため評価に用いず、確率の集中を抑えた。</p>
+        
+      </div>
+      
+    </div>
+
+    <section class="simulation-section">
+      <h2 class="simulation-section-title">購入シミュレーション</h2>
+
+      
+      
+      
+      
+      
+      
+      
+      <div class="ai-method-panel simulation-method-content panel" id="simulation-statistical" role="tabpanel" data-ai-panel data-ai-method="statistical">
+      <div class="ai-method-tabs ticket-tabs" role="tablist" aria-label="シミュレーションの券種">
+  <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="win" aria-controls="purchase-statistical-win" aria-selected="true" tabindex="0">単勝</button>
+  <button type="button" class="ai-method-tab" role="tab" data-ticket-tab="quinella" aria-controls="purchase-statistical-quinella" aria-selected="false" tabindex="-1">馬連</button>
+</div>
+      <div id="purchase-statistical-win" data-ticket-panel="win" role="tabpanel">
+    <div class="panel simulation-panel">
+      <h3><span class="term-with-tooltip"><span>予算配分方式</span><span class="term-tooltip" data-term-key="dutching_method">
+  <button type="button" class="tooltip-trigger" aria-label="予算配分方式: 1着確率の上位から1頭〜最大対象頭数までを候補として評価し、予算を的中時の払戻額が近くなるよう配分します。最低カバー確率・最低グループ期待値・最低利益率を満たす候補の中から、グループ期待値を優先して採用する方式です。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">1着確率の上位から1頭〜最大対象頭数までを候補として評価し、予算を的中時の払戻額が近くなるよう配分します。最低カバー確率・最低グループ期待値・最低利益率を満たす候補の中から、グループ期待値を優先して採用する方式です。</span>
+</span></span></h3>
+      <p class="small">設定条件を満たす候補の中から、レース内で相対的に評価が高い購入配分を表示しています。期待値1.0以上や利益を保証するものではありません。</p>
+      
+      <p>このレースでは統計重視予想の購入シミュレーションは記録されていません。</p>
+      
+    </div>
+
+    <div class="panel simulation-panel value-simulation-panel">
+      <h3><span class="term-with-tooltip"><span>期待値重視方式</span><span class="term-tooltip" data-term-key="value_method">
+  <button type="button" class="tooltip-trigger" aria-label="期待値重視方式: AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低期待値を満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。" aria-expanded="false"><span aria-hidden="true">ⓘ</span></button>
+  <span class="tooltip-content" role="tooltip">AIが推定した1着確率と単勝オッズから各馬の期待値を計算し、最低期待値を満たす馬についてKelly基準で予算に対する購入割合を算出する方式です。Kelly係数で購入割合を抑え、購入単位未満の金額は購入対象から除外します。</span>
+</span></span></h3>
+       
+      <p>このレースでは統計重視予想の購入シミュレーションは記録されていません。</p>
+      
+    </div>
+      </div>
+      <div id="purchase-statistical-quinella" data-ticket-panel="quinella" role="tabpanel" hidden>
+      
+<p class="small">馬連的中確率は各馬の1着確率から算出した、同着を考慮しない近似値です。</p>
+
+<p class="quinella-unavailable">馬連は計算できません。発走前の完全なオッズ・確率データが記録されていません。</p>
+
+      </div>
+      </div>
+      
+    </section>
+
+    
+    
+
+    
+
+    <p class="small">本ページはAIによる確率推定と購入シミュレーションを掲載するもので、的中や利益を保証するものではありません。投票はご自身の判断で行ってください。</p>
+  </main>
+
+
+<script>
+    const initializeSortableTable = (table) => {
+      const body = table.tBodies[0];
+      if (!body) return;
+
+      const buttons = Array.from(table.querySelectorAll("thead .sort-button"));
+      Array.from(body.rows).forEach((row, index) => {
+        row.dataset.originalIndex = String(index);
+      });
+
+      const originalIndex = (row) => Number(row.dataset.originalIndex);
+      const resetHeader = (button) => {
+        button.closest("th").setAttribute("aria-sort", "none");
+        button.querySelector(".sort-indicator").textContent = "↕";
+      };
+      const readValue = (row, columnIndex, valueType) => {
+        const cell = row.cells[columnIndex];
+        const rawValue = valueType === "number"
+          ? (cell?.dataset.sortValue ?? "")
+          : (cell?.textContent?.trim() ?? "");
+        if (["", "-", "null", "undefined", "NaN"].includes(rawValue)) return null;
+        if (valueType === "text") return rawValue;
+        const number = Number(rawValue);
+        return Number.isFinite(number) ? number : null;
+      };
+
+      for (const button of buttons) {
+        button.addEventListener("click", () => {
+          const header = button.closest("th");
+          const currentDirection = header.getAttribute("aria-sort") || "none";
+          const firstDirection = button.dataset.sortFirst === "descending" ? "descending" : "ascending";
+          const oppositeDirection = firstDirection === "ascending" ? "descending" : "ascending";
+          const nextDirection = currentDirection === "none"
+            ? firstDirection
+            : currentDirection === firstDirection
+              ? oppositeDirection
+              : "none";
+
+          buttons.forEach(resetHeader);
+          const rows = Array.from(body.rows);
+          if (nextDirection === "none") {
+            rows.sort((rowA, rowB) => originalIndex(rowA) - originalIndex(rowB));
+          } else {
+            header.setAttribute("aria-sort", nextDirection);
+            button.querySelector(".sort-indicator").textContent = nextDirection === "ascending" ? "▲" : "▼";
+            const columnIndex = Number(button.dataset.sortColumn);
+            const valueType = button.dataset.sortType;
+            rows.sort((rowA, rowB) => {
+              const valueA = readValue(rowA, columnIndex, valueType);
+              const valueB = readValue(rowB, columnIndex, valueType);
+              if (valueA === null && valueB === null) return originalIndex(rowA) - originalIndex(rowB);
+              if (valueA === null) return 1;
+              if (valueB === null) return -1;
+              const comparison = valueType === "text"
+                ? valueA.localeCompare(valueB, "ja")
+                : valueA - valueB;
+              if (comparison === 0) return originalIndex(rowA) - originalIndex(rowB);
+              return nextDirection === "ascending" ? comparison : -comparison;
+            });
+          }
+          rows.forEach((row) => body.appendChild(row));
+        });
+      }
+    };
+
+    function directScopedPanels(tabList, selector) {
+      return Array.from(tabList.parentElement.children).filter((element) => element.matches(selector));
+    }
+
+    function activateTicketTabList(tabList, ticket) {
+      Array.from(tabList.querySelectorAll("[data-ticket-tab]")).forEach((tab) => {
+        const selected = tab.dataset.ticketTab === ticket;
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+      });
+      directScopedPanels(tabList, "[data-ticket-panel]").forEach((panel) => {
+        panel.hidden = panel.dataset.ticketPanel !== ticket;
+      });
+    }
+
+    function activateAiMethodTabList(tabList, method) {
+      Array.from(tabList.querySelectorAll("[data-ai-tab]")).forEach((tab) => {
+        const selected = tab.dataset.aiMethod === method;
+        tab.setAttribute("aria-selected", selected ? "true" : "false");
+        tab.tabIndex = selected ? 0 : -1;
+      });
+      directScopedPanels(tabList, "[data-ai-panel]").forEach((panel) => {
+        panel.hidden = panel.dataset.aiMethod !== method;
+      });
+    }
+
+    (() => {
+      const ticketTabLists = Array.from(document.querySelectorAll(".ticket-tabs"));
+      ticketTabLists.forEach((tabList) => {
+        const tabs = Array.from(tabList.querySelectorAll("[data-ticket-tab]"));
+        const activateTicket = (ticket) => {
+          activateTicketTabList(tabList, ticket);
+          tabList.dispatchEvent(new CustomEvent("ticket-change", { bubbles: true, detail: { ticket } }));
+        };
+        tabs.forEach((tab) => {
+          tab.addEventListener("click", () => activateTicket(tab.dataset.ticketTab));
+          tab.addEventListener("keydown", (event) => {
+            if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+            event.preventDefault();
+            const index = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (tabs.indexOf(tab) + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+            activateTicket(tabs[index].dataset.ticketTab);
+            tabs[index].focus();
+          });
+        });
+      });
+      const aiMethodTabLists = Array.from(document.querySelectorAll(".prediction-method-tabs, .simulation-method-tabs, .result-method-tabs"));
+      aiMethodTabLists.forEach((tabList) => {
+        const tabs = Array.from(tabList.querySelectorAll("[data-ai-tab]"));
+        const activateAiMethod = (method) => {
+          activateAiMethodTabList(tabList, method);
+          tabList.dispatchEvent(new CustomEvent("ai-method-change", { bubbles: true, detail: { method } }));
+        };
+        tabs.forEach((tab) => {
+          tab.addEventListener("click", () => activateAiMethod(tab.dataset.aiMethod));
+          tab.addEventListener("keydown", (event) => {
+            if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+            const offset = event.key === "ArrowRight" ? 1 : -1;
+            const target = tabs[(tabs.indexOf(tab) + offset + tabs.length) % tabs.length];
+            activateAiMethod(target.dataset.aiMethod);
+            target.focus();
+            event.preventDefault();
+          });
+        });
+        if (tabs.length) {
+          activateAiMethod(tabs[0].dataset.aiMethod);
+        }
+      });
+
+      const tooltipTriggers = Array.from(document.querySelectorAll(".tooltip-trigger"));
+      const closeTooltips = () => {
+        for (const trigger of tooltipTriggers) {
+          trigger.closest(".term-tooltip").removeAttribute("data-open");
+          trigger.setAttribute("aria-expanded", "false");
+        }
+      };
+
+      for (const trigger of tooltipTriggers) {
+        trigger.addEventListener("click", (event) => {
+          event.stopPropagation();
+          const tooltip = trigger.closest(".term-tooltip");
+          const shouldOpen = tooltip.getAttribute("data-open") !== "true";
+          closeTooltips();
+          if (shouldOpen) {
+            tooltip.setAttribute("data-open", "true");
+            trigger.setAttribute("aria-expanded", "true");
+          }
+        });
+      }
+      document.addEventListener("click", closeTooltips);
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeTooltips();
+          if (document.activeElement?.classList.contains("tooltip-trigger")) {
+            document.activeElement.blur();
+          }
+        }
+      });
+      document.querySelectorAll(
+        ".prediction-table[data-sortable], .result-table[data-sortable]"
+      ).forEach(initializeSortableTable);
+    })();
+</script>
+
+</body>
+</html>
