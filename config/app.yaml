@@ -46,6 +46,6 @@ deployment:
     branch: deploy-pages
 llm_provider: codex
 llm_model: gpt-6.1-sol
-llm_reasoning_effort: max
+llm_reasoning_effort: xhigh
 data_dir: data
 public_dir: public

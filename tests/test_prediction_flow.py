@@ -6,6 +6,7 @@ from contextlib import ExitStack
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from datetime import datetime
 from logging import NullHandler, getLogger
@@ -21,6 +22,7 @@ import run_pre  # noqa: E402
 import run_pre_collect  # noqa: E402
 import simulate  # noqa: E402
 import score_experiment  # noqa: E402
+import llm_client  # noqa: E402
 from llm_client import LLMClient  # noqa: E402
 from utils import ensure_race_payload, JST, load_config, load_race_json, save_race_json, parse_jst_datetime  # noqa: E402
 
@@ -491,7 +493,15 @@ class PredictionValidationTests(unittest.TestCase):
 
 
 class CodexClientTests(unittest.TestCase):
-    CONFIG = {"llm_provider": "codex", "llm_model": "gpt-test", "llm_reasoning_effort": "high"}
+    CONFIG = {"llm_provider": "codex", "llm_model": "gpt-test", "llm_reasoning_effort": "xhigh"}
+
+    @staticmethod
+    def _write_process_output(stream, text: str) -> None:
+        try:
+            stream.write(text.encode("utf-8"))
+        except TypeError:
+            stream.write(text)
+        stream.flush()
 
     def test_from_config_with_and_without_reasoning_effort(self) -> None:
         for effort in (None, self.CONFIG["llm_reasoning_effort"]):
@@ -510,9 +520,14 @@ class CodexClientTests(unittest.TestCase):
         commands: list[list[str]] = []
         run_kwargs: dict = {}
 
-        def run(command: list[str], **kwargs):
+        def popen(command: list[str], **kwargs):
             commands.append(command)
             run_kwargs.update(kwargs)
+            prompt = kwargs["stdin"].read()
+            run_kwargs["input"] = prompt.decode("utf-8") if isinstance(prompt, bytes) else prompt
+            run_kwargs["stdio_are_files"] = all(
+                hasattr(kwargs[key], "fileno") for key in ("stdin", "stdout", "stderr")
+            )
             schema_path = Path(command[command.index("--output-schema") + 1])
             run_kwargs["output_schema"] = json.loads(schema_path.read_text(encoding="utf-8"))
             output_path = Path(command[command.index("--output-last-message") + 1])
@@ -528,15 +543,18 @@ class CodexClientTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            return subprocess.CompletedProcess(command, 0, "", "")
+            process = Mock(pid=24680, returncode=0)
+            process.wait.return_value = 0
+            run_kwargs["process"] = process
+            return process
 
         with patch.dict(
             "llm_client.os.environ",
             environment,
             clear=True,
         ), patch("llm_client.shutil.which", return_value="codex"), patch(
-            "llm_client.subprocess.run",
-            side_effect=run,
+            "llm_client.subprocess.Popen",
+            side_effect=popen,
         ):
             client = LLMClient.from_config(self.CONFIG)
             response = (client.invoke_json("ONLY_INPUT") if output_schema is None
@@ -557,6 +575,8 @@ class CodexClientTests(unittest.TestCase):
         self.assertEqual(command[command.index("--config") + 1], f'model_reasoning_effort="{self.CONFIG["llm_reasoning_effort"]}"')
         self.assertIn("--output-schema", command)
         self.assertEqual(run_kwargs["input"], "ONLY_INPUT")
+        self.assertTrue(run_kwargs["stdio_are_files"])
+        run_kwargs["process"].wait.assert_called_once_with(timeout=llm_client.CODEX_TIMEOUT_SECONDS)
         self.assertEqual(run_kwargs["creationflags"], subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
         self.assertNotEqual(Path(run_kwargs["cwd"]), ROOT)
         self.assertEqual(run_kwargs["env"]["HOME"], r"C:\Users\runner")
@@ -575,16 +595,188 @@ class CodexClientTests(unittest.TestCase):
     def test_codex_failure_or_invalid_json_is_not_retried(self):
         for invalid_json in (False, True):
             with self.subTest(invalid_json=invalid_json):
-                def run(command, **kwargs):
+                def popen(command, **kwargs):
                     if invalid_json:
                         Path(command[command.index("--output-last-message") + 1]).write_text("invalid JSON")
-                        return subprocess.CompletedProcess(command, 0, "", "")
-                    return subprocess.CompletedProcess(command, 1, "", "failed")
+                    else:
+                        self._write_process_output(kwargs["stderr"], "failed")
+                    process = Mock(pid=24680, returncode=0 if invalid_json else 1)
+                    process.wait.return_value = process.returncode
+                    return process
                 with patch("llm_client.shutil.which", return_value="codex"), \
-                     patch("llm_client.subprocess.run", side_effect=run) as invoke:
-                    with self.assertRaises((RuntimeError, ValueError)):
-                        LLMClient.from_config(self.CONFIG).invoke_json("test")
+                     patch("llm_client.subprocess.Popen", side_effect=popen) as invoke:
+                    with self.assertRaises((RuntimeError, ValueError)) as failure:
+                        LLMClient.from_config(self.CONFIG).invoke_json("PRIVATE_INPUT_CONTENT")
                     self.assertEqual(invoke.call_count, 1)
+                    self.assertIn(self.CONFIG["llm_model"], str(failure.exception))
+                    self.assertIn(self.CONFIG["llm_reasoning_effort"], str(failure.exception))
+                    self.assertNotIn("PRIVATE_INPUT_CONTENT", str(failure.exception))
+
+    def _failing_popen(self, process, *, stdout: str = "", stderr: str = ""):
+        def popen(command, **kwargs):
+            self._write_process_output(kwargs["stdout"], stdout)
+            self._write_process_output(kwargs["stderr"], stderr)
+            return process
+        return popen
+
+    def test_codex_failure_diagnostics_are_short_and_identify_execution(self) -> None:
+        for use_stderr in (False, True):
+            with self.subTest(use_stderr=use_stderr):
+                process = Mock(pid=24680, returncode=1)
+                process.wait.return_value = 1
+                diagnostic = "FULL_PROMPT_SHOULD_NOT_APPEAR\n" + "x" * 4000 + "\nlast failure detail"
+                with patch("llm_client.shutil.which", return_value="codex"), \
+                     patch("llm_client.subprocess.Popen", side_effect=self._failing_popen(
+                         process,
+                         stderr=diagnostic if use_stderr else "",
+                         stdout="unselected output" if use_stderr else diagnostic,
+                     )):
+                    with self.assertRaises(RuntimeError) as failure:
+                        LLMClient.from_config(self.CONFIG).invoke_json("ONLY_INPUT")
+                message = str(failure.exception)
+                self.assertIn(self.CONFIG["llm_model"], message)
+                self.assertIn(self.CONFIG["llm_reasoning_effort"], message)
+                self.assertRegex(message, r"elapsed=\d+(?:\.\d+)?s")
+                self.assertIn("last failure detail", message)
+                self.assertNotIn("FULL_PROMPT_SHOULD_NOT_APPEAR", message)
+                self.assertLess(len(message), 1200)
+
+    @unittest.skipUnless(sys.platform == "win32", "Windows process-tree cleanup")
+    def test_codex_timeout_terminates_only_its_tracked_process_tree(self) -> None:
+        process = Mock(pid=24680, returncode=None)
+        process.poll.return_value = None
+        process.wait.side_effect = [subprocess.TimeoutExpired("codex", 600), 0]
+        events = []
+
+        def taskkill(command, **kwargs):
+            events.append("tree")
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        process.kill.side_effect = lambda: events.append("root")
+        with patch("llm_client.shutil.which", return_value="codex"), \
+             patch("llm_client.subprocess.Popen", side_effect=self._failing_popen(
+                 process, stderr="last timeout detail",
+             )) as launch, \
+             patch("llm_client.subprocess.run", side_effect=taskkill) as cleanup:
+            with self.assertRaises(RuntimeError) as failure:
+                LLMClient.from_config(self.CONFIG).invoke_json("ONLY_INPUT")
+        launch.assert_called_once()
+        cleanup.assert_called_once()
+        command = cleanup.call_args.args[0]
+        self.assertEqual(command[command.index("/PID") + 1], str(process.pid))
+        self.assertIn("/T", command)
+        self.assertIn("/F", command)
+        self.assertNotIn("/IM", command)
+        self.assertEqual(cleanup.call_args.kwargs["timeout"], llm_client.PROCESS_CLEANUP_TIMEOUT_SECONDS)
+        self.assertEqual(cleanup.call_args.kwargs["creationflags"], subprocess.CREATE_NO_WINDOW)
+        self.assertEqual(process.wait.call_args_list[0].kwargs["timeout"], llm_client.CODEX_TIMEOUT_SECONDS)
+        self.assertTrue(all(call.kwargs.get("timeout") is not None for call in process.wait.call_args_list))
+        if "root" in events:
+            self.assertLess(events.index("tree"), events.index("root"))
+        self.assertIn("last timeout detail", str(failure.exception))
+
+    @unittest.skipUnless(sys.platform == "win32", "Windows process-tree cleanup")
+    def test_codex_timeout_cleanup_failure_has_only_bounded_waits(self) -> None:
+        process = Mock(pid=24680, returncode=None)
+        process.poll.return_value = None
+        process.wait.side_effect = subprocess.TimeoutExpired("codex", 1)
+        with patch("llm_client.shutil.which", return_value="codex"), \
+             patch("llm_client.subprocess.Popen", side_effect=self._failing_popen(process)) as launch, \
+             patch("llm_client.subprocess.run", side_effect=subprocess.TimeoutExpired("taskkill", 10)) as cleanup:
+            with self.assertRaises(RuntimeError):
+                LLMClient.from_config(self.CONFIG).invoke_json("ONLY_INPUT")
+        launch.assert_called_once()
+        cleanup.assert_called_once()
+        self.assertGreaterEqual(process.kill.call_count, 1)
+        self.assertLessEqual(process.kill.call_count, 2)
+        self.assertLessEqual(process.wait.call_count, 4)
+        self.assertTrue(all(call.kwargs.get("timeout") is not None for call in process.wait.call_args_list))
+
+    def test_non_windows_cleanup_kills_process_and_waits_with_limit(self) -> None:
+        process = Mock(pid=24680)
+        process.poll.return_value = None
+        process.wait.return_value = 0
+        with patch("llm_client.os.name", "posix"), patch("llm_client.subprocess.run") as cleanup:
+            issue = llm_client._terminate_codex_process(process)
+        self.assertEqual(issue, "")
+        cleanup.assert_not_called()
+        process.kill.assert_called_once()
+        process.wait.assert_called_once_with(timeout=llm_client.PROCESS_CLEANUP_TIMEOUT_SECONDS)
+
+    @staticmethod
+    def _is_windows_process_running(pid: int) -> bool:
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        kernel32.WaitForSingleObject.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+        kernel32.WaitForSingleObject.restype = wintypes.DWORD
+        kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+        kernel32.CloseHandle.restype = wintypes.BOOL
+        handle = kernel32.OpenProcess(0x00100000, False, pid)
+        if not handle:
+            return False
+        try:
+            return kernel32.WaitForSingleObject(handle, 0) == 258
+        finally:
+            kernel32.CloseHandle(handle)
+
+    @unittest.skipUnless(sys.platform == "win32", "Windows process-tree regression")
+    def test_windows_cleanup_ends_cmd_wrapper_and_native_descendants(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            pid_path = root / "processes.json"
+            parent_script = root / "parent.py"
+            parent_script.write_text(
+                "import json, os, subprocess, sys\n"
+                "from pathlib import Path\n"
+                "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(90)'], "
+                "creationflags=subprocess.CREATE_NO_WINDOW)\n"
+                f"pid_path = Path({str(pid_path)!r})\n"
+                "temporary = pid_path.with_suffix('.tmp')\n"
+                "temporary.write_text(json.dumps([os.getpid(), child.pid]), encoding='utf-8')\n"
+                "temporary.replace(pid_path)\n"
+                "child.wait()\n",
+                encoding="utf-8",
+            )
+            wrapper = root / "codex-test.cmd"
+            wrapper.write_text(
+                f'@echo off\n"{sys.executable}" "{parent_script}"\n',
+                encoding="utf-8",
+            )
+            process = subprocess.Popen(
+                [str(wrapper)], cwd=root, stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+            descendant_pids = []
+            try:
+                deadline = time.monotonic() + 10
+                while not pid_path.exists() and time.monotonic() < deadline and process.poll() is None:
+                    time.sleep(0.05)
+                self.assertTrue(pid_path.exists(), "synthetic parent did not start")
+                descendant_pids = json.loads(pid_path.read_text(encoding="utf-8"))
+                self.assertTrue(all(self._is_windows_process_running(pid) for pid in descendant_pids))
+                with self.assertRaises(subprocess.TimeoutExpired):
+                    process.wait(timeout=0.1)
+                with patch("llm_client.PROCESS_CLEANUP_TIMEOUT_SECONDS", 5):
+                    issue = llm_client._terminate_codex_process(process)
+                self.assertEqual(issue, "")
+                self.assertIsNotNone(process.poll())
+                self.assertTrue(all(not self._is_windows_process_running(pid) for pid in descendant_pids))
+            finally:
+                for pid in [process.pid, *descendant_pids]:
+                    if self._is_windows_process_running(pid):
+                        subprocess.run(
+                            ["taskkill", "/PID", str(pid), "/T", "/F"],
+                            capture_output=True, timeout=5, check=False,
+                            creationflags=subprocess.CREATE_NO_WINDOW,
+                        )
+                if process.poll() is None:
+                    process.kill()
+                process.wait(timeout=5)
 
     def test_codex_cli_supplements_empty_home_from_userprofile(self) -> None:
         _, run_kwargs, _ = self._invoke_codex_with_environment(

@@ -5,10 +5,62 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
 import requests
+
+
+CODEX_TIMEOUT_SECONDS = 600
+PROCESS_CLEANUP_TIMEOUT_SECONDS = 10
+
+
+def _terminate_codex_process(process: subprocess.Popen) -> str:
+    if process.poll() is not None:
+        return ""
+    issues = []
+    tree_terminated = False
+    if os.name == "nt":
+        try:
+            completed = subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                timeout=PROCESS_CLEANUP_TIMEOUT_SECONDS, check=False,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+            tree_terminated = completed.returncode == 0
+            if not tree_terminated:
+                issues.append(f"taskkill exit_code={completed.returncode}")
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            issues.append(f"taskkill {type(exc).__name__}")
+    if not tree_terminated:
+        try:
+            process.kill()
+        except OSError as exc:
+            issues.append(f"kill {type(exc).__name__}")
+    try:
+        process.wait(timeout=PROCESS_CLEANUP_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        try:
+            process.kill()
+            process.wait(timeout=PROCESS_CLEANUP_TIMEOUT_SECONDS)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            issues.append(f"wait {type(exc).__name__}")
+    except OSError as exc:
+        issues.append(f"wait {type(exc).__name__}")
+    return "; ".join(issues)
+
+
+def _cli_error_detail(stderr_path: Path, stdout_path: Path) -> str:
+    for path in (stderr_path, stdout_path):
+        with path.open("rb") as stream:
+            stream.seek(max(0, path.stat().st_size - 4096))
+            lines = stream.read().decode("utf-8", errors="replace").splitlines()
+        for line in reversed(lines):
+            if line.strip():
+                return line.strip()[-500:]
+    return ""
 
 
 class LLMClient:
@@ -24,8 +76,17 @@ class LLMClient:
     def invoke_json(
         self, prompt: str, output_schema: dict[str, Any] | None = None
     ) -> dict[str, Any]:
+        started = time.monotonic()
         raw = self._invoke_text(prompt, output_schema)
-        return json.loads(self._extract_json(raw))
+        try:
+            return json.loads(self._extract_json(raw))
+        except json.JSONDecodeError as exc:
+            if self.provider != "codex":
+                raise
+            raise ValueError(
+                f"Codex CLI invalid JSON: model={self.model} effort={self.reasoning_effort or 'default'} "
+                f"elapsed={time.monotonic() - started:.1f}s detail={exc.msg}"
+            ) from exc
 
     def _invoke_text(self, prompt: str, output_schema: dict[str, Any] | None = None) -> str:
         if self.provider == "codex":
@@ -76,11 +137,15 @@ class LLMClient:
         if output_schema is not None:
             schema = output_schema
 
-        with tempfile.TemporaryDirectory(prefix="keiba-oracle-codex-") as directory:
+        with tempfile.TemporaryDirectory(prefix="keiba-oracle-codex-", ignore_cleanup_errors=True) as directory:
             working_dir = Path(directory)
             schema_path = working_dir / "prediction.schema.json"
             output_path = working_dir / "prediction.json"
+            input_path = working_dir / "prompt.txt"
+            stdout_path = working_dir / "stdout.txt"
+            stderr_path = working_dir / "stderr.txt"
             schema_path.write_text(json.dumps(schema, ensure_ascii=False), encoding="utf-8")
+            input_path.write_text(prompt, encoding="utf-8")
 
             command = [
                 executable,
@@ -110,23 +175,44 @@ class LLMClient:
                 ]
             )
 
-            completed = subprocess.run(
-                command,
-                input=prompt,
-                cwd=working_dir,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                timeout=600,
-                check=False,
-                env=environment,
-                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-            )
-            if completed.returncode != 0:
-                error = (completed.stderr or completed.stdout).strip()
-                raise RuntimeError(f"Codex CLI failed: {error[-2000:]}")
+            started = time.monotonic()
+
+            def failure(reason: str) -> RuntimeError:
+                detail = _cli_error_detail(stderr_path, stdout_path)
+                message = (
+                    f"Codex CLI failed: model={self.model} effort={self.reasoning_effort or 'default'} "
+                    f"elapsed={time.monotonic() - started:.1f}s {reason}"
+                )
+                return RuntimeError(f"{message}; detail={detail}" if detail else message)
+
+            failure_reason = None
+            with input_path.open("rb") as stdin, stdout_path.open("wb") as stdout, stderr_path.open("wb") as stderr:
+                try:
+                    process = subprocess.Popen(
+                        command, stdin=stdin, stdout=stdout, stderr=stderr,
+                        cwd=working_dir, env=environment,
+                        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                    )
+                except OSError as exc:
+                    failure_reason = f"launch {type(exc).__name__}"
+                else:
+                    try:
+                        process.wait(timeout=CODEX_TIMEOUT_SECONDS)
+                    except subprocess.TimeoutExpired:
+                        cleanup_issue = _terminate_codex_process(process)
+                        failure_reason = f"timeout={CODEX_TIMEOUT_SECONDS}s"
+                        if cleanup_issue:
+                            failure_reason += f"; cleanup={cleanup_issue}"
+                    except BaseException:
+                        _terminate_codex_process(process)
+                        raise
+                    else:
+                        if process.returncode != 0:
+                            failure_reason = f"exit_code={process.returncode}"
+            if failure_reason:
+                raise failure(failure_reason)
             if not output_path.exists():
-                raise RuntimeError("Codex CLI did not produce a prediction response")
+                raise failure("prediction response missing")
             return output_path.read_text(encoding="utf-8")
 
     def _invoke_openai(self, prompt: str) -> str:

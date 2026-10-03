@@ -100,6 +100,8 @@ codex login status
 
 Codex CLIにはモデル・reasoning effortを明示して渡し、ユーザー設定に依存させません。一時ディレクトリのread-only sandbox・ephemeral・構造化出力を使用し、確定入力以外のファイルやWebを参照しないようプロンプトで指示します。1回のprediction実行につきCLI実行は1回で、内部retryはありません。`llm_provider: openai`のAPI経路もあり、その場合は`OPENAI_API_KEY`が必要です。
 
+Codex CLIの応答待機は600秒です。入力と診断出力は一時ファイルで受け渡し、タイムアウト時はWindowsの起動PIDに属する子プロセスも終了させます。終了処理の各待機にも10秒の制限を設けます。失敗時はモデル・reasoning effort・経過時間・終了コードまたはタイムアウト・短い出力末尾を既存の`data/job.log`へ記録します。
+
 ## 通常の自動運用
 
 ```bash
